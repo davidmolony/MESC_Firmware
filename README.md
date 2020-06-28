@@ -116,3 +116,4 @@ eAngleP - present electrical angle, The electrical angle will integrate each PWM
 VDemandInv - uint16_t Inverter voltage request. Inverter will take this value, multiple it by the 8 bit sintable value (centred on 128) and right shift by (8+(16-10)) to scale it to fit the PWM duty.  
 ### Controller params will be
 ToDo, calculate OL voltage ramps etc. 
+ToDo, add parameters for speed steps
