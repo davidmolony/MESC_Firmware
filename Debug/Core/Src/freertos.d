@@ -45,7 +45,9 @@ Core/Src/freertos.o: ../Core/Src/freertos.c \
  ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim.h \
  ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim_ex.h \
  ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart.h \
- ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart_ex.h
+ ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart_ex.h \
+ ../Core/Inc/MESCfoc.h ../Core/Inc/MESCmotor_state.h \
+ ../Core/Inc/MESChw_setup.h ../Core/Inc/MESCsin_lut.h
 
 ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h:
 
@@ -142,3 +144,11 @@ Core/Src/freertos.o: ../Core/Src/freertos.c \
 ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart.h:
 
 ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart_ex.h:
+
+../Core/Inc/MESCfoc.h:
+
+../Core/Inc/MESCmotor_state.h:
+
+../Core/Inc/MESChw_setup.h:
+
+../Core/Inc/MESCsin_lut.h:
