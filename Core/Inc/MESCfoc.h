@@ -56,6 +56,7 @@ typedef struct
 void fastLoop();
 void V_I_Check();
 void GenerateBreak();
+int GetHallState();
 void measureResistance();
 void measureInductance();
 
