@@ -54,8 +54,15 @@ typedef struct
 
 void fastLoop();
 void V_I_Check();
-void GenerateBreak();
+void GenerateBreak(); //Software break that does not stop the PWM, sum of phU,V,W_Break();
 int GetHallState();
 void measureResistance();
 void measureInductance();
+void phU_Break(); 	//Turn all phase U FETs off, Tristate the ouput - For BLDC mode mainly, but also used for measuring
+void phU_Enable();	//Basically un-break phase U, opposite of above...
+void phV_Break();
+void phV_Enable();
+void phW_Break();
+void phW_Enable();
+
 

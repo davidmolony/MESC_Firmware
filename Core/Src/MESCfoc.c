@@ -108,6 +108,9 @@ void GenerateBreak(){
 	//Here we set all the PWMoutputs to LOW, without triggering the timerBRK, which should only be set by the hardware comparators, in the case of a shoot-through orother catastrophic event
 	//This function means that the timer can be left running, ADCs sampling etc which enables a recovery, or single PWM period break in which the backEMF can be measured directly
 	//This function needs implementing and testing before any high current or voltage is applied, otherwise... DeadFETs
+	phU_Break();
+	phV_Break();
+	phW_Break();
 }
 
 int GetHallState(){
@@ -155,3 +158,65 @@ void measureInductance(){
 }
 
 
+uint32_t tmpccmrx;	//Temporary buffer which is used to turn on/off phase PWMs
+//Turn all phase U FETs off, Tristate the HBridge output - For BLDC mode mainly, but also used for measuring, software fault detection and recovery
+//ToDo TEST THOROUGHLY The register manipulations for the break functions were used previously on an STM32F042K6 for my first BLDC drive, on TIM1, which should be identical, but definitely needs checking
+void phU_Break(){
+	tmpccmrx = htim1.Instance->CCMR1;
+	tmpccmrx &= ~TIM_CCMR1_OC1M;
+	tmpccmrx &= ~TIM_CCMR1_CC1S;
+	tmpccmrx |= TIM_OCMODE_FORCED_INACTIVE;
+	htim1.Instance->CCMR1 = tmpccmrx;
+	htim1.Instance->CCER &= ~TIM_CCER_CC1E;  //disable
+	htim1.Instance->CCER &= ~TIM_CCER_CC1NE;  //disable
+}
+//Basically un-break phase U, opposite of above...
+void phU_Enable(){
+	tmpccmrx = htim1.Instance->CCMR1;
+	tmpccmrx &= ~TIM_CCMR1_OC1M;
+	tmpccmrx &= ~TIM_CCMR1_CC1S;
+	tmpccmrx |= TIM_OCMODE_PWM1;
+	htim1.Instance->CCMR1 = tmpccmrx;
+	htim1.Instance->CCER |= TIM_CCER_CC1E;   //enable
+	htim1.Instance->CCER |= TIM_CCER_CC1NE;   //enable
+}
+
+void phV_Break(){
+	tmpccmrx = htim1.Instance->CCMR1;
+	tmpccmrx &= ~TIM_CCMR1_OC2M;
+	tmpccmrx &= ~TIM_CCMR1_CC2S;
+	tmpccmrx |= TIM_OCMODE_FORCED_INACTIVE<<8;
+	htim1.Instance->CCMR1 = tmpccmrx;
+	htim1.Instance->CCER &= ~TIM_CCER_CC2E;  //disable
+	htim1.Instance->CCER &= ~TIM_CCER_CC2NE;  //disable
+}
+
+void phV_Enable(){
+	tmpccmrx = htim1.Instance->CCMR1;
+	tmpccmrx &= ~TIM_CCMR1_OC2M;
+	tmpccmrx &= ~TIM_CCMR1_CC2S;
+	tmpccmrx |= TIM_OCMODE_PWM1<<8;
+htim1.Instance->CCMR1 = tmpccmrx;
+htim1.Instance->CCER |= TIM_CCER_CC2E;   //enable
+htim1.Instance->CCER |= TIM_CCER_CC2NE;   //enable
+}
+
+void phW_Break(){
+	   tmpccmrx = htim1.Instance->CCMR2;
+	   tmpccmrx &= ~TIM_CCMR2_OC3M;
+	   tmpccmrx &= ~TIM_CCMR2_CC3S;
+	   tmpccmrx |= TIM_OCMODE_FORCED_INACTIVE;
+	   htim1.Instance->CCMR2 = tmpccmrx;
+	   htim1.Instance->CCER &= ~TIM_CCER_CC3E;  //disable
+	   htim1.Instance->CCER &= ~TIM_CCER_CC3NE;  //disable
+}
+
+void phW_Enable(){
+  	tmpccmrx = htim1.Instance->CCMR2;
+    tmpccmrx &= ~TIM_CCMR2_OC3M;
+    tmpccmrx &= ~TIM_CCMR2_CC3S;
+    tmpccmrx |= TIM_OCMODE_PWM1;
+    htim1.Instance->CCMR2 = tmpccmrx;
+    htim1.Instance->CCER |= TIM_CCER_CC3E;   //enable
+    htim1.Instance->CCER |= TIM_CCER_CC3NE;   //enable
+}

@@ -22,7 +22,8 @@ typedef struct
 typedef struct
 {
 	hardware_vars_t Rphase;		//unsigned int containing phase resistance in mOhms, populated by DETECTING if not already known;
-	hardware_vars_t Lphase;		//unsigned int containing phase inductance in uH, range from veryvery low inductance high kV strong magnet BLDC motors to low kV weak magnet ones;
+	uint8_t uncertainty;		//uncertainty should start at 255 an as the measure resistance is called each PWM cycle, be deprecated by accumulating the measurements until it reaches 0, at which point the resistance is accepted
+	hardware_vars_t Lphase;		//unsigned int containing phase inductance in uH, range from very very low inductance high kV strong magnet BLDC motors to low kV weak magnet ones;
     uint16_t      RawCurrLim;	//Current limit that will trigger a software generated break from ADC. Actual current equal to (RawCurrLim-IMid)*3.3/4096/Gain/Rshunt 	//example (4096-2048)*3.3/(4096*16*0.001)= 103A
     uint16_t      RawVoltLim;	////Voltage limit that will trigger a software generated break from ADC. Actual voltage equal to RawVoltLim*3.3*Divider/4096			// example 2303*3.3/4096*(R1k5+R47k/R1K5)=60V
 } motor_s;

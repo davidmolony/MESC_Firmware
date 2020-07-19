@@ -1,6 +1,0 @@
-MESCfoc.c:14:6:fastLoop	16	static
-MESCfoc.c:99:6:V_I_Check	8	static
-MESCfoc.c:107:6:GenerateBreak	4	static
-MESCfoc.c:113:5:GetHallState	24	static
-MESCfoc.c:150:6:measureResistance	4	static
-MESCfoc.c:153:6:measureInductance	4	static
