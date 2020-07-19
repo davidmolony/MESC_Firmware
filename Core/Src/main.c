@@ -101,6 +101,7 @@ const osThreadAttr_t BatCheckTask_attributes = {
 };
 /* USER CODE BEGIN PV */
 uint16_t a=0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/

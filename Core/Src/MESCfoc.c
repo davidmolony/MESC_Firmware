@@ -8,7 +8,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "MESCfoc.h"
-
+#include "MESCmotor_state.h"
+#include "MESChw_setup.h"
 
 void fastLoop(){//Call this directly from the ADC callback IRQ
 V_I_Check(); //Run the current and voltage checks
@@ -50,17 +51,18 @@ switch(MotorState){
 		  break;
 
 		 case MOTOR_STATE_DETECTING:
+			 ;
 			int test=8;
 			test = GetHallState();
 
 			if((test==6)||(test==7)){
 				//no hall sensors detected
-				MotorSensorMode==MOTOR_SENSOR_MODE_SENSORLESS;
+				MotorSensorMode=MOTOR_SENSOR_MODE_SENSORLESS;
 			}
 			else if(test==8){
 				MotorState=MOTOR_STATE_ERROR;
 			}
-			//ToDo add resporting
+			//ToDo add reporting
 			else {
 				//hall sensors detected
 				MotorSensorMode=MOTOR_SENSOR_MODE_HALL;
@@ -68,20 +70,27 @@ switch(MotorState){
 		 break;
 
 		 case MOTOR_STATE_MEASURING:
-			if(Rphase==0){	//Every PWM cycle we enter this function until the resistance measurement has converged at a good value. Once the measurement is complete, Rphase is set, and this is no longer called
+			if(motor.Rphase==0){	//Every PWM cycle we enter this function until the resistance measurement has converged at a good value. Once the measurement is complete, Rphase is set, and this is no longer called
 				measureResistance();
 			break;
 			}
-			else if(Lphase==0){
+			else if(motor.Lphase==0){
 				//As per resistance measurement, this will be called until an inductance measurement is converged.
 				//Inductance measurement might require a serious reset of the ADC, or calling this function many times per PWM period by resetting the OCR4 register to trigger the ADC successively
 				measureInductance();
 			break;
 			}
 
-		 case ERROR:
+		 case MOTOR_STATE_ERROR:
 			GenerateBreak();	//Generate a break state
 			//Now panic and freak out
+			break;
+		 case MOTOR_STATE_ALIGN:
+			//Turn on at a given voltage at electricalangle0;
+			break;
+		 case MOTOR_STATE_RECOVERING:
+			//No clue so far. Read the phase voltages and determine position and attempt to restart?
+			//Should already be in break state, and should stay there...
 			break;
 	}
 }
@@ -89,7 +98,7 @@ switch(MotorState){
 
 void V_I_Check(){ // &RawADC1,&RawADC2, &RawADC3 as arguments? Is this the correct use of &pointers? Just need it to look in the buffers filled by the DMA
 	//Check currents, voltages are within panic limits
-	if((RawADC1[0]>RawCurrLim)|(RawADC2[0]>RawCurrLim)|(RawADC3[0]>RawCurrLim)|(RawADC1[1]>RawVoltLim)){
+	if((measurement_buffers.RawADC[0][0]>motor.RawCurrLim)|(measurement_buffers.RawADC[1][0]>motor.RawCurrLim)|(measurement_buffers.RawADC[2][0]>motor.RawCurrLim)|(measurement_buffers.RawADC[0][1]>motor.RawVoltLim)){
 		GenerateBreak();
 		MotorState=ERROR;
 	}

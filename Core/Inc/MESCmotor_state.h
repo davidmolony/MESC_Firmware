@@ -7,7 +7,7 @@ typedef enum
 	MOTOR_STATE_DETECTING=1,
 		//PWM not generating output, but still running to trigger the ADC/check for hall sensors.
 		//Returned values from ADC used to detect if the motor is spinning, how fast, what speed...
-	ALIGN=2,
+	MOTOR_STATE_ALIGN=2,
 		//Hold one phase at current
 	MOTOR_STATE_MEASURING=3,
 		//Measuring resistance and inducance of phase
@@ -37,14 +37,14 @@ typedef enum
 		All PWM signals should be disabled, the timer may be in fault mode with all outputs disabled, or it may be required to implement the bit writes to turn off the outputs
 
 		*/
-	RECOVERING=11
+	MOTOR_STATE_RECOVERING=11
 			/*
 			After a fault state, might want to implement a routine to restart the system on the fly - detect if motor is running, detect speed, phase, re-enable PWM
 			*/
 
 } motor_state_e;
 
-const motor_state_e MotorState;
+motor_state_e MotorState;
 
 typedef enum
 {
@@ -53,7 +53,7 @@ typedef enum
     MOTOR_SENSOR_MODE_SENSORLESS,
 } motor_sensor_mode_e;
 
-const  motor_sensor_mode_e MotorSensorMode;
+motor_sensor_mode_e MotorSensorMode;
 
 typedef enum
 {

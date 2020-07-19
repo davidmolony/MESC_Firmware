@@ -1,6 +1,7 @@
 
 #include "stm32f3xx_hal.h"
 
+
 #define FOC_SECTORS_PER_REVOLUTION 	(6)
 #define FOC_CONV_CHANNELS           (3)
 #define FOC_TRANSFORMED_CHANNELS    (2)
@@ -38,12 +39,10 @@ typedef struct
     													//ADC2 returns Vcurrent, V and W phase voltages
 														//ADC3 returns Wcurrent,
     uint16_t ADCOffset[FOC_NUM_ADC];	//During detect phase, need to sense the zero current offset
-    struct
-    {
-        uint16_t Delta;
-        uint16_t Length;
-    }        RCPWMin;
+
 } foc_measurement_t;
+
+foc_measurement_t measurement_buffers;
 
 typedef struct
 {

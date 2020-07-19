@@ -27,7 +27,9 @@ typedef struct
     uint16_t      RawVoltLim;	////Voltage limit that will trigger a software generated break from ADC. Actual voltage equal to RawVoltLim*3.3*Divider/4096			// example 2303*3.3/4096*(R1k5+R47k/R1K5)=60V
 } motor_s;
 
-void motor_init( motor_s * motor );
+motor_s motor;
+
+//void motor_init( motor_s * motor );	//Rob created prototype init, unused for now
 
 
 
