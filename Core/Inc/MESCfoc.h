@@ -39,6 +39,7 @@ typedef struct
     													//ADC2 returns Vcurrent, V and W phase voltages
 														//ADC3 returns Wcurrent,
     uint16_t ADCOffset[FOC_NUM_ADC];	//During detect phase, need to sense the zero current offset
+    float ConvertedADC[FOC_NUM_ADC][FOC_CONV_CHANNELS];	//We will fill this with currents in A and voltages in Volts
 
 } foc_measurement_t;
 
@@ -52,10 +53,23 @@ typedef struct
 
 /* Function prototypes -----------------------------------------------*/
 
+void motor_init();		//Fills the parameters of the motor struct
+void hw_init();			//Fills the parameters of the hardware struct, simplifies some into useful overall gain values
 void fastLoop();
 void V_I_Check();
-void GenerateBreak(); //Software break that does not stop the PWM, sum of phU,V,W_Break();
-int GetHallState();
+void ADCConversion(); 	//Roll this into the V_I_Check? less branching, can probably reduce no.ops and needs doing every cycle anyway...
+						//convert currents from uint_16 ADC readings into float A and uint_16 voltages into float volts
+						//Since the observer needs the Clark transformed current, do the Clark transform now
+void observerTick();	//Call every time to allow the observer, whatever it is, to update itself and find motor position
+void MESCFOC(); 		//Park transform and current control (PI?)
+
+void openLoopPIFF();	//Just keep the phase currents at the requested value without really thinking about things like synchronising, phase etc...
+
+void writePWM();		//Offset the PWM to voltage centred (0Vduty is 50% PWM) or subtract lowest phase to always clamp one phase at 0V, write CCR registers
+
+void GenerateBreak(); 	//Software break that does not stop the PWM timer but disables the outputs, sum of phU,V,W_Break();
+int isMotorRunning();	//return motor state if state is one of the running states, if it's an idle, error or break state, disable all outputs and measure the phase voltages - if all the same, then it's stationary.
+int GetHallState();		//Self explanatory...
 void measureResistance();
 void measureInductance();
 void phU_Break(); 	//Turn all phase U FETs off, Tristate the ouput - For BLDC mode mainly, but also used for measuring

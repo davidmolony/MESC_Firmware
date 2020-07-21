@@ -30,11 +30,12 @@ typedef struct
 
 motor_s motor;
 
-//void motor_init( motor_s * motor );	//Rob created prototype init, unused for now
+//void motor_init( struct motor_s *motor);	//Rob created prototype init, unused for now
 
 
 
-const hw_setup_s g_hw_setup;
+hw_setup_s g_hw_setup;
+
 // _OR_
 // void hw_setup_init( hw_setp_s * hw_setup );
 //

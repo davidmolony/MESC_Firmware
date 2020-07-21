@@ -11,22 +11,47 @@
 #include "MESCmotor_state.h"
 #include "MESChw_setup.h"
 
+extern TIM_HandleTypeDef htim1;
+
+void motor_init(){
+	motor.Rphase=0;		//We init at 0 to trigger the measurer to get the vals
+	motor.Lphase=0;		//We init at 0 to trigger the measurer to get the vals
+	motor.uncertainty=1;
+	motor.RawCurrLim=3000;
+	motor.RawVoltLim=2303;
+}
+
+void hw_init(){
+	g_hw_setup.Rshunt=0.001;
+	g_hw_setup.RIphPU=4700;
+	g_hw_setup.RIphSR=150;
+	g_hw_setup.RVBB=1500;
+	g_hw_setup.RVBT=47000;
+	g_hw_setup.OpGain=16; //Can this be inferred from the HAL declaration?
+	g_hw_setup.VBGain=g_hw_setup.RVBB/(g_hw_setup.RVBB+g_hw_setup.RVBT);
+	g_hw_setup.Igain=g_hw_setup.Rshunt*g_hw_setup.OpGain*g_hw_setup.RIphPU/(g_hw_setup.RIphPU+g_hw_setup.RIphSR);
+
+}
+
 void fastLoop(){//Call this directly from the ADC callback IRQ
 V_I_Check(); //Run the current and voltage checks
 switch(MotorState){
 		 case MOTOR_STATE_SENSORLESS_RUN:
+			 ADCConversion();//Convert the ADC values into floats, do Clark transform
 			//Call the observer
 			//Call the current and phase controller
 			//Write the PWM values
 			break;
 
 		 case MOTOR_STATE_HALL_RUN:
+			 ADCConversion();//Convert the ADC values into floats, do Clark transform
 			//Get the current position from HallTimer
 			//Call the current and phase controller
 			//Write the PWM values
 			break;
 
 		 case MOTOR_STATE_HALL_NEAR_STATIONARY:
+			 ADCConversion();//Convert the ADC values into floats, do Clark transform, but we ignore the answer here, just want the float currents.
 			//Call GetHallState
 			//Call the BLDC discrete controller - Override the normal current controller, this is 6 step DC only
 			//Write the PWM values
@@ -34,7 +59,9 @@ switch(MotorState){
 
 		 case MOTOR_STATE_OPEN_LOOP_STARTUP:
 			//Same as open loop
-			//Write the PWM values
+			 ADCConversion(); //Convert the ADC values into floats, do Clark transform, ignore result of Clark, just want the float currents
+			 openLoopPIFF();
+			 //Write the PWM values
 			break;
 
 		 case MOTOR_STATE_OPEN_LOOP_TRANSITION:
@@ -104,6 +131,17 @@ void V_I_Check(){ // &RawADC1,&RawADC2, &RawADC3 as arguments? Is this the corre
 	}
 }
 
+void ADCConversion(){
+	//Here we take the raw ADC values, offset, cast to (float) and use the hardware gain values to create volt and amp variables
+	measurement_buffers.ConvertedADC[0][0]=(float)(measurement_buffers.RawADC[0][0]-measurement_buffers.ADCOffset[0])*g_hw_setup.Igain;	//Currents
+	measurement_buffers.ConvertedADC[1][0]=(float)(measurement_buffers.RawADC[1][0]-measurement_buffers.ADCOffset[1])*g_hw_setup.Igain;
+	measurement_buffers.ConvertedADC[2][0]=(float)(measurement_buffers.RawADC[2][0]-measurement_buffers.ADCOffset[2])*g_hw_setup.Igain;
+	measurement_buffers.ConvertedADC[0][1]=(float)measurement_buffers.RawADC[0][1]*g_hw_setup.VBGain; 	//Vbus
+	measurement_buffers.ConvertedADC[0][0]=(float)measurement_buffers.RawADC[0][2]*g_hw_setup.VBGain;	//Usw
+	measurement_buffers.ConvertedADC[0][0]=(float)measurement_buffers.RawADC[1][1]*g_hw_setup.VBGain;	//Vsw
+	measurement_buffers.ConvertedADC[0][0]=(float)measurement_buffers.RawADC[1][2]*g_hw_setup.VBGain;	//Wsw
+}
+
 void GenerateBreak(){
 	//Here we set all the PWMoutputs to LOW, without triggering the timerBRK, which should only be set by the hardware comparators, in the case of a shoot-through orother catastrophic event
 	//This function means that the timer can be left running, ADCs sampling etc which enables a recovery, or single PWM period break in which the backEMF can be measured directly
@@ -151,10 +189,63 @@ int GetHallState(){
 		}
 }
 void measureResistance(){
+	/*In this function, we are going to use the openloop PIFF controller to create a current, probably 1A, through a pair of motor windings,
+	 * 	keeping the third tri-stated.
+	 * 	We then generate a pair of V and I values, from the bus voltage and duty cycle, and the current reading
+	 * 	We repeat this at higher current, say 5A, and then apply R=dV/dI from the two values to generate a resistance.
+	 * 	Don't use a single point, since this is subject to anomolies from switching dead times, ADC sampling position...etc. Use of the derivative eliminates all steady state error sources
+	 * 	ToDo Repeat for all phases? Or just assume they are all close enough that it doesn't matter? Could be useful for disconnection detection...
+	*/
+	static float currAcc2=0;	//codebase static?
+	static float currAcc1=0;	//codebase static?
 
+ADCConversion(); //call the ADC conversion, which gives us float current values and voltages
+	static uint16_t PWMcycles=0; //codebase, this is going to initialise it as 0 once only and then not reset it each time this is called right?
+if(isMotorRunning()){
+	//do nothing
+}
+else{
+	//turn off phW, we are just going to measure RUV
+	static uint16_t testPWM1=2;		//ToDo MASSIVE HACK, completely uncontrolled value "2",2/1024/37kHz--> 54ns pulse... Possibly won't even turn on the FETs
+									//Assuming the device does respond, and ton==toff, then approx. 48V*2/1024=0.09V. Typically R=2(PCB)+4(2xFETs)+100(Rmotor)=106mOhm-->1A
+	static uint16_t testPWM2=10;	//ToDo EVEN BIGGER HACK...uncontrolled value "10" -->270ns pulse... Probably will turn the FETs on...
+	phW_Break();
+	phU_Enable();
+	phV_Enable();
+	if(PWMcycles<1000){
+	htim1.Instance->CCR2=0;
+	htim1.Instance->CCR1=testPWM1;
+	//Accumulate the currents with an exponential smoother. This averaging should remove some noise and slightly increase effective resolution
+	currAcc1=(99*currAcc1+measurement_buffers.ConvertedADC[1][0])/100;
+	}
+
+	else if (PWMcycles<2000){
+		htim1.Instance->CCR2=0;
+		htim1.Instance->CCR1=testPWM2;
+		//Accumulate the currents with an exponential smoother
+		currAcc2=(99*currAcc2+measurement_buffers.ConvertedADC[1][0])/100;
+	}
+	else if (PWMcycles==2000){
+		//First let's just turn everything off. Nobody likes motors sitting there getting hot while debugging.
+		htim1.Instance->CCR2=0;
+		htim1.Instance->CCR1=0;
+		phU_Break();
+		phV_Break();
+		phW_Break();
+		//calculate the resistance from two accumulated currents and two voltages
+		motor.Rphase=(((float)(testPWM2-testPWM1))*measurement_buffers.ConvertedADC[0][1])/(currAcc2-currAcc1);
+
+	}
+}
 }
 void measureInductance(){
-
+	/*
+	 * In this function, we are going to run at a fixed duty cycle (perhaps as determined by Measure Resistance?), pushing ~5A through the motor coils (~100ADCcounts).
+	 * We will then wait until steady state achieved... 1000 PWM cycles? before modulating CCR4, which triggers the ADC to capture currents at at least 2 time points within the PWM cycle
+	 * With this change in current, and knowing R from previous measurement, we can calculate L using L=Vdt/dI=IRdt/dI
+	 * ToDo Actually do this...
+	 * ToDo Determination of the direct and quadrature inductances for MTPA in future?
+	*/
 }
 
 
