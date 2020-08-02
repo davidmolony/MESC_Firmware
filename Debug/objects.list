@@ -1,3 +1,4 @@
+"Core/Src/MESCBLDC.o"
 "Core/Src/MESCfoc.o"
 "Core/Src/MESChw_setup.o"
 "Core/Src/MESCmotor_state.o"

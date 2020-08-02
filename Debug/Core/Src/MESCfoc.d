@@ -37,7 +37,8 @@ Core/Src/MESCfoc.o: ../Core/Src/MESCfoc.c ../Core/Inc/MESCfoc.h \
  ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_tim_ex.h \
  ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart.h \
  ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart_ex.h \
- ../Core/Inc/MESCmotor_state.h ../Core/Inc/MESChw_setup.h
+ ../Core/Inc/MESCmotor_state.h ../Core/Inc/MESChw_setup.h \
+ ../Core/Inc/MESCBLDC.h
 
 ../Core/Inc/MESCfoc.h:
 
@@ -120,3 +121,5 @@ Core/Src/MESCfoc.o: ../Core/Src/MESCfoc.c ../Core/Inc/MESCfoc.h \
 ../Core/Inc/MESCmotor_state.h:
 
 ../Core/Inc/MESChw_setup.h:
+
+../Core/Inc/MESCBLDC.h:

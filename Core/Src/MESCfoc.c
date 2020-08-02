@@ -10,28 +10,11 @@
 #include "MESCfoc.h"
 #include "MESCmotor_state.h"
 #include "MESChw_setup.h"
+#include "MESCBLDC.h"
+
 
 extern TIM_HandleTypeDef htim1;
 
-void motor_init(){
-	motor.Rphase=0;		//We init at 0 to trigger the measurer to get the vals
-	motor.Lphase=0;		//We init at 0 to trigger the measurer to get the vals
-	motor.uncertainty=1;
-	motor.RawCurrLim=3000;
-	motor.RawVoltLim=2303;
-}
-
-void hw_init(){
-	g_hw_setup.Rshunt=0.001;
-	g_hw_setup.RIphPU=4700;
-	g_hw_setup.RIphSR=150;
-	g_hw_setup.RVBB=1500;
-	g_hw_setup.RVBT=47000;
-	g_hw_setup.OpGain=16; //Can this be inferred from the HAL declaration?
-	g_hw_setup.VBGain=g_hw_setup.RVBB/(g_hw_setup.RVBB+g_hw_setup.RVBT);
-	g_hw_setup.Igain=g_hw_setup.Rshunt*g_hw_setup.OpGain*g_hw_setup.RIphPU/(g_hw_setup.RIphPU+g_hw_setup.RIphSR);
-
-}
 
 void fastLoop(){//Call this directly from the ADC callback IRQ
 V_I_Check(); //Run the current and voltage checks
@@ -45,6 +28,10 @@ switch(MotorState){
 
 		 case MOTOR_STATE_HALL_RUN:
 			 ADCConversion();//Convert the ADC values into floats, do Clark transform
+			 if(MotorControlType==MOTOR_CONTROL_TYPE_BLDC){//BLDC is hopefully just a temporary "Get it spinning" kind of thing, to be deprecated in favour of FOC
+				 BLDCCurrentController();
+				 BLDCCommuteHall();
+			 }
 			//Get the current position from HallTimer
 			//Call the current and phase controller
 			//Write the PWM values
@@ -137,9 +124,9 @@ void ADCConversion(){
 	measurement_buffers.ConvertedADC[1][0]=(float)(measurement_buffers.RawADC[1][0]-measurement_buffers.ADCOffset[1])*g_hw_setup.Igain;
 	measurement_buffers.ConvertedADC[2][0]=(float)(measurement_buffers.RawADC[2][0]-measurement_buffers.ADCOffset[2])*g_hw_setup.Igain;
 	measurement_buffers.ConvertedADC[0][1]=(float)measurement_buffers.RawADC[0][1]*g_hw_setup.VBGain; 	//Vbus
-	measurement_buffers.ConvertedADC[0][0]=(float)measurement_buffers.RawADC[0][2]*g_hw_setup.VBGain;	//Usw
-	measurement_buffers.ConvertedADC[0][0]=(float)measurement_buffers.RawADC[1][1]*g_hw_setup.VBGain;	//Vsw
-	measurement_buffers.ConvertedADC[0][0]=(float)measurement_buffers.RawADC[1][2]*g_hw_setup.VBGain;	//Wsw
+	measurement_buffers.ConvertedADC[0][2]=(float)measurement_buffers.RawADC[0][2]*g_hw_setup.VBGain;	//Usw
+	measurement_buffers.ConvertedADC[1][1]=(float)measurement_buffers.RawADC[1][1]*g_hw_setup.VBGain;	//Vsw
+	measurement_buffers.ConvertedADC[1][2]=(float)measurement_buffers.RawADC[1][2]*g_hw_setup.VBGain;	//Wsw
 }
 
 void GenerateBreak(){
@@ -155,7 +142,7 @@ int GetHallState(){
 
 
 	int hallState=0;
-	hallState=((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6))|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6))<<1)|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6))<<2));
+	hallState=((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6))|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7))<<1)|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8))<<2));
 	switch(hallState)
 		{
 			case 0:
@@ -216,14 +203,14 @@ else{
 	htim1.Instance->CCR2=0;
 	htim1.Instance->CCR1=testPWM1;
 	//Accumulate the currents with an exponential smoother. This averaging should remove some noise and slightly increase effective resolution
-	currAcc1=(99*currAcc1+measurement_buffers.ConvertedADC[1][0])/100;
+	currAcc1=(99*currAcc1+measurement_buffers.ConvertedADC[1][0])*0.01;
 	}
 
 	else if (PWMcycles<2000){
 		htim1.Instance->CCR2=0;
 		htim1.Instance->CCR1=testPWM2;
 		//Accumulate the currents with an exponential smoother
-		currAcc2=(99*currAcc2+measurement_buffers.ConvertedADC[1][0])/100;
+		currAcc2=(99*currAcc2+measurement_buffers.ConvertedADC[1][0])*0.01;
 	}
 	else if (PWMcycles==2000){
 		//First let's just turn everything off. Nobody likes motors sitting there getting hot while debugging.

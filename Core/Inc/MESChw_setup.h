@@ -1,9 +1,11 @@
 #include "stm32f3xx_hal.h"
 
-#define HW_SETUP_RSHUNT (1000)
+//#define HW_SETUP_RSHUNT (1000)
 //:
 //#define HW_SETUP_IGAIN ((HW_SETUP_RSHUNT*...)/(...))
 // _OR
+
+
 typedef float hardware_vars_t; //Let's have all the hardware and everything in float for now, until we start running out of clock cycles?
 
 typedef struct
@@ -18,6 +20,11 @@ typedef struct
 	hardware_vars_t Igain;	//=Rshunt*OpGain*RIphPU/(RIphSR+RIphPU);	//Resistor gain network*opamp gain - total gain before the current hits the ADC, might want this inverted to avoid using division?
 } hw_setup_s;
 
+hw_setup_s g_hw_setup;
+// _OR_
+// void hw_setup_init( hw_setp_s * hw_setup );
+
+
 
 typedef struct
 {
@@ -29,16 +36,13 @@ typedef struct
 } motor_s;
 
 motor_s motor;
-
+// _OR_
 //void motor_init( struct motor_s *motor);	//Rob created prototype init, unused for now
 
 
-
-hw_setup_s g_hw_setup;
-
-// _OR_
-// void hw_setup_init( hw_setp_s * hw_setup );
 //
 
 /* Function prototypes -----------------------------------------------*/
 
+void motor_init();		//Fills the parameters of the motor struct
+void hw_init();			//Fills the parameters of the hardware struct, simplifies some into useful overall gain values

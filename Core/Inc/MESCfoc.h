@@ -53,8 +53,6 @@ typedef struct
 
 /* Function prototypes -----------------------------------------------*/
 
-void motor_init();		//Fills the parameters of the motor struct
-void hw_init();			//Fills the parameters of the hardware struct, simplifies some into useful overall gain values
 void fastLoop();
 void V_I_Check();
 void ADCConversion(); 	//Roll this into the V_I_Check? less branching, can probably reduce no.ops and needs doing every cycle anyway...

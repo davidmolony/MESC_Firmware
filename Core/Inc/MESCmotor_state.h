@@ -37,7 +37,7 @@ typedef enum
 		All PWM signals should be disabled, the timer may be in fault mode with all outputs disabled, or it may be required to implement the bit writes to turn off the outputs
 
 		*/
-	MOTOR_STATE_RECOVERING=11
+	MOTOR_STATE_RECOVERING=11,
 			/*
 			After a fault state, might want to implement a routine to restart the system on the fly - detect if motor is running, detect speed, phase, re-enable PWM
 			*/
@@ -61,5 +61,16 @@ typedef enum
     MOTOR_DIRECTION_COUNTERCLOCKWISE
 } motor_direction_e;
 
+motor_direction_e MotorDirection;
+
+typedef enum
+{
+    MOTOR_CONTROL_TYPE_BLDC,
+	MOTOR_CONTROL_TYPE_FOC
+} motor_control_type_e;
+
+motor_control_type_e MotorControlType;
 
 /* Function prototypes -----------------------------------------------*/
+
+void MESC_Init();

@@ -36,6 +36,8 @@ extern "C" {
 #include "MESChw_setup.h"
 #include "MESCsin_lut.h"
 #include "MESCfoc.h"
+#include "MESCBLDC.h"
+
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
