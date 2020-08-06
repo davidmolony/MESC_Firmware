@@ -35,7 +35,7 @@ void foc_init( MESCfoc_s * foc );
 
 typedef struct
 {
-    uint16_t RawADC[FOC_NUM_ADC][FOC_CONV_CHANNELS]; 	//ADC1 returns Ucurrent, DClink voltage and U phase voltage
+    uint32_t RawADC[FOC_NUM_ADC][FOC_CONV_CHANNELS]; 	//ADC1 returns Ucurrent, DClink voltage and U phase voltage
     													//ADC2 returns Vcurrent, V and W phase voltages
 														//ADC3 returns Wcurrent,
     uint16_t ADCOffset[FOC_NUM_ADC];	//During detect phase, need to sense the zero current offset

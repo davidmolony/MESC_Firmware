@@ -100,7 +100,9 @@ const osThreadAttr_t BatCheckTask_attributes = {
 };
 /* USER CODE BEGIN PV */
 uint16_t a=0;
-
+float adcBuff1[3]={0,0,0};
+uint32_t adcBuff2[3]={0,0,0};
+uint32_t adcBuff3[3]={0,0,0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -181,9 +183,30 @@ int main(void)
   MX_TIM4_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+  HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+  HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
+  HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
+  HAL_Delay(50);
+
+  /* Trying to fix this pernicious Opamp offset, implementing the calibration routine aparently only works if the opamp is not in PGA mode.
+   * Sadly, it makes no damned difference
+  hopamp1.Init.Mode = OPAMP_STANDALONE_MODE ;
+  HAL_OPAMP_Init(&hopamp1);
+  HAL_OPAMP_SelfCalibrate(&hopamp1);
+  HAL_Delay(50);
+
+  hopamp1.Init.Mode = OPAMP_PGA_MODE;
+  HAL_OPAMP_Init(&hopamp1);
+
+  //HAL_OPAMP_SelfCalibrate(&hopamp2);
+  //HAL_OPAMP_SelfCalibrate(&hopamp3);
+*/
+  HAL_Delay(50);
 HAL_OPAMP_Start(&hopamp1);
 HAL_OPAMP_Start(&hopamp2);
 HAL_OPAMP_Start(&hopamp3);
+
+BLDCInit();
 
 HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
@@ -199,30 +222,24 @@ HAL_COMP_Start(&hcomp4);
 HAL_COMP_Start(&hcomp7);
 HAL_Delay(1000);
 __HAL_TIM_MOE_ENABLE(&htim1); // initialising the comparators triggers the break state
-BLDCInit();
 
+BLDCVars.BLDCduty=70;
+
+HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&measurement_buffers.RawADC[0][0], 3);
+HAL_ADC_Start_DMA(&hadc2, (uint32_t*)&measurement_buffers.RawADC[1][0], 3);
+HAL_ADC_Start_DMA(&hadc3, (uint32_t*)&measurement_buffers.RawADC[2][0], 1);
 while(1){
-	__HAL_TIM_MOE_ENABLE(&htim1); // initialising the comparators triggers the break state
+	//BLDCCommuteHall(); //This has been moved to the DMA1 channel one IRQ, which triggers after every ADC measurement, on every PWM pulse.
 
-	BLDCVars.BLDCduty=70;
-	BLDCCommuteHall();
 	//Add a little area in which I can mess about without the RTOS
-/*
-	phU_Break();
-	HAL_Delay(10);
-	phU_Enable();
-	phV_Enable();
-	phW_Enable();
-	HAL_Delay(10);
 
-volatile int comparatorLevel=HAL_COMP_GetOutputLevel(&hcomp1);
-volatile int HallStatetest=GetHallState();
 
-if(comparatorLevel!=0){
-	HAL_Delay(1000);
-	__HAL_TIM_MOE_ENABLE(&htim1);
+if(	BLDCVars.BLDCduty<100){
+	BLDCVars.BLDCduty= 	BLDCVars.BLDCduty+10;
+	HAL_Delay(100);
+	//__HAL_TIM_MOE_ENABLE(&htim1);
 
-}*/
+}
 }
   /* USER CODE END 2 */
 
@@ -360,7 +377,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T1_TRGO;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 3;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
@@ -377,7 +394,7 @@ static void MX_ADC1_Init(void)
   }
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_VOPAMP1;
+  sConfig.Channel = ADC_CHANNEL_3;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.SamplingTime = ADC_SAMPLETIME_61CYCLES_5;
@@ -391,7 +408,6 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = ADC_REGULAR_RANK_2;
-  sConfig.SamplingTime = ADC_SAMPLETIME_4CYCLES_5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -400,6 +416,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_4;
   sConfig.Rank = ADC_REGULAR_RANK_3;
+  sConfig.SamplingTime = ADC_SAMPLETIME_4CYCLES_5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -439,8 +456,8 @@ static void MX_ADC2_Init(void)
   hadc2.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T1_TRGO;
   hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc2.Init.NbrOfConversion = 3;
-  hadc2.Init.DMAContinuousRequests = DISABLE;
-  hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc2.Init.DMAContinuousRequests = ENABLE;
+  hadc2.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   hadc2.Init.LowPowerAutoWait = DISABLE;
   hadc2.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
   if (HAL_ADC_Init(&hadc2) != HAL_OK)
@@ -449,7 +466,7 @@ static void MX_ADC2_Init(void)
   }
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_VOPAMP2;
+  sConfig.Channel = ADC_CHANNEL_3;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.SamplingTime = ADC_SAMPLETIME_61CYCLES_5;
@@ -512,8 +529,8 @@ static void MX_ADC3_Init(void)
   hadc3.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T1_TRGO;
   hadc3.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc3.Init.NbrOfConversion = 1;
-  hadc3.Init.DMAContinuousRequests = DISABLE;
-  hadc3.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc3.Init.DMAContinuousRequests = ENABLE;
+  hadc3.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   hadc3.Init.LowPowerAutoWait = DISABLE;
   hadc3.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
   if (HAL_ADC_Init(&hadc3) != HAL_OK)
@@ -529,7 +546,7 @@ static void MX_ADC3_Init(void)
   }
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_VOPAMP3;
+  sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.SamplingTime = ADC_SAMPLETIME_61CYCLES_5;
@@ -1136,7 +1153,9 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_ADC_ConvcpltCallback(ADC_HandleTypeDef* hadc){
 
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
