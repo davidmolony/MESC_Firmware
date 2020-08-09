@@ -188,18 +188,14 @@ int main(void)
   HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
   HAL_Delay(50);
 
-  /* Trying to fix this pernicious Opamp offset, implementing the calibration routine aparently only works if the opamp is not in PGA mode.
-   * Sadly, it makes no damned difference
+  /* Trying to fix this pernicious Opamp offset, implementing the calibration routine apparently only works if the opamp is not in PGA mode.
+   * Sadly, it makes no damned difference, leaving this code here since it possibly should be included regardless.
   hopamp1.Init.Mode = OPAMP_STANDALONE_MODE ;
   HAL_OPAMP_Init(&hopamp1);
   HAL_OPAMP_SelfCalibrate(&hopamp1);
   HAL_Delay(50);
-
   hopamp1.Init.Mode = OPAMP_PGA_MODE;
   HAL_OPAMP_Init(&hopamp1);
-
-  //HAL_OPAMP_SelfCalibrate(&hopamp2);
-  //HAL_OPAMP_SelfCalibrate(&hopamp3);
 */
   HAL_Delay(50);
 HAL_OPAMP_Start(&hopamp1);
@@ -215,7 +211,6 @@ HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
 HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
 HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
 
-HAL_Delay(1000);
 HAL_COMP_Start(&hcomp1);
 HAL_COMP_Start(&hcomp2);
 HAL_COMP_Start(&hcomp4);
@@ -228,18 +223,15 @@ BLDCVars.BLDCduty=70;
 HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&measurement_buffers.RawADC[0][0], 3);
 HAL_ADC_Start_DMA(&hadc2, (uint32_t*)&measurement_buffers.RawADC[1][0], 3);
 HAL_ADC_Start_DMA(&hadc3, (uint32_t*)&measurement_buffers.RawADC[2][0], 1);
-while(1){
-	//BLDCCommuteHall(); //This has been moved to the DMA1 channel one IRQ, which triggers after every ADC measurement, on every PWM pulse.
 
 	//Add a little area in which I can mess about without the RTOS
-
-
-if(	BLDCVars.BLDCduty<100){
+while(1){
+	//BLDCCommuteHall(); //This has been moved to the DMA1 channel one IRQ, which triggers after every ADC measurement, on every PWM pulse.
+if(	BLDCVars.BLDCduty<700){
 	BLDCVars.BLDCduty= 	BLDCVars.BLDCduty+10;
 	HAL_Delay(100);
-	//__HAL_TIM_MOE_ENABLE(&htim1);
+	}
 
-}
 }
   /* USER CODE END 2 */
 

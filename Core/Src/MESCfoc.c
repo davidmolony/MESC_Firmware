@@ -160,6 +160,7 @@ int GetHallState(){
 
 	int hallState=0;
 	hallState=((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6))|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7))<<1)|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8))<<2));
+	//ToDo Using these HAL_GPIO_ReadPin functions is very computationally expensive, should replace with a register read->byte mask->rightshift
 	switch(hallState)
 		{
 			case 0:
