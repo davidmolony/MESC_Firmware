@@ -21,8 +21,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f3xx_it.h"
-#include "FreeRTOS.h"
-#include "task.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -76,7 +74,7 @@ extern TIM_HandleTypeDef htim7;
 /* USER CODE END EV */
 
 /******************************************************************************/
-/*           Cortex-M4 Processor Interruption and Exception Handlers          */ 
+/*           Cortex-M4 Processor Interruption and Exception Handlers          */
 /******************************************************************************/
 /**
   * @brief This function handles Non maskable interrupt.
@@ -181,7 +179,11 @@ void DMA1_Channel1_IRQHandler(void)
   /* USER CODE END DMA1_Channel1_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_adc1);
   /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
-
+	BLDCCommuteHall();
+	extern float adcBuff1[3];
+	adcBuff1[0]=(float)measurement_buffers.RawADC[0][0];
+	adcBuff1[1]=(float)measurement_buffers.RawADC[0][1];
+	adcBuff1[2]=(float)measurement_buffers.RawADC[0][2];
   /* USER CODE END DMA1_Channel1_IRQn 1 */
 }
 
@@ -247,6 +249,7 @@ void DMA1_Channel7_IRQHandler(void)
 void ADC1_2_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC1_2_IRQn 0 */
+
 
   /* USER CODE END ADC1_2_IRQn 0 */
   HAL_ADC_IRQHandler(&hadc1);

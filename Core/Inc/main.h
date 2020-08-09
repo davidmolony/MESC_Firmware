@@ -32,6 +32,11 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "MESCmotor_state.h"
+#include "MESChw_setup.h"
+#include "MESCsin_lut.h"
+#include "MESCfoc.h"
+#include "MESCBLDC.h"
 
 /* USER CODE END Includes */
 

@@ -40,6 +40,8 @@ USB_DEVICE/App/usb_device.o: ../USB_DEVICE/App/usb_device.c \
  ../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_hal_uart_ex.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h \
  ../USB_DEVICE/Target/usbd_conf.h ../Core/Inc/main.h \
+ ../Core/Inc/MESCmotor_state.h ../Core/Inc/MESChw_setup.h \
+ ../Core/Inc/MESCsin_lut.h ../Core/Inc/MESCfoc.h ../Core/Inc/MESCBLDC.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h \
@@ -133,6 +135,16 @@ USB_DEVICE/App/usb_device.o: ../USB_DEVICE/App/usb_device.c \
 ../USB_DEVICE/Target/usbd_conf.h:
 
 ../Core/Inc/main.h:
+
+../Core/Inc/MESCmotor_state.h:
+
+../Core/Inc/MESChw_setup.h:
+
+../Core/Inc/MESCsin_lut.h:
+
+../Core/Inc/MESCfoc.h:
+
+../Core/Inc/MESCBLDC.h:
 
 ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h:
 
