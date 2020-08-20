@@ -152,7 +152,6 @@ HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
 		BLDCVars.BLDCduty=10*(a-54);
 	}
 	}
-
 }
 
 
@@ -258,6 +257,7 @@ while(1){
 if(	BLDCVars.BLDCduty<700){
 	BLDCVars.BLDCduty= 	BLDCVars.BLDCduty+10;
 	HAL_Delay(100);
+	HAL_UART_Transmit(&huart3, "HelloWorld\r", 12, 10);
 	}
 
 }
