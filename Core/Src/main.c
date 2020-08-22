@@ -104,7 +104,8 @@ float adcBuff1[3]={0,0,0};
 uint32_t adcBuff2[3]={0,0,0};
 uint32_t adcBuff3[3]={0,0,0};
 uint32_t ICVals[2] = {0,0};
-
+uint32_t RegBuff=0;
+uint32_t quickHall=0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -138,19 +139,32 @@ void BatCheck(void *argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
 	if(htim->Channel==HAL_TIM_ACTIVE_CHANNEL_1){
 		ICVals[0]=HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_1);
 		if(ICVals[0]!=0){
 			ICVals[1]=HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_2);
-			a=100*ICVals[1]/3000;
+			if(ICVals[1]>1500){
+				BLDCState=BLDC_FORWARDS;
+				a=100*(ICVals[1]-1500)/1500;
+			}
+			else if(ICVals[1]<1500){
+				BLDCState=BLDC_BACKWARDS;
+				a=100*(1500-ICVals[1])/1500;
+			}
 		}
-	if(a<55){
-		BLDCVars.BLDCduty=0;
-	}
-	if(a>54){
-		BLDCVars.BLDCduty=10*(a-54);
-	}
+		if(1){//Current control, ToDo convert to Enum
+			BLDCVars.ReqCurrent=((float)a)/5.0; //Crude hack, which gets current scaled to +/-20A based on 0-3000us PWM in
+		}
+
+		if(0){//Duty cycle control, ToDo convert to Enum
+			if(a<10){
+				BLDCVars.BLDCduty=0;
+			}
+			if(a>9){
+				BLDCVars.BLDCduty=10*(a-9);
+			}
+		}
 	}
 }
 
@@ -210,7 +224,8 @@ int main(void)
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
   HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
   HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
-  HAL_Delay(50);
+  HAL_Delay(3000);
+quickHall=(GPIOB->IDR>>6)&0x7;
 
   /* Trying to fix this pernicious Opamp offset, implementing the calibration routine apparently only works if the opamp is not in PGA mode.
    * Sadly, it makes no damned difference, leaving this code here since it possibly should be included regardless.
@@ -230,6 +245,8 @@ HAL_OPAMP_Start(&hopamp2);
 HAL_OPAMP_Start(&hopamp3);
 
 BLDCInit();
+motor_init();
+motor.Rphase=0.1;
 
 HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);

@@ -179,6 +179,7 @@ void DMA1_Channel1_IRQHandler(void)
   /* USER CODE END DMA1_Channel1_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_adc1);
   /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
+  	BLDCCurrentController();
 	BLDCCommuteHall();
 	extern float adcBuff1[3];
 	adcBuff1[0]=(float)measurement_buffers.RawADC[0][0];

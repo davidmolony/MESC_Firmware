@@ -44,38 +44,36 @@ void BLDCInit(){
 
 void BLDCCommuteHall(){
 int CurrentHallState=GetHallState(); //Borrow the hall state detection from the FOC system
-
-static int LastHallState=7;	//Initialise the LastHallState at a value that means it will call the commutation and correctly set the current measurement channel, avoiding a runaway on the PI loop
+static int LastHallState=7;
 
 if(BLDCState==BLDC_FORWARDS){
-	if(!(LastHallState==CurrentHallState)){
-		BLDCVars.BLDCEstate=(CurrentHallState+1)%6;
+		BLDCVars.BLDCEstate=(CurrentHallState+2)%6;
 		writeBLDC();	//Write the PWM values for the next state to generate forward torque
-		LastHallState=CurrentHallState;		//Avoid repeatedly writing the registers
+	if(!(BLDCVars.BLDCEstate==(CurrentHallState+1))){
+//ToDo Fix if the writeBLDC command is put in here, the PWM duty gets stuck at 0.
 }
 
 }
 else if(BLDCState==BLDC_BACKWARDS){
-	if(!(LastHallState==CurrentHallState)){
-		BLDCVars.BLDCEstate=(CurrentHallState+5)%6;
+		BLDCVars.BLDCEstate=(CurrentHallState+4)%6;
 		writeBLDC();	//Write the PWM values for the previous state to generate reverse torque
-		LastHallState=CurrentHallState;
+	if(!(CurrentHallState==CurrentHallState)){
+
 	}
 }
 else if(BLDCState==BLDC_BRAKE){
 	//ToDo Logic to always be on synch or hanging 1 step in front or behind...
 
-		if(((CurrentHallState-LastHallState)%6)>1){
-			BLDCVars.BLDCEstate=(CurrentHallState-1)%6;
-			writeBLDC();
-			LastHallState=CurrentHallState;
+		if(((CurrentHallState-LastHallState)%6)>1){ //ToDo this does not cope with the rollover, makign for a very jerky brake
+			BLDCVars.BLDCEstate=(CurrentHallState+5)%6;
+
 		}
 		else if(((CurrentHallState-LastHallState)%6)<-1){
 			BLDCVars.BLDCEstate=(CurrentHallState+1)%6;
-			writeBLDC();
+
 			LastHallState=CurrentHallState;
 		}
-
+		writeBLDC();
 }
 else{
 //Disable the drivers, freewheel

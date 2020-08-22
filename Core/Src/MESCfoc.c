@@ -158,10 +158,11 @@ void GenerateBreak(){
 int GetHallState(){
 
 
-	int hallState=0;
-	hallState=((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6))|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7))<<1)|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8))<<2));
+	//int hallState=0;
+	//hallState=((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6))|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7))<<1)|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8))<<2));
 	//ToDo Using these HAL_GPIO_ReadPin functions is very computationally expensive, should replace with a register read->byte mask->rightshift
-	switch(hallState)
+	switch(((GPIOB->IDR>>6)&0x7))
+	//switch(hallState)
 		{
 			case 0:
 				return 7; //7 is the no hall sensor detected state (all low)
