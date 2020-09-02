@@ -34,7 +34,8 @@ void BLDCInit(){
 	BLDCVars.ReqCurrent=0;					//Start the motor at 0 current
 	BLDCVars.BLDCduty=0;
 	BLDCVars.CurrentChannel=0;
-	BLDCVars.pGain=1023*motor.Rphase/48; 	//wtf should I set the gain as by default... V/Amp error...Perhaps base it on Rphase and the bus voltage (nominally 48V)? But we don;t know the exact bus voltage yet...
+	BLDCVars.currentCurrent=0;
+	BLDCVars.pGain=1023*motor.Rphase/8; 	//wtf should I set the gain as by default... V/Amp error...Perhaps base it on Rphase and the bus voltage (nominally 48V)? But we don;t know the exact bus voltage yet...
 	BLDCVars.iGain=BLDCVars.pGain;			//Initially, let's just make the iGain the same as the pGain, so after 1 second their contributions will be equal.
 	BLDCVars.BLDCEstate=GetHallState();
 	BLDCState=BLDC_FORWARDS;
@@ -89,8 +90,14 @@ void BLDCCurrentController(){
 	static float CurrentError=0;
 	static float CurrentIntegralError=0;
 	static int Duty=0;
-	CurrentError=(BLDCVars.ReqCurrent-measurement_buffers.ConvertedADC[BLDCVars.CurrentChannel][0]);
+
+	BLDCVars.currentCurrent= measurement_buffers.ConvertedADC[BLDCVars.CurrentChannel][0];
+
+	CurrentError=(BLDCVars.ReqCurrent-BLDCVars.currentCurrent);//measurement_buffers.ConvertedADC[BLDCVars.CurrentChannel][0]);
+
 	CurrentIntegralError=CurrentIntegralError + CurrentError*0.000027; //37kHz PWM, so the integral portion should be multiplied by 1/37k before accumulating
+		if(CurrentIntegralError>10) CurrentIntegralError=10; //Magic numbers
+		if(CurrentIntegralError<-10) CurrentIntegralError=-10; //Magic numbers
 
 	Duty=(int)(CurrentError*BLDCVars.pGain + CurrentIntegralError*BLDCVars.iGain);
 	

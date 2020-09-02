@@ -36,6 +36,7 @@ float ReqCurrent;
 int BLDCduty;
 int BLDCEstate;
 int CurrentChannel;
+float currentCurrent;
 int pGain;
 int iGain;
 }MESCBLDCVars_s;
