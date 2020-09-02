@@ -104,7 +104,9 @@ float adcBuff1[3]={0,0,0};
 uint32_t adcBuff2[3]={0,0,0};
 uint32_t adcBuff3[3]={0,0,0};
 uint32_t ICVals[2] = {0,0};
-
+uint32_t RegBuff=0;
+uint32_t quickHall=0;
+int initing=1;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -138,19 +140,60 @@ void BatCheck(void *argument);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
 	if(htim->Channel==HAL_TIM_ACTIVE_CHANNEL_1){
 		ICVals[0]=HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_1);
-		if(ICVals[0]!=0){
-			ICVals[1]=HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_2);
-			a=100*ICVals[1]/3000;
+
+		// Target is 20000 guard is +-10000
+		if ((ICVals[0] < 10000) || (30000 < ICVals[0]))
+		{
+			a = 0;
+			BLDCVars.ReqCurrent=0;
 		}
-	if(a<55){
-		BLDCVars.BLDCduty=0;
-	}
-	if(a>54){
-		BLDCVars.BLDCduty=10*(a-54);
-	}
+
+		else
+				if(ICVals[0]!=0){
+					BLDCState=BLDC_FORWARDS;
+					ICVals[1]=HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_2);
+					if (ICVals[1] > 2000) ICVals[1] = 2000;
+					if (ICVals[1] < 1000) ICVals[1] = 1000;
+
+					// Mid-point is 1500 guard is +-100
+					if ((ICVals[1] > 1400) && (1600 > ICVals[1]))
+					{
+						ICVals[1] = 1500;
+					}
+//Set the current setpoint here
+					if(1){//Current control, ToDo convert to Enum
+						if(ICVals[1]>1600) BLDCVars.ReqCurrent=((float)ICVals[1]-1600)/5.0; //Crude hack, which gets current scaled to +/-80A based on 1000-2000us PWM in
+						else if(ICVals[1]<1400) BLDCVars.ReqCurrent=((float)ICVals[1]-1400)/5.0; //Crude hack, which gets current scaled to +/-80A based on 1000-2000us PWM in
+						else BLDCVars.ReqCurrent=0;
+					}
+
+					if(0){//Duty cycle control, ToDo convert to Enum
+						if(a<10){
+							BLDCVars.BLDCduty=0;
+						}
+						if(a>9){
+							BLDCVars.BLDCduty=10*(a-9);
+						}
+					}
+
+				}
+
+		/////////////////////////////////
+/*		if(ICVals[0]!=0){
+			ICVals[1]=HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_2);
+			if(ICVals[1]>1500){
+				BLDCState=BLDC_FORWARDS;
+				a=100*(ICVals[1]-1500)/1500;
+			}
+			else if(ICVals[1]<1500){
+				BLDCState=BLDC_FORWARDS;
+				a=100*(1500-ICVals[1])/1500;
+			}
+		}*/
+
 	}
 }
 
@@ -210,7 +253,8 @@ int main(void)
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
   HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
   HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
-  HAL_Delay(50);
+  HAL_Delay(3000);
+quickHall=(GPIOB->IDR>>6)&0x7;
 
   /* Trying to fix this pernicious Opamp offset, implementing the calibration routine apparently only works if the opamp is not in PGA mode.
    * Sadly, it makes no damned difference, leaving this code here since it possibly should be included regardless.
@@ -229,37 +273,57 @@ HAL_OPAMP_Start(&hopamp1);
 HAL_OPAMP_Start(&hopamp2);
 HAL_OPAMP_Start(&hopamp3);
 
+
+motor_init();
+hw_init();
+motor.Rphase=0.1;
 BLDCInit();
+measurement_buffers.ADCOffset[0]=1900;
+measurement_buffers.ADCOffset[1]=1900;
+measurement_buffers.ADCOffset[2]=1900;
+
+
+
+
 
 HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
+__HAL_TIM_SET_COUNTER(&htim1,10);
+
 HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
 HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+__HAL_TIM_SET_COUNTER(&htim1,10);
+
 HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
 HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-
+__HAL_TIM_SET_COUNTER(&htim1,10);
+/*
 HAL_COMP_Start(&hcomp1);
 HAL_COMP_Start(&hcomp2);
 HAL_COMP_Start(&hcomp4);
-HAL_COMP_Start(&hcomp7);
-HAL_Delay(1000);
+HAL_COMP_Start(&hcomp7);*/
+__HAL_TIM_SET_COUNTER(&htim1,10);
+HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&measurement_buffers.RawADC[0][0], 3);
+__HAL_TIM_SET_COUNTER(&htim1,10);
+
+HAL_ADC_Start_DMA(&hadc2, (uint32_t*)&measurement_buffers.RawADC[1][0], 3);
+__HAL_TIM_SET_COUNTER(&htim1,10);
+
+HAL_ADC_Start_DMA(&hadc3, (uint32_t*)&measurement_buffers.RawADC[2][0], 1);
+//Here we can init the measurement buffer offsets; ADC and timer and interrupts are running...
+HAL_Delay(100);
+initing=0;
+
 __HAL_TIM_MOE_ENABLE(&htim1); // initialising the comparators triggers the break state
 
 BLDCVars.BLDCduty=70;
 
-HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&measurement_buffers.RawADC[0][0], 3);
-HAL_ADC_Start_DMA(&hadc2, (uint32_t*)&measurement_buffers.RawADC[1][0], 3);
-HAL_ADC_Start_DMA(&hadc3, (uint32_t*)&measurement_buffers.RawADC[2][0], 1);
+
 
 	//Add a little area in which I can mess about without the RTOS
 while(1){
-	//BLDCCommuteHall(); //This has been moved to the DMA1 channel one IRQ, which triggers after every ADC measurement, on every PWM pulse.
-if(	BLDCVars.BLDCduty<700){
-	BLDCVars.BLDCduty= 	BLDCVars.BLDCduty+10;
 	HAL_Delay(100);
 	HAL_UART_Transmit(&huart3, "HelloWorld\r", 12, 10);
-	}
-
 }
   /* USER CODE END 2 */
 
@@ -380,6 +444,7 @@ static void MX_ADC1_Init(void)
   /* USER CODE END ADC1_Init 0 */
 
   ADC_MultiModeTypeDef multimode = {0};
+  ADC_AnalogWDGConfTypeDef AnalogWDGConfig = {0};
   ADC_ChannelConfTypeDef sConfig = {0};
 
   /* USER CODE BEGIN ADC1_Init 1 */
@@ -409,6 +474,18 @@ static void MX_ADC1_Init(void)
   */
   multimode.Mode = ADC_MODE_INDEPENDENT;
   if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Analog WatchDog 1
+  */
+  AnalogWDGConfig.WatchdogNumber = ADC_ANALOGWATCHDOG_1;
+  AnalogWDGConfig.WatchdogMode = ADC_ANALOGWATCHDOG_SINGLE_REG;
+  AnalogWDGConfig.HighThreshold = 0;
+  AnalogWDGConfig.LowThreshold = 0;
+  AnalogWDGConfig.Channel = ADC_CHANNEL_1;
+  AnalogWDGConfig.ITMode = DISABLE;
+  if (HAL_ADC_AnalogWDGConfig(&hadc1, &AnalogWDGConfig) != HAL_OK)
   {
     Error_Handler();
   }

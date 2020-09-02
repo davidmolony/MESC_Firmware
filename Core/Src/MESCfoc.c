@@ -137,13 +137,25 @@ void V_I_Check(){ // &RawADC1,&RawADC2, &RawADC3 as arguments? Is this the corre
 
 void ADCConversion(){
 	//Here we take the raw ADC values, offset, cast to (float) and use the hardware gain values to create volt and amp variables
-	measurement_buffers.ConvertedADC[0][0]=(float)(measurement_buffers.RawADC[0][0]-measurement_buffers.ADCOffset[0])*g_hw_setup.Igain;	//Currents
-	measurement_buffers.ConvertedADC[1][0]=(float)(measurement_buffers.RawADC[1][0]-measurement_buffers.ADCOffset[1])*g_hw_setup.Igain;
-	measurement_buffers.ConvertedADC[2][0]=(float)(measurement_buffers.RawADC[2][0]-measurement_buffers.ADCOffset[2])*g_hw_setup.Igain;
+	extern int initing;
+	if(initing){
+		measurement_buffers.ADCOffset[0] = (255*measurement_buffers.ADCOffset[0]+measurement_buffers.RawADC[0][0])/256;
+		measurement_buffers.ADCOffset[1] = (255*measurement_buffers.ADCOffset[1]+measurement_buffers.RawADC[1][0])/256;
+		measurement_buffers.ADCOffset[2] = (255*measurement_buffers.ADCOffset[2]+measurement_buffers.RawADC[2][0])/256;
+		static int initcycles=0;
+		initcycles=initcycles+1;
+		if(initcycles>1000){
+			initing=0;
+		}
+	}else{
+	measurement_buffers.ConvertedADC[0][0]=((float)measurement_buffers.RawADC[0][0]-(float)measurement_buffers.ADCOffset[0])*g_hw_setup.Igain;	//Currents
+	measurement_buffers.ConvertedADC[1][0]=((float)measurement_buffers.RawADC[1][0]-(float)measurement_buffers.ADCOffset[1])*g_hw_setup.Igain;
+	measurement_buffers.ConvertedADC[2][0]=((float)measurement_buffers.RawADC[2][0]-(float)measurement_buffers.ADCOffset[2])*g_hw_setup.Igain;
 	measurement_buffers.ConvertedADC[0][1]=(float)measurement_buffers.RawADC[0][1]*g_hw_setup.VBGain; 	//Vbus
 	measurement_buffers.ConvertedADC[0][2]=(float)measurement_buffers.RawADC[0][2]*g_hw_setup.VBGain;	//Usw
 	measurement_buffers.ConvertedADC[1][1]=(float)measurement_buffers.RawADC[1][1]*g_hw_setup.VBGain;	//Vsw
 	measurement_buffers.ConvertedADC[1][2]=(float)measurement_buffers.RawADC[1][2]*g_hw_setup.VBGain;	//Wsw
+	}
 }
 
 void GenerateBreak(){
@@ -158,10 +170,11 @@ void GenerateBreak(){
 int GetHallState(){
 
 
-	int hallState=0;
-	hallState=((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6))|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7))<<1)|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8))<<2));
+	//int hallState=0;
+	//hallState=((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_6))|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_7))<<1)|((HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8))<<2));
 	//ToDo Using these HAL_GPIO_ReadPin functions is very computationally expensive, should replace with a register read->byte mask->rightshift
-	switch(hallState)
+	switch(((GPIOB->IDR>>6)&0x7))
+	//switch(hallState)
 		{
 			case 0:
 				return 7; //7 is the no hall sensor detected state (all low)
