@@ -44,47 +44,43 @@ void BLDCInit(){
 
 
 void BLDCCommuteHall(){
-int CurrentHallState=GetHallState(); //Borrow the hall state detection from the FOC system
-static int LastHallState=7;
+	int CurrentHallState=GetHallState(); //Borrow the hall state detection from the FOC system
+	static int LastHallState=7;
 
-if(BLDCState==BLDC_FORWARDS){
+	if(BLDCState==BLDC_FORWARDS){
 		BLDCVars.BLDCEstate=(CurrentHallState+2)%6;
 		writeBLDC();	//Write the PWM values for the next state to generate forward torque
-	if(!(BLDCVars.BLDCEstate==(CurrentHallState+1))){
-//ToDo Fix if the writeBLDC command is put in here, the PWM duty gets stuck at 0.
-}
-
-}
-else if(BLDCState==BLDC_BACKWARDS){
-	BLDCVars.BLDCEstate=(CurrentHallState+4)%6;
-	writeBLDC();	//Write the PWM values for the previous state to generate reverse torque
-//FIXME: what is this supposed to accomplish?
-//commented out since this code does nothing and is likely removed by the compiler.
-//	if(!(CurrentHallState==CurrentHallState)){
-//	}
-}
-else if(BLDCState==BLDC_BRAKE){
-	//ToDo Logic to always be on synch or hanging 1 step in front or behind...
-
-		if(((CurrentHallState-LastHallState)%6)>1){ //ToDo this does not cope with the rollover, makign for a very jerky brake
+		if(!(BLDCVars.BLDCEstate==(CurrentHallState+1))){
+			//ToDo Fix if the writeBLDC command is put in here, the PWM duty gets stuck at 0.
+			}
+	}
+	else if(BLDCState==BLDC_BACKWARDS){
+		BLDCVars.BLDCEstate=(CurrentHallState+4)%6;
+		writeBLDC();	//Write the PWM values for the previous state to generate reverse torque
+		//FIXME: what is this supposed to accomplish?
+		//commented out since this code does nothing and is likely removed by the compiler.
+		//	if(!(CurrentHallState==CurrentHallState)){
+		//	}
+	}
+	else if(BLDCState==BLDC_BRAKE){
+		//ToDo Logic to always be on synch or hanging 1 step in front or behind...
+		//ToDo this does not cope with the rollover, makign for a very jerky brake
+		if(((CurrentHallState-LastHallState)%6)>1){
 			BLDCVars.BLDCEstate=(CurrentHallState+5)%6;
-
 		}
 		else if(((CurrentHallState-LastHallState)%6)<-1){
 			BLDCVars.BLDCEstate=(CurrentHallState+1)%6;
-
 			LastHallState=CurrentHallState;
 		}
 		writeBLDC();
+	}
+	else{
+		//Disable the drivers, freewheel
+		phU_Break();
+		phV_Break();
+		phW_Break();
+	}
 }
-else{
-//Disable the drivers, freewheel
-phU_Break();
-phV_Break();
-phW_Break();
-}
-}
-
 
 void BLDCCurrentController(){
 //Implement a simple PI controller
@@ -97,8 +93,8 @@ void BLDCCurrentController(){
 	CurrentError=(BLDCVars.ReqCurrent-BLDCVars.currentCurrent);//measurement_buffers.ConvertedADC[BLDCVars.CurrentChannel][0]);
 
 	CurrentIntegralError=CurrentIntegralError + CurrentError*0.000027; //37kHz PWM, so the integral portion should be multiplied by 1/37k before accumulating
-		if(CurrentIntegralError>10) CurrentIntegralError=10; //Magic numbers
-		if(CurrentIntegralError<-10) CurrentIntegralError=-10; //Magic numbers
+	if(CurrentIntegralError>10) CurrentIntegralError=10; //Magic numbers
+	if(CurrentIntegralError<-10) CurrentIntegralError=-10; //Magic numbers
 
 	Duty=(int)(CurrentError*BLDCVars.pGain + CurrentIntegralError*BLDCVars.iGain);
 	
