@@ -56,11 +56,12 @@ if(BLDCState==BLDC_FORWARDS){
 
 }
 else if(BLDCState==BLDC_BACKWARDS){
-		BLDCVars.BLDCEstate=(CurrentHallState+4)%6;
-		writeBLDC();	//Write the PWM values for the previous state to generate reverse torque
-	if(!(CurrentHallState==CurrentHallState)){
-
-	}
+	BLDCVars.BLDCEstate=(CurrentHallState+4)%6;
+	writeBLDC();	//Write the PWM values for the previous state to generate reverse torque
+//FIXME: what is this supposed to accomplish?
+//commented out since this code does nothing and is likely removed by the compiler.
+//	if(!(CurrentHallState==CurrentHallState)){
+//	}
 }
 else if(BLDCState==BLDC_BRAKE){
 	//ToDo Logic to always be on synch or hanging 1 step in front or behind...
