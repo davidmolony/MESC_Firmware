@@ -29,11 +29,14 @@
 #define FOC_TRANSFORMED_CHANNELS (2)
 #define FOC_NUM_ADC (3)
 
+// fixme: I think this type of stuff is causing confusion later on especially in
+// the code that strives for maintainability. What does an alias give you?
 typedef uint16_t foc_angle_t;
 typedef int32_t foc_field_angle_t;
 typedef float current_amps_t;
 typedef float voltage_t;
 
+// fixme: why is this in a struct?
 typedef struct {
   foc_angle_t ElecAngle;  // Current electrical angle
   uint16_t Sector;  // Current electrical sector - 6 sectors, as a consequence
@@ -67,14 +70,15 @@ typedef struct {
 
 } MESCfoc_s;
 
-void foc_init(MESCfoc_s *foc);
+void foc_init(MESCfoc_s *foc);  // fixme: floating function prototype
 
+// fixme: why is this in a struct? what advantages does this give?
 typedef struct {
   uint32_t
       RawADC[FOC_NUM_ADC]
             [FOC_CONV_CHANNELS];  // ADC1 returns Ucurrent, DClink voltage and U
-                                  // phase voltage ADC2 returns Vcurrent, V and W
-                                  // phase voltages ADC3 returns Wcurrent,
+                                  // phase voltage ADC2 returns Vcurrent, V and
+                                  // W phase voltages ADC3 returns Wcurrent,
   uint16_t ADCOffset[FOC_NUM_ADC];  // During detect phase, need to sense the
                                     // zero current offset
   float ConvertedADC[FOC_NUM_ADC]
@@ -83,7 +87,7 @@ typedef struct {
 
 } foc_measurement_t;
 
-foc_measurement_t measurement_buffers;
+foc_measurement_t measurement_buffers;  // fixme: floating function prototype
 
 typedef struct {
   uint16_t Delta;
@@ -91,6 +95,12 @@ typedef struct {
 } MESC_RCPWMin_t;
 
 /* Function prototypes -----------------------------------------------*/
+
+// fixme: inconsistent naming convention for functions. Choose one and stick to
+// it across entire codebase. Choice needs to be documented. I recommend
+// variable: lower_snake_case = 1;
+// function: lowerCamelCase();
+// constant: UPPER_CASE;
 
 void fastLoop();
 void V_I_Check();
@@ -102,27 +112,27 @@ void ADCConversion();  // Roll this into the V_I_Check? less branching, can
 // the Clark transform now
 void observerTick();  // Call every time to allow the observer, whatever it is,
                       // to update itself and find motor position
-void MESCFOC();  // Park transform and current control (PI?)
+void MESCFOC();       // Park transform and current control (PI?)
 
 void openLoopPIFF();  // Just keep the phase currents at the requested value
-                      // without really thinking about things like synchronising,
-                      // phase etc...
+                      // without really thinking about things like
+                      // synchronising, phase etc...
 
 void writePWM();  // Offset the PWM to voltage centred (0Vduty is 50% PWM) or
-                  // subtract lowest phase to always clamp one phase at 0V, write
-                  // CCR registers
+                  // subtract lowest phase to always clamp one phase at 0V,
+                  // write CCR registers
 
 void GenerateBreak();  // Software break that does not stop the PWM timer but
                        // disables the outputs, sum of phU,V,W_Break();
 int isMotorRunning();  // return motor state if state is one of the running
                        // states, if it's an idle, error or break state, disable
-                       // all outputs and measure the phase voltages - if all the
-                       // same, then it's stationary.
-int GetHallState();  // Self explanatory...
+                       // all outputs and measure the phase voltages - if all
+                       // the same, then it's stationary.
+int GetHallState();    // Self explanatory...
 void measureResistance();
 void measureInductance();
-void phU_Break();  // Turn all phase U FETs off, Tristate the ouput - For BLDC
-                   // mode mainly, but also used for measuring
+void phU_Break();   // Turn all phase U FETs off, Tristate the ouput - For BLDC
+                    // mode mainly, but also used for measuring
 void phU_Enable();  // Basically un-break phase U, opposite of above...
 void phV_Break();
 void phV_Enable();

@@ -89,7 +89,8 @@ void fastLoop() {  // Call this directly from the ADC callback IRQ
       break;
 
     case MOTOR_STATE_DETECTING:;
-      int test = 8;
+      int test = 8;  // fixme: why assign a number only to reassign straight
+                     // away with something else?
       test = GetHallState();
 
       if ((test == 6) || (test == 7)) {
@@ -127,11 +128,16 @@ void fastLoop() {  // Call this directly from the ADC callback IRQ
     case MOTOR_STATE_ERROR:
       GenerateBreak();  // Generate a break state
       // Now panic and freak out
+      // fixme: do we actually need to panic? should there be special state of
+      // MOTOR_STATE_PANIC?
       break;
     case MOTOR_STATE_ALIGN:
       // Turn on at a given voltage at electricalangle0;
       break;
     case MOTOR_STATE_RECOVERING:
+      // fixme: this probably should not try to recover without external prompt
+      // unless reason for failure is understood.
+
       // No clue so far. Read the phase voltages and determine position and
       // attempt to restart? Should already be in break state, and should stay
       // there...
@@ -139,6 +145,7 @@ void fastLoop() {  // Call this directly from the ADC callback IRQ
   }
 }
 
+// TODO: refactor this function. Is this function called by DMA interrupt?
 void V_I_Check() {  // &RawADC1,&RawADC2, &RawADC3 as arguments? Is this the
                     // correct use of &pointers? Just need it to look in the
                     // buffers filled by the DMA
@@ -149,12 +156,17 @@ void V_I_Check() {  // &RawADC1,&RawADC2, &RawADC3 as arguments? Is this the
       (measurement_buffers.RawADC[0][1] > motor.RawVoltLim)) {
     GenerateBreak();
     MotorState = ERROR;
+    // fixme I think this is meant to be MOTOR_STATE_ERROR, not generic system
+    // ERROR.
   }
 }
 
 void ADCConversion() {
   // Here we take the raw ADC values, offset, cast to (float) and use the
   // hardware gain values to create volt and amp variables
+  // fixme: huh? where does "initing" come from? what does "initing" mean?
+  // initialising? Can "initing" be passed as an argument to this function?
+  // found it... sort of, but still don't understand.
   extern int initing;
   if (initing) {
     measurement_buffers.ADCOffset[0] = (255 * measurement_buffers.ADCOffset[0] +
