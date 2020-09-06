@@ -40,7 +40,7 @@ Below is the example of K&R formatted code.
 
 ### Code analysis.
 It is highly advisable to enable code style and structure monitoring provided by the IDE. In Preferences window to go C/C++ --> Code analysis. Enable all.  
-Some might be found to be overly restrictive and can be disabled, e.g. Coding style --> Line comments will complain about "//" single line style comments. Given extensive use of those by David it's probably not worth enforcing that rule.
+Some rules might seem to be overly restrictive and those can be disabled. For example, Coding style --> Line comments will complain about "//" single line style comments. Given extensive use of those by David it's probably not worth enforcing that rule.
 
 ### Precompiler defined values
 These are constant values given a name through pre-compiler directive
