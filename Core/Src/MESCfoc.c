@@ -106,6 +106,7 @@ void fastLoop() { //Call this directly from the ADC callback IRQ
 			measureInductance();
 			break;
 		}
+		//fixme: does the break belong after the closing bracket for else statement?
 
 	case MOTOR_STATE_ERROR:
 		GenerateBreak();	//Generate a break state
