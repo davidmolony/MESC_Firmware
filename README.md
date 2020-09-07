@@ -74,7 +74,11 @@ Constants just like #define precompiler define falues should be in UPPER_CASE.
 	const int MY_CONSTANT = 2;  
 
 ## Useful Eclipse IDE extensions
+### Darkest Dark
 To modify visual impact of coding work and reduce eye strain it is advisable to use darker colour schemes. We find that Darkest Dark Eclipse extension works very well and has good colour choices. In order to install it go to Help --> Eclipse Marketplace... In the search bar type "Darkest Dark". It should be first in the search results. Install it. After restart of IDE it'll present a set of choices. Leave default ones. They can later be modified in the Preferences window by going to DevStyle --> Color Themes.
+
+###CPPStyle
+This section on CPPStyle extension and associated prerequisites to be filled in once decision is made on coding style.
 
 ## Licence
 This project will initially (and perhaps perpetually) contain a lot of firmware licenced under the STM Cube licence, BSD 3 clause https://opensource.org/licenses/BSD-3-Clause .   
