@@ -225,6 +225,17 @@ int main(void) {
 
     /* USER CODE BEGIN SysInit */
 
+    /* start tracealyzer trace recorder.
+     * TRC_INIT - not sure what that does.
+     * TRC_START - start recording immediately.
+     * TRC_TRC_START_AWAIT_HOST - trace recorder will halt execution and wait
+     * till host part of the code starts. Use this option if you want to see
+     * something that happens at the very start of the code execution.
+     * N.B.: Mind that with last option execution will not start unless host
+     * software is started. This option is really only for debugging purposes.
+     * */
+    vTraceEnable(TRC_START);
+
     /* USER CODE END SysInit */
 
     /* Initialize all configured peripherals */
