@@ -1,4 +1,0 @@
-MESCBLDC.c:33:6:BLDCInit	8	static
-MESCBLDC.c:46:6:BLDCCommuteHall	16	static
-MESCBLDC.c:88:6:BLDCCurrentController	16	static
-MESCBLDC.c:115:6:writeBLDC	8	static
