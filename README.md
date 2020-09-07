@@ -43,16 +43,35 @@ It is highly advisable to enable code style and structure monitoring provided by
 Some rules might seem to be overly restrictive and those can be disabled. For example, Coding style --> Line comments will complain about "//" single line style comments. Given extensive use of those by David it's probably not worth enforcing that rule.
 
 ### Precompiler defined values
-These are constant values given a name through pre-compiler directive
+These are constant values given a name through pre-compiler directive. These values should be in UPPER_CASE.
 
-	#define PI 3.14
+	#define PI_VALUE 3.14
 
 ### Variables
+Variables should be in lower_snake_case. 
+
+    float my_variable;
+
+Class member variables should have a prefix according to their type. Example:
+
+	class CMyClass{
+	private:
+		float m_member_variable;
+		uint32_t * mp_pointer_variable;			
+		static int s_static_variable;
+	}
 
 ### Function names
+Functions and class methods should be in lowerCamelCase format.
+	
+	void theFunction(int arg1);
+	
+	void adcConvertion();
 
 ### Constant values
+Constants just like #define precompiler define falues should be in UPPER_CASE.
 
+	const int MY_CONSTANT = 2;  
 
 ## Useful Eclipse IDE extensions
 To modify visual impact of coding work and reduce eye strain it is advisable to use darker colour schemes. We find that Darkest Dark Eclipse extension works very well and has good colour choices. In order to install it go to Help --> Eclipse Marketplace... In the search bar type "Darkest Dark". It should be first in the search results. Install it. After restart of IDE it'll present a set of choices. Leave default ones. They can later be modified in the Preferences window by going to DevStyle --> Color Themes.
