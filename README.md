@@ -5,6 +5,58 @@ Custom FOC, BLDC, speed control firmware for use with the MESC_FOC_ESC hardware 
 This project is new as of 28/06/2020, and is the work of David Molony, experienced mechanical engineer, moderately experienced electrical engineer, and software newbie. If/when this firmware becomes useable enough to be useful to the world, this foreword will be edited to acknowledge.  
 For now, the hardware is useable using STMicro's Motor Control Workbench and CUBEMX/CUBEIDE/Truestudio installations, for which one day I shall place a binary in the hardware folder...
 
+## Code style
+This section formalises naming rules for variables, constants, function names, etc. It also All contributors are required to adhere to the code style rules. Certain functionality of IDE can be enabled to help with automating the checks.
+
+### Code structure 
+Eclipse IDE can be setup to achieve this code structure automatically. Open dialog
+Window --> Preferences. In the preferences window make following changes.  
+1. C/C++ --> Code Style --> Formatter. Select K&R[built-in] profile.
+2. C/C++ --> Editor --> Save Actions. Tick Format source code and Format edited lines. Tick Ensure newline at the end of the file.
+
+Once it is all setup the code format will be enforced for all edited lines upon save. If you want to reformat the code press Ctrl-Shift-F.  
+Below is the example of K&R formatted code.
+
+	/*
+	 * A sample source file for the code formatter preview
+	 */
+	#include <math.h>
+	class Point {
+	public:
+		Point(double x, double y) :
+				x(x), y(y) {
+		}
+		double distance(const Point &other) const;
+	
+		double x;
+		double y;
+	};
+
+	double Point::distance(const Point &other) const {
+		double dx = x - other.x;
+		double dy = y - other.y;
+		return sqrt(dx * dx + dy * dy);
+	}
+
+### Code analysis.
+It is highly advisable to enable code style and structure monitoring provided by the IDE. In Preferences window to go C/C++ --> Code analysis. Enable all.  
+Some rules might seem to be overly restrictive and those can be disabled. For example, Coding style --> Line comments will complain about "//" single line style comments. Given extensive use of those by David it's probably not worth enforcing that rule.
+
+### Precompiler defined values
+These are constant values given a name through pre-compiler directive
+
+	#define PI 3.14
+
+### Variables
+
+### Function names
+
+### Constant values
+
+
+## Useful Eclipse IDE extensions
+To modify visual impact of coding work and reduce eye strain it is advisable to use darker colour schemes. We find that Darkest Dark Eclipse extension works very well and has good colour choices. In order to install it go to Help --> Eclipse Marketplace... In the search bar type "Darkest Dark". It should be first in the search results. Install it. After restart of IDE it'll present a set of choices. Leave default ones. They can later be modified in the Preferences window by going to DevStyle --> Color Themes.
+
 ## Licence
 This project will initially (and perhaps perpetually) contain a lot of firmware licenced under the STM Cube licence, BSD 3 clause https://opensource.org/licenses/BSD-3-Clause .   
 The rest of the custom code is intended to be contained primarily in the MESC files, and will have a licence assigned at a later date, probably also BSD 3 Clause.

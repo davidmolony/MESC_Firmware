@@ -323,7 +323,8 @@ BLDCVars.BLDCduty=70;
 	//Add a little area in which I can mess about without the RTOS
 while(1){
 	HAL_Delay(100);
-	HAL_UART_Transmit(&huart3, "HelloWorld\r", 12, 10);
+	// explicit typecasting to stop warning generation due to direct string argument.
+	HAL_UART_Transmit(&huart3, (uint8_t *)"HelloWorld\r", 12, 10);
 }
   /* USER CODE END 2 */
 
