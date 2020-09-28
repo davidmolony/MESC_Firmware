@@ -70,7 +70,7 @@ DerivePointerAlignment: false
 PointerAlignment: Right
 
 ## -- Generics -- ##
-ColumnLimit: 80
+ColumnLimit: 140
 CommentPragmas: "^ IWYU pragma:"
 CompactNamespaces: false
 ContinuationIndentWidth: 4
