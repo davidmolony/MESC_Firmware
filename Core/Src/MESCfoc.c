@@ -195,11 +195,37 @@ void ADCConversion()
     }
 }
 
+void HallAngleEstimator()
+{  // ToDo This does not work when going backwards!it steps to the next 60 degrees and then counts backwards
+    static int current_hall_state;
+    static int last_hall_state;
+    static float ticks_since_last_hall_change = 0;
+    static float last_hall_period = 65536;
+
+    current_hall_state = GetHallState();
+
+    if (current_hall_state != last_hall_state)
+    {
+        last_hall_state = current_hall_state;
+        last_hall_period = ticks_since_last_hall_change;
+        ticks_since_last_hall_change = 0;
+    }
+    else
+    {
+        ticks_since_last_hall_change = ticks_since_last_hall_change + 1;
+    }
+    // map the current hall state and current ticks into the hall state to an angle where uint16_t represents one revolution
+    if (last_hall_period > ticks_since_last_hall_change)
+    {
+        foc_vars.HallAngle = (uint16_t)(10922.0f * (current_hall_state + ticks_since_last_hall_change / last_hall_period));
+    }
+}
+
 void GenerateBreak()
 {
     // Here we set all the PWMoutputs to LOW, without triggering the timerBRK,
     // which should only be set by the hardware comparators, in the case of a
-    // shoot-through orother catastrophic event This function means that the
+    // shoot-through or other catastrophic event This function means that the
     // timer can be left running, ADCs sampling etc which enables a recovery, or
     // single PWM period break in which the backEMF can be measured directly
     // This function needs implementing and testing before any high current or

@@ -60,8 +60,6 @@ extern PCD_HandleTypeDef hpcd_USB_FS;
 extern DMA_HandleTypeDef hdma_adc1;
 extern DMA_HandleTypeDef hdma_adc2;
 extern DMA_HandleTypeDef hdma_adc3;
-extern ADC_HandleTypeDef hadc1;
-extern ADC_HandleTypeDef hadc2;
 extern DMA_HandleTypeDef hdma_i2c1_rx;
 extern DMA_HandleTypeDef hdma_i2c1_tx;
 extern TIM_HandleTypeDef htim3;
@@ -180,12 +178,10 @@ void DMA1_Channel1_IRQHandler(void)
   HAL_DMA_IRQHandler(&hdma_adc1);
   /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
     ADCConversion();
+    HallAngleEstimator();
   	BLDCCurrentController();
 	BLDCCommuteHall();
-	extern float adcBuff1[3];
-	adcBuff1[0]=(float)measurement_buffers.RawADC[0][0];
-	adcBuff1[1]=(float)measurement_buffers.RawADC[0][1];
-	adcBuff1[2]=(float)measurement_buffers.RawADC[0][2];
+
   /* USER CODE END DMA1_Channel1_IRQn 1 */
 }
 
@@ -243,22 +239,6 @@ void DMA1_Channel7_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Channel7_IRQn 1 */
 
   /* USER CODE END DMA1_Channel7_IRQn 1 */
-}
-
-/**
-  * @brief This function handles ADC1 and ADC2 interrupts.
-  */
-void ADC1_2_IRQHandler(void)
-{
-  /* USER CODE BEGIN ADC1_2_IRQn 0 */
-
-
-  /* USER CODE END ADC1_2_IRQn 0 */
-  HAL_ADC_IRQHandler(&hadc1);
-  HAL_ADC_IRQHandler(&hadc2);
-  /* USER CODE BEGIN ADC1_2_IRQn 1 */
-
-  /* USER CODE END ADC1_2_IRQn 1 */
 }
 
 /**
