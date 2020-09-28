@@ -49,9 +49,9 @@ typedef struct
     foc_angle_t AngleStep;  // At startup, step angle is zero, zero speed. This is the angle by which the inverter increments
                             // each PWM cycle under open loop
 
-    uint16_t PWM[FOC_CONV_CHANNELS];               // 3 phase vector for the PWM generation, do math on these before writing them to
-                                                   // the timer registers
-    current_amps_t Iab[FOC_TRANSFORMED_CHANNELS+1];  // Float vector containing the Clark transformed current in amps
+    uint16_t PWM[FOC_CONV_CHANNELS];                   // 3 phase vector for the PWM generation, do math on these before writing them to
+                                                       // the timer registers
+    current_amps_t Iab[FOC_TRANSFORMED_CHANNELS + 1];  // Float vector containing the Clark transformed current in amps
 
     current_amps_t Idq[FOC_TRANSFORMED_CHANNELS];  // Float vector containing the Park transformed current in amps
 
@@ -62,8 +62,11 @@ typedef struct
                                    // as rotorAngle-elecAngle
     foc_field_angle_t HallAngle;
 
-    float sincosangle[2];  // This variable carries the current sin and cosine of the angle being used for park and clark transforms, so
+    float sincosangle[2];  // This variable carries the current sin and cosine of the angle being used for Park and Clark transforms, so
                            // they only need computing once per pwm cycle
+    float Vdq[FOC_TRANSFORMED_CHANNELS];
+    float Vab[FOC_TRANSFORMED_CHANNELS + 1];
+    float inverterVoltage[FOC_TRANSFORMED_CHANNELS + 1];
 } MESCfoc_s;
 
 MESCfoc_s foc_vars;
@@ -112,6 +115,7 @@ void HallAngleEstimator();
 void observerTick();  // Call every time to allow the observer, whatever it is,
                       // to update itself and find motor position
 void MESCFOC();       // Field and quadrature current control (PI?)
+                      // Inverse Clark and Park transforms
 
 void openLoopPIFF();  // Just keep the phase currents at the requested value
                       // without really thinking about things like

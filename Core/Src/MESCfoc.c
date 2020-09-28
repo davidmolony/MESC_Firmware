@@ -39,6 +39,7 @@ float sinwave[321] = {0,0.0245412285,0.0490676743,0.0735645636,0.0980171403,0.12
 float one_on_sqrt6 = 0.408248;
 float one_on_sqrt3 = 0.577350;
 float one_on_sqrt2 = 0.707107;
+float sqrt_two_on_3 = 0.816497;
 
 void fastLoop()
 {                 // Call this directly from the ADC callback IRQ
@@ -240,6 +241,32 @@ void HallAngleEstimator()
     {
         foc_vars.HallAngle = (uint16_t)(10922.0f * (current_hall_state + ticks_since_last_hall_change / last_hall_period));
     }
+}
+
+void MESCFOC(){
+	//Here we are going to do a PID loop to control the dq currents, converting Idq into Vdq
+	//We will then inverse Park and Clark the Vdq which will then be written into the PWM registers by the writePWM() function.
+float duty = 10*BLDCVars.ReqCurrent; ///Massive hack... essentially turns the PWM input from a requested current into a duty cycle...
+//Get rid of this hack later, once the inverse Park and Clark work.
+	foc_vars.Vdq[0] = 0;
+	foc_vars.Vdq[1] = duty;
+	//Inverse Park transform
+	foc_vars.Vab[0] = foc_vars.sincosangle[1]*foc_vars.Vdq[0] - foc_vars.sincosangle[0]*foc_vars.Vdq[1];
+	foc_vars.Vab[1] = foc_vars.sincosangle[0]*foc_vars.Vdq[0] + foc_vars.sincosangle[1]*foc_vars.Vdq[1];
+	foc_vars.Vab[2] = 0;
+	//Inverse Clark transform
+	foc_vars.inverterVoltage[0] = 0;
+	foc_vars.inverterVoltage[1] = -foc_vars.Vab[0]*one_on_sqrt6;
+	foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[1] - one_on_sqrt2*foc_vars.Vab[1];
+	foc_vars.inverterVoltage[1] = foc_vars.inverterVoltage[1] + one_on_sqrt2*foc_vars.Vab[1];
+	foc_vars.inverterVoltage[0] = sqrt_two_on_3 * foc_vars.Vab[0];
+
+}
+
+void writePWM(){
+htim1.Instance->CCR1 = (uint16_t)(512 + foc_vars.inverterVoltage[0]);
+htim1.Instance->CCR2 = (uint16_t)(512 + foc_vars.inverterVoltage[1]);
+htim1.Instance->CCR3 = (uint16_t)(512 + foc_vars.inverterVoltage[2]);
 }
 
 void GenerateBreak()
