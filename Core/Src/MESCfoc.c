@@ -248,7 +248,7 @@ void MESCFOC(){
 	//We will then inverse Park and Clark the Vdq which will then be written into the PWM registers by the writePWM() function.
 float duty = 10*BLDCVars.ReqCurrent; ///Massive hack... essentially turns the PWM input from a requested current into a duty cycle...
 //Get rid of this hack later, once the inverse Park and Clark work.
-	foc_vars.Vdq[0] = 0;
+	foc_vars.Vdq[0] = 0.8*duty;
 	foc_vars.Vdq[1] = duty;
 	//Inverse Park transform
 	foc_vars.Vab[0] = foc_vars.sincosangle[1]*foc_vars.Vdq[0] - foc_vars.sincosangle[0]*foc_vars.Vdq[1];
