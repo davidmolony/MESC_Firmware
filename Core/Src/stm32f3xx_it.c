@@ -177,11 +177,15 @@ void DMA1_Channel1_IRQHandler(void)
   /* USER CODE END DMA1_Channel1_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_adc1);
   /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
-    ADCConversion();
     HallAngleEstimator();
+    ADCConversion();
+    if(0){//Put the FOC stuff in here
+
+    }
+    else{
   	BLDCCurrentController();
 	BLDCCommuteHall();
-
+    }
   /* USER CODE END DMA1_Channel1_IRQn 1 */
 }
 

@@ -295,6 +295,9 @@ int main(void)
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
     HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
     __HAL_TIM_SET_COUNTER(&htim1, 10);
+
+    __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,1022);
+
     /*
     HAL_COMP_Start(&hcomp1);
     HAL_COMP_Start(&hcomp2);

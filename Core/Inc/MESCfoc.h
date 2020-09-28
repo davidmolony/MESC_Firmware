@@ -51,7 +51,7 @@ typedef struct
 
     uint16_t PWM[FOC_CONV_CHANNELS];               // 3 phase vector for the PWM generation, do math on these before writing them to
                                                    // the timer registers
-    current_amps_t Iab[FOC_TRANSFORMED_CHANNELS];  // Float vector containing the Clark transformed current in amps
+    current_amps_t Iab[FOC_TRANSFORMED_CHANNELS+1];  // Float vector containing the Clark transformed current in amps
 
     current_amps_t Idq[FOC_TRANSFORMED_CHANNELS];  // Float vector containing the Park transformed current in amps
 
@@ -62,6 +62,8 @@ typedef struct
                                    // as rotorAngle-elecAngle
     foc_field_angle_t HallAngle;
 
+    float sincosangle[2];  // This variable carries the current sin and cosine of the angle being used for park and clark transforms, so
+                           // they only need computing once per pwm cycle
 } MESCfoc_s;
 
 MESCfoc_s foc_vars;
@@ -104,12 +106,12 @@ void ADCConversion();  // Roll this into the V_I_Check? less branching, can
                        // anyway...
 // convert currents from uint_16 ADC readings into float A and uint_16 voltages
 // into float volts Since the observer needs the Clark transformed current, do
-// the Clark transform now
+// the Clark and Park transform now
 void HallAngleEstimator();
 
 void observerTick();  // Call every time to allow the observer, whatever it is,
                       // to update itself and find motor position
-void MESCFOC();       // Park transform and current control (PI?)
+void MESCFOC();       // Field and quadrature current control (PI?)
 
 void openLoopPIFF();  // Just keep the phase currents at the requested value
                       // without really thinking about things like
