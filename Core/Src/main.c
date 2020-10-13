@@ -165,14 +165,14 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
             if (1) {  // Current control, ToDo convert to Enum
                 if (ICVals[1] > 1600)
                     BLDCVars.ReqCurrent =
-                        ((float)ICVals[1] - 1600) /
-                        5.0;  // Crude hack, which gets current scaled to +/-80A
-                              // based on 1000-2000us PWM in
+                        ((float)ICVals[1] - 1600) / 10.0;
+                // Crude hack, which gets current scaled to +/-40A
+                // based on 1000-2000us PWM in
                 else if (ICVals[1] < 1400)
                     BLDCVars.ReqCurrent =
-                        ((float)ICVals[1] - 1400) /
-                        5.0;  // Crude hack, which gets current scaled to +/-80A
-                              // based on 1000-2000us PWM in
+                        ((float)ICVals[1] - 1400) / 10.0;
+                // Crude hack, which gets current scaled to +/-40A
+                // based on 1000-2000us PWM in
                 else
                     BLDCVars.ReqCurrent = 0;
             }
@@ -186,18 +186,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
                 }
             }
         }
-        // todo: remove dead code.
-        /////////////////////////////////
-        /*		if(ICVals[0]!=0){
-                                ICVals[1]=HAL_TIM_ReadCapturedValue(&htim3,
-           TIM_CHANNEL_2); if(ICVals[1]>1500){ BLDCState=BLDC_FORWARDS;
-                                        a=100*(ICVals[1]-1500)/1500;
-                                }
-                                else if(ICVals[1]<1500){
-                                        BLDCState=BLDC_FORWARDS;
-                                        a=100*(1500-ICVals[1])/1500;
-                                }
-                        }*/
+
     }
 }
 
@@ -252,74 +241,9 @@ int main(void)
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);
     // Place to mess about with PWM in
 
-    HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-    HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
-    HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
-    HAL_Delay(3000);
+    MESCInit();
 
-
-    /* Trying to fix this pernicious Opamp offset, implementing the calibration
-    routine apparently only works if the opamp is not in PGA mode.
-     * Sadly, it makes no damned difference, leaving this code here since it
-    possibly should be included regardless. hopamp1.Init.Mode =
-    OPAMP_STANDALONE_MODE ; HAL_OPAMP_Init(&hopamp1);
-    HAL_OPAMP_SelfCalibrate(&hopamp1);
-    HAL_Delay(50);
-    hopamp1.Init.Mode = OPAMP_PGA_MODE;
-    HAL_OPAMP_Init(&hopamp1);
-  */
-
-    HAL_Delay(50);
-    HAL_OPAMP_Start(&hopamp1);
-    HAL_OPAMP_Start(&hopamp2);
-    HAL_OPAMP_Start(&hopamp3);
-
-    // fixme: this portion of the code requires explanation of what is
-    // happening.
-    motor_init();
-    hw_init();
-    motor.Rphase = 0.1;
-    BLDCInit();
-    measurement_buffers.ADCOffset[0] = 1900;
-    measurement_buffers.ADCOffset[1] = 1900;
-    measurement_buffers.ADCOffset[2] = 1900;
-
-    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
-    __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
-    __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-    __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-    __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,1022);
-
-    /*
-    HAL_COMP_Start(&hcomp1);
-    HAL_COMP_Start(&hcomp2);
-    HAL_COMP_Start(&hcomp4);
-    HAL_COMP_Start(&hcomp7);*/
-    __HAL_TIM_SET_COUNTER(&htim1, 10);
-    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&measurement_buffers.RawADC[0][0], 3);
-    __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-    HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&measurement_buffers.RawADC[1][0], 3);
-    __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-    HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][0], 1);
-    // Here we can init the measurement buffer offsets; ADC and timer and
-    // interrupts are running...
-    HAL_Delay(100);
-    initing = 0;
-
-    __HAL_TIM_MOE_ENABLE(
-        &htim1);  // initialising the comparators triggers the break state
-
-    BLDCVars.BLDCduty = 70;
+    //BLDCVars.BLDCduty = 70;
 
     // Add a little area in which I can mess about without the RTOS
     while (1) {

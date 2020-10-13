@@ -173,13 +173,20 @@ void DebugMon_Handler(void)
 void DMA1_Channel1_IRQHandler(void)
 {
     /* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
+foc_vars.FOCError=0x0001; //Set the FOCError bit
 
     /* USER CODE END DMA1_Channel1_IRQn 0 */
     HAL_DMA_IRQHandler(&hdma_adc1);
     /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
     HallAngleEstimator();
+foc_vars.FOCError=2; //change FOCError
+
     ADCConversion();
+    foc_vars.FOCError=3; //change FOCError
+
     MESCFOC();
+    foc_vars.FOCError=4; //change FOCError
+
     if (1)
     {  // Put the FOC stuff in here
                writePWM();
@@ -189,6 +196,8 @@ void DMA1_Channel1_IRQHandler(void)
         BLDCCurrentController();
         BLDCCommuteHall();
     }
+    foc_vars.FOCError=5; //change FOCError
+
     /* USER CODE END DMA1_Channel1_IRQn 1 */
 }
 

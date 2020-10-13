@@ -30,6 +30,9 @@
 #include "MESCmotor_state.h"
 
 extern TIM_HandleTypeDef htim1;
+extern OPAMP_HandleTypeDef hopamp1, hopamp2, hopamp3;
+extern ADC_HandleTypeDef hadc1, hadc2, hadc3;
+extern COMP_HandleTypeDef hcomp1, hcomp2, hcomp4, hcomp7;
 
 // clang-format off
 float sinwave[321] = {0,0.0245412285,0.0490676743,0.0735645636,0.0980171403,0.1224106752,0.1467304745,0.1709618888,0.195090322,0.2191012402,0.2429801799,0.2667127575,0.2902846773,0.3136817404,0.3368898534,0.3598950365,0.3826834324,0.405241314,0.4275550934,0.4496113297,0.4713967368,0.4928981922,0.5141027442,0.5349976199,0.555570233,0.5758081914,0.5956993045,0.6152315906,0.6343932842,0.653172843,0.6715589548,0.6895405447,0.7071067812,0.724247083,0.7409511254,0.7572088465,0.7730104534,0.7883464276,0.8032075315,0.8175848132,0.8314696123,0.8448535652,0.85772861,0.8700869911,0.8819212643,0.8932243012,0.9039892931,0.9142097557,0.9238795325,0.9329927988,0.9415440652,0.9495281806,0.9569403357,0.9637760658,0.9700312532,0.97570213,0.9807852804,0.9852776424,0.98917651,0.9924795346,0.9951847267,0.9972904567,0.9987954562,0.9996988187,1,0.9996988187,0.9987954562,0.9972904567,0.9951847267,0.9924795346,0.98917651,0.9852776424,0.9807852804,0.97570213,0.9700312532,0.9637760658,0.9569403357,0.9495281806,0.9415440652,0.9329927988,0.9238795325,0.9142097557,0.9039892931,0.8932243012,0.8819212643,0.8700869911,0.85772861,0.8448535652,0.8314696123,0.8175848132,0.8032075315,0.7883464276,0.7730104534,0.7572088465,0.7409511254,0.724247083,0.7071067812,0.6895405447,0.6715589548,0.653172843,0.6343932842,0.6152315906,0.5956993045,0.5758081914,0.555570233,0.5349976199,0.5141027442,0.4928981922,0.4713967368,0.4496113297,0.4275550934,0.405241314,0.3826834324,0.3598950365,0.3368898534,0.3136817404,0.2902846773,0.2667127575,0.2429801799,0.2191012402,0.195090322,0.1709618888,0.1467304745,0.1224106752,0.0980171403,0.0735645636,0.0490676743,0.0245412285,1.22464679914735E-016,-0.0245412285,-0.0490676743,-0.0735645636,-0.0980171403,-0.1224106752,-0.1467304745,-0.1709618888,-0.195090322,-0.2191012402,-0.2429801799,-0.2667127575,-0.2902846773,-0.3136817404,-0.3368898534,-0.3598950365,-0.3826834324,-0.405241314,-0.4275550934,-0.4496113297,-0.4713967368,-0.4928981922,-0.5141027442,-0.5349976199,-0.555570233,-0.5758081914,-0.5956993045,-0.6152315906,-0.6343932842,-0.653172843,-0.6715589548,-0.6895405447,-0.7071067812,-0.724247083,-0.7409511254,-0.7572088465,-0.7730104534,-0.7883464276,-0.8032075315,-0.8175848132,-0.8314696123,-0.8448535652,-0.85772861,-0.8700869911,-0.8819212643,-0.8932243012,-0.9039892931,-0.9142097557,-0.9238795325,-0.9329927988,-0.9415440652,-0.9495281806,-0.9569403357,-0.9637760658,-0.9700312532,-0.97570213,-0.9807852804,-0.9852776424,-0.98917651,-0.9924795346,-0.9951847267,-0.9972904567,-0.9987954562,-0.9996988187,-1,-0.9996988187,-0.9987954562,-0.9972904567,-0.9951847267,-0.9924795346,-0.98917651,-0.9852776424,-0.9807852804,-0.97570213,-0.9700312532,-0.9637760658,-0.9569403357,-0.9495281806,-0.9415440652,-0.9329927988,-0.9238795325,-0.9142097557,-0.9039892931,-0.8932243012,-0.8819212643,-0.8700869911,-0.85772861,-0.8448535652,-0.8314696123,-0.8175848132,-0.8032075315,-0.7883464276,-0.7730104534,-0.7572088465,-0.7409511254,-0.724247083,-0.7071067812,-0.6895405447,-0.6715589548,-0.653172843,-0.6343932842,-0.6152315906,-0.5956993045,-0.5758081914,-0.555570233,-0.5349976199,-0.5141027442,-0.4928981922,-0.4713967368,-0.4496113297,-0.4275550934,-0.405241314,-0.3826834324,-0.3598950365,-0.3368898534,-0.3136817404,-0.2902846773,-0.2667127575,-0.2429801799,-0.2191012402,-0.195090322,-0.1709618888,-0.1467304745,-0.1224106752,-0.0980171403,-0.0735645636,-0.0490676743,-0.0245412285,-2.44929359829471E-016,0.0245412285,0.0490676743,0.0735645636,0.0980171403,0.1224106752,0.1467304745,0.1709618888,0.195090322,0.2191012402,0.2429801799,0.2667127575,0.2902846773,0.3136817404,0.3368898534,0.3598950365,0.3826834324,0.405241314,0.4275550934,0.4496113297,0.4713967368,0.4928981922,0.5141027442,0.5349976199,0.555570233,0.5758081914,0.5956993045,0.6152315906,0.6343932842,0.653172843,0.6715589548,0.6895405447,0.7071067812,0.724247083,0.7409511254,0.7572088465,0.7730104534,0.7883464276,0.8032075315,0.8175848132,0.8314696123,0.8448535652,0.85772861,0.8700869911,0.8819212643,0.8932243012,0.9039892931,0.9142097557,0.9238795325,0.9329927988,0.9415440652,0.9495281806,0.9569403357,0.9637760658,0.9700312532,0.97570213,0.9807852804,0.9852776424,0.98917651,0.9924795346,0.9951847267,0.9972904567,0.9987954562,0.9996988187,1};
@@ -40,6 +43,71 @@ float one_on_sqrt6 = 0.408248;
 float one_on_sqrt3 = 0.577350;
 float one_on_sqrt2 = 0.707107;
 float sqrt_two_on_3 = 0.816497;
+
+void MESCInit(){
+	 	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+	    HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
+	    HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
+	    HAL_Delay(3000); //Give the everything else time to start up (e.g. throttle, controller, PWM source...)
+
+	    HAL_OPAMP_Start(&hopamp1);
+	    HAL_OPAMP_Start(&hopamp2);
+	    HAL_OPAMP_Start(&hopamp3);
+
+	    // happening.
+	    motor_init(); //Initialise the motor parameters, either with real values, or zeros if we are to determine the motor params at startup
+	    hw_init();	//Populate the resistances, gains etc of the PCB - edit within this function if compiling for other PCBs
+	    	motor.Rphase = 0.1; //Hack to make it skip over currently not used motor parameter detection
+	    foc_vars.initing=1; //Tell it we ARE initing...
+	    	//BLDCInit();	//Not currently using this, since FOC has taken over as primary method of interest
+	    //Although we are using an exponential filter over thousands of samples to find this offset, accuracy still improved by starting near to the final value.
+	    measurement_buffers.ADCOffset[0] = 1900;
+	    measurement_buffers.ADCOffset[1] = 1900;
+	    measurement_buffers.ADCOffset[2] = 1900;
+
+	    //Start the PWM channels, reset the counter to zero each time to avoid tripping the ADC, which in turn triggers the ISR routine and wrecks the startup
+	    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+	    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
+	    __HAL_TIM_SET_COUNTER(&htim1, 10);
+
+	    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+	    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+	    __HAL_TIM_SET_COUNTER(&htim1, 10);
+
+	    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+	    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
+	    __HAL_TIM_SET_COUNTER(&htim1, 10);
+
+	    __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,1022);
+
+	    //Initialise the comparators - 3 overcurrent and 1 overvoltage,
+	    HAL_COMP_Start(&hcomp1);
+	    HAL_COMP_Start(&hcomp2);
+	    HAL_COMP_Start(&hcomp4);
+	    HAL_COMP_Start(&hcomp7); //OVP comparator
+	    __HAL_TIM_SET_COUNTER(&htim1, 10);
+	    //__HAL_TIM_MOE_ENABLE(&htim1);  // initialising the comparators triggers the break state
+
+
+
+	    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&measurement_buffers.RawADC[0][0], 3);
+	    __HAL_TIM_SET_COUNTER(&htim1, 10);
+
+	    HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&measurement_buffers.RawADC[1][0], 3);
+	    __HAL_TIM_SET_COUNTER(&htim1, 10);
+
+	    HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][0], 1);
+
+	    // Here we can init the measurement buffer offsets; ADC and timer and
+	    // interrupts are running...
+	    //HAL_Delay(100);
+
+	    foc_vars.initing = 0;
+
+
+}
+
+
 
 void fastLoop()
 {                 // Call this directly from the ADC callback IRQ
@@ -167,8 +235,6 @@ void V_I_Check()
     {
         GenerateBreak();
         MotorState = MOTOR_STATE_ERROR;
-        // fixme I think this is meant to be MOTOR_STATE_ERROR, not generic
-        // system ERROR.
     }
 }
 
@@ -177,8 +243,7 @@ void ADCConversion()
     // Here we take the raw ADC values, offset, cast to (float) and use the
     // hardware gain values to create volt and amp variables
 
-    extern int initing;
-    if (initing)
+    if (foc_vars.initing)
     {
         measurement_buffers.ADCOffset[0] = (255 * measurement_buffers.ADCOffset[0] + measurement_buffers.RawADC[0][0]) / 256;
         measurement_buffers.ADCOffset[1] = (255 * measurement_buffers.ADCOffset[1] + measurement_buffers.RawADC[1][0]) / 256;
@@ -187,7 +252,9 @@ void ADCConversion()
         initcycles = initcycles + 1;
         if (initcycles > 1000)
         {
-            initing = 0;
+    	    htim1.Instance->BDTR|=TIM_BDTR_MOE;
+
+            foc_vars.initing = 0;
         }
     }
     else
@@ -203,17 +270,19 @@ void ADCConversion()
         measurement_buffers.ConvertedADC[1][1] = (float)measurement_buffers.RawADC[1][1] * g_hw_setup.VBGain;  // Vsw
         measurement_buffers.ConvertedADC[1][2] = (float)measurement_buffers.RawADC[1][2] * g_hw_setup.VBGain;  // Wsw
 
-        //Here we do the FOC transforms - Clark and Park, using the previous sin values, since they were the correct ones at the time of sampling
-        foc_vars.Iab[0] = (2*measurement_buffers.ConvertedADC[0][0] - measurement_buffers.ConvertedADC[1][0] - measurement_buffers.ConvertedADC[2][0])*one_on_sqrt6;
-        foc_vars.Iab[1] = (measurement_buffers.ConvertedADC[1][0] - measurement_buffers.ConvertedADC[2][0])*one_on_sqrt2;
-        foc_vars.Iab[2] = (measurement_buffers.ConvertedADC[0][0] + measurement_buffers.ConvertedADC[1][0] + measurement_buffers.ConvertedADC[2][0])*0.333;
+        // Here we do the FOC transforms - Clark and Park, using the previous sin values, since they were the correct ones at the time of
+        // sampling
+        foc_vars.Iab[0] = (2.0f * measurement_buffers.ConvertedADC[0][0] - measurement_buffers.ConvertedADC[1][0] - measurement_buffers.ConvertedADC[2][0]) * one_on_sqrt6;
+        foc_vars.Iab[1] = (measurement_buffers.ConvertedADC[1][0] - measurement_buffers.ConvertedADC[2][0]) * one_on_sqrt2;
+        foc_vars.Iab[2] = (measurement_buffers.ConvertedADC[0][0] + measurement_buffers.ConvertedADC[1][0] + measurement_buffers.ConvertedADC[2][0]) * 0.333f;
 
-        foc_vars.Idq[0] = foc_vars.sincosangle[1]*foc_vars.Iab[0] + foc_vars.sincosangle[0]*foc_vars.Iab[1];
-        foc_vars.Idq[1] = foc_vars.sincosangle[1]*foc_vars.Iab[1] - foc_vars.sincosangle[0]*foc_vars.Iab[0];
+        foc_vars.Idq[0] = foc_vars.sincosangle[1] * foc_vars.Iab[0] + foc_vars.sincosangle[0] * foc_vars.Iab[1];
+        foc_vars.Idq[1] = foc_vars.sincosangle[1] * foc_vars.Iab[1] - foc_vars.sincosangle[0] * foc_vars.Iab[0];
 
-        //Now we update the sin and cos values, since when we do the inverse transforms, we would like to use the most up to date versions(or even the next predicted version...)
-        foc_vars.sincosangle[0]=sinwave[foc_vars.HallAngle>>8];
-        foc_vars.sincosangle[1]=sinwave[(foc_vars.HallAngle>>8)+64];
+        // Now we update the sin and cos values, since when we do the inverse transforms, we would like to use the most up to date
+        // versions(or even the next predicted version...)
+        foc_vars.sincosangle[0] = sinwave[foc_vars.HallAngle >> 8];
+        foc_vars.sincosangle[1] = sinwave[(foc_vars.HallAngle >> 8) + 64];
     }
 }
 
@@ -243,30 +312,70 @@ void HallAngleEstimator()
     }
 }
 
-void MESCFOC(){
-	//Here we are going to do a PID loop to control the dq currents, converting Idq into Vdq
-	//We will then inverse Park and Clark the Vdq which will then be written into the PWM registers by the writePWM() function.
-float duty = 10*BLDCVars.ReqCurrent; ///Massive hack... essentially turns the PWM input from a requested current into a duty cycle...
-//Get rid of this hack later, once the inverse Park and Clark work.
-	foc_vars.Vdq[0] = 0.8*duty;
-	foc_vars.Vdq[1] = duty;
-	//Inverse Park transform
-	foc_vars.Vab[0] = foc_vars.sincosangle[1]*foc_vars.Vdq[0] - foc_vars.sincosangle[0]*foc_vars.Vdq[1];
-	foc_vars.Vab[1] = foc_vars.sincosangle[0]*foc_vars.Vdq[0] + foc_vars.sincosangle[1]*foc_vars.Vdq[1];
-	foc_vars.Vab[2] = 0;
-	//Inverse Clark transform
-	foc_vars.inverterVoltage[0] = 0;
-	foc_vars.inverterVoltage[1] = -foc_vars.Vab[0]*one_on_sqrt6;
-	foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[1] - one_on_sqrt2*foc_vars.Vab[1];
-	foc_vars.inverterVoltage[1] = foc_vars.inverterVoltage[1] + one_on_sqrt2*foc_vars.Vab[1];
-	foc_vars.inverterVoltage[0] = sqrt_two_on_3 * foc_vars.Vab[0];
+void MESCFOC()
+{
+    // Here we are going to do a PID loop to control the dq currents, converting Idq into Vdq
+    // We will then inverse Park and Clark the Vdq which will then be written into the PWM registers by the writePWM() function.
+    if (0)
+    {
+        float duty = 10 * BLDCVars.ReqCurrent;  /// Massive hack... essentially turns the PWM input from a requested current into a duty
+                                                /// cycle...
+        foc_vars.Vdq[0] = 0.6 * duty;
+        foc_vars.Vdq[1] = duty;
+    }
+    // Get rid of this hack later, once the inverse Park and Clark work.
+    if (1)
+    {
+        // Generate Idq
+        static float Idq_req[2];
+        Idq_req[0] = BLDCVars.ReqCurrent * -1.0f;   // Map this to experimentally found optimum
+        Idq_req[1] = BLDCVars.ReqCurrent * -0.0f;  //
 
+        // First, we want to get a smoother version of the current, less susceptible to jitter and noise, use exponential filter. This
+        // unfortunately creates lag.
+        foc_vars.smoothed_idq[0] = (9.0f * foc_vars.smoothed_idq[0] + foc_vars.Idq[0]) * 0.1f;
+        foc_vars.smoothed_idq[1] = (9.0f * foc_vars.smoothed_idq[1] + foc_vars.Idq[1]) * 0.1f;
+
+        // Calculate the errors
+        static float Idq_err[2];
+
+        Idq_err[0] = foc_vars.smoothed_idq[0] - Idq_req[0];
+        Idq_err[1] = foc_vars.smoothed_idq[1] - Idq_req[1];
+
+        //Integral error
+        static float Idq_int_err[2];
+        Idq_int_err[0] = Idq_int_err[0] + 0.28f * Idq_err[0];
+        Idq_int_err[1] = Idq_int_err[1] + 0.28f * Idq_err[1];
+        //Bounding
+        if(Idq_int_err[0]>200){Idq_int_err[0]=200;}
+        if(Idq_int_err[0]<-200){Idq_int_err[0]=-200;}
+        if(Idq_int_err[1]>200){Idq_int_err[1]=200;}
+        if(Idq_int_err[1]<-200){Idq_int_err[1]=-200;}
+
+
+
+
+        // Apply the PID
+        foc_vars.Vdq[0] = 10 * Idq_err[0] + Idq_int_err[0];  // trial pgain of 10
+        foc_vars.Vdq[1] = 10 * Idq_err[0] + Idq_int_err[1];
+    }
+    // Inverse Park transform
+    foc_vars.Vab[0] = foc_vars.sincosangle[1] * foc_vars.Vdq[0] - foc_vars.sincosangle[0] * foc_vars.Vdq[1];
+    foc_vars.Vab[1] = foc_vars.sincosangle[0] * foc_vars.Vdq[0] + foc_vars.sincosangle[1] * foc_vars.Vdq[1];
+    foc_vars.Vab[2] = 0;
+    // Inverse Clark transform
+    foc_vars.inverterVoltage[0] = 0;
+    foc_vars.inverterVoltage[1] = -foc_vars.Vab[0] * one_on_sqrt6;
+    foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[1] - one_on_sqrt2 * foc_vars.Vab[1];
+    foc_vars.inverterVoltage[1] = foc_vars.inverterVoltage[1] + one_on_sqrt2 * foc_vars.Vab[1];
+    foc_vars.inverterVoltage[0] = sqrt_two_on_3 * foc_vars.Vab[0];
 }
 
-void writePWM(){
-htim1.Instance->CCR1 = (uint16_t)(512 + foc_vars.inverterVoltage[0]);
-htim1.Instance->CCR2 = (uint16_t)(512 + foc_vars.inverterVoltage[1]);
-htim1.Instance->CCR3 = (uint16_t)(512 + foc_vars.inverterVoltage[2]);
+void writePWM()
+{
+    htim1.Instance->CCR1 = (uint16_t)(512 + foc_vars.inverterVoltage[0]);
+    htim1.Instance->CCR2 = (uint16_t)(512 + foc_vars.inverterVoltage[1]);
+    htim1.Instance->CCR3 = (uint16_t)(512 + foc_vars.inverterVoltage[2]);
 }
 
 void GenerateBreak()

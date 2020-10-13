@@ -37,9 +37,9 @@ void hw_init() {
     g_hw_setup.RIphPU = 4700;
     g_hw_setup.RIphSR = 150;
     g_hw_setup.RVBB = 1500;
-    g_hw_setup.RVBT = 47000;
+    g_hw_setup.RVBT = 82000;
     g_hw_setup.OpGain = 16;  // Can this be inferred from the HAL declaration?
-    g_hw_setup.VBGain = g_hw_setup.RVBB / (g_hw_setup.RVBB + g_hw_setup.RVBT);
+    g_hw_setup.VBGain = (3.3f/4096.0f)*(g_hw_setup.RVBB + g_hw_setup.RVBT)/g_hw_setup.RVBB;
     g_hw_setup.Igain =
         3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain *
                g_hw_setup.RIphPU / (g_hw_setup.RIphPU + g_hw_setup.RIphSR));
