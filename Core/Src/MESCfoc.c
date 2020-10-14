@@ -102,7 +102,7 @@ void MESCInit(){
 	    // interrupts are running...
 	    //HAL_Delay(100);
 
-	    foc_vars.initing = 0;
+	    //foc_vars.initing = 0;
 
 
 }
@@ -112,6 +112,10 @@ void MESCInit(){
 void fastLoop()
 {                 // Call this directly from the ADC callback IRQ
     V_I_Check();  // Run the current and voltage checks
+    HallAngleEstimator();
+    ADCConversion();
+    MESCFOC();
+
     switch (MotorState)
     {
         case MOTOR_STATE_SENSORLESS_RUN:
@@ -152,7 +156,7 @@ void fastLoop()
             ADCConversion();  // Convert the ADC values into floats, do Clark
                               // transform, ignore result of Clark, just want
                               // the float currents
-            openLoopPIFF();
+            //openLoopPIFF();
             // Write the PWM values
             break;
 
@@ -195,7 +199,7 @@ void fastLoop()
                // the resistance measurement has converged at a
                // good value. Once the measurement is complete,
                // Rphase is set, and this is no longer called
-                measureResistance();
+                //measureResistance();
                 break;
             }
             else if (motor.Lphase == 0)
@@ -230,8 +234,8 @@ void fastLoop()
 // TODO: refactor this function. Is this function called by DMA interrupt?
 void V_I_Check()
 {  // Check currents, voltages are within panic limits
-    if ((measurement_buffers.RawADC[0][0] > motor.RawCurrLim) | (measurement_buffers.RawADC[1][0] > motor.RawCurrLim) |
-        (measurement_buffers.RawADC[2][0] > motor.RawCurrLim) | (measurement_buffers.RawADC[0][1] > motor.RawVoltLim))
+    if ((measurement_buffers.RawADC[0][0] > g_hw_setup.RawCurrLim) | (measurement_buffers.RawADC[1][0] > g_hw_setup.RawCurrLim) |
+        (measurement_buffers.RawADC[2][0] > g_hw_setup.RawCurrLim) | (measurement_buffers.RawADC[0][1] > g_hw_setup.RawVoltLim))
     {
         GenerateBreak();
         MotorState = MOTOR_STATE_ERROR;

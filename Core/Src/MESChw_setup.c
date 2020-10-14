@@ -28,11 +28,11 @@ void motor_init() {
     motor.Rphase = 0;  // We init at 0 to trigger the measurer to get the vals
     motor.Lphase = 0;  // We init at 0 to trigger the measurer to get the vals
     motor.uncertainty = 1;
-    motor.RawCurrLim = 3000;
-    motor.RawVoltLim = 2303;
+
 }
 
 void hw_init() {
+    g_hw_setup.Vmax = 20.0;
     g_hw_setup.Rshunt = 0.001;
     g_hw_setup.RIphPU = 4700;
     g_hw_setup.RIphSR = 150;
@@ -43,5 +43,6 @@ void hw_init() {
     g_hw_setup.Igain =
         3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain *
                g_hw_setup.RIphPU / (g_hw_setup.RIphPU + g_hw_setup.RIphSR));
-    // g_hw_setup.Rshunt*g_hw_setup.OpGain*g_hw_setup.RIphPU/(g_hw_setup.RIphPU+g_hw_setup.RIphSR);
+    g_hw_setup.RawCurrLim = 3000;
+    g_hw_setup.RawVoltLim = (uint16_t)(4096.0f*(g_hw_setup.Vmax/3.3f)*g_hw_setup.RVBB/(g_hw_setup.RVBB+g_hw_setup.RVBT));
 }
