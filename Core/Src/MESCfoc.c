@@ -44,77 +44,73 @@ float one_on_sqrt3 = 0.577350;
 float one_on_sqrt2 = 0.707107;
 float sqrt_two_on_3 = 0.816497;
 
-void MESCInit(){
-	 	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-	    HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
-	    HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
-	    HAL_Delay(3000); //Give the everything else time to start up (e.g. throttle, controller, PWM source...)
+void MESCInit()
+{
+    HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+    HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
+    HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
+    HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle, controller, PWM source...)
 
-	    HAL_OPAMP_Start(&hopamp1);
-	    HAL_OPAMP_Start(&hopamp2);
-	    HAL_OPAMP_Start(&hopamp3);
+    HAL_OPAMP_Start(&hopamp1);
+    HAL_OPAMP_Start(&hopamp2);
+    HAL_OPAMP_Start(&hopamp3);
 
-	    // happening.
-	    motor_init(); //Initialise the motor parameters, either with real values, or zeros if we are to determine the motor params at startup
-	    hw_init();	//Populate the resistances, gains etc of the PCB - edit within this function if compiling for other PCBs
-	    	motor.Rphase = 0.1; //Hack to make it skip over currently not used motor parameter detection
-	    foc_vars.initing=1; //Tell it we ARE initing...
-	    	//BLDCInit();	//Not currently using this, since FOC has taken over as primary method of interest
-	    //Although we are using an exponential filter over thousands of samples to find this offset, accuracy still improved by starting near to the final value.
-	    measurement_buffers.ADCOffset[0] = 1900;
-	    measurement_buffers.ADCOffset[1] = 1900;
-	    measurement_buffers.ADCOffset[2] = 1900;
+    // happening.
+    motor_init();  // Initialise the motor parameters, either with real values, or zeros if we are to determine the motor params at startup
+    hw_init();     // Populate the resistances, gains etc of the PCB - edit within this function if compiling for other PCBs
+    // motor.Rphase = 0.1; //Hack to make it skip over currently not used motor parameter detection
+    foc_vars.initing = 1;  // Tell it we ARE initing...
+                           // BLDCInit();	//Not currently using this, since FOC has taken over as primary method of interest
+    // Although we are using an exponential filter over thousands of samples to find this offset, accuracy still improved by starting near
+    // to the final value.
+    measurement_buffers.ADCOffset[0] = 1900;
+    measurement_buffers.ADCOffset[1] = 1900;
+    measurement_buffers.ADCOffset[2] = 1900;
 
-	    //Start the PWM channels, reset the counter to zero each time to avoid tripping the ADC, which in turn triggers the ISR routine and wrecks the startup
-	    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-	    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
-	    __HAL_TIM_SET_COUNTER(&htim1, 10);
+    // Start the PWM channels, reset the counter to zero each time to avoid tripping the ADC, which in turn triggers the ISR routine and
+    // wrecks the startup
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
+    __HAL_TIM_SET_COUNTER(&htim1, 10);
 
-	    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-	    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
-	    __HAL_TIM_SET_COUNTER(&htim1, 10);
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+    __HAL_TIM_SET_COUNTER(&htim1, 10);
 
-	    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-	    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-	    __HAL_TIM_SET_COUNTER(&htim1, 10);
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+    HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
+    __HAL_TIM_SET_COUNTER(&htim1, 10);
 
-	    __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_4,1022);
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 1022);
 
-	    //Initialise the comparators - 3 overcurrent and 1 overvoltage,
-	    HAL_COMP_Start(&hcomp1);
-	    HAL_COMP_Start(&hcomp2);
-	    HAL_COMP_Start(&hcomp4);
-	    HAL_COMP_Start(&hcomp7); //OVP comparator
-	    __HAL_TIM_SET_COUNTER(&htim1, 10);
-	    //__HAL_TIM_MOE_ENABLE(&htim1);  // initialising the comparators triggers the break state
+    // Initialise the comparators - 3 overcurrent and 1 overvoltage,
+    HAL_COMP_Start(&hcomp1);
+    HAL_COMP_Start(&hcomp2);
+    HAL_COMP_Start(&hcomp4);
+    HAL_COMP_Start(&hcomp7);  // OVP comparator
+    __HAL_TIM_SET_COUNTER(&htim1, 10);
+    //__HAL_TIM_MOE_ENABLE(&htim1);  // initialising the comparators triggers the break state
 
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&measurement_buffers.RawADC[0][0], 3);
+    __HAL_TIM_SET_COUNTER(&htim1, 10);
 
+    HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&measurement_buffers.RawADC[1][0], 3);
+    __HAL_TIM_SET_COUNTER(&htim1, 10);
 
-	    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&measurement_buffers.RawADC[0][0], 3);
-	    __HAL_TIM_SET_COUNTER(&htim1, 10);
+    HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][0], 1);
 
-	    HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&measurement_buffers.RawADC[1][0], 3);
-	    __HAL_TIM_SET_COUNTER(&htim1, 10);
+    // Here we can init the measurement buffer offsets; ADC and timer and
+    // interrupts are running...
+    // HAL_Delay(100);
 
-	    HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][0], 1);
-
-	    // Here we can init the measurement buffer offsets; ADC and timer and
-	    // interrupts are running...
-	    //HAL_Delay(100);
-
-	    //foc_vars.initing = 0;
-
-
+    // foc_vars.initing = 0;
 }
-
-
 
 void fastLoop()
 {                 // Call this directly from the ADC callback IRQ
     V_I_Check();  // Run the current and voltage checks
     HallAngleEstimator();
     ADCConversion();
-    MESCFOC();
 
     switch (MotorState)
     {
@@ -127,8 +123,8 @@ void fastLoop()
             break;
 
         case MOTOR_STATE_HALL_RUN:
-            ADCConversion();  // Convert the ADC values into floats, do Clark
-                              // transform
+            // ADCConversion();  // Convert the ADC values into floats, do Clark
+            // transform
             if (MotorControlType == MOTOR_CONTROL_TYPE_BLDC)
             {  // BLDC is hopefully just a
                // temporary "Get it spinning" kind
@@ -136,6 +132,10 @@ void fastLoop()
                // favour of FOC
                 BLDCCurrentController();
                 BLDCCommuteHall();
+            }
+            if (MotorControlType = MOTOR_CONTROL_TYPE_FOC)
+            {
+                MESCFOC();
             }
             // Get the current position from HallTimer
             // Call the current and phase controller
@@ -156,7 +156,7 @@ void fastLoop()
             ADCConversion();  // Convert the ADC values into floats, do Clark
                               // transform, ignore result of Clark, just want
                               // the float currents
-            //openLoopPIFF();
+            // openLoopPIFF();
             // Write the PWM values
             break;
 
@@ -199,7 +199,10 @@ void fastLoop()
                // the resistance measurement has converged at a
                // good value. Once the measurement is complete,
                // Rphase is set, and this is no longer called
-                //measureResistance();
+                if (foc_vars.initing == 0)
+                {
+                    measureResistance();
+                }
                 break;
             }
             else if (motor.Lphase == 0)
@@ -209,7 +212,7 @@ void fastLoop()
                 // might require a serious reset of the ADC, or calling this
                 // function many times per PWM period by resetting the OCR4
                 // register to trigger the ADC successively
-                measureInductance();
+                // measureInductance();
                 break;
             }
             break;
@@ -256,7 +259,7 @@ void ADCConversion()
         initcycles = initcycles + 1;
         if (initcycles > 1000)
         {
-    	    htim1.Instance->BDTR|=TIM_BDTR_MOE;
+            htim1.Instance->BDTR |= TIM_BDTR_MOE;
 
             foc_vars.initing = 0;
         }
@@ -276,9 +279,13 @@ void ADCConversion()
 
         // Here we do the FOC transforms - Clark and Park, using the previous sin values, since they were the correct ones at the time of
         // sampling
-        foc_vars.Iab[0] = (2.0f * measurement_buffers.ConvertedADC[0][0] - measurement_buffers.ConvertedADC[1][0] - measurement_buffers.ConvertedADC[2][0]) * one_on_sqrt6;
+        foc_vars.Iab[0] = (2.0f * measurement_buffers.ConvertedADC[0][0] - measurement_buffers.ConvertedADC[1][0] -
+                           measurement_buffers.ConvertedADC[2][0]) *
+                          one_on_sqrt6;
         foc_vars.Iab[1] = (measurement_buffers.ConvertedADC[1][0] - measurement_buffers.ConvertedADC[2][0]) * one_on_sqrt2;
-        foc_vars.Iab[2] = (measurement_buffers.ConvertedADC[0][0] + measurement_buffers.ConvertedADC[1][0] + measurement_buffers.ConvertedADC[2][0]) * 0.333f;
+        foc_vars.Iab[2] =
+            (measurement_buffers.ConvertedADC[0][0] + measurement_buffers.ConvertedADC[1][0] + measurement_buffers.ConvertedADC[2][0]) *
+            0.333f;
 
         foc_vars.Idq[0] = foc_vars.sincosangle[1] * foc_vars.Iab[0] + foc_vars.sincosangle[0] * foc_vars.Iab[1];
         foc_vars.Idq[1] = foc_vars.sincosangle[1] * foc_vars.Iab[1] - foc_vars.sincosangle[0] * foc_vars.Iab[0];
@@ -332,7 +339,7 @@ void MESCFOC()
     {
         // Generate Idq
         static float Idq_req[2];
-        Idq_req[0] = BLDCVars.ReqCurrent * -1.0f;   // Map this to experimentally found optimum
+        Idq_req[0] = BLDCVars.ReqCurrent * -1.0f;  // Map this to experimentally found optimum
         Idq_req[1] = BLDCVars.ReqCurrent * -0.0f;  //
 
         // First, we want to get a smoother version of the current, less susceptible to jitter and noise, use exponential filter. This
@@ -346,18 +353,27 @@ void MESCFOC()
         Idq_err[0] = foc_vars.smoothed_idq[0] - Idq_req[0];
         Idq_err[1] = foc_vars.smoothed_idq[1] - Idq_req[1];
 
-        //Integral error
+        // Integral error
         static float Idq_int_err[2];
         Idq_int_err[0] = Idq_int_err[0] + 0.28f * Idq_err[0];
         Idq_int_err[1] = Idq_int_err[1] + 0.28f * Idq_err[1];
-        //Bounding
-        if(Idq_int_err[0]>200){Idq_int_err[0]=200;}
-        if(Idq_int_err[0]<-200){Idq_int_err[0]=-200;}
-        if(Idq_int_err[1]>200){Idq_int_err[1]=200;}
-        if(Idq_int_err[1]<-200){Idq_int_err[1]=-200;}
-
-
-
+        // Bounding
+        if (Idq_int_err[0] > 200)
+        {
+            Idq_int_err[0] = 200;
+        }
+        if (Idq_int_err[0] < -200)
+        {
+            Idq_int_err[0] = -200;
+        }
+        if (Idq_int_err[1] > 200)
+        {
+            Idq_int_err[1] = 200;
+        }
+        if (Idq_int_err[1] < -200)
+        {
+            Idq_int_err[1] = -200;
+        }
 
         // Apply the PID
         foc_vars.Vdq[0] = 10 * Idq_err[0] + Idq_int_err[0];  // trial pgain of 10
@@ -445,32 +461,39 @@ void measureResistance()
      * all phases? Or just assume they are all close enough that it doesn't
      * matter? Could be useful for disconnection detection...
      */
-    static float currAcc2 = 0;  // codebase static?
     static float currAcc1 = 0;  // codebase static?
+    static float currAcc2 = 0;  // codebase static?
+    static float currAcc3 = 0;  // codebase static?
+    static float currAcc4 = 0;  // codebase static?
 
-    ADCConversion();                // call the ADC conversion, which gives us float current
-                                    // values and voltages
+    // ADCConversion();                // call the ADC conversion, which gives us float current
+    // values and voltages
     static uint16_t PWMcycles = 0;  // codebase, this is going to initialise it as 0 once only and then
                                     // not reset it each time this is called right?
-    if (isMotorRunning())
+    if (0)                          // isMotorRunning())
     {
         // do nothing
     }
     else
     {
         // turn off phW, we are just going to measure RUV
-        static uint16_t testPWM1 = 2;   // ToDo MASSIVE HACK, completely uncontrolled value
-                                        // "2",2/1024/37kHz--> 54ns pulse... Possibly won't even turn on
-                                        // the FETs Assuming the device does respond, and ton==toff,
-                                        // then approx. 48V*2/1024=0.09V. Typically
-                                        // R=2(PCB)+4(2xFETs)+100(Rmotor)=106mOhm-->1A
-        static uint16_t testPWM2 = 10;  // ToDo EVEN BIGGER HACK...uncontrolled value "10" -->270ns
-                                        // pulse... Probably will turn the FETs on...
+        static uint16_t testPWM1 = 0;  // Start it at zero point, adaptive current thingy can ramp it
+        static uint16_t testPWM2 = 0;  //
+        static uint16_t testPWM3 = 0;  // Use this for the inductance measurement, calculate it later
         phW_Break();
         phU_Enable();
         phV_Enable();
-        if (PWMcycles < 1000)
+        if (PWMcycles < 5000)
         {
+            if (measurement_buffers.ConvertedADC[1][0] < 3.0f)
+            {
+                testPWM1 = testPWM1 + 1;
+            }
+            if (measurement_buffers.ConvertedADC[1][0] > 10.0f)
+            {
+                testPWM1 = testPWM1 - 1;
+            }
+
             htim1.Instance->CCR2 = 0;
             htim1.Instance->CCR1 = testPWM1;
             // Accumulate the currents with an exponential smoother. This
@@ -479,27 +502,67 @@ void measureResistance()
             currAcc1 = (99 * currAcc1 + measurement_buffers.ConvertedADC[1][0]) * 0.01;
         }
 
-        else if (PWMcycles < 2000)
+        else if (PWMcycles < 10000)
         {
+            if (measurement_buffers.ConvertedADC[1][0] < 10.0f)
+            {
+                testPWM2 = testPWM2 + 1;
+            }
+            if (measurement_buffers.ConvertedADC[1][0] > 20.0f)
+            {
+                testPWM2 = testPWM2 - 1;
+            }
+
             htim1.Instance->CCR2 = 0;
             htim1.Instance->CCR1 = testPWM2;
             // Accumulate the currents with an exponential smoother
             currAcc2 = (99 * currAcc2 + measurement_buffers.ConvertedADC[1][0]) * 0.01;
         }
-        else if (PWMcycles == 2000)
+        else if (PWMcycles == 10000)
         {
+            // calculate the resistance from two accumulated currents and two
+            // voltages
+            testPWM3 = testPWM2;  // (testPWM2+testPWM1)/2;
+        }
+        else if (PWMcycles < 15000)
+        {                                 // Measure the inductance first point
+            htim1.Instance->CCR4 = 1022;  // Move the ADC trigger point - It does not like being moved to 1023 for some reason...
+            htim1.Instance->CCR1 = testPWM3;
+            currAcc3 = (999 * currAcc3 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
+        }
+        else if (PWMcycles < 20000)
+        {  // Measure the inductance second point
+            if (htim1.Instance->CCR4 > 222)
+            {
+                htim1.Instance->CCR4 = htim1.Instance->CCR4 - 1;
+            }
+            // Move the ADC trigger point gradually down to 500 counts from where it was
+            // This method works OK, but the change in current is tiny, even for a low inductance motor (~0.5A).
+            // Might be better to implement this as skipping cycles and changing CCR1 on a cycle by cycle basis.
+            htim1.Instance->CCR1 = testPWM3;
+            currAcc4 = (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
+        }
+        else if (PWMcycles == 20000)
+        {  // Do the calcs
             // First let's just turn everything off. Nobody likes motors sitting
             // there getting hot while debugging.
             htim1.Instance->CCR2 = 0;
+
             htim1.Instance->CCR1 = 0;
             phU_Break();
             phV_Break();
             phW_Break();
-            // calculate the resistance from two accumulated currents and two
-            // voltages
-            motor.Rphase = (((float)(testPWM2 - testPWM1)) * measurement_buffers.ConvertedADC[0][1]) / (currAcc2 - currAcc1);
+            __NOP();
+
+            motor.Rphase =
+                (((float)(testPWM2 - testPWM1)) / (2.0f * 1024.0f) * measurement_buffers.ConvertedADC[0][1]) / (currAcc2 - currAcc1);
+            motor.Lphase = ((currAcc3 + currAcc4) * motor.Rphase * (800.0f / 72000000.0f) / (currAcc4 - currAcc3));
+            // L=iRdt/di, where R in this case is 2*motor.Rphase
+            // dt hard coded as 6.9us for now from 500/72000000(difference in timer counts/clock frequency
+            __NOP();
         }
     }
+    PWMcycles = PWMcycles + 1;
 }
 
 void measureInductance()

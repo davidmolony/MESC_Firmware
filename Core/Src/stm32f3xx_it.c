@@ -179,7 +179,7 @@ fastLoop();
     /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
     if (1)
     {  // Put the FOC stuff in here
-               writePWM();
+               //writePWM();
     }
     else
     {

@@ -242,6 +242,9 @@ int main(void)
     // Place to mess about with PWM in
 
     MESCInit();
+    MotorState = MOTOR_STATE_MEASURING;
+    //MotorState = MOTOR_STATE_HALL_RUN;
+    MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
     //BLDCVars.BLDCduty = 70;
 
