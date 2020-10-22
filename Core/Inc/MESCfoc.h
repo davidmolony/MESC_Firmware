@@ -39,7 +39,7 @@ typedef float voltage_t;
 // fixme: why is this in a struct?
 typedef struct
 {
-	int initing; //Flag to say we are initialising
+    int initing;  // Flag to say we are initialising
     uint16_t FOCError;
     foc_angle_t ElecAngle;  // Current electrical angle
     uint16_t Sector;        // Current electrical sector - 6 sectors, as a consequence of Hall and 3 phase sinwave numbered 0-5
@@ -70,6 +70,7 @@ typedef struct
     float Vab[FOC_TRANSFORMED_CHANNELS + 1];
     float inverterVoltage[FOC_TRANSFORMED_CHANNELS + 1];
     float smoothed_idq[2];
+    float Idq_req[2];
 } MESCfoc_s;
 
 MESCfoc_s foc_vars;

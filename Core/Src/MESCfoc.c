@@ -43,6 +43,7 @@ float one_on_sqrt6 = 0.408248;
 float one_on_sqrt3 = 0.577350;
 float one_on_sqrt2 = 0.707107;
 float sqrt_two_on_3 = 0.816497;
+int adc_conv_end;
 
 void MESCInit()
 {
@@ -99,6 +100,9 @@ void MESCInit()
 
     HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][0], 1);
 
+    __HAL_ADC_ENABLE_IT(&hadc1,ADC_IT_EOS);
+
+    htim1.Instance->BDTR |= TIM_BDTR_MOE;
     // Here we can init the measurement buffer offsets; ADC and timer and
     // interrupts are running...
     // HAL_Delay(100);
@@ -109,7 +113,6 @@ void MESCInit()
 void fastLoop()
 {                 // Call this directly from the ADC callback IRQ
     V_I_Check();  // Run the current and voltage checks
-    HallAngleEstimator();
     ADCConversion();
 
     switch (MotorState)
@@ -135,6 +138,8 @@ void fastLoop()
             }
             if (MotorControlType = MOTOR_CONTROL_TYPE_FOC)
             {
+            	HallAngleEstimator();
+
                 MESCFOC();
             }
             // Get the current position from HallTimer
@@ -294,6 +299,8 @@ void ADCConversion()
         // versions(or even the next predicted version...)
         foc_vars.sincosangle[0] = sinwave[foc_vars.HallAngle >> 8];
         foc_vars.sincosangle[1] = sinwave[(foc_vars.HallAngle >> 8) + 64];
+    	adc_conv_end=htim1.Instance->CNT;
+
     }
 }
 
@@ -331,16 +338,16 @@ void MESCFOC()
     {
         float duty = 10 * BLDCVars.ReqCurrent;  /// Massive hack... essentially turns the PWM input from a requested current into a duty
                                                 /// cycle...
-        foc_vars.Vdq[0] = 0.6 * duty;
-        foc_vars.Vdq[1] = duty;
+        foc_vars.Vdq[0] = 0.0 * duty;
+        foc_vars.Vdq[1] = 0.0 * duty;
     }
     // Get rid of this hack later, once the inverse Park and Clark work.
     if (1)
     {
         // Generate Idq
-        static float Idq_req[2];
-        Idq_req[0] = BLDCVars.ReqCurrent * -1.0f;  // Map this to experimentally found optimum
-        Idq_req[1] = BLDCVars.ReqCurrent * -0.0f;  //
+        //static float Idq_req[2];
+        //foc_vars.Idq_req[0] = BLDCVars.ReqCurrent * -1.0f;  // Map this to experimentally found optimum
+        //foc_vars.Idq_req[1] = BLDCVars.ReqCurrent * -0.0f;  //
 
         // First, we want to get a smoother version of the current, less susceptible to jitter and noise, use exponential filter. This
         // unfortunately creates lag.
@@ -350,8 +357,8 @@ void MESCFOC()
         // Calculate the errors
         static float Idq_err[2];
 
-        Idq_err[0] = foc_vars.smoothed_idq[0] - Idq_req[0];
-        Idq_err[1] = foc_vars.smoothed_idq[1] - Idq_req[1];
+        Idq_err[0] = foc_vars.smoothed_idq[0] - foc_vars.Idq_req[0];
+        Idq_err[1] = foc_vars.smoothed_idq[1] - foc_vars.Idq_req[1];
 
         // Integral error
         static float Idq_int_err[2];
@@ -389,6 +396,7 @@ void MESCFOC()
     foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[1] - one_on_sqrt2 * foc_vars.Vab[1];
     foc_vars.inverterVoltage[1] = foc_vars.inverterVoltage[1] + one_on_sqrt2 * foc_vars.Vab[1];
     foc_vars.inverterVoltage[0] = sqrt_two_on_3 * foc_vars.Vab[0];
+    writePWM();
 }
 
 void writePWM()
@@ -524,12 +532,30 @@ void measureResistance()
             // voltages
             testPWM3 = testPWM2;  // (testPWM2+testPWM1)/2;
         }
-        else if (PWMcycles < 15000)
+        else if (PWMcycles < 65000)
+        {
+        	static int a=0;
+        	if(a==1){
+        		htim1.Instance->CCR1 = testPWM3;
+                currAcc4 = (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
+
+        		a=0;
+        	}
+        	else if (a==0){
+        		htim1.Instance->CCR1 = 0;
+        		currAcc3 = (999 * currAcc3 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
+
+        		a=1;
+        	}
+        }
+
+        /*else if (PWMcycles < 15000)
         {                                 // Measure the inductance first point
             htim1.Instance->CCR4 = 1022;  // Move the ADC trigger point - It does not like being moved to 1023 for some reason...
             htim1.Instance->CCR1 = testPWM3;
             currAcc3 = (999 * currAcc3 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
         }
+
         else if (PWMcycles < 20000)
         {  // Measure the inductance second point
             if (htim1.Instance->CCR4 > 222)
@@ -541,14 +567,16 @@ void measureResistance()
             // Might be better to implement this as skipping cycles and changing CCR1 on a cycle by cycle basis.
             htim1.Instance->CCR1 = testPWM3;
             currAcc4 = (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
-        }
-        else if (PWMcycles == 20000)
+        }*/
+        else if (PWMcycles == 65000)
         {  // Do the calcs
             // First let's just turn everything off. Nobody likes motors sitting
             // there getting hot while debugging.
             htim1.Instance->CCR2 = 0;
 
             htim1.Instance->CCR1 = 0;
+            htim1.Instance->CCR3 = 0;
+
             phU_Break();
             phV_Break();
             phW_Break();
@@ -560,6 +588,10 @@ void measureResistance()
             // L=iRdt/di, where R in this case is 2*motor.Rphase
             // dt hard coded as 6.9us for now from 500/72000000(difference in timer counts/clock frequency
             __NOP();
+            MotorState = MOTOR_STATE_HALL_RUN;
+            phU_Enable();
+            phV_Enable();
+            phW_Enable();
         }
     }
     PWMcycles = PWMcycles + 1;

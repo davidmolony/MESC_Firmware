@@ -42,7 +42,10 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+extern TIM_HandleTypeDef htim1;
 
+int IRQ_entry;
+int IRQ_exit;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -57,14 +60,9 @@
 
 /* External variables --------------------------------------------------------*/
 extern PCD_HandleTypeDef hpcd_USB_FS;
-extern DMA_HandleTypeDef hdma_adc1;
-extern DMA_HandleTypeDef hdma_adc2;
-extern DMA_HandleTypeDef hdma_adc3;
-extern DMA_HandleTypeDef hdma_i2c1_rx;
-extern DMA_HandleTypeDef hdma_i2c1_tx;
+extern ADC_HandleTypeDef hadc1;
+extern ADC_HandleTypeDef hadc2;
 extern TIM_HandleTypeDef htim3;
-extern DMA_HandleTypeDef hdma_usart3_rx;
-extern DMA_HandleTypeDef hdma_usart3_tx;
 extern TIM_HandleTypeDef htim7;
 
 /* USER CODE BEGIN EV */
@@ -168,83 +166,22 @@ void DebugMon_Handler(void)
 /******************************************************************************/
 
 /**
- * @brief This function handles DMA1 channel1 global interrupt.
+ * @brief This function handles ADC1 and ADC2 interrupts.
  */
-void DMA1_Channel1_IRQHandler(void)
+void ADC1_2_IRQHandler(void)
 {
-    /* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
-fastLoop();
-    /* USER CODE END DMA1_Channel1_IRQn 0 */
-    HAL_DMA_IRQHandler(&hdma_adc1);
-    /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
-    if (1)
-    {  // Put the FOC stuff in here
-               //writePWM();
-    }
-    else
-    {
-        BLDCCurrentController();
-        BLDCCommuteHall();
-    }
-    foc_vars.FOCError=5; //change FOCError
+    /* USER CODE BEGIN ADC1_2_IRQn 0 */
 
-    /* USER CODE END DMA1_Channel1_IRQn 1 */
-}
+    IRQ_entry = htim1.Instance->CNT;
 
-/**
- * @brief This function handles DMA1 channel2 global interrupt.
- */
-void DMA1_Channel2_IRQHandler(void)
-{
-    /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
+    fastLoop();
 
-    /* USER CODE END DMA1_Channel2_IRQn 0 */
-    HAL_DMA_IRQHandler(&hdma_usart3_tx);
-    /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
-
-    /* USER CODE END DMA1_Channel2_IRQn 1 */
-}
-
-/**
- * @brief This function handles DMA1 channel3 global interrupt.
- */
-void DMA1_Channel3_IRQHandler(void)
-{
-    /* USER CODE BEGIN DMA1_Channel3_IRQn 0 */
-
-    /* USER CODE END DMA1_Channel3_IRQn 0 */
-    HAL_DMA_IRQHandler(&hdma_usart3_rx);
-    /* USER CODE BEGIN DMA1_Channel3_IRQn 1 */
-
-    /* USER CODE END DMA1_Channel3_IRQn 1 */
-}
-
-/**
- * @brief This function handles DMA1 channel6 global interrupt.
- */
-void DMA1_Channel6_IRQHandler(void)
-{
-    /* USER CODE BEGIN DMA1_Channel6_IRQn 0 */
-
-    /* USER CODE END DMA1_Channel6_IRQn 0 */
-    HAL_DMA_IRQHandler(&hdma_i2c1_tx);
-    /* USER CODE BEGIN DMA1_Channel6_IRQn 1 */
-
-    /* USER CODE END DMA1_Channel6_IRQn 1 */
-}
-
-/**
- * @brief This function handles DMA1 channel7 global interrupt.
- */
-void DMA1_Channel7_IRQHandler(void)
-{
-    /* USER CODE BEGIN DMA1_Channel7_IRQn 0 */
-
-    /* USER CODE END DMA1_Channel7_IRQn 0 */
-    HAL_DMA_IRQHandler(&hdma_i2c1_rx);
-    /* USER CODE BEGIN DMA1_Channel7_IRQn 1 */
-
-    /* USER CODE END DMA1_Channel7_IRQn 1 */
+    /* USER CODE END ADC1_2_IRQn 0 */
+    HAL_ADC_IRQHandler(&hadc1);
+    HAL_ADC_IRQHandler(&hadc2);
+    /* USER CODE BEGIN ADC1_2_IRQn 1 */
+    IRQ_exit = htim1.Instance->CNT;
+    /* USER CODE END ADC1_2_IRQn 1 */
 }
 
 /**
@@ -287,34 +224,6 @@ void TIM7_IRQHandler(void)
     /* USER CODE BEGIN TIM7_IRQn 1 */
 
     /* USER CODE END TIM7_IRQn 1 */
-}
-
-/**
- * @brief This function handles DMA2 channel1 global interrupt.
- */
-void DMA2_Channel1_IRQHandler(void)
-{
-    /* USER CODE BEGIN DMA2_Channel1_IRQn 0 */
-
-    /* USER CODE END DMA2_Channel1_IRQn 0 */
-    HAL_DMA_IRQHandler(&hdma_adc2);
-    /* USER CODE BEGIN DMA2_Channel1_IRQn 1 */
-
-    /* USER CODE END DMA2_Channel1_IRQn 1 */
-}
-
-/**
- * @brief This function handles DMA2 channel5 global interrupt.
- */
-void DMA2_Channel5_IRQHandler(void)
-{
-    /* USER CODE BEGIN DMA2_Channel5_IRQn 0 */
-
-    /* USER CODE END DMA2_Channel5_IRQn 0 */
-    HAL_DMA_IRQHandler(&hdma_adc3);
-    /* USER CODE BEGIN DMA2_Channel5_IRQn 1 */
-
-    /* USER CODE END DMA2_Channel5_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
