@@ -100,7 +100,7 @@ void MESCInit()
 
     HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][0], 1);
 
-    __HAL_ADC_ENABLE_IT(&hadc1,ADC_IT_EOS);
+    __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_EOS);
 
     htim1.Instance->BDTR |= TIM_BDTR_MOE;
     // Here we can init the measurement buffer offsets; ADC and timer and
@@ -136,9 +136,9 @@ void fastLoop()
                 BLDCCurrentController();
                 BLDCCommuteHall();
             }
-            if (MotorControlType = MOTOR_CONTROL_TYPE_FOC)
+            if (MotorControlType == MOTOR_CONTROL_TYPE_FOC)
             {
-            	HallAngleEstimator();
+                HallAngleEstimator();
 
                 MESCFOC();
             }
@@ -242,8 +242,8 @@ void fastLoop()
 // TODO: refactor this function. Is this function called by DMA interrupt?
 void V_I_Check()
 {  // Check currents, voltages are within panic limits
-    if ((measurement_buffers.RawADC[0][0] > g_hw_setup.RawCurrLim) | (measurement_buffers.RawADC[1][0] > g_hw_setup.RawCurrLim) |
-        (measurement_buffers.RawADC[2][0] > g_hw_setup.RawCurrLim) | (measurement_buffers.RawADC[0][1] > g_hw_setup.RawVoltLim))
+    if ((measurement_buffers.RawADC[0][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[1][0] > g_hw_setup.RawCurrLim) ||
+        (measurement_buffers.RawADC[2][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[0][1] > g_hw_setup.RawVoltLim))
     {
         GenerateBreak();
         MotorState = MOTOR_STATE_ERROR;
@@ -272,11 +272,11 @@ void ADCConversion()
     else
     {
         measurement_buffers.ConvertedADC[0][0] =
-            ((float)measurement_buffers.RawADC[0][0] - (float)measurement_buffers.ADCOffset[0]) * g_hw_setup.Igain;  // Currents
+            (float)(measurement_buffers.RawADC[0][0] - measurement_buffers.ADCOffset[0]) * g_hw_setup.Igain;  // Currents
         measurement_buffers.ConvertedADC[1][0] =
-            ((float)measurement_buffers.RawADC[1][0] - (float)measurement_buffers.ADCOffset[1]) * g_hw_setup.Igain;
+            (float)(measurement_buffers.RawADC[1][0] - measurement_buffers.ADCOffset[1]) * g_hw_setup.Igain;
         measurement_buffers.ConvertedADC[2][0] =
-            ((float)measurement_buffers.RawADC[2][0] - (float)measurement_buffers.ADCOffset[2]) * g_hw_setup.Igain;
+            (float)(measurement_buffers.RawADC[2][0] - measurement_buffers.ADCOffset[2]) * g_hw_setup.Igain;
         measurement_buffers.ConvertedADC[0][1] = (float)measurement_buffers.RawADC[0][1] * g_hw_setup.VBGain;  // Vbus
         measurement_buffers.ConvertedADC[0][2] = (float)measurement_buffers.RawADC[0][2] * g_hw_setup.VBGain;  // Usw
         measurement_buffers.ConvertedADC[1][1] = (float)measurement_buffers.RawADC[1][1] * g_hw_setup.VBGain;  // Vsw
@@ -299,8 +299,7 @@ void ADCConversion()
         // versions(or even the next predicted version...)
         foc_vars.sincosangle[0] = sinwave[foc_vars.HallAngle >> 8];
         foc_vars.sincosangle[1] = sinwave[(foc_vars.HallAngle >> 8) + 64];
-    	adc_conv_end=htim1.Instance->CNT;
-
+        adc_conv_end = htim1.Instance->CNT;
     }
 }
 
@@ -345,9 +344,9 @@ void MESCFOC()
     if (1)
     {
         // Generate Idq
-        //static float Idq_req[2];
-        //foc_vars.Idq_req[0] = BLDCVars.ReqCurrent * -1.0f;  // Map this to experimentally found optimum
-        //foc_vars.Idq_req[1] = BLDCVars.ReqCurrent * -0.0f;  //
+        // static float Idq_req[2];
+        // foc_vars.Idq_req[0] = BLDCVars.ReqCurrent * -1.0f;  // Map this to experimentally found optimum
+        // foc_vars.Idq_req[1] = BLDCVars.ReqCurrent * -0.0f;  //
 
         // First, we want to get a smoother version of the current, less susceptible to jitter and noise, use exponential filter. This
         // unfortunately creates lag.
@@ -534,19 +533,21 @@ void measureResistance()
         }
         else if (PWMcycles < 65000)
         {
-        	static int a=0;
-        	if(a==1){
-        		htim1.Instance->CCR1 = testPWM3;
+            static int a = 0;
+            if (a == 1)
+            {
+                htim1.Instance->CCR1 = testPWM3;
                 currAcc4 = (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
 
-        		a=0;
-        	}
-        	else if (a==0){
-        		htim1.Instance->CCR1 = 0;
-        		currAcc3 = (999 * currAcc3 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
+                a = 0;
+            }
+            else if (a == 0)
+            {
+                htim1.Instance->CCR1 = 0;
+                currAcc3 = (999 * currAcc3 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
 
-        		a=1;
-        	}
+                a = 1;
+            }
         }
 
         /*else if (PWMcycles < 15000)

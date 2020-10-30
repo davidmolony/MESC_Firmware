@@ -78,12 +78,13 @@ MESCfoc_s foc_vars;
 // fixme: why is this in a struct? what advantages does this give?
 typedef struct
 {
-    uint32_t RawADC[FOC_NUM_ADC][FOC_CONV_CHANNELS];     // ADC1 returns Ucurrent, DClink
-                                                         // voltage and U phase voltage
-                                                         //  ADC2 returns Vcurrent, V and Wphase
-                                                         //  voltages
-                                                         // ADC3 returns Wcurrent
-    uint16_t ADCOffset[FOC_NUM_ADC];                     // During detect phase, need to sense the
+    int32_t RawADC[FOC_NUM_ADC][FOC_CONV_CHANNELS];  // ADC1 returns Ucurrent, DClink
+                                                     // voltage and U phase voltage
+                                                     //  ADC2 returns Vcurrent, V and Wphase
+                                                     //  voltages
+                                                     // ADC3 returns Wcurrent
+    // We can use ints rather than uints, since this later helps the conversion of values to float, and the sign bit remains untouched (0)
+    int32_t ADCOffset[FOC_NUM_ADC];                      // During detect phase, need to sense the
                                                          // zero current offset
     float ConvertedADC[FOC_NUM_ADC][FOC_CONV_CHANNELS];  // We will fill this with currents
                                                          // in A and voltages in Volts
