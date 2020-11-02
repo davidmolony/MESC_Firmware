@@ -62,7 +62,8 @@ typedef struct
 
     foc_field_angle_t FieldAngle;  // Signed number containing the angle between the electrical field and rotor, implemented
                                    // as rotorAngle-elecAngle
-    foc_field_angle_t HallAngle;
+    // foc_field_angle_t HallAngle;
+    foc_angle_t HallAngle;
 
     float sincosangle[2];  // This variable carries the current sin and cosine of the angle being used for Park and Clark transforms, so
                            // they only need computing once per pwm cycle
@@ -71,6 +72,8 @@ typedef struct
     float inverterVoltage[FOC_TRANSFORMED_CHANNELS + 1];
     float smoothed_idq[2];
     float Idq_req[2];
+
+    uint16_t hall_table[6][2];
 } MESCfoc_s;
 
 MESCfoc_s foc_vars;
@@ -116,6 +119,8 @@ void ADCConversion();  // Roll this into the V_I_Check? less branching, can
 // into float volts Since the observer needs the Clark transformed current, do
 // the Clark and Park transform now
 void HallAngleEstimator();
+void HallAngleEstimator_v2();  // Going to attempt to make a similar hall angle estimator that rolls the hall state into the main function,
+                               // and calls a vector table to find the angle from hall offsets.
 
 void observerTick();  // Call every time to allow the observer, whatever it is,
                       // to update itself and find motor position
@@ -139,6 +144,7 @@ int isMotorRunning();  // return motor state if state is one of the running
 int GetHallState();    // Self explanatory...
 void measureResistance();
 void measureInductance();
+void getHallTable();
 void phU_Break();   // Turn all phase U FETs off, Tristate the ouput - For BLDC
                     // mode mainly, but also used for measuring
 void phU_Enable();  // Basically un-break phase U, opposite of above...

@@ -55,8 +55,20 @@ void MESCInit()
     HAL_OPAMP_Start(&hopamp1);
     HAL_OPAMP_Start(&hopamp2);
     HAL_OPAMP_Start(&hopamp3);
+    /// Dummy halltable
+    foc_vars.hall_table[0][0] = 1;
+    foc_vars.hall_table[0][1] = 0;
+    foc_vars.hall_table[1][0] = 3;
+    foc_vars.hall_table[1][1] = 10922;
+    foc_vars.hall_table[2][0] = 2;
+    foc_vars.hall_table[2][1] = 21844;
+    foc_vars.hall_table[3][0] = 6;
+    foc_vars.hall_table[3][1] = 32766;
+    foc_vars.hall_table[4][0] = 4;
+    foc_vars.hall_table[4][1] = 43688;
+    foc_vars.hall_table[5][0] = 5;
+    foc_vars.hall_table[5][1] = 54610;
 
-    // happening.
     motor_init();  // Initialise the motor parameters, either with real values, or zeros if we are to determine the motor params at startup
     hw_init();     // Populate the resistances, gains etc of the PCB - edit within this function if compiling for other PCBs
     // motor.Rphase = 0.1; //Hack to make it skip over currently not used motor parameter detection
@@ -68,7 +80,7 @@ void MESCInit()
     measurement_buffers.ADCOffset[1] = 1900;
     measurement_buffers.ADCOffset[2] = 1900;
 
-    // Start the PWM channels, reset the counter to zero each time to avoid tripping the ADC, which in turn triggers the ISR routine and
+    // Start the PWM channels, reset the counter to zero each time to avoid triggering the ADC, which in turn triggers the ISR routine and
     // wrecks the startup
     HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
     HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
@@ -88,7 +100,9 @@ void MESCInit()
     HAL_COMP_Start(&hcomp1);
     HAL_COMP_Start(&hcomp2);
     HAL_COMP_Start(&hcomp4);
-    HAL_COMP_Start(&hcomp7);  // OVP comparator
+    HAL_COMP_Start(&hcomp7);  // OVP comparator, may be unwanted if operating above the divider threshold, the ADC conversion can also be
+                              // used to trigger a protection event
+
     __HAL_TIM_SET_COUNTER(&htim1, 10);
     //__HAL_TIM_MOE_ENABLE(&htim1);  // initialising the comparators triggers the break state
 
@@ -100,33 +114,27 @@ void MESCInit()
 
     HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][0], 1);
 
-    __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_EOS);
+    __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_EOS);  // We are using the ADC_DMA, so the HAL initialiser doesn't actually enable the ADC conversion
+                                              // complete interrupt. This does.
 
-    htim1.Instance->BDTR |= TIM_BDTR_MOE;
-    // Here we can init the measurement buffer offsets; ADC and timer and
-    // interrupts are running...
-    // HAL_Delay(100);
-
-    // foc_vars.initing = 0;
+    htim1.Instance->BDTR |= TIM_BDTR_MOE;  // initialising the comparators triggers the break state, so turn it back on
+    // At this point we just let the whole thing run off into interrupt land, and the fastLoop() starts to be triggered by the ADC
+    // conversion complete interrupt
 }
 
 void fastLoop()
-{                 // Call this directly from the ADC callback IRQ
-    V_I_Check();  // Run the current and voltage checks
-    ADCConversion();
+{                     // Call this directly from the ADC callback IRQ
+    ADCConversion();  // First thing we ever want to do is convert the ADC values to real, useable numbers.
 
     switch (MotorState)
     {
         case MOTOR_STATE_SENSORLESS_RUN:
-            ADCConversion();  // Convert the ADC values into floats, do Clark
-                              // transform
             // Call the observer
             // Call the current and phase controller
             // Write the PWM values
             break;
 
         case MOTOR_STATE_HALL_RUN:
-            // ADCConversion();  // Convert the ADC values into floats, do Clark
             // transform
             if (MotorControlType == MOTOR_CONTROL_TYPE_BLDC)
             {  // BLDC is hopefully just a
@@ -138,7 +146,10 @@ void fastLoop()
             }
             if (MotorControlType == MOTOR_CONTROL_TYPE_FOC)
             {
-                HallAngleEstimator();
+                // HallAngleEstimator();
+                HallAngleEstimator_v2();
+                //foc_vars.Idq_req[0] = 2;
+                //foc_vars.Idq_req[1] = 2;
 
                 MESCFOC();
             }
@@ -148,9 +159,7 @@ void fastLoop()
             break;
 
         case MOTOR_STATE_HALL_NEAR_STATIONARY:
-            ADCConversion();  // Convert the ADC values into floats, do Clark
-                              // transform, but we ignore the answer here, just
-                              // want the float currents.
+
             // Call GetHallState
             // Call the BLDC discrete controller - Override the normal current
             // controller, this is 6 step DC only Write the PWM values
@@ -158,9 +167,7 @@ void fastLoop()
 
         case MOTOR_STATE_OPEN_LOOP_STARTUP:
             // Same as open loop
-            ADCConversion();  // Convert the ADC values into floats, do Clark
-                              // transform, ignore result of Clark, just want
-                              // the float currents
+
             // openLoopPIFF();
             // Write the PWM values
             break;
@@ -179,6 +186,7 @@ void fastLoop()
             break;
 
         case MOTOR_STATE_DETECTING:;
+
             int test = GetHallState();
 
             if ((test == 6) || (test == 7))
@@ -195,6 +203,8 @@ void fastLoop()
             {
                 // hall sensors detected
                 MotorSensorMode = MOTOR_SENSOR_MODE_HALL;
+                getHallTable();
+                MESCFOC();
             }
             break;
 
@@ -210,23 +220,22 @@ void fastLoop()
                 }
                 break;
             }
-            else if (motor.Lphase == 0)
+            else if (motor.Lphase == 0)  // This is currently rolled into measureResistance() since it seemed pointless to re-write
+                                         // basically the same function...
             {
                 // As per resistance measurement, this will be called until an
-                // inductance measurement is converged. Inductance measurement
-                // might require a serious reset of the ADC, or calling this
-                // function many times per PWM period by resetting the OCR4
-                // register to trigger the ADC successively
+                // inductance measurement is converged.
                 // measureInductance();
                 break;
             }
             break;
 
         case MOTOR_STATE_ERROR:
-            GenerateBreak();  // Generate a break state
-            // Now panic and freak out
-
+            GenerateBreak();  // Generate a break state (software disabling all PWM phases, hardware OVCP reserved for fatal situations
+                              // requiring reset)
+                              // Now panic and freak out
             break;
+
         case MOTOR_STATE_ALIGN:
             // Turn on at a given voltage at electricalangle0;
             break;
@@ -252,6 +261,8 @@ void V_I_Check()
 
 void ADCConversion()
 {
+    V_I_Check();
+
     // Here we take the raw ADC values, offset, cast to (float) and use the
     // hardware gain values to create volt and amp variables
 
@@ -304,7 +315,7 @@ void ADCConversion()
 }
 
 void HallAngleEstimator()
-{  // ToDo This does not work when going backwards!it steps to the next 60 degrees and then counts backwards
+{  // ToDo This does not work when going backwards!it steps to the next 60 degrees and then counts forwards
     static int current_hall_state;
     static int last_hall_state;
     static float ticks_since_last_hall_change = 0;
@@ -329,6 +340,138 @@ void HallAngleEstimator()
     }
 }
 
+void HallAngleEstimator_v2()
+{
+    static uint16_t hallstate;
+    static uint16_t last_hall_state;
+    static float dir = 1;
+    static float ticks_since_last_hall_change = 0;
+    static float one_on_last_hall_period = 1;
+    static float last_hall_period = 65536;
+
+    hallstate = ((GPIOB->IDR >> 6) & 0x7);  // This is board specific, depending where the hall sensors are wired
+
+    if (hallstate != last_hall_state)
+    {
+        if (hallstate == 0)
+        {
+            MotorState = MOTOR_STATE_ERROR;
+        }
+        else if (hallstate == 7)
+        {
+            MotorState = MOTOR_STATE_ERROR;
+        }
+        //////////Implement the Hall table here, but the vector can be dynamically created/filled by another function/////////////
+        else if (hallstate == foc_vars.hall_table[0][0])
+        {
+            if (last_hall_state == foc_vars.hall_table[5][0])
+            {  // Forwards
+                foc_vars.HallAngle = foc_vars.hall_table[0][1];
+                dir = 1;
+            }
+            else
+            {  // Backwards
+                foc_vars.HallAngle = foc_vars.hall_table[1][1];
+                dir = -1;
+            }
+        }
+        /////////////////////////////
+        else if (hallstate == foc_vars.hall_table[1][0])
+        {
+            if (last_hall_state == foc_vars.hall_table[0][0])
+            {  // Forwards
+                foc_vars.HallAngle = foc_vars.hall_table[1][1];
+                dir = 1;
+            }
+            else
+            {  // Backwards
+                foc_vars.HallAngle = foc_vars.hall_table[2][1];
+                dir = -1;
+            }
+        }
+        //////////////////////////////
+        else if (hallstate == foc_vars.hall_table[2][0])
+        {
+            if (last_hall_state == foc_vars.hall_table[1][0])
+            {  // Forwards
+                foc_vars.HallAngle = foc_vars.hall_table[2][1];
+                dir = 1;
+            }
+            else
+            {  // Backwards
+                foc_vars.HallAngle = foc_vars.hall_table[3][1];
+                dir = -1;
+            }
+        }
+        //////////////////////////////
+        else if (hallstate == foc_vars.hall_table[3][0])
+        {
+            if (last_hall_state == foc_vars.hall_table[2][0])
+            {  // Forwards
+                foc_vars.HallAngle = foc_vars.hall_table[3][1];
+                dir = 1;
+            }
+            else
+            {  // Backwards
+                foc_vars.HallAngle = foc_vars.hall_table[4][1];
+                dir = -1;
+            }
+        }
+        //////////////////////////////
+        else if (hallstate == foc_vars.hall_table[4][0])
+        {
+            if (last_hall_state == foc_vars.hall_table[3][0])
+            {  // Forwards
+                foc_vars.HallAngle = foc_vars.hall_table[4][1];
+                dir = 1;
+            }
+            else
+            {  // Backwards
+                foc_vars.HallAngle = foc_vars.hall_table[5][1];
+                dir = -1;
+            }
+        }
+        ///////////////////////////
+        else if (hallstate == foc_vars.hall_table[5][0])
+        {
+            if (last_hall_state == foc_vars.hall_table[4][0])
+            {  // Forwards
+                foc_vars.HallAngle = foc_vars.hall_table[5][1];
+                dir = 1;
+            }
+            else
+            {  // Backwards
+                foc_vars.HallAngle = foc_vars.hall_table[0][1];
+                dir = -1;
+            }
+        }
+        ///////////////End of table implementation, now do the reseting of counters and once per hall change stuff////////////
+        last_hall_state = hallstate;
+        last_hall_period = ticks_since_last_hall_change;
+        ticks_since_last_hall_change = 0;
+        one_on_last_hall_period = 1 / last_hall_period;
+    }
+
+    else
+    {
+        ticks_since_last_hall_change = ticks_since_last_hall_change + 1;
+    }
+
+    if (last_hall_period >
+        ticks_since_last_hall_change)  // Does this really need doing? Stops sin wave jumping back if the period is
+                                       // getting longer, but does it really matter... it'll jump forward if accelerating regardless
+    {                                  // Addition to angle stuff here
+        if (dir == 1)
+        {
+            foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(10922.0f * (one_on_last_hall_period));
+        }
+        if (dir == -1)
+        {
+            foc_vars.HallAngle = foc_vars.HallAngle - (uint16_t)(10922.0f * (one_on_last_hall_period));
+        }
+    }
+}
+
 void MESCFOC()
 {
     // Here we are going to do a PID loop to control the dq currents, converting Idq into Vdq
@@ -350,8 +493,8 @@ void MESCFOC()
 
         // First, we want to get a smoother version of the current, less susceptible to jitter and noise, use exponential filter. This
         // unfortunately creates lag.
-        foc_vars.smoothed_idq[0] = (9.0f * foc_vars.smoothed_idq[0] + foc_vars.Idq[0]) * 0.1f;
-        foc_vars.smoothed_idq[1] = (9.0f * foc_vars.smoothed_idq[1] + foc_vars.Idq[1]) * 0.1f;
+        foc_vars.smoothed_idq[0] = (1.0f * foc_vars.smoothed_idq[0] + foc_vars.Idq[0]) * 0.5f;
+        foc_vars.smoothed_idq[1] = (1.0f * foc_vars.smoothed_idq[1] + foc_vars.Idq[1]) * 0.5f;
 
         // Calculate the errors
         static float Idq_err[2];
@@ -364,26 +507,32 @@ void MESCFOC()
         Idq_int_err[0] = Idq_int_err[0] + 0.28f * Idq_err[0];
         Idq_int_err[1] = Idq_int_err[1] + 0.28f * Idq_err[1];
         // Bounding
-        if (Idq_int_err[0] > 200)
+        static int integral_limit = 200;
+        if (Idq_int_err[0] > integral_limit)
         {
-            Idq_int_err[0] = 200;
+            Idq_int_err[0] = integral_limit;
         }
-        if (Idq_int_err[0] < -200)
+        if (Idq_int_err[0] < -integral_limit)
         {
-            Idq_int_err[0] = -200;
+            Idq_int_err[0] = -integral_limit;
         }
-        if (Idq_int_err[1] > 200)
+        if (Idq_int_err[1] > integral_limit)
         {
-            Idq_int_err[1] = 200;
+            Idq_int_err[1] = integral_limit;
         }
-        if (Idq_int_err[1] < -200)
+        if (Idq_int_err[1] < -integral_limit)
         {
-            Idq_int_err[1] = -200;
+            Idq_int_err[1] = -integral_limit;
         }
-
-        // Apply the PID
-        foc_vars.Vdq[0] = 10 * Idq_err[0] + Idq_int_err[0];  // trial pgain of 10
-        foc_vars.Vdq[1] = 10 * Idq_err[0] + Idq_int_err[1];
+        static int i=0;
+        if (i==0)
+        {  // set or release the PID controller
+            // Apply the PID
+            foc_vars.Vdq[0] = 10 * Idq_err[0] + Idq_int_err[0];  // trial pgain of 10
+            foc_vars.Vdq[1] = 10 * Idq_err[0] + Idq_int_err[1];
+            i=1;
+        }
+        i=i-1;
     }
     // Inverse Park transform
     foc_vars.Vab[0] = foc_vars.sincosangle[1] * foc_vars.Vdq[0] - foc_vars.sincosangle[0] * foc_vars.Vdq[1];
@@ -395,6 +544,7 @@ void MESCFOC()
     foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[1] - one_on_sqrt2 * foc_vars.Vab[1];
     foc_vars.inverterVoltage[1] = foc_vars.inverterVoltage[1] + one_on_sqrt2 * foc_vars.Vab[1];
     foc_vars.inverterVoltage[0] = sqrt_two_on_3 * foc_vars.Vab[0];
+
     writePWM();
 }
 
@@ -457,27 +607,25 @@ int GetHallState()
 
 void measureResistance()
 {
-    /*In this function, we are going to use the openloop PIFF controller to
-     * create a current, probably 1A, through a pair of motor windings, keeping
+    /*In this function, we are going to use an openloop  controller to
+     * create a current, probably ~4A, through a pair of motor windings, keeping
      * the third tri-stated. We then generate a pair of V and I values, from the
-     * bus voltage and duty cycle, and the current reading We repeat this at
-     * higher current, say 5A, and then apply R=dV/dI from the two values to
+     * bus voltage and duty cycle, and the current reading. We repeat this at
+     * higher current, say ~12A, and then apply R=dV/dI from the two values to
      * generate a resistance. Don't use a single point, since this is subject to
      * anomalies from switching dead times, ADC sampling position...etc. Use of
      * the derivative eliminates all steady state error sources ToDo Repeat for
      * all phases? Or just assume they are all close enough that it doesn't
      * matter? Could be useful for disconnection detection...
      */
-    static float currAcc1 = 0;  // codebase static?
-    static float currAcc2 = 0;  // codebase static?
-    static float currAcc3 = 0;  // codebase static?
-    static float currAcc4 = 0;  // codebase static?
+    static float currAcc1 = 0;
+    static float currAcc2 = 0;
+    static float currAcc3 = 0;
+    static float currAcc4 = 0;
 
-    // ADCConversion();                // call the ADC conversion, which gives us float current
-    // values and voltages
-    static uint16_t PWMcycles = 0;  // codebase, this is going to initialise it as 0 once only and then
-                                    // not reset it each time this is called right?
-    if (0)                          // isMotorRunning())
+    static uint16_t PWMcycles = 0;
+
+    if (0)  // isMotorRunning()
     {
         // do nothing
     }
@@ -490,10 +638,12 @@ void measureResistance()
         phW_Break();
         phU_Enable();
         phV_Enable();
-        if (PWMcycles < 5000)
+        ///////////////////////////////////////////////////////RESISTANCE/////////////////////////////////////////////////////////////////////
+
+        if (PWMcycles < 5000)  // Resistance lower measurement point
         {
             if (measurement_buffers.ConvertedADC[1][0] < 3.0f)
-            {
+            {  // Here we set the PWM duty automatically for this conversion to ensure a current between 3A and 10A
                 testPWM1 = testPWM1 + 1;
             }
             if (measurement_buffers.ConvertedADC[1][0] > 10.0f)
@@ -504,15 +654,15 @@ void measureResistance()
             htim1.Instance->CCR2 = 0;
             htim1.Instance->CCR1 = testPWM1;
             // Accumulate the currents with an exponential smoother. This
-            // averaging should remove some noise and slightly increase
+            // averaging should remove some noise and increase
             // effective resolution
             currAcc1 = (99 * currAcc1 + measurement_buffers.ConvertedADC[1][0]) * 0.01;
         }
 
-        else if (PWMcycles < 10000)
+        else if (PWMcycles < 10000)  // Resistance higher measurement point
         {
             if (measurement_buffers.ConvertedADC[1][0] < 10.0f)
-            {
+            {  // Here we set the PWM to get a current between 10A and 20A
                 testPWM2 = testPWM2 + 1;
             }
             if (measurement_buffers.ConvertedADC[1][0] > 20.0f)
@@ -525,30 +675,38 @@ void measureResistance()
             // Accumulate the currents with an exponential smoother
             currAcc2 = (99 * currAcc2 + measurement_buffers.ConvertedADC[1][0]) * 0.01;
         }
+        ///////////////////////////////////////////////////////INDUCTANCE/////////////////////////////////////////////////////////////////////
         else if (PWMcycles == 10000)
         {
             // calculate the resistance from two accumulated currents and two
             // voltages
-            testPWM3 = testPWM2;  // (testPWM2+testPWM1)/2;
+            testPWM3 = testPWM2;  // We assign the value we determined was OK for the resistance measurement as the
+                                  // value to use for inductance measurement, since we need an absolutely  stable steady state
         }
-        else if (PWMcycles < 65000)
+
+        else if (PWMcycles < 65000)  // Inductance measurement points are rolled into one loop, we will skip pulses on the PWM to generate a
+                                     // higher ripple. ToDo Untested with higher inductance motors (only 1.5uH and 6uHmotor tested as of
+                                     // 20201030) may have to skip multiple pulses
         {
-            static int a = 0;
+            static int a = 0;  // A variable local to here to track whether the PWM was high or low last time
             if (a == 1)
             {
-                htim1.Instance->CCR1 = testPWM3;
+                htim1.Instance->CCR1 = testPWM3;  // Write the high PWM, the next cycle will be a higher current
                 currAcc4 = (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
 
                 a = 0;
             }
             else if (a == 0)
             {
-                htim1.Instance->CCR1 = 0;
+                htim1.Instance->CCR1 = 0;  // Write the PWM low, the next PWM pulse is skipped, and the current allowed to decay
                 currAcc3 = (999 * currAcc3 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
 
                 a = 1;
             }
         }
+
+        // This was a prototype where the sampling point was moved within the PWM cycle.
+        //(Un?)fortunately, the change in current was quite small, and so the inductance measurement subject to noise.
 
         /*else if (PWMcycles < 15000)
         {                                 // Measure the inductance first point
@@ -569,8 +727,9 @@ void measureResistance()
             htim1.Instance->CCR1 = testPWM3;
             currAcc4 = (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
         }*/
-        else if (PWMcycles == 65000)
-        {  // Do the calcs
+
+        else if (PWMcycles == 65000)  // This really does not need to be 65000 cycles, yet I don't want to change it :(
+        {                             // Do the calcs
             // First let's just turn everything off. Nobody likes motors sitting
             // there getting hot while debugging.
             htim1.Instance->CCR2 = 0;
@@ -581,15 +740,13 @@ void measureResistance()
             phU_Break();
             phV_Break();
             phW_Break();
-            __NOP();
 
             motor.Rphase =
                 (((float)(testPWM2 - testPWM1)) / (2.0f * 1024.0f) * measurement_buffers.ConvertedADC[0][1]) / (currAcc2 - currAcc1);
-            motor.Lphase = ((currAcc3 + currAcc4) * motor.Rphase * (800.0f / 72000000.0f) / (currAcc4 - currAcc3));
+            motor.Lphase = ((currAcc3 + currAcc4) * motor.Rphase * (2048.0f / 72000000.0f) / ((currAcc4 - currAcc3) * 2));
             // L=iRdt/di, where R in this case is 2*motor.Rphase
-            // dt hard coded as 6.9us for now from 500/72000000(difference in timer counts/clock frequency
             __NOP();
-            MotorState = MOTOR_STATE_HALL_RUN;
+            MotorState = MOTOR_STATE_DETECTING;  // MOTOR_STATE_HALL_RUN;
             phU_Enable();
             phV_Enable();
             phW_Enable();
@@ -598,7 +755,85 @@ void measureResistance()
     PWMcycles = PWMcycles + 1;
 }
 
-void measureInductance()
+void getHallTable()
+{
+    static int firstturn = 1;
+    static int hallstate;
+    hallstate = ((GPIOB->IDR >> 6) & 0x7);
+    static int lasthallstate;
+    static int offset=5000;
+    static int count=0;
+    static int anglestep=20;
+    if (firstturn)
+    {
+        lasthallstate = hallstate;
+        firstturn = 0;
+    }
+
+    // Align the rotor
+    static uint16_t a = 65535;
+    if (a)  // Align time
+    {
+        foc_vars.Idq_req[0] = 15;
+        foc_vars.Idq_req[1] = 0;
+
+        foc_vars.HallAngle = 0;
+        a = a - 1;
+    }
+    // Slowly spin the rotor
+    else
+    {
+            foc_vars.HallAngle = foc_vars.HallAngle + anglestep;
+    }
+    if (hallstate != lasthallstate)
+    {
+        lasthallstate = hallstate;
+        if (foc_vars.HallAngle < offset)
+        {
+            foc_vars.hall_table[5][0] = hallstate;
+            foc_vars.hall_table[5][1] = foc_vars.HallAngle;//(uint16_t)((31*((uint32_t)foc_vars.hall_table[5][1]+(uint32_t)foc_vars.HallAngle))>>5);
+        }
+        else if (foc_vars.HallAngle < (offset+10922))
+        {
+            foc_vars.hall_table[0][0] = hallstate;
+            foc_vars.hall_table[0][1] = foc_vars.HallAngle;
+        }
+        else if (foc_vars.HallAngle < (offset+21844))
+        {
+            foc_vars.hall_table[1][0] = hallstate;
+            foc_vars.hall_table[1][1] = foc_vars.HallAngle;
+        }
+        else if (foc_vars.HallAngle < (offset+32766))
+        {
+            foc_vars.hall_table[2][0] = hallstate;
+            foc_vars.hall_table[2][1] = foc_vars.HallAngle;
+        }
+        else if (foc_vars.HallAngle < (offset+43688))
+        {
+            foc_vars.hall_table[3][0] = hallstate;
+            foc_vars.hall_table[3][1] = foc_vars.HallAngle;
+        }
+        else if (foc_vars.HallAngle < (offset+54610))
+        {
+            foc_vars.hall_table[4][0] = hallstate;
+            foc_vars.hall_table[4][1] = foc_vars.HallAngle;
+        }
+        else if (foc_vars.HallAngle < (offset+65535))
+        {
+            foc_vars.hall_table[5][0] = hallstate;
+            foc_vars.hall_table[5][1] =  foc_vars.HallAngle;//(uint16_t)((31*((uint32_t)foc_vars.hall_table[5][1]+(uint32_t)foc_vars.HallAngle))>>5);
+        }
+        if(count>1000){MotorState=MOTOR_STATE_HALL_RUN;
+        foc_vars.Idq_req[0]=0;
+        foc_vars.Idq_req[1]=-0.2;
+
+        }
+        count=count+1;
+        if(anglestep<200){anglestep++;}
+    }
+}
+
+void measureInductance()  // UNUSED, THIS HAS BEEN ROLLED INTO THE MEASURE RESISTANCE... no point in 2 functions really...
 {
     /*
      * In this function, we are going to run at a fixed duty cycle (perhaps as
