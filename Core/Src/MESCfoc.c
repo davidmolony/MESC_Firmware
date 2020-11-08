@@ -43,6 +43,9 @@ float one_on_sqrt6 = 0.408248;
 float one_on_sqrt3 = 0.577350;
 float one_on_sqrt2 = 0.707107;
 float sqrt_two_on_3 = 0.816497;
+float sqrt3_2 = 1.22474;
+float sqrt2 = 1.41421;
+float sqrt1_2 = 0.707107;
 int adc_conv_end;
 
 void MESCInit()
@@ -148,8 +151,8 @@ void fastLoop()
             {
                 // HallAngleEstimator();
                 HallAngleEstimator_v2();
-                //foc_vars.Idq_req[0] = 2;
-                //foc_vars.Idq_req[1] = 2;
+                // foc_vars.Idq_req[0] = 2;
+                // foc_vars.Idq_req[1] = 2;
 
                 MESCFOC();
             }
@@ -255,6 +258,11 @@ void V_I_Check()
         (measurement_buffers.RawADC[2][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[0][1] > g_hw_setup.RawVoltLim))
     {
         GenerateBreak();
+        uint32_t adc1 = measurement_buffers.RawADC[0][0];
+        uint32_t adc2 = measurement_buffers.RawADC[1][0];
+        uint32_t adc3 = measurement_buffers.RawADC[2][0];
+        uint32_t adc4 = measurement_buffers.RawADC[0][1];
+
         MotorState = MOTOR_STATE_ERROR;
     }
 }
@@ -295,16 +303,41 @@ void ADCConversion()
 
         // Here we do the FOC transforms - Clark and Park, using the previous sin values, since they were the correct ones at the time of
         // sampling
-        foc_vars.Iab[0] = (2.0f * measurement_buffers.ConvertedADC[0][0] - measurement_buffers.ConvertedADC[1][0] -
-                           measurement_buffers.ConvertedADC[2][0]) *
-                          one_on_sqrt6;
-        foc_vars.Iab[1] = (measurement_buffers.ConvertedADC[1][0] - measurement_buffers.ConvertedADC[2][0]) * one_on_sqrt2;
-        foc_vars.Iab[2] =
-            (measurement_buffers.ConvertedADC[0][0] + measurement_buffers.ConvertedADC[1][0] + measurement_buffers.ConvertedADC[2][0]) *
-            0.333f;
+        // clang-format off
 
+        // Clark - Power invariant version
+        /*foc_vars.Iab[0] = 	(2.0f * measurement_buffers.ConvertedADC[0][0] -
+        					measurement_buffers.ConvertedADC[1][0] -
+							measurement_buffers.ConvertedADC[2][0]) * one_on_sqrt6;
+
+        foc_vars.Iab[1] = 	(measurement_buffers.ConvertedADC[1][0] -
+        					measurement_buffers.ConvertedADC[2][0]) * one_on_sqrt2;
+
+        foc_vars.Iab[2] = 	(measurement_buffers.ConvertedADC[0][0] +
+        					measurement_buffers.ConvertedADC[1][0] +
+							measurement_buffers.ConvertedADC[2][0]) * 0.333f;
+        */
+        //Version of Clark transform that avoids low duty cycle ADC measurements - use only 2 phases
+        if(htim1.Instance->CCR2>900){
+        	//Clark using phase U and W
+        	foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][0];
+        	foc_vars.Iab[1] = -sqrt1_2*measurement_buffers.ConvertedADC[0][0]-sqrt2*measurement_buffers.ConvertedADC[2][0];
+        }
+        else if(htim1.Instance->CCR3>900){
+        //Clark using phase U and V
+        	foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][0];
+        	foc_vars.Iab[1] = sqrt2*measurement_buffers.ConvertedADC[1][0]-sqrt1_2*measurement_buffers.ConvertedADC[0][0];
+        }
+        else{
+        	//Clark using phase V and W (hardware V1 has best ADC readings on channels V and W - U is plagued by the DCDC converter)
+        	foc_vars.Iab[0] = -sqrt3_2*measurement_buffers.ConvertedADC[1][0]-sqrt3_2*measurement_buffers.ConvertedADC[2][0];
+        	foc_vars.Iab[1] = sqrt1_2*measurement_buffers.ConvertedADC[1][0]-sqrt1_2*measurement_buffers.ConvertedADC[2][0];
+        }
+
+        // Park
         foc_vars.Idq[0] = foc_vars.sincosangle[1] * foc_vars.Iab[0] + foc_vars.sincosangle[0] * foc_vars.Iab[1];
         foc_vars.Idq[1] = foc_vars.sincosangle[1] * foc_vars.Iab[1] - foc_vars.sincosangle[0] * foc_vars.Iab[0];
+        // clang-format on
 
         // Now we update the sin and cos values, since when we do the inverse transforms, we would like to use the most up to date
         // versions(or even the next predicted version...)
@@ -504,8 +537,8 @@ void MESCFOC()
 
         // Integral error
         static float Idq_int_err[2];
-        Idq_int_err[0] = Idq_int_err[0] + 0.28f * Idq_err[0];
-        Idq_int_err[1] = Idq_int_err[1] + 0.28f * Idq_err[1];
+        Idq_int_err[0] = Idq_int_err[0] + 0.05f * Idq_err[0];
+        Idq_int_err[1] = Idq_int_err[1] + 0.05f * Idq_err[1];
         // Bounding
         static int integral_limit = 200;
         if (Idq_int_err[0] > integral_limit)
@@ -524,21 +557,21 @@ void MESCFOC()
         {
             Idq_int_err[1] = -integral_limit;
         }
-        static int i=0;
-        if (i==0)
+        static int i = 0;
+        if (i == 0)
         {  // set or release the PID controller
             // Apply the PID
-            foc_vars.Vdq[0] = 10 * Idq_err[0] + Idq_int_err[0];  // trial pgain of 10
-            foc_vars.Vdq[1] = 10 * Idq_err[0] + Idq_int_err[1];
-            i=1;
+            foc_vars.Vdq[0] = 2 * Idq_err[0] + Idq_int_err[0];  // trial pgain of 10
+            foc_vars.Vdq[1] = 2 * Idq_err[0] + Idq_int_err[1];
+            i = 3;
         }
-        i=i-1;
+        i = i - 1;
     }
     // Inverse Park transform
     foc_vars.Vab[0] = foc_vars.sincosangle[1] * foc_vars.Vdq[0] - foc_vars.sincosangle[0] * foc_vars.Vdq[1];
     foc_vars.Vab[1] = foc_vars.sincosangle[0] * foc_vars.Vdq[0] + foc_vars.sincosangle[1] * foc_vars.Vdq[1];
     foc_vars.Vab[2] = 0;
-    // Inverse Clark transform
+    // Inverse Clark transform - power invariant
     foc_vars.inverterVoltage[0] = 0;
     foc_vars.inverterVoltage[1] = -foc_vars.Vab[0] * one_on_sqrt6;
     foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[1] - one_on_sqrt2 * foc_vars.Vab[1];
@@ -761,9 +794,9 @@ void getHallTable()
     static int hallstate;
     hallstate = ((GPIOB->IDR >> 6) & 0x7);
     static int lasthallstate;
-    static int offset=5000;
-    static int count=0;
-    static int anglestep=20;
+    static int offset = 0000;
+    static int count = 0;
+    static int anglestep = 20;
     if (firstturn)
     {
         lasthallstate = hallstate;
@@ -774,7 +807,7 @@ void getHallTable()
     static uint16_t a = 65535;
     if (a)  // Align time
     {
-        foc_vars.Idq_req[0] = 15;
+        foc_vars.Idq_req[0] = 10;
         foc_vars.Idq_req[1] = 0;
 
         foc_vars.HallAngle = 0;
@@ -783,7 +816,7 @@ void getHallTable()
     // Slowly spin the rotor
     else
     {
-            foc_vars.HallAngle = foc_vars.HallAngle + anglestep;
+        foc_vars.HallAngle = foc_vars.HallAngle + anglestep;
     }
     if (hallstate != lasthallstate)
     {
@@ -791,45 +824,51 @@ void getHallTable()
         if (foc_vars.HallAngle < offset)
         {
             foc_vars.hall_table[5][0] = hallstate;
-            foc_vars.hall_table[5][1] = foc_vars.HallAngle;//(uint16_t)((31*((uint32_t)foc_vars.hall_table[5][1]+(uint32_t)foc_vars.HallAngle))>>5);
+            foc_vars.hall_table[5][1] =
+                foc_vars.HallAngle;  //(uint16_t)((31*((uint32_t)foc_vars.hall_table[5][1]+(uint32_t)foc_vars.HallAngle))>>5);
         }
-        else if (foc_vars.HallAngle < (offset+10922))
+        else if (foc_vars.HallAngle < (offset + 10922))
         {
             foc_vars.hall_table[0][0] = hallstate;
             foc_vars.hall_table[0][1] = foc_vars.HallAngle;
         }
-        else if (foc_vars.HallAngle < (offset+21844))
+        else if (foc_vars.HallAngle < (offset + 21844))
         {
             foc_vars.hall_table[1][0] = hallstate;
             foc_vars.hall_table[1][1] = foc_vars.HallAngle;
         }
-        else if (foc_vars.HallAngle < (offset+32766))
+        else if (foc_vars.HallAngle < (offset + 32766))
         {
             foc_vars.hall_table[2][0] = hallstate;
             foc_vars.hall_table[2][1] = foc_vars.HallAngle;
         }
-        else if (foc_vars.HallAngle < (offset+43688))
+        else if (foc_vars.HallAngle < (offset + 43688))
         {
             foc_vars.hall_table[3][0] = hallstate;
             foc_vars.hall_table[3][1] = foc_vars.HallAngle;
         }
-        else if (foc_vars.HallAngle < (offset+54610))
+        else if (foc_vars.HallAngle < (offset + 54610))
         {
             foc_vars.hall_table[4][0] = hallstate;
             foc_vars.hall_table[4][1] = foc_vars.HallAngle;
         }
-        else if (foc_vars.HallAngle < (offset+65535))
+        else if (foc_vars.HallAngle < (65535))
         {
             foc_vars.hall_table[5][0] = hallstate;
-            foc_vars.hall_table[5][1] =  foc_vars.HallAngle;//(uint16_t)((31*((uint32_t)foc_vars.hall_table[5][1]+(uint32_t)foc_vars.HallAngle))>>5);
+            foc_vars.hall_table[5][1] =
+                foc_vars.HallAngle;  //(uint16_t)((31*((uint32_t)foc_vars.hall_table[5][1]+(uint32_t)foc_vars.HallAngle))>>5);
         }
-        if(count>1000){MotorState=MOTOR_STATE_HALL_RUN;
-        foc_vars.Idq_req[0]=0;
-        foc_vars.Idq_req[1]=-0.2;
-
+        if (count > 1000)
+        {
+            MotorState = MOTOR_STATE_HALL_RUN;
+            foc_vars.Idq_req[0] = 0;
+            foc_vars.Idq_req[1] = 2;
         }
-        count=count+1;
-        if(anglestep<200){anglestep++;}
+        count = count + 1;
+        if (anglestep < 300)
+        {
+            anglestep++;
+        }
     }
 }
 
