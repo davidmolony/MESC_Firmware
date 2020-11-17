@@ -43,6 +43,6 @@ void hw_init() {
     g_hw_setup.Igain =
         3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain *
                g_hw_setup.RIphPU / (g_hw_setup.RIphPU + g_hw_setup.RIphSR));
-    g_hw_setup.RawCurrLim = 3000;
+    g_hw_setup.RawCurrLim = 3900;
     g_hw_setup.RawVoltLim = (uint16_t)(4096.0f*(g_hw_setup.Vmax/3.3f)*g_hw_setup.RVBB/(g_hw_setup.RVBB+g_hw_setup.RVBT));
 }

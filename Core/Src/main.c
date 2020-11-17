@@ -138,6 +138,8 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
         {
             a = 0;
             BLDCVars.ReqCurrent = 0;
+            foc_vars.Idq_req[0]=0;
+            foc_vars.Idq_req[1]=0;
         }
 
         else if (ICVals[0] != 0)
@@ -155,15 +157,25 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
             // Set the current setpoint here
             if (1)
             {  // Current control, ToDo convert to Enum
-                if (ICVals[1] > 1600) BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 10.0;
+                if (ICVals[1] > 1600) {
+                BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 10.0;
+                foc_vars.Idq_req[0]=0;
+                foc_vars.Idq_req[1]=((float)ICVals[1] - 1600) / 5.0;
+                }
                 // Crude hack, which gets current scaled to +/-40A
                 // based on 1000-2000us PWM in
-                else if (ICVals[1] < 1400)
-                    BLDCVars.ReqCurrent = ((float)ICVals[1] - 1400) / 10.0;
+                else if (ICVals[1] < 1400){
+                    BLDCVars.ReqCurrent =((float)ICVals[1] - 1600) / 10.0;
+		            foc_vars.Idq_req[0]=0;
+		            foc_vars.Idq_req[1]= ((float)ICVals[1] - 1400) / 10.0;
+                }
                 // Crude hack, which gets current scaled to +/-40A
                 // based on 1000-2000us PWM in
-                else
+                else{
                     BLDCVars.ReqCurrent = 0;
+	            foc_vars.Idq_req[0]=0;
+	            foc_vars.Idq_req[1]=0;
+                }
             }
 
             if (0)
@@ -180,77 +192,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
         }
     }
 }
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	uint8_t message_buffer[20];
-	uint8_t length;
 
-    __NOP();
-    if (UART_rx_buffer[0] == 0x68)
-    {  // h - Say hi
-        HAL_UART_Transmit_DMA(&huart3, "hi", 2);
-    }
-    else if (UART_rx_buffer[0] == 0x71)
-    {  // q - increase quadrature current
-        foc_vars.Idq_req[1] = foc_vars.Idq_req[1] + 1.0;
-        if ((foc_vars.Idq_req[1] < 1.0) && (foc_vars.Idq_req[1] > -1.0))
-        {
-            foc_vars.Idq_req[1] = 0;
-        }
-        length = sprintf(message_buffer,"Ir%.1f %.1f\r",foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
-        HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-    }
-    else if (UART_rx_buffer[0] == 0x61)
-    {  // a - decrease quadrature current
-        foc_vars.Idq_req[1] = foc_vars.Idq_req[1] - 1.0;
-        if ((foc_vars.Idq_req[1] < 1.0) && (foc_vars.Idq_req[1] > -1.0))
-        {
-            foc_vars.Idq_req[1] = 0;
-        }
-        length = sprintf(message_buffer,"Ir%.1f %.1f\r",foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
-        HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-    }
-    else if (UART_rx_buffer[0] == 0x64)
-    {  // d - increase direct (field) current
-        foc_vars.Idq_req[0] = foc_vars.Idq_req[0] + 1.0;
-        if ((foc_vars.Idq_req[0] < 1.0) && (foc_vars.Idq_req[0] > -1.0))
-        {
-            foc_vars.Idq_req[0] = 0;
-        }
-        length = sprintf(message_buffer,"Ir%.1f %.1f\r",foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
-        HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-    }
-    else if (UART_rx_buffer[0] == 0x63)
-    {  // c - decrease direct (field) current
-        foc_vars.Idq_req[0] = foc_vars.Idq_req[0] - 1.0;
-        if ((foc_vars.Idq_req[0] < 1.0) && (foc_vars.Idq_req[0] > -1.0))
-        {
-            foc_vars.Idq_req[0] = 0;
-        }
-        length = sprintf(message_buffer,"Ir%.1f %.1f\r",foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
-        HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-    }
-    else if (UART_rx_buffer[0] == 0x72)
-    {  // r - Reset the controller
-    	HAL_UART_Transmit_DMA(&huart3, "reset!", 6);
-    	//HAL_Delay(10);
-    	__HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(&htim1);
-    	HAL_NVIC_SystemReset();
-    }
-    else if(UART_rx_buffer[0] == 0x76){// v - Get the bus voltage
-    	length = sprintf(message_buffer,"Vbus%.2f\r",measurement_buffers.ConvertedADC[0][1]);
-    	HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-
-    }
-    else{
-    	HAL_UART_Transmit_DMA(&huart3, "Unrecognised!", 13);
-
-    }
-    length = sprintf(message_buffer,"Ir%.1f %.1f\r",foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
-    HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-
-    HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
-}
 
 /* USER CODE END 0 */
 

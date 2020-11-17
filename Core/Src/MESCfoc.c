@@ -59,18 +59,18 @@ void MESCInit()
     HAL_OPAMP_Start(&hopamp2);
     HAL_OPAMP_Start(&hopamp3);
     /// Dummy halltable
-    foc_vars.hall_table[0][0] = 1;
-    foc_vars.hall_table[0][1] = 0;
-    foc_vars.hall_table[1][0] = 3;
-    foc_vars.hall_table[1][1] = 10922;
-    foc_vars.hall_table[2][0] = 2;
-    foc_vars.hall_table[2][1] = 21844;
-    foc_vars.hall_table[3][0] = 6;
-    foc_vars.hall_table[3][1] = 32766;
-    foc_vars.hall_table[4][0] = 4;
-    foc_vars.hall_table[4][1] = 43688;
-    foc_vars.hall_table[5][0] = 5;
-    foc_vars.hall_table[5][1] = 54610;
+    foc_vars.hall_table[0][0] = 3;
+    foc_vars.hall_table[0][1] = 15000;
+    foc_vars.hall_table[1][0] = 1;
+    foc_vars.hall_table[1][1] = 26000;
+    foc_vars.hall_table[2][0] = 5;
+    foc_vars.hall_table[2][1] = 37000;
+    foc_vars.hall_table[3][0] = 4;
+    foc_vars.hall_table[3][1] = 48000;
+    foc_vars.hall_table[4][0] = 6;
+    foc_vars.hall_table[4][1] = 59000;
+    foc_vars.hall_table[5][0] = 2;
+    foc_vars.hall_table[5][1] = 4000;
 
     motor_init();  // Initialise the motor parameters, either with real values, or zeros if we are to determine the motor params at startup
     hw_init();     // Populate the resistances, gains etc of the PCB - edit within this function if compiling for other PCBs
@@ -206,7 +206,8 @@ void fastLoop()
             {
                 // hall sensors detected
                 MotorSensorMode = MOTOR_SENSOR_MODE_HALL;
-                getHallTable();
+                if(0){getHallTable();}
+                else {MotorState = MOTOR_STATE_HALL_RUN; }
                 MESCFOC();
             }
             break;
@@ -526,8 +527,8 @@ void MESCFOC()
 
         // First, we want to get a smoother version of the current, less susceptible to jitter and noise, use exponential filter. This
         // unfortunately creates lag.
-        foc_vars.smoothed_idq[0] = (1.0f * foc_vars.smoothed_idq[0] + foc_vars.Idq[0]) * 0.5f;
-        foc_vars.smoothed_idq[1] = (1.0f * foc_vars.smoothed_idq[1] + foc_vars.Idq[1]) * 0.5f;
+        foc_vars.smoothed_idq[0] = foc_vars.Idq[0];//(1.0f * foc_vars.smoothed_idq[0] + foc_vars.Idq[0]) * 0.5f;
+        foc_vars.smoothed_idq[1] = foc_vars.Idq[1];//(1.0f * foc_vars.smoothed_idq[1] + foc_vars.Idq[1]) * 0.5f;
 
         // Calculate the errors
         static float Idq_err[2];
@@ -540,7 +541,7 @@ void MESCFOC()
         Idq_int_err[0] = Idq_int_err[0] + 0.05f * Idq_err[0];
         Idq_int_err[1] = Idq_int_err[1] + 0.05f * Idq_err[1];
         // Bounding
-        static int integral_limit = 200;
+        static int integral_limit = 400;
         if (Idq_int_err[0] > integral_limit)
         {
             Idq_int_err[0] = integral_limit;
@@ -561,9 +562,9 @@ void MESCFOC()
         if (i == 0)
         {  // set or release the PID controller
             // Apply the PID
-            foc_vars.Vdq[0] = 2 * Idq_err[0] + Idq_int_err[0];  // trial pgain of 10
-            foc_vars.Vdq[1] = 2 * Idq_err[0] + Idq_int_err[1];
-            i = 3;
+            foc_vars.Vdq[0] = 4 * Idq_err[0] + Idq_int_err[0];  // trial pgain of 10
+            foc_vars.Vdq[1] = 4 * Idq_err[0] + Idq_int_err[1];
+            i = 1;
         }
         i = i - 1;
     }
@@ -601,10 +602,11 @@ void GenerateBreak()
     phV_Break();
     phW_Break();
 }
+#define _hallRead(GPIO, bitmask, shift) (((GPIO)->IDR >> (shift)) & (bitmask))
 
 int GetHallState()
 {
-    switch (((GPIOB->IDR >> 6) & 0x7))
+    switch (_hallRead(GPIOB, 7, 6))
     {
         case 0:
             return 7;  // 7 is the no hall sensor detected state (all low)
@@ -794,7 +796,7 @@ void getHallTable()
     static int hallstate;
     hallstate = ((GPIOB->IDR >> 6) & 0x7);
     static int lasthallstate;
-    static int offset = 0000;
+    static int offset = 7000;
     static int count = 0;
     static int anglestep = 20;
     if (firstturn)
@@ -865,7 +867,7 @@ void getHallTable()
             foc_vars.Idq_req[1] = 2;
         }
         count = count + 1;
-        if (anglestep < 300)
+        if (anglestep < 100)
         {
             anglestep++;
         }
