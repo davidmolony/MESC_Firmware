@@ -206,8 +206,14 @@ void fastLoop()
             {
                 // hall sensors detected
                 MotorSensorMode = MOTOR_SENSOR_MODE_HALL;
-                if(0){getHallTable();}
-                else {MotorState = MOTOR_STATE_HALL_RUN; }
+                if (0)
+                {
+                    getHallTable();
+                }
+                else
+                {
+                    MotorState = MOTOR_STATE_HALL_RUN;
+                }
                 MESCFOC();
             }
             break;
@@ -252,19 +258,31 @@ void fastLoop()
     }
 }
 
+#define MAX_ERROR_COUNT 1
+
 // TODO: refactor this function. Is this function called by DMA interrupt?
 void V_I_Check()
 {  // Check currents, voltages are within panic limits
+    static int errorCount = 0;
+
     if ((measurement_buffers.RawADC[0][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[1][0] > g_hw_setup.RawCurrLim) ||
         (measurement_buffers.RawADC[2][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[0][1] > g_hw_setup.RawVoltLim))
     {
-        GenerateBreak();
-        uint32_t adc1 = measurement_buffers.RawADC[0][0];
-        uint32_t adc2 = measurement_buffers.RawADC[1][0];
-        uint32_t adc3 = measurement_buffers.RawADC[2][0];
-        uint32_t adc4 = measurement_buffers.RawADC[0][1];
+        errorCount++;
+        if (errorCount >= MAX_ERROR_COUNT)
+        {
+            GenerateBreak();
+            uint32_t adc1 = measurement_buffers.RawADC[0][0];
+            uint32_t adc2 = measurement_buffers.RawADC[1][0];
+            uint32_t adc3 = measurement_buffers.RawADC[2][0];
+            uint32_t adc4 = measurement_buffers.RawADC[0][1];
 
-        MotorState = MOTOR_STATE_ERROR;
+            MotorState = MOTOR_STATE_ERROR;
+        }
+    }
+    else
+    {
+        errorCount = 0;
     }
 }
 
@@ -527,8 +545,8 @@ void MESCFOC()
 
         // First, we want to get a smoother version of the current, less susceptible to jitter and noise, use exponential filter. This
         // unfortunately creates lag.
-        foc_vars.smoothed_idq[0] = foc_vars.Idq[0];//(1.0f * foc_vars.smoothed_idq[0] + foc_vars.Idq[0]) * 0.5f;
-        foc_vars.smoothed_idq[1] = foc_vars.Idq[1];//(1.0f * foc_vars.smoothed_idq[1] + foc_vars.Idq[1]) * 0.5f;
+        foc_vars.smoothed_idq[0] = foc_vars.Idq[0];  //(1.0f * foc_vars.smoothed_idq[0] + foc_vars.Idq[0]) * 0.5f;
+        foc_vars.smoothed_idq[1] = foc_vars.Idq[1];  //(1.0f * foc_vars.smoothed_idq[1] + foc_vars.Idq[1]) * 0.5f;
 
         // Calculate the errors
         static float Idq_err[2];

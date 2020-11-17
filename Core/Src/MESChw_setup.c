@@ -32,7 +32,7 @@ void motor_init() {
 }
 
 void hw_init() {
-    g_hw_setup.Vmax = 50.0;
+    g_hw_setup.Vmax = 60.0;
     g_hw_setup.Rshunt = 0.001;
     g_hw_setup.RIphPU = 4700;
     g_hw_setup.RIphSR = 150;
