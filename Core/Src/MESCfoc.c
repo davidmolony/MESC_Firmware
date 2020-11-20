@@ -559,7 +559,7 @@ void MESCFOC()
         Idq_int_err[0] = Idq_int_err[0] + 0.05f * Idq_err[0];
         Idq_int_err[1] = Idq_int_err[1] + 0.05f * Idq_err[1];
         // Bounding
-        static int integral_limit = 400;
+        static int integral_limit = 600;
         if (Idq_int_err[0] > integral_limit)
         {
             Idq_int_err[0] = integral_limit;
@@ -602,10 +602,73 @@ void MESCFOC()
 
 void writePWM()
 {
-    htim1.Instance->CCR1 = (uint16_t)(512 + foc_vars.inverterVoltage[0]);
-    htim1.Instance->CCR2 = (uint16_t)(512 + foc_vars.inverterVoltage[1]);
-    htim1.Instance->CCR3 = (uint16_t)(512 + foc_vars.inverterVoltage[2]);
+    //    htim1.Instance->CCR1 = (uint16_t)(512.0f + foc_vars.inverterVoltage[0]);
+    //    htim1.Instance->CCR2 = (uint16_t)(512.0f + foc_vars.inverterVoltage[1]);
+    //    htim1.Instance->CCR3 = (uint16_t)(512.0f + foc_vars.inverterVoltage[2]);
+
+    float minimumValue = 0;
+
+    /*
+     * lol Tim
+    if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[1] && foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[2])
+    {
+        minimumValue = foc_vars.inverterVoltage[0];
+    }
+    else if (foc_vars.inverterVoltage[1] < foc_vars.inverterVoltage[0] && foc_vars.inverterVoltage[1] < foc_vars.inverterVoltage[2])
+    {
+        minimumValue = foc_vars.inverterVoltage[1];
+    }
+    else if (foc_vars.inverterVoltage[2] < foc_vars.inverterVoltage[1] && foc_vars.inverterVoltage[2] < foc_vars.inverterVoltage[0])
+    {
+        minimumValue = foc_vars.inverterVoltage[2];
+    }
+        */
+    //////////////////////////////////////////////////////////////////////////////////////
+
+    if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[1])
+    {
+        if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[2])
+        {
+            minimumValue = foc_vars.inverterVoltage[0];
+        }
+        else
+        {
+            minimumValue = foc_vars.inverterVoltage[2];
+        }
+    }
+    else if (foc_vars.inverterVoltage[1] < foc_vars.inverterVoltage[2])
+    {
+        minimumValue = foc_vars.inverterVoltage[1];
+    }
+    else
+    {
+        minimumValue = foc_vars.inverterVoltage[2];
+    }
+
+    foc_vars.inverterVoltage[0] -= minimumValue;
+    foc_vars.inverterVoltage[1] -= minimumValue;
+    foc_vars.inverterVoltage[2] -= minimumValue;
+
+    htim1.Instance->CCR1 = (uint16_t)(foc_vars.inverterVoltage[0]);
+    htim1.Instance->CCR2 = (uint16_t)(foc_vars.inverterVoltage[1]);
+    htim1.Instance->CCR3 = (uint16_t)(foc_vars.inverterVoltage[2]);
 }
+
+/*
+ *
+    if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[1])
+    {
+        if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[2])
+        {
+            minimumValue = foc_vars.inverterVoltage[0];
+        }
+        else
+        {
+            minimumValue = foc_vars.inverterVoltage[2];
+        }
+    }
+ *
+ */
 
 void GenerateBreak()
 {
