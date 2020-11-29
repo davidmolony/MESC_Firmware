@@ -121,6 +121,7 @@ void ADCConversion();  // Roll this into the V_I_Check? less branching, can
 void HallAngleEstimator();
 void HallAngleEstimator_v2();  // Going to attempt to make a similar hall angle estimator that rolls the hall state into the main function,
                                // and calls a vector table to find the angle from hall offsets.
+void HallAngleEstimator_v3();
 
 void observerTick();  // Call every time to allow the observer, whatever it is,
                       // to update itself and find motor position

@@ -22,6 +22,7 @@
 #include "cmsis_os.h"
 #include "usb_device.h"
 
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -98,14 +99,8 @@ const osThreadAttr_t BatCheckTask_attributes = {
   .stack_size = 128 * 4
 };
 /* USER CODE BEGIN PV */
-uint16_t a = 0;
-float adcBuff1[3] = {0, 0, 0};
-uint32_t adcBuff2[3] = {0, 0, 0};
-uint32_t adcBuff3[3] = {0, 0, 0};
 uint32_t ICVals[2] = {0, 0};
-uint32_t RegBuff = 0;
-uint32_t quickHall = 0;
-int initing = 1;
+//int initing = 1;
 char UART_buffer[12];
 char UART_rx_buffer[2];
 /* USER CODE END PV */
@@ -141,76 +136,6 @@ static void MX_NVIC_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-// fixme: this function should not be here. It should be in a separate file or
-// at least marked explicitly what it does and why.
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
-{
-    if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
-    {
-        ICVals[0] = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_1);
-
-        // Target is 20000 guard is +-10000
-        if ((ICVals[0] < 10000) || (30000 < ICVals[0]))
-        {
-            a = 0;
-            BLDCVars.ReqCurrent = 0;
-            foc_vars.Idq_req[0] = 0;
-            foc_vars.Idq_req[1] = 0;
-        }
-
-        else if (ICVals[0] != 0)
-        {
-            BLDCState = BLDC_FORWARDS;
-            ICVals[1] = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_2);
-            if (ICVals[1] > 2000) ICVals[1] = 2000;
-            if (ICVals[1] < 1000) ICVals[1] = 1000;
-
-            // Mid-point is 1500 guard is +-100
-            if ((ICVals[1] > 1400) && (1600 > ICVals[1]))
-            {
-                ICVals[1] = 1500;
-            }
-            // Set the current setpoint here
-            if (1)
-            {  // Current control, ToDo convert to Enum
-                if (ICVals[1] > 1600)
-                {
-                    BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 10.0;
-                    foc_vars.Idq_req[0] = 0;
-                    foc_vars.Idq_req[1] = ((float)ICVals[1] - 1600) / 7.0;
-                }
-                // Crude hack, which gets current scaled to +/-40A
-                // based on 1000-2000us PWM in
-                else if (ICVals[1] < 1400)
-                {
-                    BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 10.0;
-                    foc_vars.Idq_req[0] = 0;
-                    foc_vars.Idq_req[1] = ((float)ICVals[1] - 1400) / 10.0;
-                }
-                // Crude hack, which gets current scaled to +/-40A
-                // based on 1000-2000us PWM in
-                else
-                {
-                    BLDCVars.ReqCurrent = 0;
-                    foc_vars.Idq_req[0] = 0;
-                    foc_vars.Idq_req[1] = 0;
-                }
-            }
-
-            if (0)
-            {  // Duty cycle control, ToDo convert to Enum
-                if (a < 10)
-                {
-                    BLDCVars.BLDCduty = 0;
-                }
-                if (a > 9)
-                {
-                    BLDCVars.BLDCduty = 10 * (a - 9);
-                }
-            }
-        }
-    }
-}
 
 /* USER CODE END 0 */
 
@@ -276,7 +201,7 @@ int main(void)
     HAL_UART_Transmit_DMA(&huart3, "startup!!\r", 10);
 
     // Add a little area in which I can mess about without the RTOS
-    while (1)
+    while (0)
     {
         // HAL_Delay(100);
         HAL_Delay(1000);
@@ -1214,7 +1139,7 @@ void StartDefaultTask(void *argument)
     /* Infinite loop */
     for (;;)
     {
-        osDelay(1);
+        osDelay(100);
     }
   /* USER CODE END 5 */
 }
@@ -1232,7 +1157,7 @@ void SlowLoopEntry(void *argument)
     /* Infinite loop */
     for (;;)
     {
-        osDelay(1);
+        osDelay(100);
     }
   /* USER CODE END SlowLoopEntry */
 }
@@ -1250,7 +1175,7 @@ void ComsTaskEntry(void *argument)
     /* Infinite loop */
     for (;;)
     {
-        osDelay(1);
+        osDelay(100);
     }
   /* USER CODE END ComsTaskEntry */
 }
@@ -1268,7 +1193,9 @@ void BatCheck(void *argument)
     /* Infinite loop */
     for (;;)
     {
-        osDelay(1);
+        osDelay(100);
+        static uint16_t VbatThread=0;
+        VbatThread++;
     }
   /* USER CODE END BatCheck */
 }

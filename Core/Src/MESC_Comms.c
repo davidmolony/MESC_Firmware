@@ -26,12 +26,20 @@
 
 #include "MESC_Comms.h"
 #include "MESCfoc.h"
+#include "MESCBLDC.h"
 #include <stdio.h>
 
 extern char UART_rx_buffer[2];
+extern uint16_t ICVals[2];
+
 extern UART_HandleTypeDef huart3;
 extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim3;
 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//UART implementation
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     uint8_t message_buffer[20];
@@ -98,6 +106,80 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     {
         HAL_UART_Transmit_DMA(&huart3, "Unrecognised!", 13);
     }
-
+//Restart the UART interrupt, otherwise you're not getting the next byte!
     HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//RCPWM implementation
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+    {
+        ICVals[0] = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_1);
+
+        // Target is 20000 guard is +-10000
+        if ((ICVals[0] < 10000) || (30000 < ICVals[0]))
+        {
+            BLDCVars.ReqCurrent = 0;
+            foc_vars.Idq_req[0] = 0;
+            foc_vars.Idq_req[1] = 0;
+        }
+
+        else if (ICVals[0] != 0)
+        {
+            BLDCState = BLDC_FORWARDS;
+            ICVals[1] = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_2);
+            if (ICVals[1] > 2000) ICVals[1] = 2000;
+            if (ICVals[1] < 1000) ICVals[1] = 1000;
+
+            // Mid-point is 1500 guard is +-100
+            if ((ICVals[1] > 1400) && (1600 > ICVals[1]))
+            {
+                ICVals[1] = 1500;
+
+            }
+            // Set the current setpoint here
+            if (1)
+            {  // Current control, ToDo convert to Enum
+                if (ICVals[1] > 1600)
+                {
+                    BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 10.0;
+                    foc_vars.Idq_req[0] = 0;
+                    foc_vars.Idq_req[1] = ((float)ICVals[1] - 1600) / 5.0;
+                }
+                // Crude hack, which gets current scaled to +/-40A
+                // based on 1000-2000us PWM in
+                else if (ICVals[1] < 1400)
+                {
+                    BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 10.0;
+                    foc_vars.Idq_req[0] = 0;
+                    foc_vars.Idq_req[1] = ((float)ICVals[1] - 1400) / 10.0;
+                }
+                // Crude hack, which gets current scaled to +/-40A
+                // based on 1000-2000us PWM in
+                else
+                {
+                	static float currentset=4;
+                    BLDCVars.ReqCurrent = 0;
+                    foc_vars.Idq_req[0] = 0;
+                    foc_vars.Idq_req[1] =currentset;
+                }
+            }
+
+            /*if (0)
+            {  // Duty cycle control, ToDo convert to Enum
+                if (a < 10)
+                {
+                    BLDCVars.BLDCduty = 0;
+                }
+                if (a > 9)
+                {
+                    BLDCVars.BLDCduty = 10 * (a - 9);
+                }
+            }*/
+        }
+    }
 }
