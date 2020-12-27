@@ -24,11 +24,12 @@
 #include "stm32f3xx_hal.h"
 
 #ifndef INC_MESCBLDC_H_
-#define INC_MESCBLDC_H_
+#    define INC_MESCBLDC_H_
 
 #endif /* INC_MESCBLDC_H_ */
 
-typedef struct {
+typedef struct
+{
     float ReqCurrent;
     int BLDCduty;
     int BLDCEstate;
@@ -40,7 +41,8 @@ typedef struct {
 
 MESCBLDCVars_s BLDCVars;
 
-typedef enum {
+typedef enum
+{
     BLDC_FORWARDS = 1,
     BLDC_BACKWARDS = 2,
     BLDC_IDLE = 3,
@@ -54,3 +56,4 @@ void BLDCInit();
 void BLDCCommuteHall();
 void BLDCCurrentController();
 void writeBLDC();
+int GetHallState();  // Self explanatory...

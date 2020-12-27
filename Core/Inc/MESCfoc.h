@@ -28,6 +28,7 @@
 #define FOC_CONV_CHANNELS          (3)
 #define FOC_TRANSFORMED_CHANNELS   (2)
 #define FOC_NUM_ADC                (3)
+#define FOC_PERIODS                (1)
 
 // fixme: I think this type of stuff is causing confusion later on especially in
 // the code that strives for maintainability. What does an alias give you?
@@ -73,7 +74,7 @@ typedef struct
     float smoothed_idq[2];
     float Idq_req[2];
 
-    uint16_t hall_table[6][2];
+    uint16_t hall_table[6][4];
 } MESCfoc_s;
 
 MESCfoc_s foc_vars;
@@ -111,29 +112,28 @@ typedef struct
 // constant: UPPER_CASE;
 void MESCInit();
 void fastLoop();
-void V_I_Check();
+void VICheck();
 void ADCConversion();  // Roll this into the V_I_Check? less branching, can
                        // probably reduce no.ops and needs doing every cycle
                        // anyway...
 // convert currents from uint_16 ADC readings into float A and uint_16 voltages
 // into float volts Since the observer needs the Clark transformed current, do
 // the Clark and Park transform now
-void HallAngleEstimator();
-void HallAngleEstimator_v2();  // Going to attempt to make a similar hall angle estimator that rolls the hall state into the main function,
-                               // and calls a vector table to find the angle from hall offsets.
-void HallAngleEstimator_v3();
+void HallAngleEstimator();  // Going to attempt to make a similar hall angle estimator that rolls the hall state into the main function,
+                            // and calls a vector table to find the angle from hall offsets.
+
+void OLGenerateAngle();  // For open loop FOC startup, just use this to generate an angle and velocity ramp, then keep the phase currents at
+                         // the requested value without really thinking about things like synchronising, phase etc...
 
 void observerTick();  // Call every time to allow the observer, whatever it is,
                       // to update itself and find motor position
-void MESCFOC();       // Field and quadrature current control (PI?)
-                      // Inverse Clark and Park transforms
 
-void openLoopPIFF();  // Just keep the phase currents at the requested value
-                      // without really thinking about things like
-                      // synchronising, phase etc...
+void MESCFOC();  // Field and quadrature current control (PI?)
+                 // Inverse Clark and Park transforms
 
 void writePWM();  // Offset the PWM to voltage centred (0Vduty is 50% PWM) or
-                  // subtract lowest phase to always clamp one phase at 0V,
+                  // subtract lowest phase to always clamp one phase at 0V or
+                  // SVPWM
                   // write CCR registers
 
 void GenerateBreak();  // Software break that does not stop the PWM timer but
@@ -142,7 +142,6 @@ int isMotorRunning();  // return motor state if state is one of the running
                        // states, if it's an idle, error or break state, disable
                        // all outputs and measure the phase voltages - if all
                        // the same, then it's stationary.
-int GetHallState();    // Self explanatory...
 void measureResistance();
 void measureInductance();
 void getHallTable();

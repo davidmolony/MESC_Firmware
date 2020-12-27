@@ -22,10 +22,10 @@
 #include "cmsis_os.h"
 #include "usb_device.h"
 
-
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+//#include "usbd_cdc_if.c"
+//#include "usbd_cdc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -103,6 +103,8 @@ uint32_t ICVals[2] = {0, 0};
 //int initing = 1;
 char UART_buffer[12];
 char UART_rx_buffer[2];
+
+char USBRxBuffer[12];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -131,7 +133,7 @@ void BatCheck(void *argument);
 
 static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
-
+//
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -152,7 +154,8 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+
+	HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -187,6 +190,17 @@ int main(void)
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
+
+/*  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);
+  GPIOA->MODER |= GPIO_MODER_MODER12_0;
+  HAL_Delay(1000);
+  GPIOA->MODER &= ~GPIO_MODER_MODER12_0;*/
+
+  //MX_USB_DEVICE_Init();
+  //CDC_Init_FS();
+  //CDC_Transmit_FS("Hello World", 11);
+
+
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);
     // Place to mess about with PWM in
@@ -201,7 +215,7 @@ int main(void)
     HAL_UART_Transmit_DMA(&huart3, "startup!!\r", 10);
 
     // Add a little area in which I can mess about without the RTOS
-    while (0)
+    while (1)
     {
         // HAL_Delay(100);
         HAL_Delay(1000);
@@ -1134,11 +1148,21 @@ void HAL_ADC_ConvcpltCallback(ADC_HandleTypeDef *hadc) {}
 void StartDefaultTask(void *argument)
 {
   /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
+  //MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
+	  ////////////Re-enumerate the USB, otherwise it doesn't f*&%$"g work.
+	  ////////////If the re-enumeration happens after the MX_USB_INIT, it also won;t work, manually paste it down here and remove...
+
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);
+  GPIOA->MODER |= GPIO_MODER_MODER12_0;
+  HAL_Delay(1000);
+  GPIOA->MODER &= ~GPIO_MODER_MODER12_0;
+  MX_USB_DEVICE_Init();
     /* Infinite loop */
     for (;;)
     {
+    	  CDC_Transmit_FS("Hello World", 11);
+
         osDelay(100);
     }
   /* USER CODE END 5 */

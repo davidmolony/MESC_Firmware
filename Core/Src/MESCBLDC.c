@@ -198,3 +198,40 @@ void writeBLDC()
             break;
     }
 }
+
+#define _hallRead(GPIO, bitmask, shift) (((GPIO)->IDR >> (shift)) & (bitmask))
+int GetHallState()
+{
+    switch (_hallRead(GPIOB, 7, 6))
+    {
+        case 0:
+            return 7;  // 7 is the no hall sensor detected state (all low)
+            break;
+        case 7:
+            return 6;  // 6 is the no hall sensor detected state (all high)
+            break;
+            // Implement the hall table order here, depending how the hall
+            // sensors are configured
+        case 1:
+            return 0;
+            break;
+        case 3:
+            return 1;
+            break;
+        case 2:
+            return 2;
+            break;
+        case 6:
+            return 3;
+            break;
+        case 4:
+            return 4;
+            break;
+        case 5:
+            return 5;
+            break;
+        default:
+            return 8;
+            break;
+    }
+}
