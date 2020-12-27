@@ -30,6 +30,7 @@
 #include "MESCmotor_state.h"
 
 extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim4;
 extern OPAMP_HandleTypeDef hopamp1, hopamp2, hopamp3;
 extern ADC_HandleTypeDef hadc1, hadc2, hadc3;
 extern COMP_HandleTypeDef hcomp1, hcomp2, hcomp4, hcomp7;
@@ -384,7 +385,47 @@ static uint16_t last_hall_angle;
 static float ticks_since_last_hall_change = 0;
 static float last_hall_period = 65536;
 static float one_on_last_hall_period = 1;
+float angular_velocity = 0;
+
 void hallAngleEstimator()
+{
+    //0. Check for hall sensor state errors
+    //1. calculate bulk angle
+    //2. add current velocity correction
+
+    current_hall_state = ((GPIOB->IDR >> 6) & 0x7);
+
+    if (current_hall_state != last_hall_state)
+    {
+        if (current_hall_state == 0)
+        {
+            MotorState = MOTOR_STATE_ERROR;
+        }
+        else if (current_hall_state == 7)
+        {
+            MotorState = MOTOR_STATE_ERROR;
+        }
+
+        // todo: I want this section to have a PLL like property, adding only a proportion of the error, not rigidly locking it.
+        foc_vars.HallAngle = foc_vars.hall_table[current_hall_state - 1][2];
+        if(angular_velocity > 0)
+        {
+            foc_vars.HallAngle = foc_vars.HallAngle - (foc_vars.hall_table[current_hall_state-1][3]>>1);
+        }
+        else
+        {
+            foc_vars.HallAngle = foc_vars.HallAngle + (foc_vars.hall_table[current_hall_state-1][3]>>1);
+        }
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        last_hall_state = current_hall_state;
+    }
+    /* Add velocity correction */
+    uint16_t angle_correction = foc_vars.hall_table[current_hall_state-1][3];
+    angle_correction *= angular_velocity * htim4.Instance->CNT;
+    foc_vars.HallAngle = foc_vars.HallAngle + angle_correction;
+}
+
+void hallAngleEstimator_old()
 {  // Implementation using the mid point of the hall sensor angles, which should be much more reliable to generate that the edges
 
     current_hall_state = ((GPIOB->IDR >> 6) & 0x7);

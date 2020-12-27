@@ -43,7 +43,8 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
 extern TIM_HandleTypeDef htim1;
-
+extern float angular_velocity;
+uint16_t previous_hall_angle;
 int IRQ_entry;
 int IRQ_exit;
 /* USER CODE END PV */
@@ -235,9 +236,30 @@ void TIM3_IRQHandler(void)
 void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
+  /* check which interrupt fired */
+  if((htim4.Instance->SR & TIM_SR_UIF))
+  {
+    /* this is overflow interrupt */
+    angular_velocity = 0;
+    htim4.Instance->SR &= ~TIM_SR_UIF;
+  }
+  if((htim4.Instance->SR & TIM_SR_CC1IF))
+  {
+    /* this is CCR event interrupt */
+    angular_velocity = 1/(float)htim4.Instance->CCR1;
+    uint16_t hall_state = ((GPIOB->IDR >> 6) & 0x7);
+    uint16_t hall_angle = foc_vars.hall_table[hall_state - 1][2];
+    if ((hall_angle - previous_hall_angle) > 32000U)
+      {
+          angular_velocity *= -1;
+      }
+    previous_hall_angle = hall_angle;
+    htim4.Instance->SR &= ~TIM_SR_CC1IF;
+  }
 
+  /* when you commit after code regen comment this out. */
   /* USER CODE END TIM4_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim4);
+  // HAL_TIM_IRQHandler(&htim4);
   /* USER CODE BEGIN TIM4_IRQn 1 */
 
   /* USER CODE END TIM4_IRQn 1 */
