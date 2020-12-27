@@ -161,7 +161,7 @@ void fastLoop()
             }
             if (MotorControlType == MOTOR_CONTROL_TYPE_FOC)
             {
-                HallAngleEstimator();
+                hallAngleEstimator();
                 // foc_vars.Idq_req[0] = 2;
                 // foc_vars.Idq_req[1] = 2;
                 MESCFOC();
@@ -251,7 +251,7 @@ void fastLoop()
             break;
 
         case MOTOR_STATE_ERROR:
-            GenerateBreak();  // Generate a break state (software disabling all PWM phases, hardware OVCP reserved for fatal situations
+            generateBreak();  // Generate a break state (software disabling all PWM phases, hardware OVCP reserved for fatal situations
                               // requiring reset)
                               // Now panic and freak out
             break;
@@ -281,7 +281,7 @@ void VICheck()
         errorCount++;
         if (errorCount >= MAX_ERROR_COUNT)
         {
-            GenerateBreak();
+            generateBreak();
             uint32_t adc1 = measurement_buffers.RawADC[0][0];
             uint32_t adc2 = measurement_buffers.RawADC[1][0];
             uint32_t adc3 = measurement_buffers.RawADC[2][0];
@@ -384,7 +384,7 @@ static uint16_t last_hall_angle;
 static float ticks_since_last_hall_change = 0;
 static float last_hall_period = 65536;
 static float one_on_last_hall_period = 1;
-void HallAngleEstimator()
+void hallAngleEstimator()
 {  // Implementation using the mid point of the hall sensor angles, which should be much more reliable to generate that the edges
 
     current_hall_state = ((GPIOB->IDR >> 6) & 0x7);
@@ -549,7 +549,7 @@ void writePWM()
 // single PWM period break in which the backEMF can be measured directly
 // This function needs implementing and testing before any high current or
 // voltage is applied, otherwise... DeadFETs
-void GenerateBreak()
+void generateBreak()
 {
     phU_Break();
     phV_Break();
@@ -755,7 +755,7 @@ void getHallTable()
     }
     if (pwm_count == 65535)
     {
-        GenerateBreak();  // Debugging
+        generateBreak();  // Debugging
         for (int i = 1; i < 7; i++)
         {
             hallangles[i][0] = hallangles[i][0] / hallangles[i][1];

@@ -33,7 +33,6 @@
 // fixme: I think this type of stuff is causing confusion later on especially in
 // the code that strives for maintainability. What does an alias give you?
 typedef uint16_t foc_angle_t;
-typedef int32_t foc_field_angle_t;
 typedef float current_amps_t;
 typedef float voltage_t;
 
@@ -42,39 +41,26 @@ typedef struct
 {
     int initing;  // Flag to say we are initialising
     uint16_t FOCError;
-    foc_angle_t ElecAngle;  // Current electrical angle
-    uint16_t Sector;        // Current electrical sector - 6 sectors, as a consequence of Hall and 3 phase sinwave numbered 0-5
+    foc_angle_t RotorAngle;  // Rotor angle, either fetched from hall sensors or from observer
+    foc_angle_t AngleStep;   // At startup, step angle is zero, zero speed. This is the angle by which the inverter increments
+                             // each PWM cycle under open loop
 
-    foc_angle_t AnglePerSector;  // 6 sectors per eRevolution ((USHRT_MAX + 1) /FOC_SECTORS_PER_REVOLUTION)
-
-    foc_angle_t RotorAngle;  // Rotor angle, either fetched from hall sensors as (sector*anglePerSector+tim3Count)/6 or from observer
-
-    foc_angle_t AngleStep;  // At startup, step angle is zero, zero speed. This is the angle by which the inverter increments
-                            // each PWM cycle under open loop
-
-    uint16_t PWM[FOC_CONV_CHANNELS];                   // 3 phase vector for the PWM generation, do math on these before writing them to
-                                                       // the timer registers
-    current_amps_t Iab[FOC_TRANSFORMED_CHANNELS + 1];  // Float vector containing the Clark transformed current in amps
-
-    current_amps_t Idq[FOC_TRANSFORMED_CHANNELS];  // Float vector containing the Park transformed current in amps
-
-    voltage_t Vbus;                        // Float vector containing the bus voltage in Volts
-    voltage_t Vswitch[FOC_CONV_CHANNELS];  // Float vector containing the switch node voltages (phase voltages)
-
-    foc_field_angle_t FieldAngle;  // Signed number containing the angle between the electrical field and rotor, implemented
-                                   // as rotorAngle-elecAngle
-    // foc_field_angle_t HallAngle;
-    foc_angle_t HallAngle;
+    foc_angle_t HallAngle;  // Angle generated in the hall sensor estimator
 
     float sincosangle[2];  // This variable carries the current sin and cosine of the angle being used for Park and Clark transforms, so
                            // they only need computing once per pwm cycle
+
+    float Iab[FOC_TRANSFORMED_CHANNELS + 1];  // Float vector containing the Clark transformed current in amps
+    float Idq[FOC_TRANSFORMED_CHANNELS];      // Float vector containing the Park transformed current in amps
+
     float Vdq[FOC_TRANSFORMED_CHANNELS];
     float Vab[FOC_TRANSFORMED_CHANNELS + 1];
     float inverterVoltage[FOC_TRANSFORMED_CHANNELS + 1];
     float smoothed_idq[2];
     float Idq_req[2];
 
-    uint16_t hall_table[6][4];
+    uint16_t hall_table[6][4];  // Lookup table, populated by the getHallTable() function and used in estimating the rotor position from
+                                // hall sensors in HallAngleEstimator()
 } MESCfoc_s;
 
 MESCfoc_s foc_vars;
@@ -119,7 +105,7 @@ void ADCConversion();  // Roll this into the V_I_Check? less branching, can
 // convert currents from uint_16 ADC readings into float A and uint_16 voltages
 // into float volts Since the observer needs the Clark transformed current, do
 // the Clark and Park transform now
-void HallAngleEstimator();  // Going to attempt to make a similar hall angle estimator that rolls the hall state into the main function,
+void hallAngleEstimator();  // Going to attempt to make a similar hall angle estimator that rolls the hall state into the main function,
                             // and calls a vector table to find the angle from hall offsets.
 
 void OLGenerateAngle();  // For open loop FOC startup, just use this to generate an angle and velocity ramp, then keep the phase currents at
@@ -136,7 +122,7 @@ void writePWM();  // Offset the PWM to voltage centred (0Vduty is 50% PWM) or
                   // SVPWM
                   // write CCR registers
 
-void GenerateBreak();  // Software break that does not stop the PWM timer but
+void generateBreak();  // Software break that does not stop the PWM timer but
                        // disables the outputs, sum of phU,V,W_Break();
 int isMotorRunning();  // return motor state if state is one of the running
                        // states, if it's an idle, error or break state, disable

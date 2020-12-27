@@ -25,9 +25,9 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "MESC_Comms.h"
-#include "MESCfoc.h"
-#include "MESCBLDC.h"
 #include <stdio.h>
+#include "MESCBLDC.h"
+#include "MESCfoc.h"
 
 extern char UART_rx_buffer[2];
 extern uint16_t ICVals[2];
@@ -36,19 +36,17 @@ extern UART_HandleTypeDef huart3;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim3;
 
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-//UART implementation
+// UART implementation
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     uint8_t message_buffer[20];
     uint8_t length;
 
-    __NOP();
     if (UART_rx_buffer[0] == 0x68)
     {  // h - Say hi
-        HAL_UART_Transmit_DMA(&huart3, (uint8_t*)"hi", 2);
+        HAL_UART_Transmit_DMA(&huart3, (uint8_t *)"hi", 2);
     }
     else if (UART_rx_buffer[0] == 0x71)
     {  // q - increase quadrature current
@@ -57,7 +55,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         {
             foc_vars.Idq_req[1] = 0;
         }
-        length = sprintf((char*) message_buffer, "Ir%.1f %.1f\r", foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
+        length = sprintf((char *)message_buffer, "Ir%.1f %.1f\r", foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
         HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
     }
     else if (UART_rx_buffer[0] == 0x61)
@@ -67,7 +65,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         {
             foc_vars.Idq_req[1] = 0;
         }
-        length = sprintf((char*)message_buffer, "Ir%.1f %.1f\r", foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
+        length = sprintf((char *)message_buffer, "Ir%.1f %.1f\r", foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
         HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
     }
     else if (UART_rx_buffer[0] == 0x64)
@@ -77,7 +75,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         {
             foc_vars.Idq_req[0] = 0;
         }
-        length = sprintf((char*)message_buffer, "Ir%.1f %.1f\r", foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
+        length = sprintf((char *)message_buffer, "Ir%.1f %.1f\r", foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
         HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
     }
     else if (UART_rx_buffer[0] == 0x63)
@@ -87,7 +85,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         {
             foc_vars.Idq_req[0] = 0;
         }
-        length = sprintf((char*)message_buffer, "Ir%.1f %.1f\r", foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
+        length = sprintf((char *)message_buffer, "Ir%.1f %.1f\r", foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
         HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
     }
     else if (UART_rx_buffer[0] == 0x72)
@@ -99,19 +97,19 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
     else if (UART_rx_buffer[0] == 0x76)
     {  // v - Get the bus voltage
-        length = sprintf((char*)message_buffer, "Vbus%.2f\r", measurement_buffers.ConvertedADC[0][1]);
+        length = sprintf((char *)message_buffer, "Vbus%.2f\r", measurement_buffers.ConvertedADC[0][1]);
         HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
     }
     else
     {
         HAL_UART_Transmit_DMA(&huart3, "Unrecognised!", 13);
     }
-//Restart the UART interrupt, otherwise you're not getting the next byte!
+    // Restart the UART interrupt, otherwise you're not getting the next byte!
     HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-//RCPWM implementation
+// RCPWM implementation
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
@@ -139,7 +137,6 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
             if ((ICVals[1] > 1400) && (1600 > ICVals[1]))
             {
                 ICVals[1] = 1500;
-
             }
             // Set the current setpoint here
             if (1)
@@ -150,7 +147,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
                     foc_vars.Idq_req[0] = 0;
                     foc_vars.Idq_req[1] = ((float)ICVals[1] - 1600) / 5.0;
                 }
-                // Crude hack, which gets current scaled to +/-40A
+                // Crude hack, which gets current scaled to +/-80A
                 // based on 1000-2000us PWM in
                 else if (ICVals[1] < 1400)
                 {
@@ -162,10 +159,10 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
                 // based on 1000-2000us PWM in
                 else
                 {
-                	static float currentset=4;
+                    static float currentset = 4;
                     BLDCVars.ReqCurrent = 0;
                     foc_vars.Idq_req[0] = 0;
-                    foc_vars.Idq_req[1] =currentset;
+                    foc_vars.Idq_req[1] = currentset;
                 }
             }
 
