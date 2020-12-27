@@ -177,6 +177,8 @@ int main(void)
 
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);
+    //Here we can auto set the prescaler to get the us input regardless of the main clock
+        __HAL_TIM_SET_PRESCALER(&htim3, (HAL_RCC_GetHCLKFreq()/1000000-1));
     // Place to mess about with PWM in
 
     MESCInit();
