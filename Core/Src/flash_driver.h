@@ -8,6 +8,8 @@
 #ifndef SRC_FLASH_DRIVER_H_
 #define SRC_FLASH_DRIVER_H_
 
+#include "stdint.h"
+
 /**
  * Write data into flash.
  * Note: this process will take considerable amount of time during which processor will be unresponsive. Ensure that nothing critical is

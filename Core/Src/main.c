@@ -20,6 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "flash_wrapper.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -174,6 +175,11 @@ int main(void)
     MX_NVIC_Init();
     /* USER CODE BEGIN 2 */
 
+    /* check if flash is empty and read data. */
+    if (!isEmpty())
+    {
+        readData();
+    }
     // ToDo Around here, we want to populate the Halltable, Lphase, Rphase with values from flash,
     //  foc_vars.hall_table
     //  motor.Lphase
