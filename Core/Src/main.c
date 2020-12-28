@@ -88,8 +88,8 @@ uint32_t ICVals[2] = {0, 0};
 // int initing = 1;
 char UART_buffer[12];
 char UART_rx_buffer[2];
-
 char USBRxBuffer[12];
+extern uint8_t b_write_flash;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -184,11 +184,6 @@ int main(void)
     {
         readData();
     }
-    // fixme: debug
-    else
-    {
-        writeData();
-    }
     // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
 
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
@@ -218,6 +213,19 @@ int main(void)
     {
         // HAL_Delay(100);
         HAL_Delay(1000);
+        /* flash management
+         * 1. Ensure power to motor is off.
+         * 2. Write data to flash.
+         * 3. Restore motor power.
+         */
+        if (b_write_flash)
+        {
+            __HAL_TIM_MOE_DISABLE(&htim1);
+            writeData();
+            __HAL_TIM_MOE_ENABLE(&htim1);
+            b_write_flash = 0;
+        }
+
         // sprintf(UART_buffer, "helloWorld/r");  //        HAL_UART_Transmit(&huart3, (uint8_t *)"HelloWorld\r", 12, 10);
         // HAL_UART_Transmit_DMA(&huart3, UART_buffer, 10);
     }

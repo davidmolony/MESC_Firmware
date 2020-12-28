@@ -44,6 +44,7 @@ float sqrt3_2 = 1.22474;
 float sqrt2 = 1.41421;
 float sqrt1_2 = 0.707107;
 int adc_conv_end;
+uint8_t b_write_flash = 0;
 
 void MESCInit()
 {
@@ -858,6 +859,7 @@ void getHallTable()
             foc_vars.hall_table[i][2] = hallangles[i + 1][0];
             foc_vars.hall_table[i][3] = hallangles[i + 1][1];
         }
+        b_write_flash = 1;
         MotorState = MOTOR_STATE_HALL_RUN;
         foc_vars.Idq_req[0] = 0;
         foc_vars.Idq_req[1] = 0;

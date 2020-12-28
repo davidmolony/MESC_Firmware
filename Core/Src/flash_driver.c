@@ -16,7 +16,7 @@ uint32_t writeFlash(uint32_t const *const p_data, uint32_t const count)
 {
     uint32_t number_written = 0;
     uint32_t const *p_data_runner = p_data;
-    HAL_FLASH_Unlock();
+    HAL_FLASH_Unlock();  // fixme: check unlocking is successful before proceeding.
     /* if intended destination is not empty... */
     if (*p_flash != EMPTY_SLOT)
     {
