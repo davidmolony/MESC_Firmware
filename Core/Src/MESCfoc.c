@@ -387,12 +387,12 @@ static float last_hall_period = 65536;
 static float one_on_last_hall_period = 1;
 float angular_velocity = 0;
 
-void hallAngleEstimator()
+void hallAngleEstimator_new()
 {
-    //0. Check for hall sensor state errors
-    //1. calculate bulk angle
-    //2. add current velocity correction
-
+    // 0. Check for hall sensor state errors
+    // 1. calculate bulk angle
+    // 2. add current velocity correction
+    static uint16_t base_angle = 0;
     current_hall_state = ((GPIOB->IDR >> 6) & 0x7);
 
     if (current_hall_state != last_hall_state)
@@ -408,24 +408,24 @@ void hallAngleEstimator()
 
         // todo: I want this section to have a PLL like property, adding only a proportion of the error, not rigidly locking it.
         foc_vars.HallAngle = foc_vars.hall_table[current_hall_state - 1][2];
-        if(angular_velocity > 0)
+        if (angular_velocity > 0)
         {
-            foc_vars.HallAngle = foc_vars.HallAngle - (foc_vars.hall_table[current_hall_state-1][3]>>1);
+            base_angle = foc_vars.HallAngle - (foc_vars.hall_table[current_hall_state - 1][3] >> 1);
         }
         else
         {
-            foc_vars.HallAngle = foc_vars.HallAngle + (foc_vars.hall_table[current_hall_state-1][3]>>1);
+            base_angle = foc_vars.HallAngle + (foc_vars.hall_table[current_hall_state - 1][3] >> 1);
         }
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         last_hall_state = current_hall_state;
     }
     /* Add velocity correction */
-    uint16_t angle_correction = foc_vars.hall_table[current_hall_state-1][3];
+    uint16_t angle_correction = foc_vars.hall_table[last_hall_state - 1][3];
     angle_correction *= angular_velocity * htim4.Instance->CNT;
-    foc_vars.HallAngle = foc_vars.HallAngle + angle_correction;
+    foc_vars.HallAngle = base_angle + angular_velocity * htim4.Instance->CNT;  // angle_correction;
 }
-
-void hallAngleEstimator_old()
+static int hall_error = 0;
+void hallAngleEstimator()
 {  // Implementation using the mid point of the hall sensor angles, which should be much more reliable to generate that the edges
 
     current_hall_state = ((GPIOB->IDR >> 6) & 0x7);
@@ -443,38 +443,59 @@ void hallAngleEstimator_old()
         //////////Implement the Hall table here, but the vector can be dynamically created/filled by another function/////////////
         current_hall_angle = foc_vars.hall_table[current_hall_state - 1][2];
 
+        // Calculate Hall error
+        hall_error = foc_vars.HallAngle - current_hall_angle;
+
         // Todo I want this section to have a PLL like property, adding only a proportion of the error, not rigidly locking it.
-        foc_vars.HallAngle = foc_vars.hall_table[current_hall_state - 1][2];
+        // foc_vars.HallAngle = foc_vars.hall_table[current_hall_state - 1][2];
         uint16_t a;
         if ((a = current_hall_angle - last_hall_angle) < 32000)
         {
+            hall_error = hall_error + 5460;
             dir = 1.0f;
-            foc_vars.HallAngle = foc_vars.HallAngle - 5460;
+            // foc_vars.HallAngle = foc_vars.HallAngle - 5460;
         }
         else
         {
+            hall_error = hall_error - 5460;
             dir = -1.0f;
-            foc_vars.HallAngle = foc_vars.HallAngle + 5460;
+            // foc_vars.HallAngle = foc_vars.HallAngle + 5460;
         }
+        if (hall_error > 32000)
+        {
+            hall_error = hall_error - 65536;
+        }
+        if (hall_error < -32000)
+        {
+            hall_error = hall_error + 65536;
+        }
+
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         last_hall_state = current_hall_state;
         last_hall_angle = current_hall_angle;
-        last_hall_period = (9 * last_hall_period + ticks_since_last_hall_change) * 0.1;
-        one_on_last_hall_period = 1 / ticks_since_last_hall_change;
+        last_hall_period = (4 * last_hall_period + ticks_since_last_hall_change) * 0.2;
+        one_on_last_hall_period = 1 / last_hall_period;  // / ticks_since_last_hall_change;
         ticks_since_last_hall_change = 0;
     }
 
     ticks_since_last_hall_change = ticks_since_last_hall_change + 1;
-    if (ticks_since_last_hall_change <= last_hall_period)
+    if (ticks_since_last_hall_change <= 1.2 * last_hall_period)
     {
         if (dir > 0)
-        {
-            foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(one_on_last_hall_period * 10922);
+        {  // Apply a gain to the error as well as the feed forward from the last hall period. Gain between 0.05 and 1.8 seems stable, but
+           // 0.05 slow to respond to changing speeds, and approaching 2 it is clear that the overshoot on the error correction is about be
+           // unstable... NOISE A gain of ~0.2 seems to be a good compromise for dealing with poorly placed hall sensors while retaining
+           // strong phase locking.
+            foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(one_on_last_hall_period * (10922 - 0.2 * hall_error));
         }
         else if (dir < 0)
         {
-            foc_vars.HallAngle = foc_vars.HallAngle - (uint16_t)(one_on_last_hall_period * 10922);
+            foc_vars.HallAngle = foc_vars.HallAngle - (uint16_t)(one_on_last_hall_period * (10922 + 0.2 * hall_error));
         }
+    }
+    if (ticks_since_last_hall_change > 250)
+    {
+        foc_vars.HallAngle = current_hall_angle;
     }
     //        (uint16_t)((16383 * ((uint32_t)foc_vars.HallAngle) + (uint32_t)temp_current_hall_angle) >> 14) +
     //        (uint16_t)(one_on_last_hall_period * 10922);
@@ -753,7 +774,7 @@ void getHallTable()
     static int lasthallstate;
     static int offset = 1000;
     static uint16_t pwm_count = 0;
-    static int anglestep = 5;  // This defines how fast the motor spins
+    static int anglestep = 1;  // This defines how fast the motor spins
     static uint32_t hallangles[7][2];
     static int rollover;
 
@@ -770,29 +791,59 @@ void getHallTable()
         foc_vars.Idq_req[0] = 10;
         foc_vars.Idq_req[1] = 0;
 
-        foc_vars.HallAngle = 0;
+        foc_vars.HallAngle = 32768;
         a = a - 1;
     }
     else
     {
-        if (foc_vars.HallAngle < (anglestep))
+        static int dir = 1;
+        if (pwm_count < 65534)
         {
-            rollover = hallstate;
-        }
-        if ((foc_vars.HallAngle < (30000)) && (foc_vars.HallAngle > (30000 - anglestep)))
-        {
-            rollover = 0;
-        }
-        lasthallstate = hallstate;
-        if (rollover == hallstate)
-        {
-            hallangles[hallstate][0] = hallangles[hallstate][0] + (uint32_t)65535;  // Accumulate the angles through the sweep
-        }
+            if (foc_vars.HallAngle < (anglestep))
+            {
+                rollover = hallstate;
+            }
+            if ((foc_vars.HallAngle < (30000)) && (foc_vars.HallAngle > (30000 - anglestep)))
+            {
+                rollover = 0;
+            }
+            lasthallstate = hallstate;
+            if (rollover == hallstate)
+            {
+                hallangles[hallstate][0] = hallangles[hallstate][0] + (uint32_t)65535;  // Accumulate the angles through the sweep
+            }
 
-        foc_vars.HallAngle = foc_vars.HallAngle + anglestep;                       // Increment the angle
-        hallangles[hallstate][0] = hallangles[hallstate][0] + foc_vars.HallAngle;  // Accumulate the angles through the sweep
-        hallangles[hallstate][1]++;  // Accumulate the number of PWM pulses for this hall state
-        pwm_count = pwm_count + 1;
+            foc_vars.HallAngle = foc_vars.HallAngle + anglestep;                       // Increment the angle
+            hallangles[hallstate][0] = hallangles[hallstate][0] + foc_vars.HallAngle;  // Accumulate the angles through the sweep
+            hallangles[hallstate][1]++;  // Accumulate the number of PWM pulses for this hall state
+            pwm_count = pwm_count + 1;
+        }
+        else if (pwm_count < 65535)
+        {
+            if (dir == 1)
+            {
+                dir = 0;
+                rollover = 0;
+            }
+            if ((foc_vars.HallAngle < (12000)) && (hallstate != last_hall_state))
+            {
+                rollover = hallstate;
+            }
+            if ((foc_vars.HallAngle < (65535)) && (foc_vars.HallAngle > (65535 - anglestep)))
+            {
+                rollover = 0;
+            }
+            lasthallstate = hallstate;
+            if (rollover == hallstate)
+            {
+                hallangles[hallstate][0] = hallangles[hallstate][0] + (uint32_t)65535;  // Accumulate the angles through the sweep
+            }
+
+            foc_vars.HallAngle = foc_vars.HallAngle - anglestep;                       // Increment the angle
+            hallangles[hallstate][0] = hallangles[hallstate][0] + foc_vars.HallAngle;  // Accumulate the angles through the sweep
+            hallangles[hallstate][1]++;  // Accumulate the number of PWM pulses for this hall state
+            pwm_count = pwm_count + 1;
+        }
     }
     if (pwm_count == 65535)
     {

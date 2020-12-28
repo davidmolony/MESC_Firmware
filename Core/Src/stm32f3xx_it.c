@@ -237,12 +237,6 @@ void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
   /* check which interrupt fired */
-  if((htim4.Instance->SR & TIM_SR_UIF))
-  {
-    /* this is overflow interrupt */
-    angular_velocity = 0;
-    htim4.Instance->SR &= ~TIM_SR_UIF;
-  }
   if((htim4.Instance->SR & TIM_SR_CC1IF))
   {
     /* this is CCR event interrupt */
@@ -255,6 +249,14 @@ void TIM4_IRQHandler(void)
       }
     previous_hall_angle = hall_angle;
     htim4.Instance->SR &= ~TIM_SR_CC1IF;
+	return;
+  }
+
+  if((htim4.Instance->SR & TIM_SR_UIF))
+  {
+    /* this is overflow interrupt */
+    angular_velocity *= 0.5; //fixme: see if this works.
+    htim4.Instance->SR &= ~TIM_SR_UIF;
   }
 
   /* when you commit after code regen comment this out. */
