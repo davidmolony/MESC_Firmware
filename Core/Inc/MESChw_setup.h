@@ -64,14 +64,13 @@ typedef struct
 {
     hardware_vars_t Rphase;  // unsigned int containing phase resistance in mOhms,
                              // populated by DETECTING if not already known;
+    hardware_vars_t Lphase;  // unsigned int containing phase inductance in uH,
+                             // range from very very low inductance high kV strong
+                             // magnet BLDC motors to low kV weak magnet ones;
     uint8_t uncertainty;     // uncertainty should start at 255 an as the measure
                              // resistance is called each PWM cycle, be deprecated
                              // by accumulating the measurements until it reaches
                              // 0, at which point the resistance is accepted
-    hardware_vars_t Lphase;  // unsigned int containing phase inductance in uH,
-                             // range from very very low inductance high kV strong
-                             // magnet BLDC motors to low kV weak magnet ones;
-
 } motor_s;
 
 motor_s motor;
