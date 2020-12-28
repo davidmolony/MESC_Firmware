@@ -37,9 +37,10 @@ _Min_Stack_Size = 0x400 ;	/* required amount of stack */
 /* Memories definition */
 MEMORY
 {
-  CCMRAM    (xrw)    : ORIGIN = 0x10000000,   LENGTH = 8K
-  RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 32K
-  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 128K
+  CCMRAM   (xrw)    : ORIGIN = 0x10000000,   LENGTH = 8K
+  RAM      (xrw)    : ORIGIN = 0x20000000,   LENGTH = 32K
+  FLASH    (rx)     : ORIGIN = 0x08000000,   LENGTH = 126K
+  NVM      (rw)	    : ORIGIN = 0x0801F800 ,	 LENGTH = 2K
 }
 
 /* Sections */
@@ -137,6 +138,12 @@ SECTIONS
     _edata = .;        /* define a global symbol at data end */
     
   } >RAM AT> FLASH
+
+  /* Motor initialisation storage area. */
+  .nvm_data :
+  {
+    *(.NVM);
+  } >NVM
 
   /* Uninitialized data section into "RAM" Ram type memory */
   . = ALIGN(4);
