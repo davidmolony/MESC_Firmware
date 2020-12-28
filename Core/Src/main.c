@@ -1,21 +1,21 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+ * All rights reserved.</center></h2>
+ *
+ * This software component is licensed by ST under BSD 3-Clause license,
+ * the "License"; You may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at:
+ *                        opensource.org/licenses/BSD-3-Clause
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -24,7 +24,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+//#include "usbd_cdc_if.c"
+//#include "usbd_cdc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,7 +68,6 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart3;
-DMA_HandleTypeDef hdma_usart3_rx;
 DMA_HandleTypeDef hdma_usart3_tx;
 
 /* Definitions for defaultTask */
@@ -99,14 +99,12 @@ const osThreadAttr_t BatCheckTask_attributes = {
   .stack_size = 128 * 4
 };
 /* USER CODE BEGIN PV */
-uint16_t a=0;
-float adcBuff1[3]={0,0,0};
-uint32_t adcBuff2[3]={0,0,0};
-uint32_t adcBuff3[3]={0,0,0};
-uint32_t ICVals[2] = {0,0};
-uint32_t RegBuff=0;
-uint32_t quickHall=0;
-int initing=1;
+uint32_t ICVals[2] = {0, 0};
+// int initing = 1;
+char UART_buffer[12];
+char UART_rx_buffer[2];
+
+char USBRxBuffer[12];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -133,70 +131,13 @@ void SlowLoopEntry(void *argument);
 void ComsTaskEntry(void *argument);
 void BatCheck(void *argument);
 
+static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
-
+//
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim){
-	if(htim->Channel==HAL_TIM_ACTIVE_CHANNEL_1){
-		ICVals[0]=HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_1);
-
-		// Target is 20000 guard is +-10000
-		if ((ICVals[0] < 10000) || (30000 < ICVals[0]))
-		{
-			a = 0;
-			BLDCVars.ReqCurrent=0;
-		}
-
-		else
-				if(ICVals[0]!=0){
-					BLDCState=BLDC_FORWARDS;
-					ICVals[1]=HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_2);
-					if (ICVals[1] > 2000) ICVals[1] = 2000;
-					if (ICVals[1] < 1000) ICVals[1] = 1000;
-
-					// Mid-point is 1500 guard is +-100
-					if ((ICVals[1] > 1400) && (1600 > ICVals[1]))
-					{
-						ICVals[1] = 1500;
-					}
-//Set the current setpoint here
-					if(1){//Current control, ToDo convert to Enum
-						if(ICVals[1]>1600) BLDCVars.ReqCurrent=((float)ICVals[1]-1600)/5.0; //Crude hack, which gets current scaled to +/-80A based on 1000-2000us PWM in
-						else if(ICVals[1]<1400) BLDCVars.ReqCurrent=((float)ICVals[1]-1400)/5.0; //Crude hack, which gets current scaled to +/-80A based on 1000-2000us PWM in
-						else BLDCVars.ReqCurrent=0;
-					}
-
-					if(0){//Duty cycle control, ToDo convert to Enum
-						if(a<10){
-							BLDCVars.BLDCduty=0;
-						}
-						if(a>9){
-							BLDCVars.BLDCduty=10*(a-9);
-						}
-					}
-
-				}
-
-		/////////////////////////////////
-/*		if(ICVals[0]!=0){
-			ICVals[1]=HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_2);
-			if(ICVals[1]>1500){
-				BLDCState=BLDC_FORWARDS;
-				a=100*(ICVals[1]-1500)/1500;
-			}
-			else if(ICVals[1]<1500){
-				BLDCState=BLDC_FORWARDS;
-				a=100*(1500-ICVals[1])/1500;
-			}
-		}*/
-
-	}
-}
-
 
 /* USER CODE END 0 */
 
@@ -244,107 +185,60 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_USART3_UART_Init();
+
+  /* Initialize interrupts */
+  MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
-  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);
-  //Place to mess about with PWM in
 
+    HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
+    HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);
+    // Here we can auto set the prescaler to get the us input regardless of the main clock
+    __HAL_TIM_SET_PRESCALER(&htim3, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
+    // Place to mess about with PWM in
 
-  HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-  HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
-  HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
-  HAL_Delay(3000);
-quickHall=(GPIOB->IDR>>6)&0x7;
+    MESCInit();
+    MotorState = MOTOR_STATE_MEASURING;
+    // MotorState = MOTOR_STATE_HALL_RUN;
+    MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
-  /* Trying to fix this pernicious Opamp offset, implementing the calibration routine apparently only works if the opamp is not in PGA mode.
-   * Sadly, it makes no damned difference, leaving this code here since it possibly should be included regardless.
-  hopamp1.Init.Mode = OPAMP_STANDALONE_MODE ;
-  HAL_OPAMP_Init(&hopamp1);
-  HAL_OPAMP_SelfCalibrate(&hopamp1);
-  HAL_Delay(50);
-  hopamp1.Init.Mode = OPAMP_PGA_MODE;
-  HAL_OPAMP_Init(&hopamp1);
-*/
+    // BLDCVars.BLDCduty = 70;
+    HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
+    HAL_UART_Transmit_DMA(&huart3, "startup!!\r", 10);
 
+    // Add a little area in which I can mess about without the RTOS
 
+    HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_1);
+    HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_2);
+    HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_3);
+    __HAL_TIM_SET_PRESCALER(&htim4, 71);
+    __HAL_TIM_ENABLE_IT(&htim4, (TIM_IT_CC1 | TIM_IT_UPDATE));
 
-  HAL_Delay(50);
-HAL_OPAMP_Start(&hopamp1);
-HAL_OPAMP_Start(&hopamp2);
-HAL_OPAMP_Start(&hopamp3);
-
-
-motor_init();
-hw_init();
-motor.Rphase=0.1;
-BLDCInit();
-measurement_buffers.ADCOffset[0]=1900;
-measurement_buffers.ADCOffset[1]=1900;
-measurement_buffers.ADCOffset[2]=1900;
-
-
-
-
-
-HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
-__HAL_TIM_SET_COUNTER(&htim1,10);
-
-HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
-__HAL_TIM_SET_COUNTER(&htim1,10);
-
-HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-__HAL_TIM_SET_COUNTER(&htim1,10);
-/*
-HAL_COMP_Start(&hcomp1);
-HAL_COMP_Start(&hcomp2);
-HAL_COMP_Start(&hcomp4);
-HAL_COMP_Start(&hcomp7);*/
-__HAL_TIM_SET_COUNTER(&htim1,10);
-HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&measurement_buffers.RawADC[0][0], 3);
-__HAL_TIM_SET_COUNTER(&htim1,10);
-
-HAL_ADC_Start_DMA(&hadc2, (uint32_t*)&measurement_buffers.RawADC[1][0], 3);
-__HAL_TIM_SET_COUNTER(&htim1,10);
-
-HAL_ADC_Start_DMA(&hadc3, (uint32_t*)&measurement_buffers.RawADC[2][0], 1);
-//Here we can init the measurement buffer offsets; ADC and timer and interrupts are running...
-HAL_Delay(100);
-initing=0;
-
-__HAL_TIM_MOE_ENABLE(&htim1); // initialising the comparators triggers the break state
-
-BLDCVars.BLDCduty=70;
-
-
-
-	//Add a little area in which I can mess about without the RTOS
-while(1){
-	HAL_Delay(100);
-	// explicit typecasting to stop warning generation due to direct string argument.
-	HAL_UART_Transmit(&huart3, (uint8_t *)"HelloWorld\r", 12, 10);
-}
+    while (1)
+    {
+        // HAL_Delay(100);
+        HAL_Delay(1000);
+        // sprintf(UART_buffer, "helloWorld/r");  //        HAL_UART_Transmit(&huart3, (uint8_t *)"HelloWorld\r", 12, 10);
+        // HAL_UART_Transmit_DMA(&huart3, UART_buffer, 10);
+    }
   /* USER CODE END 2 */
 
   /* Init scheduler */
   osKernelInitialize();
 
   /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
+    /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
+    /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
+    /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+    /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -361,7 +255,7 @@ while(1){
   BatCheckTaskHandle = osThreadNew(BatCheck, NULL, &BatCheckTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+    /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
@@ -370,12 +264,12 @@ while(1){
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+    while (1)
+    {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+    }
   /* USER CODE END 3 */
 }
 
@@ -433,6 +327,17 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief NVIC Configuration.
+  * @retval None
+  */
+static void MX_NVIC_Init(void)
+{
+  /* DMA1_Channel2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+}
+
+/**
   * @brief ADC1 Initialization Function
   * @param None
   * @retval None
@@ -464,7 +369,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 3;
   hadc1.Init.DMAContinuousRequests = ENABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
@@ -781,7 +686,7 @@ static void MX_COMP7_Init(void)
 
   /* USER CODE END COMP7_Init 1 */
   hcomp7.Instance = COMP7;
-  hcomp7.Init.InvertingInput = COMP_INVERTINGINPUT_3_4VREFINT;
+  hcomp7.Init.InvertingInput = COMP_INVERTINGINPUT_VREFINT;
   hcomp7.Init.NonInvertingInput = COMP_NONINVERTINGINPUT_IO1;
   hcomp7.Init.Output = COMP_OUTPUT_TIM1BKIN2;
   hcomp7.Init.OutputPol = COMP_OUTPUTPOL_NONINVERTED;
@@ -1139,7 +1044,7 @@ static void MX_TIM4_Init(void)
   {
     Error_Handler();
   }
-  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_BOTHEDGE;
   sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
   sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
   sConfigIC.ICFilter = 0;
@@ -1181,7 +1086,7 @@ static void MX_USART3_UART_Init(void)
 
   /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 115200;
+  huart3.Init.BaudRate = 9600;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;
@@ -1210,29 +1115,6 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA1_CLK_ENABLE();
   __HAL_RCC_DMA2_CLK_ENABLE();
 
-  /* DMA interrupt init */
-  /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-  /* DMA1_Channel2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
-  /* DMA1_Channel3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
-  /* DMA1_Channel6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
-  /* DMA1_Channel7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
-  /* DMA2_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Channel1_IRQn);
-  /* DMA2_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel5_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Channel5_IRQn);
-
 }
 
 /**
@@ -1251,82 +1133,99 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_ADC_ConvcpltCallback(ADC_HandleTypeDef* hadc){
-
-}
+void HAL_ADC_ConvcpltCallback(ADC_HandleTypeDef *hadc) {}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used 
-  * @retval None
-  */
+ * @brief  Function implementing the defaultTask thread.
+ * @param  argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+    ////////////Re-enumerate the USB, otherwise it doesn't f*&%$"g work.
+    ////////////If the re-enumeration happens after the MX_USB_INIT, it also won't work, manually paste it down here and remove...
+    if (0)
+    {  // Remove USB, it bricks things. Can be made to work IF it is connected AND the stars are aligned.
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);
+        GPIOA->MODER |= GPIO_MODER_MODER12_0;
+        HAL_Delay(1000);
+        GPIOA->MODER &= ~GPIO_MODER_MODER12_0;
+        MX_USB_DEVICE_Init();
+    }
+    /* Infinite loop */
+    for (;;)
+    {
+        // CDC_Transmit_FS("Hello World", 11);
+
+        osDelay(100);
+    }
   /* USER CODE END 5 */
 }
 
 /* USER CODE BEGIN Header_SlowLoopEntry */
 /**
-* @brief Function implementing the SlowLoopTask thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the SlowLoopTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_SlowLoopEntry */
 void SlowLoopEntry(void *argument)
 {
   /* USER CODE BEGIN SlowLoopEntry */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+    /* Infinite loop */
+    for (;;)
+    {
+        osDelay(100);
+    }
   /* USER CODE END SlowLoopEntry */
 }
 
 /* USER CODE BEGIN Header_ComsTaskEntry */
 /**
-* @brief Function implementing the ComsTask thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the ComsTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_ComsTaskEntry */
 void ComsTaskEntry(void *argument)
 {
   /* USER CODE BEGIN ComsTaskEntry */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+    /* Infinite loop */
+    for (;;)
+    {
+        osDelay(100);
+    }
   /* USER CODE END ComsTaskEntry */
 }
 
 /* USER CODE BEGIN Header_BatCheck */
 /**
-* @brief Function implementing the BatCheckTask thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the BatCheckTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_BatCheck */
 void BatCheck(void *argument)
 {
   /* USER CODE BEGIN BatCheck */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+    /* Infinite loop */
+    for (;;)
+    {
+        osDelay(100);
+        if (measurement_buffers.ConvertedADC[0][1] < 20)
+        {
+            htim1.Instance->BDTR &= ~(TIM_BDTR_MOE);
+            __NOP();
+        }
+        static uint16_t VbatThread = 0;
+        VbatThread++;
+    }
   /* USER CODE END BatCheck */
 }
 
@@ -1358,7 +1257,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
+    /* User can add his own implementation to report the HAL error return state
+     */
 
   /* USER CODE END Error_Handler_Debug */
 }
@@ -1374,8 +1274,9 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+    /* User can add his own implementation to report the file name and line
+       number, tex: printf("Wrong parameters value: file %s on line %d\r\n",
+       file, line) */
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
