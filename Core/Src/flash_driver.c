@@ -8,8 +8,6 @@
 #include "flash_driver.h"
 #include "stm32f3xx_hal.h"
 
-#define EMPTY_SLOT 0xFFFFFFFF
-
 uint32_t *const p_flash = (uint32_t *)(0x0801F800);
 
 uint32_t writeFlash(uint32_t const *const p_data, uint32_t const count)
@@ -63,4 +61,9 @@ uint32_t readFlash(uint32_t *const p_data, uint32_t const count)
         }
     }
     return (number_read);
+}
+
+uint32_t *const getFlashAddress()
+{
+    return (p_flash);
 }

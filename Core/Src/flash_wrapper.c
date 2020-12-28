@@ -26,7 +26,11 @@ uint32_t data_array[STORAGE_SIZE];
 uint32_t isEmpty()
 {
     uint32_t storage_slots = 0;
-
+    uint32_t *p_flash_runner = getFlashAddress();
+    while (*p_flash_runner++ != EMPTY_SLOT)
+    {
+        storage_slots++;
+    }
     return (storage_slots);
 }
 

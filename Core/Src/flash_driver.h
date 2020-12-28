@@ -10,6 +10,8 @@
 
 #include "stdint.h"
 
+#define EMPTY_SLOT 0xFFFFFFFF
+
 /**
  * Write data into flash.
  * Note: this process will take considerable amount of time during which processor will be unresponsive. Ensure that nothing critical is
@@ -27,5 +29,11 @@ uint32_t writeFlash(uint32_t const *const data, uint32_t const count);
  * @return Number of non-empty elements read. If zero, then flash is empty.
  */
 uint32_t readFlash(uint32_t *const data, uint32_t const count);
+
+/**
+ * Get memory address for flash storage
+ * @return Constant pointer to start of flash storage.
+ */
+uint32_t *const getFlashAddress();
 
 #endif /* SRC_FLASH_DRIVER_H_ */
