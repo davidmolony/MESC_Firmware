@@ -175,19 +175,16 @@ int main(void)
     MX_NVIC_Init();
     /* USER CODE BEGIN 2 */
 
-    /* check if flash is empty and read data. */
-    if (getSize() != 0)
+    /* check if flash is empty and read data.
+     * This will populate the Halltable, Lphase, Rphase with values from flash.
+     * foc_vars.hall_table
+     * motor.Lphase
+     * motor.Rphase */
+    if (getStatus() == VALID)
     {
         readData();
     }
-    else
-    {
-        writeData();
-    }
-    // ToDo Around here, we want to populate the Halltable, Lphase, Rphase with values from flash,
-    //  foc_vars.hall_table
-    //  motor.Lphase
-    //  motor.Rphase
+    // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
 
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);

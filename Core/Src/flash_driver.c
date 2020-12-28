@@ -10,6 +10,8 @@
 
 uint32_t *const p_flash = (uint32_t *)(0x0801F800);
 
+static uint32_t eraseFlash();
+
 uint32_t writeFlash(uint32_t const *const p_data, uint32_t const count)
 {
     uint32_t number_written = 0;
@@ -19,12 +21,7 @@ uint32_t writeFlash(uint32_t const *const p_data, uint32_t const count)
     if (*p_flash != EMPTY_SLOT)
     {
         /* ...erase entire page before proceeding. */
-        FLASH_EraseInitTypeDef page_erase;
-        page_erase.TypeErase = FLASH_TYPEERASE_PAGES;
-        page_erase.PageAddress = (uint32_t)p_flash;
-        page_erase.NbPages = 1;
-        uint32_t result = 0;
-        HAL_FLASHEx_Erase(&page_erase, &result);
+        uint32_t result = eraseFlash();
         if (result != EMPTY_SLOT)
         {
             return (number_written);
@@ -61,6 +58,23 @@ uint32_t readFlash(uint32_t *const p_data, uint32_t const count)
         }
     }
     return (number_read);
+}
+
+/**
+ * Erase single page of data.
+ * @return Erase status. 0xFFFFFFFF means successful erase.
+ * Note: this is not a public funcion. It must be used inside this code only as it assumes flash is unlocked and it does not lock it after
+ * erase. Dangerous if misused.
+ */
+static uint32_t eraseFlash()
+{
+    FLASH_EraseInitTypeDef page_erase;
+    page_erase.TypeErase = FLASH_TYPEERASE_PAGES;
+    page_erase.PageAddress = (uint32_t)p_flash;
+    page_erase.NbPages = 1;
+    uint32_t result = 0;
+    HAL_FLASHEx_Erase(&page_erase, &result);
+    return (result);
 }
 
 uint32_t *const getFlashAddress()

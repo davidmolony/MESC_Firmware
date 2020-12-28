@@ -11,17 +11,29 @@
 #include "MESCfoc.h"
 #include "MESChw_setup.h"
 
-// extern MESCfoc_s foc_vars;
-// extern motor_s motor;
-
 /* actual data to write
- * foc_vars.hall_table[6][4]
- * motor.Lphase
- * motor.Rphase
+ * foc_vars.hall_table[6][4] - 24 values
+ * motor.Lphase - 1 value
+ * motor.Rphase - 1 value
  */
 
 #define STORAGE_SIZE 26
 uint32_t data_array[STORAGE_SIZE];
+
+flash_status_t getStatus()
+{
+    switch (getSize())
+    {
+        case 0:
+            return (EMPTY);
+            break;
+        case STORAGE_SIZE:
+            return (VALID);
+            break;
+        default:
+            return (UNKNOWN);
+    }
+}
 
 uint32_t getSize()
 {
@@ -83,5 +95,3 @@ uint32_t writeData()
     storage_slots = writeFlash(data_array, STORAGE_SIZE);
     return (storage_slots);
 }
-
-void eraseData() {}

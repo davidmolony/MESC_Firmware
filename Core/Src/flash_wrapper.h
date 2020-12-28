@@ -10,6 +10,20 @@
 
 #include "flash_driver.h"
 
+typedef enum
+{
+    EMPTY = 0,
+    VALID,
+    UNKNOWN
+} flash_status_t;
+
+/**
+ * Get status of the flash memory.
+ * @return EMPTY if flash has been untouched after erase. VALID if the exact expected number of values are written. UNKNOWN if some values
+ * are written, but not exact match to expected size.
+ */
+flash_status_t getStatus();
+
 /**
  * Get size of stored data.
  * @return Zero if empty, otherwise number of elements stored.
@@ -29,12 +43,5 @@ uint32_t readData();
  * @return Zero if failed, otherwise number of elements written.
  */
 uint32_t writeData();
-
-/**
- * Erase flash.
- * Note: this process will take considerable amount of time during which processor will be unresponsive. Ensure that nothing critical is
- * happening.
- */
-void eraseData();
 
 #endif /* SRC_FLASH_WRAPPER_H_ */
