@@ -184,6 +184,11 @@ int main(void)
     {
         readData();
     }
+    // fixme: debug
+    else
+    {
+        writeData();
+    }
     // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
 
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
