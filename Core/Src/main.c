@@ -176,9 +176,13 @@ int main(void)
     /* USER CODE BEGIN 2 */
 
     /* check if flash is empty and read data. */
-    if (!isEmpty())
+    if (getSize() != 0)
     {
         readData();
+    }
+    else
+    {
+        writeData();
     }
     // ToDo Around here, we want to populate the Halltable, Lphase, Rphase with values from flash,
     //  foc_vars.hall_table

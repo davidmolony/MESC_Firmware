@@ -11,10 +11,10 @@
 #include "flash_driver.h"
 
 /**
- * Check if flash is empty.
+ * Get size of stored data.
  * @return Zero if empty, otherwise number of elements stored.
  */
-uint32_t isEmpty();
+uint32_t getSize();
 
 /**
  * Read all data from flash.

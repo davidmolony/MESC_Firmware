@@ -23,7 +23,7 @@
 #define STORAGE_SIZE 26
 uint32_t data_array[STORAGE_SIZE];
 
-uint32_t isEmpty()
+uint32_t getSize()
 {
     uint32_t storage_slots = 0;
     uint32_t *p_flash_runner = getFlashAddress();
@@ -67,15 +67,12 @@ uint32_t writeData()
 {
     uint32_t storage_slots = 0;
     uint32_t *p_data = data_array;
-    if (storage_slots)
+    for (int i = 0; i < 6; i++)
     {
-        for (int i = 0; i < 6; i++)
+        for (int j; j < 4; j++)
         {
-            for (int j; j < 4; j++)
-            {
-                *p_data = foc_vars.hall_table[i][j];
-                p_data++;
-            }
+            *p_data = foc_vars.hall_table[i][j];
+            p_data++;
         }
     }
     *p_data = (uint32_t)motor.Rphase;
