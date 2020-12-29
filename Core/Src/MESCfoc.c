@@ -231,6 +231,7 @@ void fastLoop()
             if (b_read_flash)
             {
                 MotorState = MOTOR_STATE_HALL_RUN;
+                b_read_flash = 0;
                 break;
             }
             if (motor.Rphase == 0)
