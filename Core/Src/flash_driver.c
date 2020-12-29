@@ -49,7 +49,7 @@ uint32_t readFlash(uint32_t *const p_data, uint32_t const count)
     uint32_t number_read = 0;
     uint32_t *p_data_runner = p_data;
     uint32_t *p_flash_runner = p_flash;
-    for (int i = 0; i < count; i++, p_data_runner++, p_data_runner++)
+    for (int i = 0; i < count; i++, p_data_runner++, p_flash_runner++)
     {
         *p_data_runner = *p_flash_runner;
         if (*p_flash_runner != EMPTY_SLOT)

@@ -180,7 +180,7 @@ int main(void)
      * foc_vars.hall_table
      * motor.Lphase
      * motor.Rphase */
-    eraseData();
+    //    eraseData();
     if (getStatus() == VALID)
     {
         readData();
@@ -205,8 +205,8 @@ int main(void)
     // Add a little area in which I can mess about without the RTOS
 
     HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_1);
-    HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_2);
-    HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_3);
+    //    HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_2);
+    //    HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_3);
     __HAL_TIM_SET_PRESCALER(&htim4, 71);
     __HAL_TIM_ENABLE_IT(&htim4, (TIM_IT_CC1 | TIM_IT_UPDATE));
 
@@ -219,13 +219,13 @@ int main(void)
          * 2. Write data to flash.
          * 3. Restore motor power.
          */
-        //        if (b_write_flash)
-        //        {
-        //            __HAL_TIM_MOE_DISABLE(&htim1);
-        //            writeData();
-        //            __HAL_TIM_MOE_ENABLE(&htim1);
-        //            b_write_flash = 0;
-        //        }
+        if (b_write_flash)
+        {
+            __HAL_TIM_MOE_DISABLE(&htim1);
+            writeData();
+            __HAL_TIM_MOE_ENABLE(&htim1);
+            b_write_flash = 0;
+        }
 
         // sprintf(UART_buffer, "helloWorld/r");  //        HAL_UART_Transmit(&huart3, (uint8_t *)"HelloWorld\r", 12, 10);
         // HAL_UART_Transmit_DMA(&huart3, UART_buffer, 10);
