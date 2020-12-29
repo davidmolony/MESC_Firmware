@@ -57,16 +57,17 @@ uint32_t readData()
     {
         for (int i = 0; i < 6; i++)
         {
-            for (int j; j < 4; j++)
+            for (int j = 0; j < 4; j++)
             {
                 foc_vars.hall_table[i][j] = *p_data;
                 p_data++;
             }
         }
     }
-    motor.Rphase = (hardware_vars_t)(*p_data);
+    /* weird casting is to ensure that it's the pointers that get cast, not actual values. */
+    motor.Rphase = *(hardware_vars_t *)(p_data);
     p_data++;
-    motor.Lphase = (hardware_vars_t)(*p_data);
+    motor.Lphase = *(hardware_vars_t *)(p_data);
     //    p_data++;	//this last increment is not necessary, but if more variables are added, then uncomment it and follow the same
     //    pattern.
     return (storage_slots);
@@ -81,15 +82,16 @@ uint32_t writeData()
     uint32_t *p_data = data_array;
     for (int i = 0; i < 6; i++)
     {
-        for (int j; j < 4; j++)
+        for (int j = 0; j < 4; j++)
         {
             *p_data = foc_vars.hall_table[i][j];
             p_data++;
         }
     }
-    *p_data = (uint32_t)motor.Rphase;
+    /* weird casting is to ensure that it's the pointers that get cast, not actual values. */
+    *p_data = *(uint32_t *)(&motor.Rphase);
     p_data++;
-    *p_data = (uint32_t)motor.Lphase;
+    *p_data = *(uint32_t *)(&motor.Lphase);
     //    p_data++;	//this last increment is not necessary, but if more variables are added, then uncomment it and follow the same
     //    pattern.
     storage_slots = writeFlash(data_array, STORAGE_SIZE);
