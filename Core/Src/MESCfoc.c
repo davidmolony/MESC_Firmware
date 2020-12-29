@@ -45,6 +45,7 @@ float sqrt2 = 1.41421;
 float sqrt1_2 = 0.707107;
 int adc_conv_end;
 uint8_t b_write_flash = 0;
+uint8_t b_read_flash = 0;
 
 void MESCInit()
 {
@@ -227,6 +228,11 @@ void fastLoop()
             break;
 
         case MOTOR_STATE_MEASURING:
+            if (b_read_flash)
+            {
+                MotorState = MOTOR_STATE_HALL_RUN;
+                break;
+            }
             if (motor.Rphase == 0)
             {  // Every PWM cycle we enter this function until
                // the resistance measurement has converged at a

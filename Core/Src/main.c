@@ -90,6 +90,7 @@ char UART_buffer[12];
 char UART_rx_buffer[2];
 char USBRxBuffer[12];
 extern uint8_t b_write_flash;
+extern uint8_t b_read_flash;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -183,6 +184,7 @@ int main(void)
     //    eraseData();
     if (getStatus() == VALID)
     {
+        b_read_flash = 1;
         readData();
     }
     // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
