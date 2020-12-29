@@ -180,6 +180,7 @@ int main(void)
      * foc_vars.hall_table
      * motor.Lphase
      * motor.Rphase */
+    eraseData();
     if (getStatus() == VALID)
     {
         readData();
@@ -218,13 +219,13 @@ int main(void)
          * 2. Write data to flash.
          * 3. Restore motor power.
          */
-        if (b_write_flash)
-        {
-            __HAL_TIM_MOE_DISABLE(&htim1);
-            writeData();
-            __HAL_TIM_MOE_ENABLE(&htim1);
-            b_write_flash = 0;
-        }
+        //        if (b_write_flash)
+        //        {
+        //            __HAL_TIM_MOE_DISABLE(&htim1);
+        //            writeData();
+        //            __HAL_TIM_MOE_ENABLE(&htim1);
+        //            b_write_flash = 0;
+        //        }
 
         // sprintf(UART_buffer, "helloWorld/r");  //        HAL_UART_Transmit(&huart3, (uint8_t *)"HelloWorld\r", 12, 10);
         // HAL_UART_Transmit_DMA(&huart3, UART_buffer, 10);

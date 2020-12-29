@@ -44,4 +44,9 @@ uint32_t readData();
  */
 uint32_t writeData();
 
+/**
+ * Erase entire page.
+ */
+void eraseData();
+
 #endif /* SRC_FLASH_WRAPPER_H_ */

@@ -95,3 +95,15 @@ uint32_t writeData()
     storage_slots = writeFlash(data_array, STORAGE_SIZE);
     return (storage_slots);
 }
+
+void eraseData()
+{
+    HAL_FLASH_Unlock();
+    FLASH_EraseInitTypeDef page_erase;
+    page_erase.TypeErase = FLASH_TYPEERASE_PAGES;
+    page_erase.PageAddress = (uint32_t)getFlashAddress();
+    page_erase.NbPages = 1;
+    uint32_t result = 0;
+    HAL_FLASHEx_Erase(&page_erase, &result);
+    HAL_FLASH_Lock();
+}
