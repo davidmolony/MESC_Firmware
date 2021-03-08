@@ -24,8 +24,9 @@
 
 #include "stm32f3xx_hal.h"
 
-typedef enum {
-	//fixme: why do you assign enum values explicitly? Do they have meaning?
+typedef enum
+{
+    // fixme: why do you assign enum values explicitly? Do they have meaning?
     MOTOR_STATE_IDLE = 0,
     // All PWM should be off state, nothing happening. Motor may be spinning
     // freely
@@ -80,7 +81,8 @@ typedef enum {
 
 motor_state_e MotorState;
 
-typedef enum {
+typedef enum
+{
     MOTOR_SENSOR_MODE_OPENLOOP,
     MOTOR_SENSOR_MODE_HALL,
     MOTOR_SENSOR_MODE_SENSORLESS,
@@ -88,14 +90,25 @@ typedef enum {
 
 motor_sensor_mode_e MotorSensorMode;
 
-typedef enum {
+typedef enum
+{
+    MOTOR_ERROR_HALL,
+    MOTOR_ERROR_OVER_LIMIT,
+    MOTOR_ERROR_OTHER,
+} motor_error_type_e;
+
+motor_error_type_e MotorError;
+
+typedef enum
+{
     MOTOR_DIRECTION_CLOCKWISE,
     MOTOR_DIRECTION_COUNTERCLOCKWISE
 } motor_direction_e;
 
 motor_direction_e MotorDirection;
 
-typedef enum {
+typedef enum
+{
     MOTOR_CONTROL_TYPE_BLDC,
     MOTOR_CONTROL_TYPE_FOC
 } motor_control_type_e;

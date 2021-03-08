@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include "MESCBLDC.h"
 #include "MESCfoc.h"
+#include "MESCmotor_state.h"
 
 extern char UART_rx_buffer[2];
 extern uint16_t ICVals[2];
@@ -50,7 +51,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
     else if (UART_rx_buffer[0] == 0x71)
     {  // q - increase quadrature current
-        foc_vars.Idq_req[1] = foc_vars.Idq_req[1] + 1.0;
+        foc_vars.Idq_req[1] = foc_vars.Idq_req[1] + 5.0;
         if ((foc_vars.Idq_req[1] < 1.0) && (foc_vars.Idq_req[1] > -1.0))
         {
             foc_vars.Idq_req[1] = 0;
@@ -60,7 +61,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
     else if (UART_rx_buffer[0] == 0x61)
     {  // a - decrease quadrature current
-        foc_vars.Idq_req[1] = foc_vars.Idq_req[1] - 1.0;
+        foc_vars.Idq_req[1] = foc_vars.Idq_req[1] - 5.0;
         if ((foc_vars.Idq_req[1] < 1.0) && (foc_vars.Idq_req[1] > -1.0))
         {
             foc_vars.Idq_req[1] = 0;
@@ -70,7 +71,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
     else if (UART_rx_buffer[0] == 0x64)
     {  // d - increase direct (field) current
-        foc_vars.Idq_req[0] = foc_vars.Idq_req[0] + 1.0;
+        foc_vars.Idq_req[0] = foc_vars.Idq_req[0] + 5.0;
         if ((foc_vars.Idq_req[0] < 1.0) && (foc_vars.Idq_req[0] > -1.0))
         {
             foc_vars.Idq_req[0] = 0;
@@ -80,7 +81,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
     else if (UART_rx_buffer[0] == 0x63)
     {  // c - decrease direct (field) current
-        foc_vars.Idq_req[0] = foc_vars.Idq_req[0] - 1.0;
+        foc_vars.Idq_req[0] = foc_vars.Idq_req[0] - 5.0;
         if ((foc_vars.Idq_req[0] < 1.0) && (foc_vars.Idq_req[0] > -1.0))
         {
             foc_vars.Idq_req[0] = 0;
@@ -99,6 +100,27 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     {  // v - Get the bus voltage
         length = sprintf((char *)message_buffer, "Vbus%.2f\r", measurement_buffers.ConvertedADC[0][1]);
         HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
+    }
+    else if (UART_rx_buffer[0] == 0x70)
+    {  // p - Get the parameters (hall table and L R)
+    	MotorState = MOTOR_STATE_DETECTING;
+    	extern b_read_flash;
+    	b_read_flash = 0;
+        length = sprintf((char *)message_buffer, "Vbus%.2f\r", measurement_buffers.ConvertedADC[0][1]);
+        HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
+    }
+    else if (UART_rx_buffer[0] == 0x66)
+    {  // f - increase hall table by 100
+    	for(int i=0;i<6;i++){
+    		foc_vars.hall_table[i][2]=foc_vars.hall_table[i][2]+100;
+    	}
+
+    }
+    else if (UART_rx_buffer[0] == 0x67)
+    {  // g - decrease hall table by 100
+    	for(int i=0;i<6;i++){
+    		foc_vars.hall_table[i][2]=foc_vars.hall_table[i][2]-100;
+    	}
     }
     else
     {
@@ -159,7 +181,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
                 // based on 1000-2000us PWM in
                 else
                 {
-                    static float currentset = 4;
+                    static float currentset = 0;
                     BLDCVars.ReqCurrent = 0;
                     foc_vars.Idq_req[0] = 0;
                     foc_vars.Idq_req[1] = currentset;

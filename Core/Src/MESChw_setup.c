@@ -32,8 +32,8 @@ void motor_init() {
 }
 
 void hw_init() {
-    g_hw_setup.Vmax = 60.0;
-    g_hw_setup.Rshunt = 0.001;
+    g_hw_setup.Vmax = 24.0;
+    g_hw_setup.Rshunt = 0.0005;
     g_hw_setup.RIphPU = 4700;
     g_hw_setup.RIphSR = 150;
     g_hw_setup.RVBB = 1500;

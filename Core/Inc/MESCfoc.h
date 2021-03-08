@@ -78,16 +78,12 @@ typedef struct
                                                          // zero current offset
     float ConvertedADC[FOC_NUM_ADC][FOC_CONV_CHANNELS];  // We will fill this with currents
                                                          // in A and voltages in Volts
+    uint32_t adc1, adc2, adc3, adc4;
 
 } foc_measurement_t;
 
 foc_measurement_t measurement_buffers;  // fixme: floating function prototype
 
-typedef struct
-{
-    uint16_t Delta;
-    uint16_t Length;
-} MESC_RCPWMin_t;
 
 /* Function prototypes -----------------------------------------------*/
 

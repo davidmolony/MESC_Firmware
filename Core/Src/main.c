@@ -221,6 +221,11 @@ int main(void)
          * 2. Write data to flash.
          * 3. Restore motor power.
          */
+        if(MotorState==MOTOR_STATE_ERROR){
+        	char error_message[10];
+        	sprintf(error_message,"%d%d%d%d",measurement_buffers.adc1, measurement_buffers.adc2,measurement_buffers.adc3,measurement_buffers.adc4);
+        	HAL_UART_Transmit(&huart3, error_message, 10, 10);
+        }
         if (b_write_flash)
         {
             __HAL_TIM_MOE_DISABLE(&htim1);

@@ -52,7 +52,7 @@ void MESCInit()
     HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
     HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
     HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
-    HAL_Delay(1000);  // Give the everything else time to start up (e.g. throttle, controller, PWM source...)
+    HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle, controller, PWM source...)
 
     HAL_OPAMP_Start(&hopamp1);
     HAL_OPAMP_Start(&hopamp2);
@@ -209,6 +209,8 @@ void fastLoop()
             else if (test == 8)
             {
                 MotorState = MOTOR_STATE_ERROR;
+                MotorError = MOTOR_ERROR_HALL;
+
             }
             // ToDo add reporting
             else
@@ -273,7 +275,7 @@ void fastLoop()
     }
 }
 
-#define MAX_ERROR_COUNT 1
+#define MAX_ERROR_COUNT 3
 
 // TODO: refactor this function. Is this function called by DMA interrupt?
 void VICheck()
@@ -283,16 +285,21 @@ void VICheck()
     if ((measurement_buffers.RawADC[0][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[1][0] > g_hw_setup.RawCurrLim) ||
         (measurement_buffers.RawADC[2][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[0][1] > g_hw_setup.RawVoltLim))
     {
+    	foc_vars.Idq_req[0]=foc_vars.Idq_req[0]*0.9;
+    	foc_vars.Idq_req[1]=foc_vars.Idq_req[1]*0.9;
+
         errorCount++;
         if (errorCount >= MAX_ERROR_COUNT)
         {
             generateBreak();
-            uint32_t adc1 = measurement_buffers.RawADC[0][0];
-            uint32_t adc2 = measurement_buffers.RawADC[1][0];
-            uint32_t adc3 = measurement_buffers.RawADC[2][0];
-            uint32_t adc4 = measurement_buffers.RawADC[0][1];
+            measurement_buffers.adc1 = measurement_buffers.RawADC[0][0];
+            measurement_buffers.adc2 = measurement_buffers.RawADC[1][0];
+            measurement_buffers.adc3 = measurement_buffers.RawADC[2][0];
+            measurement_buffers.adc4 = measurement_buffers.RawADC[0][1];
 
             MotorState = MOTOR_STATE_ERROR;
+            MotorError = MOTOR_ERROR_OVER_LIMIT;
+
         }
     }
     else
@@ -439,10 +446,13 @@ void hallAngleEstimator()
         if (current_hall_state == 0)
         {
             MotorState = MOTOR_STATE_ERROR;
+            MotorError = MOTOR_ERROR_HALL;
+
         }
         else if (current_hall_state == 7)
         {
             MotorState = MOTOR_STATE_ERROR;
+            MotorError = MOTOR_ERROR_HALL;
         }
         //////////Implement the Hall table here, but the vector can be dynamically created/filled by another function/////////////
         current_hall_angle = foc_vars.hall_table[current_hall_state - 1][2];
@@ -497,8 +507,10 @@ void hallAngleEstimator()
             foc_vars.HallAngle = foc_vars.HallAngle - (uint16_t)(one_on_last_hall_period * (10922 + 0.2 * hall_error));
         }
     }
-    if (ticks_since_last_hall_change > 250)
+    if (ticks_since_last_hall_change > 500.0f)
     {
+    	last_hall_period = 500.0f;//(ticks_since_last_hall_change);
+    	one_on_last_hall_period = 1.0f / last_hall_period;  // / ticks_since_last_hall_change;
         foc_vars.HallAngle = current_hall_angle;
     }
     //        (uint16_t)((16383 * ((uint32_t)foc_vars.HallAngle) + (uint32_t)temp_current_hall_angle) >> 14) +
@@ -800,6 +812,8 @@ void getHallTable()
     }
     else
     {
+        foc_vars.Idq_req[0] = 10;
+        foc_vars.Idq_req[1] = 0;
         static int dir = 1;
         if (pwm_count < 65534)
         {
