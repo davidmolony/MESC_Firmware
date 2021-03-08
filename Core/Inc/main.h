@@ -37,6 +37,8 @@ extern "C" {
 #include "MESCsin_lut.h"
 #include "MESCfoc.h"
 #include "MESCBLDC.h"
+#include "MESC_Comms.h"
+
 
 /* USER CODE END Includes */
 

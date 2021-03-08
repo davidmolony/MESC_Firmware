@@ -1,0 +1,184 @@
+# clang-format version 9.0.0 (tags/google/stable/2019-05-14)
+# Note this is not the latest build of 9.0.0
+# Option available here: https://releases.llvm.org/9.0.0/tools/clang/docs/ClangFormatStyleOptions.html
+---
+Language: Cpp
+
+## -- Alignment -- ##
+AccessModifierOffset: -4
+AlignAfterOpenBracket: Align
+AlignConsecutiveMacros: true # requires version 9.0.0 (Sept) or later
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlines: Left
+AlignOperands: true
+AlignTrailingComments: true
+
+## -- Arguments, Parameters, Constructor Init -- ##
+AllowAllArgumentsOnNextLine: false
+BinPackArguments: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackParameters: false
+AllowAllConstructorInitializersOnNextLine: false
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 4
+
+## -- Short Forms -- ##
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: true
+
+## -- Breaks -- ##
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: true
+AlwaysBreakTemplateDeclarations: Yes
+
+# ! BreakBeforeBraces will override BraceWrapping unless set to custom
+BreakBeforeBraces: Custom
+BraceWrapping:
+    AfterCaseLabel: true
+    AfterClass: true
+    AfterControlStatement: true
+    AfterEnum: true
+    AfterFunction: true
+    AfterNamespace: true
+    AfterObjCDeclaration: true
+    AfterStruct: true
+    AfterUnion: true
+    AfterExternBlock: true
+    BeforeCatch: true
+    BeforeElse: true
+    IndentBraces: false
+    SplitEmptyFunction: true
+    SplitEmptyRecord: true
+    SplitEmptyNamespace: true
+
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+BreakBeforeInheritanceComma: false
+BreakConstructorInitializers: BeforeColon
+BreakConstructorInitializersBeforeComma: false
+BreakInheritanceList: BeforeColon
+BreakStringLiterals: true
+
+## -- Pointers -- ##
+DerivePointerAlignment: false
+PointerAlignment: Right
+
+## -- Generics -- ##
+ColumnLimit: 140
+CommentPragmas: "^ IWYU pragma:"
+CompactNamespaces: false
+ContinuationIndentWidth: 4
+Cpp11BracedListStyle: true
+DisableFormat: false
+ExperimentalAutoDetectBinPacking: false
+FixNamespaceComments: true
+ForEachMacros:
+    - foreach
+    - Q_FOREACH
+    - BOOST_FOREACH
+IncludeBlocks: Preserve
+IncludeCategories:
+    - Regex: '^<.*\.h>'
+      Priority: 1
+    - Regex: '^<ext/.*\.h>'
+      Priority: 2
+    - Regex: "^<.*"
+      Priority: 2
+    - Regex: ".*"
+      Priority: 3
+IncludeIsMainRegex: "([-_](test|unittest))?$"
+IndentCaseLabels: true
+IndentPPDirectives: AfterHash # Potentially controversial
+IndentWidth: 4
+IndentWrappedFunctionNames: false
+KeepEmptyLinesAtTheStartOfBlocks: false
+MacroBlockBegin: ""
+MacroBlockEnd: ""
+MaxEmptyLinesToKeep: 1
+NamespaceIndentation: All
+ReflowComments: true
+SortIncludes: true
+SortUsingDeclarations: true
+Standard: Auto
+StatementMacros:
+    - Q_UNUSED
+    - QT_REQUIRE_VERSION
+TabWidth: 8
+UseTab: Never
+
+## -- Rule Violation Penalties -- ##
+PenaltyBreakAssignment: 2
+PenaltyBreakBeforeFirstCallParameter: 1
+PenaltyBreakComment: 300
+PenaltyBreakFirstLessLess: 120
+PenaltyBreakString: 1000
+PenaltyBreakTemplateDeclaration: 10
+PenaltyExcessCharacter: 1000000
+PenaltyReturnTypeOnItsOwnLine: 200
+
+## -- Java Specific -- ##
+BreakAfterJavaFieldAnnotations: false
+
+## -- Javascript Specific -- ##
+JavaScriptQuotes: Leave
+JavaScriptWrapImports: true
+
+## -- Objective-C Specific -- ##
+ObjCBinPackProtocolList: Never
+ObjCBlockIndentWidth: 2
+ObjCSpaceAfterProperty: false
+ObjCSpaceBeforeProtocolList: true
+
+## -- Code Blocks in Raw Strings -- ##
+RawStringFormats:
+    - Language: Cpp
+      Delimiters:
+          - cc
+          - CC
+          - cpp
+          - Cpp
+          - CPP
+          - "c++"
+          - "C++"
+      CanonicalDelimiter: ""
+      BasedOnStyle: google
+    - Language: TextProto
+      Delimiters:
+          - pb
+          - PB
+          - proto
+          - PROTO
+      EnclosingFunctions:
+          - EqualsProto
+          - EquivToProto
+          - PARSE_PARTIAL_TEXT_PROTO
+          - PARSE_TEST_PROTO
+          - PARSE_TEXT_PROTO
+          - ParseTextOrDie
+          - ParseTextProtoOrDie
+      CanonicalDelimiter: ""
+      BasedOnStyle: google
+
+## -- Spacing -- ##
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: false
+SpacesInContainerLiterals: false
+SpacesInCStyleCastParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false

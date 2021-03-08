@@ -5,58 +5,6 @@ Custom FOC, BLDC, speed control firmware for use with the MESC_FOC_ESC hardware 
 This project is new as of 28/06/2020, and is the work of David Molony, experienced mechanical engineer, moderately experienced electrical engineer, and software newbie. If/when this firmware becomes useable enough to be useful to the world, this foreword will be edited to acknowledge.  
 For now, the hardware is useable using STMicro's Motor Control Workbench and CUBEMX/CUBEIDE/Truestudio installations, for which one day I shall place a binary in the hardware folder...
 
-## Code style
-This section formalises naming rules for variables, constants, function names, etc. It also All contributors are required to adhere to the code style rules. Certain functionality of IDE can be enabled to help with automating the checks.
-
-### Code structure 
-Eclipse IDE can be setup to achieve this code structure automatically. Open dialog
-Window --> Preferences. In the preferences window make following changes.  
-1. C/C++ --> Code Style --> Formatter. Select K&R[built-in] profile.
-2. C/C++ --> Editor --> Save Actions. Tick Format source code and Format edited lines. Tick Ensure newline at the end of the file.
-
-Once it is all setup the code format will be enforced for all edited lines upon save. If you want to reformat the code press Ctrl-Shift-F.  
-Below is the example of K&R formatted code.
-
-	/*
-	 * A sample source file for the code formatter preview
-	 */
-	#include <math.h>
-	class Point {
-	public:
-		Point(double x, double y) :
-				x(x), y(y) {
-		}
-		double distance(const Point &other) const;
-	
-		double x;
-		double y;
-	};
-
-	double Point::distance(const Point &other) const {
-		double dx = x - other.x;
-		double dy = y - other.y;
-		return sqrt(dx * dx + dy * dy);
-	}
-
-### Code analysis.
-It is highly advisable to enable code style and structure monitoring provided by the IDE. In Preferences window to go C/C++ --> Code analysis. Enable all.  
-Some rules might seem to be overly restrictive and those can be disabled. For example, Coding style --> Line comments will complain about "//" single line style comments. Given extensive use of those by David it's probably not worth enforcing that rule.
-
-### Precompiler defined values
-These are constant values given a name through pre-compiler directive
-
-	#define PI 3.14
-
-### Variables
-
-### Function names
-
-### Constant values
-
-
-## Useful Eclipse IDE extensions
-To modify visual impact of coding work and reduce eye strain it is advisable to use darker colour schemes. We find that Darkest Dark Eclipse extension works very well and has good colour choices. In order to install it go to Help --> Eclipse Marketplace... In the search bar type "Darkest Dark". It should be first in the search results. Install it. After restart of IDE it'll present a set of choices. Leave default ones. They can later be modified in the Preferences window by going to DevStyle --> Color Themes.
-
 ## Licence
 This project will initially (and perhaps perpetually) contain a lot of firmware licenced under the STM Cube licence, BSD 3 clause https://opensource.org/licenses/BSD-3-Clause .   
 The rest of the custom code is intended to be contained primarily in the MESC files, and will have a licence assigned at a later date, probably also BSD 3 Clause.
@@ -80,7 +28,9 @@ Firmware will be primarily tested at 35.2kHz, the harder case for fitting in the
 
 PWM will be centred at 512, 50% duty cycle, for 0V for sinusoidal operation. For BLDC mode, if ever made, one phase will obviously be constantly grounded at any time.  
 Centring at 50% duty cycle has a few  
-Advantages - it allows recirculation through the high side FETs as well as the low side, which evens out the load on them, and removes the math to zero the signals. Disadvantages - reduced sampling time for currents , more switching events, all phases floating... might be worse for EMC emmisions?
+Advantages - it allows recirculation through the high side FETs as well as the low side, which evens out the load on them, and removes the math to zero the signals. 
+Disadvantages - reduced sampling time for currents , more switching events, all phases floating... might be worse for EMC emmisions?
+To enable easy avoidance of counter underflow on the PWM timer and higher modulation indices, bottom clamp implemented for FOC control. Bit noisier, less FET sharing, but safer initially. Plan to move to SVPWM/third harmonic/...
 
 Target 60000mechrpm for a 6PP motor (say really aggressive, small Electronic jet engine RC model) => 1000Hz mechanical => 6000Hz electrical(360000erpm)=> ~3 PWM periods/sin wave at 17.5kHz,  ~6PWM periods at 35kHz. Dubious whether this is feasible or sensible.  
 Target 30000mechrpm gives a more feasible 180000erpm, with 12PWMperiods/sinwave @35kHz.
@@ -90,24 +40,26 @@ ADC conversions are triggered by timer1 underflow on TRGO. ADCs 1,2,3 are used t
 
 ### Hall
 Timer4 set up in XOR activation reset mode, so gives a duration between each hall sensor change of state, which can be directly converted to a speed. For a minimum speed of 10eRPM, =(10/60)Hz=1 XOR changes/second, 1 seconds/XOR change, requires 16 bit TIM4 to clock at 65536/1=65.536kHz. This implies a max speed of 65536(Hz)/6(hall states)x60(RPM/Hz)=655360RPM electrical. With typical BLDC motors being 6PP, this enables 100000RPM mechanical measureable, but the PWM frequency is not high enough to support this!
+Timer4 is not currently used, instead the fastloop just samples and counts PWM cycles since the last change. This reduces accuracy, but improves portability.
 
 ### PWM Input
 Timer3 set up in reset mode, prescaler 72 (1us resolution), 65535 period, with trigger/reset mapped to TI1FP1, and channel one capturing on rising edge, direct mode, channel 2 capturing on falling edge indirect mode - remapped to TI2FP2. This gives two CC register values, CC1 timing the period of the pulses, and CC2 timing the on time.  
-Interrupt: Only interested in CC2 for the value, ut CC1, period, can be used to determine whether the RC is still transmitting - expect a value very close to 20000 from an RC sender. Check CC1 is 20000+/-~5000, and check the interrupt was not triggered by timer overflow - if timer overflowed, then period between pulses much more than 20000, RC sender probably broken/unplugged. Set action flag.
+Interrupt: Only interested in CC2 for the value, ut CC1, period, can be used to determine whether the RC is still transmitting - expect a value very close to 20000 from an RC sender. Check CC1 is 20000+/-~10000, and check the interrupt was not triggered by timer overflow - if timer overflowed, then period between pulses much more than 20000, RC sender probably broken/unplugged. Set action flag.
 
 
 ### Over Current Comparators
 Comparators set up to trigger Tim1 break2 state in the event of overcurrent event, which should turn off all outputs to high impedance  
-0.5mOhm shunts (2x1mohm) at 100amps gives 50mV. Vrefint is 1.23V, so 1/4Vref used for comparator-ve - 310mV. This triggers the comparator at 600A nominal (a LOT of current, but the intended FETs are rated for that for 100us, which is ~2 PWM periods... https://www.st.com/resource/en/datasheet/sth310n10f7-2.pdf). If alternate FETs used, should check this, or just hope for the best, or modify the shunt resistors to have higher value.  
+0.5mOhm shunts (2x1mohm) or 1mOhm (2x2mOhm original hardware) at 100amps gives 50mV, with a pullup to 100mV. Vrefint is 1.23V, so 1/4Vref used for comparator-ve - 310mV. This triggers the comparator at 400A nominal (a LOT of current, but the intended FETs are rated for that for 100us, which is ~2 PWM periods... https://www.st.com/resource/en/datasheet/sth310n10f7-2.pdf). If alternate FETs used, should check this, or just hope for the best, or modify the shunt resistors to have higher value.  
 Timer1 should have a BRK filter set to avoid switching noise  
 Soft current control e.g. constantly running at 100+amps must be taken care of by the fast control loop.
 
 ## Coms
 Primarily, initially, serial used. Potentially USB CDC later, and I2C
 ### Serial 
-Serial USART3 to be used in DMA recieve mode to eliminate interrupts and MCU blocking behaviour.  
+Serial USART3 may eventually be used in DMA recieve mode to eliminate interrupts and MCU blocking behaviour.  
 Serial DMA to interrupt on overflow of buffer - Hopefully never reaches overflow of buffer.  
-  If overflow occurs, just throw away the whole buffer, reset DMA to load first position and await further data
+If overflow occurs, just throw away the whole buffer, reset DMA to load first position and await further data
+Currently, Serial interrupts on a per byte basis and can be used to trigger basic functionality.
 
 ## Watchdog timer
 Watchdog timer should be kicked by the fast control loop.
@@ -155,17 +107,88 @@ OLRampCurrent - Open loop ramp current
 OLmechRPM - open loop mechanical RPM (will ramp up to this speed in open loop, and stay there until sync'd
 
 ### Inverter params will be:
-The whole firmware will work on the basis of electrical Hz - inputs should be immediately converted into eHz and eAngle  
-  eHz=mechRPMx60xPP  
-  Angles and steps will be determined as a uint16_t. The whole firmware will work on the basis of eHz for speed and eAngle  
+FOC will take arguments of Id and Iq as floats
+FOC algorithm will convert these into Vd Vq values, to be inverted into 3 phase via park and clark.
 
-eHzR - requested electrical speed  
-eHzP - Present electrical speed(back calculated from eStepP)  
-eStepR - requested (derived) electrical step = 65536xeHzR/fPWM  
-eStepP - eStepR +/- the correction values to keep sync. Generate a present electrical step angle per PWM cycle eStep = eHzx65536/fPWM - each PWM period, the inverter PWM will shift by this much.  
-eAngleP - present electrical angle, The electrical angle will integrate each PWM period by eStepPInv and be handed to the inverter. When the uint16_t overflows, it will automatically loop. Inverter will take this uint16_t angle, right shift it 8 times to generate an 8 bit angle and look up the relevant sin value  
+Angles and steps will be determined as a uint16_t. The whole firmware will work on the basis of eHz for speed and eAngle  
 
-VDemandInv - uint16_t Inverter voltage request. Inverter will take this value, multiple it by the 8 bit sintable value (centred on 128) and right shift by (8+(16-10)) to scale it to fit the PWM duty.  
 ### Controller params will be
 ToDo, calculate OL voltage ramps etc. 
 ToDo, add parameters for speed steps
+
+
+
+## Code style
+This section formalises naming rules for variables, constants, function names, etc. It also All contributors are required to adhere to the code style rules. Certain functionality of IDE can be enabled to help with automating the checks.
+
+### Code structure 
+Eclipse IDE can be setup to achieve this code structure automatically. Open dialog
+Window --> Preferences. In the preferences window make following changes.  
+1. C/C++ --> Code Style --> Formatter. Select K&R[built-in] profile.
+2. C/C++ --> Editor --> Save Actions. Tick Format source code and Format edited lines. Tick Ensure newline at the end of the file.
+
+Once it is all setup the code format will be enforced for all edited lines upon save. If you want to reformat the code press Ctrl-Shift-F.  
+Below is the example of K&R formatted code.
+
+	/*
+	 * A sample source file for the code formatter preview
+	 */
+	#include <math.h>
+	class Point {
+	public:
+		Point(double x, double y) :
+				x(x), y(y) {
+		}
+		double distance(const Point &other) const;
+	
+		double x;
+		double y;
+	};
+
+	double Point::distance(const Point &other) const {
+		double dx = x - other.x;
+		double dy = y - other.y;
+		return sqrt(dx * dx + dy * dy);
+	}
+
+### Code analysis.
+It is highly advisable to enable code style and structure monitoring provided by the IDE. In Preferences window to go C/C++ --> Code analysis. Enable all.  
+Some rules might seem to be overly restrictive and those can be disabled. For example, Coding style --> Line comments will complain about "//" single line style comments. Given extensive use of those by David it's probably not worth enforcing that rule.
+
+### Precompiler defined values
+These are constant values given a name through pre-compiler directive. These values should be in UPPER_CASE.
+
+	#define PI_VALUE 3.14
+
+### Variables
+Variables should be in lower_snake_case. 
+
+    float my_variable;
+
+Class member variables should have a prefix according to their type. Example:
+
+	class CMyClass{
+	private:
+		float m_member_variable;
+		uint32_t * mp_pointer_variable;			
+		static int s_static_variable;
+	}
+
+### Function names
+Functions and class methods should be in lowerCamelCase format.
+	
+	void theFunction(int arg1);
+	
+	void adcConvertion();
+
+### Constant values
+Constants just like #define precompiler define falues should be in UPPER_CASE.
+
+	const int MY_CONSTANT = 2;  
+
+## Useful Eclipse IDE extensions
+### Darkest Dark
+To modify visual impact of coding work and reduce eye strain it is advisable to use darker colour schemes. We find that Darkest Dark Eclipse extension works very well and has good colour choices. In order to install it go to Help --> Eclipse Marketplace... In the search bar type "Darkest Dark". It should be first in the search results. Install it. After restart of IDE it'll present a set of choices. Leave default ones. They can later be modified in the Preferences window by going to DevStyle --> Color Themes.
+
+###CPPStyle
+This section on CPPStyle extension and associated prerequisites to be filled in once decision is made on coding style.

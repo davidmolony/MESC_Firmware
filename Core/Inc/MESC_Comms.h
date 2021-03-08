@@ -1,8 +1,8 @@
 /*
  **
  ******************************************************************************
- * @file           : MESCmotor_state.c
- * @brief          : Code for motor state machine
+ * @file           : MESC_Comms.h
+ * @brief          : UART parsing and RCPWM input
  ******************************************************************************
  * @attention
  *
@@ -16,18 +16,22 @@
  *
  ******************************************************************************
 
- * MESCmotor_state.c
+ * MESC_Comms.h
  *
- *  Created on: 25 Jul 2020
+ *  Created on: 15 Nov 2020
  *      Author: David Molony
  */
 
-/* Includes ------------------------------------------------------------------*/
-#include "MESCmotor_state.h"
+#include "stm32f3xx_hal.h"
 
-void MESC_Init() {
-    MotorState = MOTOR_STATE_IDLE;
-    MotorSensorMode = MOTOR_SENSOR_MODE_HALL;
-    MotorControlType = MOTOR_CONTROL_TYPE_BLDC;
-    MotorDirection = MOTOR_DIRECTION_CLOCKWISE;
-}
+typedef struct
+{
+    uint16_t Delta;
+    uint16_t Length;
+} MESC_RCPWMin_t;
+
+#include "stm32f3xx_hal.h"
+
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim);
