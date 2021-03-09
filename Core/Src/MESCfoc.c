@@ -541,15 +541,17 @@ void MESCFOC()
     {  // set or release the PID controller; may want to do this for cycle skipping, which may help for high inductance motors
         // Bounding
         // clang-format off
-        static int integral_limit = 600;
-        if (Idq_int_err[0] > integral_limit){Idq_int_err[0] = integral_limit;}
-        if (Idq_int_err[0] < -integral_limit){Idq_int_err[0] = -integral_limit;}
-        if (Idq_int_err[1] > integral_limit){Idq_int_err[1] = integral_limit;}
-        if (Idq_int_err[1] < -integral_limit){Idq_int_err[1] = -integral_limit;}
+        static int integral_d_limit = 150;
+        static int integral_q_limit = 600;
+
+        if (Idq_int_err[0] > integral_d_limit){Idq_int_err[0] = integral_d_limit;}
+        if (Idq_int_err[0] < -integral_d_limit){Idq_int_err[0] = -integral_d_limit;}
+        if (Idq_int_err[1] > integral_q_limit){Idq_int_err[1] = integral_q_limit;}
+        if (Idq_int_err[1] < -integral_q_limit){Idq_int_err[1] = -integral_q_limit;}
         // clang-format on
         // Apply the PID, and smooth the output for noise - sudden changes in VDVQ will create instability in the presence of inductance.
-        foc_vars.Vdq[0] = (3 * foc_vars.Vdq[0] + 4 * Idq_err[0] + Idq_int_err[0]) * 0.25;  // trial pgain of 10
-        foc_vars.Vdq[1] = (3 * foc_vars.Vdq[1] + 4 * Idq_err[0] + Idq_int_err[1]) * 0.25;
+        foc_vars.Vdq[0] = (3 * foc_vars.Vdq[0] + Idq_err[0] + Idq_int_err[0]) * 0.25;  // trial pgain of 10
+        foc_vars.Vdq[1] = (3 * foc_vars.Vdq[1] + Idq_err[1] + Idq_int_err[1]) * 0.25;
         i = FOC_PERIODS;
     }
     i = i - 1;
@@ -575,15 +577,11 @@ void MESCFOC()
 void writePWM()
 {
     ///////////////////////////////////////////////
-    // Sinusoidal implementation
-    //        htim1.Instance->CCR1 = (uint16_t)(512.0f + foc_vars.inverterVoltage[0]);
-    //        htim1.Instance->CCR2 = (uint16_t)(512.0f + foc_vars.inverterVoltage[1]);
-    //        htim1.Instance->CCR3 = (uint16_t)(512.0f + foc_vars.inverterVoltage[2]);
+	if((foc_vars.Vdq[1]>300)|(foc_vars.Vdq[1]<-300)){
+		// Bottom Clamp implementation. Implemented initially because this avoids all nasty behaviour in the event of underflowing the timer
+	    // CCRs; if negative values fed to timers, they will saturate positive, which will result in a near instant overcurrent event.
 
-    ///////////////////////////////////////////////
-    // Bottom Clamp implementation. Implemented initially because this avoids all nasty behaviour in the event of underflowing the timer
-    // CCRs; if negative values fed to timers, they will saturate positive, which will result in a near instant overcurrent event.
-    float minimumValue = 0;
+	float minimumValue = 0;
 
     if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[1])
     {
@@ -618,6 +616,16 @@ void writePWM()
     htim1.Instance->CCR1 = (uint16_t)(foc_vars.inverterVoltage[0]);
     htim1.Instance->CCR2 = (uint16_t)(foc_vars.inverterVoltage[1]);
     htim1.Instance->CCR3 = (uint16_t)(foc_vars.inverterVoltage[2]);
+	}
+
+    ///////////////////////////////////////////////
+
+	else{
+		// Sinusoidal implementation
+		            htim1.Instance->CCR1 = (uint16_t)(512.0f + foc_vars.inverterVoltage[0]);
+		            htim1.Instance->CCR2 = (uint16_t)(512.0f + foc_vars.inverterVoltage[1]);
+		            htim1.Instance->CCR3 = (uint16_t)(512.0f + foc_vars.inverterVoltage[2]);
+	}
 }
 
 // Here we set all the PWMoutputs to LOW, without triggering the timerBRK,
