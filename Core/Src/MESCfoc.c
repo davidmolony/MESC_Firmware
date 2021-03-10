@@ -553,6 +553,17 @@ void MESCFOC()
         foc_vars.Vdq[0] = (3 * foc_vars.Vdq[0] + Idq_err[0] + Idq_int_err[0]) * 0.25;  // trial pgain of 10
         foc_vars.Vdq[1] = (3 * foc_vars.Vdq[1] + Idq_err[1] + Idq_int_err[1]) * 0.25;
         i = FOC_PERIODS;
+        //Field weakening? - The below works pretty nicely, but needs turning into an implementation where it is switchable by the user. Can result in problems e.g. tripping PSUs...
+//        if((foc_vars.Vdq[1]>300)){
+//        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]-300)*-0.1; //30A max field weakening current
+//        }
+//        else if((foc_vars.Vdq[1]<-300)){
+//        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]+300)*0.1; //30A max field weakening current
+//        }
+//        else{
+//        	foc_vars.Idq_req[0]=0; //30A max field weakening current
+//
+//        }
     }
     i = i - 1;
 
