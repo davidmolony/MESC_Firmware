@@ -63,6 +63,7 @@ typedef enum
     MOTOR_STATE_SENSORLESS_RUN = 8,
     /*
      */
+    MOTOR_STATE_TEST = 9,
     MOTOR_STATE_ERROR = 10,
     /*Enter this state when the overcurrent or overvoltage trips, or illegal
      hall state or sensorless observer fault occurs All PWM signals should be

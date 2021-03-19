@@ -141,6 +141,7 @@ void MESCInit()
 void fastLoop()
 {                     // Call this directly from the ADC callback IRQ
     ADCConversion();  // First thing we ever want to do is convert the ADC values to real, useable numbers.
+	static int dp_counter;
 
     switch (MotorState)
     {
@@ -265,6 +266,63 @@ void fastLoop()
 
         case MOTOR_STATE_ALIGN:
             // Turn on at a given voltage at electricalangle0;
+            break;
+        case MOTOR_STATE_TEST:
+            // Double pulse test
+        	if(dp_counter==0){
+        		htim1.Instance->CCR1=0;
+        		htim1.Instance->CCR2=0;
+        		htim1.Instance->CCR3=1023;
+        		phU_Break();
+        		dp_counter++;
+        	}
+        	else if(dp_counter==1){
+        		htim1.Instance->CCR2=0;
+        		htim1.Instance->CCR3=1023;
+        		dp_counter++;
+
+        	}
+        	else if(dp_counter==2){
+        		htim1.Instance->CCR2=0;
+        		htim1.Instance->CCR3=1023;
+        		dp_counter++;
+
+        	}
+        	else if(dp_counter==3){
+        		htim1.Instance->CCR2=0;
+        		htim1.Instance->CCR3=1023;
+        		dp_counter++;
+
+        	}
+        	else if(dp_counter==4){
+        		htim1.Instance->CCR2=0;
+        		htim1.Instance->CCR3=1023;
+        		dp_counter++;
+
+        	}
+        	else if(dp_counter==5){
+        		htim1.Instance->CCR2=0;
+        		htim1.Instance->CCR3=1023;
+        		dp_counter++;
+
+        	}
+        	else if(dp_counter==6){
+        		htim1.Instance->CCR2=0;
+        		htim1.Instance->CCR3=1023;
+        		dp_counter++;
+
+        	}
+        	else if(dp_counter==7){
+        		htim1.Instance->CCR2=0;
+        		htim1.Instance->CCR3=100;
+        		dp_counter++;
+        	}
+        	else {
+        		htim1.Instance->CCR2=0;
+        		htim1.Instance->CCR3=0;
+        		dp_counter=0;
+        		MotorState=MOTOR_STATE_IDLE;
+        	}
             break;
         case MOTOR_STATE_RECOVERING:
 
@@ -550,20 +608,20 @@ void MESCFOC()
         if (Idq_int_err[1] < -integral_q_limit){Idq_int_err[1] = -integral_q_limit;}
         // clang-format on
         // Apply the PID, and smooth the output for noise - sudden changes in VDVQ will create instability in the presence of inductance.
-        foc_vars.Vdq[0] = (3 * foc_vars.Vdq[0] + Idq_err[0] + Idq_int_err[0]) * 0.25;  // trial pgain of 10
+        foc_vars.Vdq[0] = (3 * foc_vars.Vdq[0] + Idq_err[0] + Idq_int_err[0]) * 0.25;  // trial pgain
         foc_vars.Vdq[1] = (3 * foc_vars.Vdq[1] + Idq_err[1] + Idq_int_err[1]) * 0.25;
         i = FOC_PERIODS;
         //Field weakening? - The below works pretty nicely, but needs turning into an implementation where it is switchable by the user. Can result in problems e.g. tripping PSUs...
-//        if((foc_vars.Vdq[1]>300)){
-//        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]-300)*-0.1; //30A max field weakening current
-//        }
-//        else if((foc_vars.Vdq[1]<-300)){
-//        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]+300)*0.1; //30A max field weakening current
-//        }
-//        else{
-//        	foc_vars.Idq_req[0]=0; //30A max field weakening current
-//
-//        }
+        if((foc_vars.Vdq[1]>300)){
+        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]-300)*-0.1; //30A max field weakening current
+        }
+        else if((foc_vars.Vdq[1]<-300)){
+        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]+300)*0.1; //30A max field weakening current
+        }
+        else{
+        	foc_vars.Idq_req[0]=0; //30A max field weakening current
+
+        }
     }
     i = i - 1;
 
