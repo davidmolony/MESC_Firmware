@@ -33,7 +33,7 @@
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
 extern OPAMP_HandleTypeDef hopamp1, hopamp2, hopamp3;
-extern ADC_HandleTypeDef hadc1, hadc2, hadc3,hadc4;
+extern ADC_HandleTypeDef hadc1, hadc2, hadc3, hadc4;
 extern COMP_HandleTypeDef hcomp1, hcomp2, hcomp4, hcomp7;
 
 float one_on_sqrt6 = 0.408248;
@@ -145,7 +145,7 @@ void MESCInit()
 void fastLoop()
 {                     // Call this directly from the ADC callback IRQ
     ADCConversion();  // First thing we ever want to do is convert the ADC values to real, useable numbers.
-	static int dp_counter;
+    static int dp_counter;
 
     switch (MotorState)
     {
@@ -215,7 +215,6 @@ void fastLoop()
             {
                 MotorState = MOTOR_STATE_ERROR;
                 MotorError = MOTOR_ERROR_HALL;
-
             }
             // ToDo add reporting
             else
@@ -273,60 +272,63 @@ void fastLoop()
             break;
         case MOTOR_STATE_TEST:
             // Double pulse test
-        	if(dp_counter==0){
-        		htim1.Instance->CCR1=0;
-        		htim1.Instance->CCR2=0;
-        		htim1.Instance->CCR3=1023;
-        		phU_Break();
-        		dp_counter++;
-        	}
-        	else if(dp_counter==1){
-        		htim1.Instance->CCR2=0;
-        		htim1.Instance->CCR3=1023;
-        		dp_counter++;
-
-        	}
-        	else if(dp_counter==2){
-        		htim1.Instance->CCR2=0;
-        		htim1.Instance->CCR3=1023;
-        		dp_counter++;
-
-        	}
-        	else if(dp_counter==3){
-        		htim1.Instance->CCR2=0;
-        		htim1.Instance->CCR3=1023;
-        		dp_counter++;
-
-        	}
-        	else if(dp_counter==4){
-        		htim1.Instance->CCR2=0;
-        		htim1.Instance->CCR3=1023;
-        		dp_counter++;
-
-        	}
-        	else if(dp_counter==5){
-        		htim1.Instance->CCR2=0;
-        		htim1.Instance->CCR3=1023;
-        		dp_counter++;
-
-        	}
-        	else if(dp_counter==6){
-        		htim1.Instance->CCR2=0;
-        		htim1.Instance->CCR3=1023;
-        		dp_counter++;
-
-        	}
-        	else if(dp_counter==7){
-        		htim1.Instance->CCR2=0;
-        		htim1.Instance->CCR3=100;
-        		dp_counter++;
-        	}
-        	else {
-        		htim1.Instance->CCR2=0;
-        		htim1.Instance->CCR3=0;
-        		dp_counter=0;
-        		MotorState=MOTOR_STATE_IDLE;
-        	}
+            if (dp_counter == 0)
+            {
+                htim1.Instance->CCR1 = 0;
+                htim1.Instance->CCR2 = 0;
+                htim1.Instance->CCR3 = 1023;
+                phU_Break();
+                dp_counter++;
+            }
+            else if (dp_counter == 1)
+            {
+                htim1.Instance->CCR2 = 0;
+                htim1.Instance->CCR3 = 1023;
+                dp_counter++;
+            }
+            else if (dp_counter == 2)
+            {
+                htim1.Instance->CCR2 = 0;
+                htim1.Instance->CCR3 = 1023;
+                dp_counter++;
+            }
+            else if (dp_counter == 3)
+            {
+                htim1.Instance->CCR2 = 0;
+                htim1.Instance->CCR3 = 1023;
+                dp_counter++;
+            }
+            else if (dp_counter == 4)
+            {
+                htim1.Instance->CCR2 = 0;
+                htim1.Instance->CCR3 = 1023;
+                dp_counter++;
+            }
+            else if (dp_counter == 5)
+            {
+                htim1.Instance->CCR2 = 0;
+                htim1.Instance->CCR3 = 1023;
+                dp_counter++;
+            }
+            else if (dp_counter == 6)
+            {
+                htim1.Instance->CCR2 = 0;
+                htim1.Instance->CCR3 = 1023;
+                dp_counter++;
+            }
+            else if (dp_counter == 7)
+            {
+                htim1.Instance->CCR2 = 0;
+                htim1.Instance->CCR3 = 100;
+                dp_counter++;
+            }
+            else
+            {
+                htim1.Instance->CCR2 = 0;
+                htim1.Instance->CCR3 = 0;
+                dp_counter = 0;
+                MotorState = MOTOR_STATE_IDLE;
+            }
             break;
         case MOTOR_STATE_RECOVERING:
 
@@ -347,8 +349,8 @@ void VICheck()
     if ((measurement_buffers.RawADC[0][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[1][0] > g_hw_setup.RawCurrLim) ||
         (measurement_buffers.RawADC[2][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[0][1] > g_hw_setup.RawVoltLim))
     {
-    	foc_vars.Idq_req[0]=foc_vars.Idq_req[0]*0.9;
-    	foc_vars.Idq_req[1]=foc_vars.Idq_req[1]*0.9;
+        foc_vars.Idq_req[0] = foc_vars.Idq_req[0] * 0.9;
+        foc_vars.Idq_req[1] = foc_vars.Idq_req[1] * 0.9;
 
         errorCount++;
         if (errorCount >= MAX_ERROR_COUNT)
@@ -361,7 +363,6 @@ void VICheck()
 
             MotorState = MOTOR_STATE_ERROR;
             MotorError = MOTOR_ERROR_OVER_LIMIT;
-
         }
     }
     else
@@ -445,6 +446,14 @@ void ADCConversion()
         // clang-format on
 
         adc_conv_end = htim1.Instance->CNT;
+        if (measurement_buffers.RawADC[1][3] > 700)
+        {
+            foc_vars.Idq_req[1] = ((float)(measurement_buffers.RawADC[1][3] - 700)) * 0.04f;
+        }
+        else
+        {
+            foc_vars.Idq_req[1] = 0.0f;
+        }
     }
 }
 /////////////////////////////////////////////////////////////////////////////
@@ -509,7 +518,6 @@ void hallAngleEstimator()
         {
             MotorState = MOTOR_STATE_ERROR;
             MotorError = MOTOR_ERROR_HALL;
-
         }
         else if (current_hall_state == 7)
         {
@@ -571,9 +579,16 @@ void hallAngleEstimator()
     }
     if (ticks_since_last_hall_change > 500.0f)
     {
-    	last_hall_period = 500.0f;//(ticks_since_last_hall_change);
-    	one_on_last_hall_period = 1.0f / last_hall_period;  // / ticks_since_last_hall_change;
-        foc_vars.HallAngle = current_hall_angle;
+        last_hall_period = 500.0f;                          //(ticks_since_last_hall_change);
+        one_on_last_hall_period = 1.0f / last_hall_period;  // / ticks_since_last_hall_change;
+        if (foc_vars.Idq_req[1] > 0)
+        {
+            foc_vars.HallAngle = current_hall_angle - 5461;
+        }
+        else
+        {
+            foc_vars.HallAngle = current_hall_angle + 5461;
+        }
     }
     //        (uint16_t)((16383 * ((uint32_t)foc_vars.HallAngle) + (uint32_t)temp_current_hall_angle) >> 14) +
     //        (uint16_t)(one_on_last_hall_period * 10922);
@@ -615,17 +630,18 @@ void MESCFOC()
         foc_vars.Vdq[0] = (3 * foc_vars.Vdq[0] + Idq_err[0] + Idq_int_err[0]) * 0.25;  // trial pgain
         foc_vars.Vdq[1] = (3 * foc_vars.Vdq[1] + Idq_err[1] + Idq_int_err[1]) * 0.25;
         i = FOC_PERIODS;
-        //Field weakening? - The below works pretty nicely, but needs turning into an implementation where it is switchable by the user. Can result in problems e.g. tripping PSUs...
-        if((foc_vars.Vdq[1]>300)){
-        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]-300)*-0.1; //30A max field weakening current
-        }
-        else if((foc_vars.Vdq[1]<-300)){
-        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]+300)*0.1; //30A max field weakening current
-        }
-        else{
-        	foc_vars.Idq_req[0]=0; //30A max field weakening current
-
-        }
+        // Field weakening? - The below works pretty nicely, but needs turning into an implementation where it is switchable by the user.
+        // Can result in problems e.g. tripping PSUs...
+        //        if((foc_vars.Vdq[1]>300)){
+        //        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]-300)*-0.1; //30A max field weakening current
+        //        }
+        //        else if((foc_vars.Vdq[1]<-300)){
+        //        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]+300)*0.1; //30A max field weakening current
+        //        }
+        //        else{
+        //        	foc_vars.Idq_req[0]=0; //30A max field weakening current
+        //
+        //        }
     }
     i = i - 1;
 
@@ -650,55 +666,57 @@ void MESCFOC()
 void writePWM()
 {
     ///////////////////////////////////////////////
-	if((foc_vars.Vdq[1]>300)|(foc_vars.Vdq[1]<-300)){
-		// Bottom Clamp implementation. Implemented initially because this avoids all nasty behaviour in the event of underflowing the timer
-	    // CCRs; if negative values fed to timers, they will saturate positive, which will result in a near instant overcurrent event.
-
-	float minimumValue = 0;
-
-    if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[1])
+    if ((foc_vars.Vdq[1] > 300) | (foc_vars.Vdq[1] < -300))
     {
-        if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[2])
+        // Bottom Clamp implementation. Implemented initially because this avoids all nasty behaviour in the event of underflowing the timer
+        // CCRs; if negative values fed to timers, they will saturate positive, which will result in a near instant overcurrent event.
+
+        float minimumValue = 0;
+
+        if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[1])
         {
-            minimumValue = foc_vars.inverterVoltage[0];
+            if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[2])
+            {
+                minimumValue = foc_vars.inverterVoltage[0];
+            }
+            else
+            {
+                minimumValue = foc_vars.inverterVoltage[2];
+            }
+        }
+        else if (foc_vars.inverterVoltage[1] < foc_vars.inverterVoltage[2])
+        {
+            minimumValue = foc_vars.inverterVoltage[1];
         }
         else
         {
             minimumValue = foc_vars.inverterVoltage[2];
         }
-    }
-    else if (foc_vars.inverterVoltage[1] < foc_vars.inverterVoltage[2])
-    {
-        minimumValue = foc_vars.inverterVoltage[1];
-    }
-    else
-    {
-        minimumValue = foc_vars.inverterVoltage[2];
-    }
 
-    foc_vars.inverterVoltage[0] -= minimumValue;
-    foc_vars.inverterVoltage[1] -= minimumValue;
-    foc_vars.inverterVoltage[2] -= minimumValue;
+        foc_vars.inverterVoltage[0] -= minimumValue;
+        foc_vars.inverterVoltage[1] -= minimumValue;
+        foc_vars.inverterVoltage[2] -= minimumValue;
 
-    ////////////////////////////////////////////////////////
-    // SVPM implementation
-    // ToDo HAHA not ready for that yet, makes my brain hurt.
+        ////////////////////////////////////////////////////////
+        // SVPM implementation
+        // ToDo HAHA not ready for that yet, makes my brain hurt.
 
-    ////////////////////////////////////////////////////////
-    // Actually write the value to the timer registers
-    htim1.Instance->CCR1 = (uint16_t)(foc_vars.inverterVoltage[0]);
-    htim1.Instance->CCR2 = (uint16_t)(foc_vars.inverterVoltage[1]);
-    htim1.Instance->CCR3 = (uint16_t)(foc_vars.inverterVoltage[2]);
-	}
+        ////////////////////////////////////////////////////////
+        // Actually write the value to the timer registers
+        htim1.Instance->CCR1 = (uint16_t)(foc_vars.inverterVoltage[0]);
+        htim1.Instance->CCR2 = (uint16_t)(foc_vars.inverterVoltage[1]);
+        htim1.Instance->CCR3 = (uint16_t)(foc_vars.inverterVoltage[2]);
+    }
 
     ///////////////////////////////////////////////
 
-	else{
-		// Sinusoidal implementation
-		            htim1.Instance->CCR1 = (uint16_t)(512.0f + foc_vars.inverterVoltage[0]);
-		            htim1.Instance->CCR2 = (uint16_t)(512.0f + foc_vars.inverterVoltage[1]);
-		            htim1.Instance->CCR3 = (uint16_t)(512.0f + foc_vars.inverterVoltage[2]);
-	}
+    else
+    {
+        // Sinusoidal implementation
+        htim1.Instance->CCR1 = (uint16_t)(512.0f + foc_vars.inverterVoltage[0]);
+        htim1.Instance->CCR2 = (uint16_t)(512.0f + foc_vars.inverterVoltage[1]);
+        htim1.Instance->CCR3 = (uint16_t)(512.0f + foc_vars.inverterVoltage[2]);
+    }
 }
 
 // Here we set all the PWMoutputs to LOW, without triggering the timerBRK,
