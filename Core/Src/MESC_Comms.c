@@ -103,24 +103,31 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
     else if (UART_rx_buffer[0] == 0x70)
     {  // p - Get the parameters (hall table and L R)
-    	MotorState = MOTOR_STATE_DETECTING;
-    	extern b_read_flash;
-    	b_read_flash = 0;
+        MotorState = MOTOR_STATE_DETECTING;
+        extern b_read_flash;
+        b_read_flash = 0;
         length = sprintf((char *)message_buffer, "Vbus%.2f\r", measurement_buffers.ConvertedADC[0][1]);
         HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
     }
     else if (UART_rx_buffer[0] == 0x66)
     {  // f - increase hall table by 100
-    	for(int i=0;i<6;i++){
-    		foc_vars.hall_table[i][2]=foc_vars.hall_table[i][2]+100;
-    	}
-
+        for (int i = 0; i < 6; i++)
+        {
+            foc_vars.hall_table[i][2] = foc_vars.hall_table[i][2] + 100;
+        }
     }
     else if (UART_rx_buffer[0] == 0x67)
     {  // g - decrease hall table by 100
-    	for(int i=0;i<6;i++){
-    		foc_vars.hall_table[i][2]=foc_vars.hall_table[i][2]-100;
-    	}
+        for (int i = 0; i < 6; i++)
+        {
+            foc_vars.hall_table[i][2] = foc_vars.hall_table[i][2] - 100;
+        }
+    }
+    else if (UART_rx_buffer[0] == 0x74)
+    {  // t - put it into double pulse test mode
+        MotorState = MOTOR_STATE_TEST;
+        phV_Enable();
+        phW_Enable();
     }
     else
     {
