@@ -36,13 +36,13 @@ extern uint16_t ICVals[2];
 extern UART_HandleTypeDef huart3;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim3;
+    uint8_t message_buffer[20];
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // UART implementation
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    uint8_t message_buffer[20];
     uint8_t length;
 
     if (UART_rx_buffer[0] == 0x68)
@@ -131,7 +131,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
     else
     {
-        HAL_UART_Transmit_DMA(&huart3, "Unrecognised!", 13);
+        HAL_UART_Transmit_DMA(&huart3, "Unrecognised!\r", 14);
     }
     // Restart the UART interrupt, otherwise you're not getting the next byte!
     HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);

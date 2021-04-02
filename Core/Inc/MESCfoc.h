@@ -25,9 +25,9 @@
 #include "stm32f3xx_hal.h"
 
 #define FOC_SECTORS_PER_REVOLUTION (6)
-#define FOC_CONV_CHANNELS          (3)
+#define FOC_CONV_CHANNELS          (4)
 #define FOC_TRANSFORMED_CHANNELS   (2)
-#define FOC_NUM_ADC                (3)
+#define FOC_NUM_ADC                (4)
 #define FOC_PERIODS                (1)
 
 // fixme: I think this type of stuff is causing confusion later on especially in
@@ -83,7 +83,6 @@ typedef struct
 } foc_measurement_t;
 
 foc_measurement_t measurement_buffers;  // fixme: floating function prototype
-
 
 /* Function prototypes -----------------------------------------------*/
 

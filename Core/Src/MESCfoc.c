@@ -33,7 +33,7 @@
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
 extern OPAMP_HandleTypeDef hopamp1, hopamp2, hopamp3;
-extern ADC_HandleTypeDef hadc1, hadc2, hadc3;
+extern ADC_HandleTypeDef hadc1, hadc2, hadc3,hadc4;
 extern COMP_HandleTypeDef hcomp1, hcomp2, hcomp4, hcomp7;
 
 float one_on_sqrt6 = 0.408248;
@@ -52,6 +52,8 @@ void MESCInit()
     HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
     HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
     HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
+    HAL_ADCEx_Calibration_Start(&hadc4, ADC_SINGLE_ENDED);
+
     HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle, controller, PWM source...)
 
     HAL_OPAMP_Start(&hopamp1);
@@ -125,11 +127,13 @@ void MESCInit()
     HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&measurement_buffers.RawADC[0][0], 3);
     __HAL_TIM_SET_COUNTER(&htim1, 10);
 
-    HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&measurement_buffers.RawADC[1][0], 3);
+    HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&measurement_buffers.RawADC[1][0], 4);
     __HAL_TIM_SET_COUNTER(&htim1, 10);
 
     HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][0], 1);
+    __HAL_TIM_SET_COUNTER(&htim1, 10);
 
+    HAL_ADC_Start_DMA(&hadc4, (uint32_t *)&measurement_buffers.RawADC[3][0], 1);
     __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_EOS);  // We are using the ADC_DMA, so the HAL initialiser doesn't actually enable the ADC conversion
                                               // complete interrupt. This does.
 
