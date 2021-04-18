@@ -1,0 +1,13 @@
+
+#ifndef MESC_FNV1A_H
+#define MESC_FNV1A_H
+
+#include <stdint.h>
+
+uint32_t fnv1a( void const * ptr, uint32_t const len );
+
+uint32_t fnv1a_init( void );
+
+uint32_t fnv1a_process( uint32_t const fnv, uint8_t const byte );
+
+#endif
