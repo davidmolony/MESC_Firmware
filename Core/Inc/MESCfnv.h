@@ -4,7 +4,9 @@
 
 #include <stdint.h>
 
-uint32_t fnv1a( void const * ptr, uint32_t const len );
+uint32_t fnv1a_data( void const * ptr, uint32_t const len );
+
+uint32_t fnv1a_str( char const * ptr );
 
 uint32_t fnv1a_init( void );
 
