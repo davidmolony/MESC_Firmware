@@ -70,16 +70,29 @@ T = --------- - T_lo - X, let D = T_lo + X where X is fudge factor
         A
 */
 
-static float const temp_approx_T_lo = -23.0;            // Profile
+static float const temp_approx_T_lo = -23.0f;           // Profile
 static float const temp_approx_T_A  = - 0.034479692f;   // Profile
 static float const temp_approx_T_B  =  11.0331166974f;  // Profile
-static float const temp_approx_T_X  =  26.51939842f;    // Profile
+static float const temp_approx_T_X  = 0.0f;//-26.51939842f;    // Profile
+/*
+Experimental (BIST)
+
+ADC R_T     T   Actual (spec)
+1D0   600   111  120
+430  1666    82   80
+770  4100    56   50
+8D0  5800    46   40
+AE0 10000    30   25
+DC0 28722   - 1    0
+
+Removing T_X appears to be more correct!
+*/
 
 static float temp_calculate_approximation( float const R_T )
 {
     float const ln_R_T = log( R_T );
     float const T_D = (temp_approx_T_lo + temp_approx_T_X);
-    float const T = ((ln_R_T - temp_approx_T_B) / temp_approx_T_A) - T_D;
+    float const T = ((ln_R_T - temp_approx_T_B) / temp_approx_T_A) + T_D;
 
     return T;
 }
@@ -129,12 +142,14 @@ static float temp_calculate_SteinhartHart( float const R_T )
 /*
 API
 */
-
+//#include <stdio.h>//debug
 float temp_read( uint32_t const adc_raw )
 {
     float const adc  = adc_raw;
     float const Vout = ((TEMP_V * adc) / temp_adc_range);
     float const R_T = temp_calculate_R_T( Vout );
+
+//fprintf( stderr, "R_T %.0f Ohm\n", R_T );//debug
 
     float const T = temp_calculate_approximation( R_T );
     //float const T = temp_calculate_SteinhartHart( R_T );
