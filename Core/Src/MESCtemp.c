@@ -156,3 +156,12 @@ float temp_read( uint32_t const adc_raw )
 
     return T;
 }
+
+uint32_t temp_get_adc( float const T )
+{
+    float const R_T = exp( ((T - temp_approx_T_lo) * temp_approx_T_A) + temp_approx_T_B );
+    float const Vout = (TEMP_V * R_T) / (TEMP_R_F + R_T);
+    uint32_t const adc_raw = (uint32_t)((Vout * ((float)temp_adc_range)) / TEMP_V);
+
+    return adc_raw;
+}
