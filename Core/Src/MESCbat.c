@@ -25,34 +25,30 @@ void bat_init( BATProfile const * profile )
     //Cscale = profile->Cmax / (profile->Cmax - profile->Clow); // Amp Hour
 }
 
-float bat_get_voltage( void )
+float bat_get_charge_level( float const V, float const I, float const ESR )
 {
-    return 0.0f;
-}
-
-float bat_get_charge_level( float const V )
-{
+    float const Vadj = (V + (I * ESR));
     float dV;
     float  C;
 
-    if (V <= bat_profile->Vlow)
+    if (Vadj <= bat_profile->Vlow)
     {
         C = 0;
     }
-    else if (V >= bat_profile->Vmax)
+    else if (Vadj >= bat_profile->Vmax)
     {
         C = bat_profile->Cmax;
     }
     else
     {
-        if (V > bat_profile->Vmid)
+        if (Vadj > bat_profile->Vmid)
         {
-            dV = (V - bat_profile->Vmid);
+            dV = (Vadj - bat_profile->Vmid);
             C  = bat_profile->Cmid + (grad_upper * dV);
         }
         else
         {
-            dV = (V - bat_profile->Vmin);
+            dV = (Vadj - bat_profile->Vmin);
             C  = (grad_lower * dV);
         }
 

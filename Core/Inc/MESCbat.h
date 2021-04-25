@@ -52,8 +52,6 @@ typedef struct BATProfile BATProfile;
 
 void bat_init( BATProfile const * profile );
 
-float bat_get_voltage( void );
-
-float bat_get_charge_level( float const V );
+float bat_get_charge_level( float const V, float const I, float const ESR );
 
 #endif

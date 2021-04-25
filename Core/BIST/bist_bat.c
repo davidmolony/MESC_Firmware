@@ -28,7 +28,7 @@ void bist_bat( void )
 
     for ( float V = bp.Vmin; (V < bp.Vmax); V = V + 0.05f )
     {
-        float const C = bat_get_charge_level( V );
+        float const C = bat_get_charge_level( V, 0.0f, 0.0f );
 
         fprintf( stdout, "%3.2f V => %3.0f %%\n", V, C ); // Percent
         //fprintf( stdout, "%3.2f V => %1.1f Ah\n", V, C ); // Amp Hour
