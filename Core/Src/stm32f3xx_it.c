@@ -178,6 +178,7 @@ void DMA1_Channel2_IRQHandler(void)
 
     /* USER CODE END DMA1_Channel2_IRQn 0 */
     HAL_DMA_IRQHandler(&hdma_usart3_tx);
+
     /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
 
     /* USER CODE END DMA1_Channel2_IRQn 1 */
@@ -224,7 +225,56 @@ void TIM3_IRQHandler(void)
     /* USER CODE BEGIN TIM3_IRQn 0 */
 
     /* USER CODE END TIM3_IRQn 0 */
+    uint32_t fCC1 = __HAL_TIM_GET_IT_SOURCE(&htim3, TIM_IT_CC1);
+    uint32_t fUPD = __HAL_TIM_GET_IT_SOURCE(&htim3, TIM_IT_UPDATE);
+
     HAL_TIM_IRQHandler(&htim3);
+
+    float offset = 0.0f;
+    // If the event was CC1...
+    if (fCC1 != RESET)
+    {
+        offset = foc_vars.Idq_req[1];
+    }
+    // If the event was UPDATE ...
+    else if (fUPD != RESET)
+    {
+        // Nothing to do here
+    }
+    // For anything else...
+    else
+    {
+        // ...no further processing
+        return;
+    }
+
+    if (measurement_buffers.RawADC[1][3] > 700)
+    {
+        // If the event was CC1...
+        if (fCC1 != RESET)
+        {
+            // read the capture and add it to the throttle
+            foc_vars.Idq_req[1] =
+                offset + (((float)(measurement_buffers.RawADC[1][3] - 700)) * 0.06f);  // This does not take in throttle signal...
+        }
+        // ...otherwise if it UPDATE...
+        else
+        {
+            // .. assign the throttle directly
+            foc_vars.Idq_req[1] = ((float)(measurement_buffers.RawADC[1][3] - 700)) * 0.06f;  // This winds up dangerously
+        }
+    }
+    else
+    {  // both/all
+        // If the requested quadrature current if positive..
+        if (foc_vars.Idq_req[1] > 0.0f)
+        {
+            // ..zero it
+            foc_vars.Idq_req[1] = 0.0f;
+        }
+        // otherwise, if negative (braking) maintain negative value
+    }
+
     /* USER CODE BEGIN TIM3_IRQn 1 */
 
     /* USER CODE END TIM3_IRQn 1 */

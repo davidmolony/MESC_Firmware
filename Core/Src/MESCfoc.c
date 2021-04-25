@@ -119,8 +119,8 @@ void MESCInit()
     HAL_COMP_Start(&hcomp1);
     HAL_COMP_Start(&hcomp2);
     HAL_COMP_Start(&hcomp4);
-    HAL_COMP_Start(&hcomp7);  // OVP comparator, may be unwanted if operating above the divider threshold, the ADC conversion can also be
-                              // used to trigger a protection event
+    // HAL_COMP_Start(&hcomp7);  // OVP comparator, may be unwanted if operating above the divider threshold, the ADC conversion can also be
+    // used to trigger a protection event
 
     __HAL_TIM_SET_COUNTER(&htim1, 10);
 
@@ -142,8 +142,12 @@ void MESCInit()
     // conversion complete interrupt
 }
 
+static int current_hall_state;
+
 void fastLoop()
-{                     // Call this directly from the ADC callback IRQ
+{
+    current_hall_state = ((GPIOB->IDR >> 6) & 0x7);
+    // Call this directly from the ADC callback IRQ
     ADCConversion();  // First thing we ever want to do is convert the ADC values to real, useable numbers.
     static int dp_counter;
 
@@ -214,7 +218,7 @@ void fastLoop()
             else if (test == 8)
             {
                 MotorState = MOTOR_STATE_ERROR;
-                MotorError = MOTOR_ERROR_HALL;
+                MotorError = MOTOR_ERROR_HALL7;
             }
             // ToDo add reporting
             else
@@ -347,7 +351,8 @@ void VICheck()
     static int errorCount = 0;
 
     if ((measurement_buffers.RawADC[0][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[1][0] > g_hw_setup.RawCurrLim) ||
-        (measurement_buffers.RawADC[2][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[0][1] > g_hw_setup.RawVoltLim))
+        (measurement_buffers.RawADC[2][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[0][1] > g_hw_setup.RawVoltLim) ||
+        (measurement_buffers.RawADC[3][0] < 1000))
     {
         foc_vars.Idq_req[0] = foc_vars.Idq_req[0] * 0.9;
         foc_vars.Idq_req[1] = foc_vars.Idq_req[1] * 0.9;
@@ -446,21 +451,12 @@ void ADCConversion()
         // clang-format on
 
         adc_conv_end = htim1.Instance->CNT;
-        if (measurement_buffers.RawADC[1][3] > 700)
-        {
-            foc_vars.Idq_req[1] = ((float)(measurement_buffers.RawADC[1][3] - 700)) * 0.04f;
-        }
-        else
-        {
-            foc_vars.Idq_req[1] = 0.0f;
-        }
     }
 }
 /////////////////////////////////////////////////////////////////////////////
 ////////Hall Sensor Implementation///////////////////////////////////////////
 static float dir = 1;
 static uint16_t testvar;
-static int current_hall_state;
 static uint16_t current_hall_angle;
 static int last_hall_state;
 static uint16_t last_hall_angle;
@@ -482,10 +478,12 @@ void hallAngleEstimator_new()
         if (current_hall_state == 0)
         {
             MotorState = MOTOR_STATE_ERROR;
+            MotorError = MOTOR_ERROR_HALL0;
         }
         else if (current_hall_state == 7)
         {
             MotorState = MOTOR_STATE_ERROR;
+            MotorError = MOTOR_ERROR_HALL7;
         }
 
         // todo: I want this section to have a PLL like property, adding only a proportion of the error, not rigidly locking it.
@@ -510,19 +508,17 @@ static int hall_error = 0;
 void hallAngleEstimator()
 {  // Implementation using the mid point of the hall sensor angles, which should be much more reliable to generate that the edges
 
-    current_hall_state = ((GPIOB->IDR >> 6) & 0x7);
-
     if (current_hall_state != last_hall_state)
     {
         if (current_hall_state == 0)
         {
             MotorState = MOTOR_STATE_ERROR;
-            MotorError = MOTOR_ERROR_HALL;
+            MotorError = MOTOR_ERROR_HALL0;
         }
         else if (current_hall_state == 7)
         {
             MotorState = MOTOR_STATE_ERROR;
-            MotorError = MOTOR_ERROR_HALL;
+            MotorError = MOTOR_ERROR_HALL7;
         }
         //////////Implement the Hall table here, but the vector can be dynamically created/filled by another function/////////////
         current_hall_angle = foc_vars.hall_table[current_hall_state - 1][2];
@@ -579,16 +575,10 @@ void hallAngleEstimator()
     }
     if (ticks_since_last_hall_change > 500.0f)
     {
+        ticks_since_last_hall_change = 501.0f;
         last_hall_period = 500.0f;                          //(ticks_since_last_hall_change);
         one_on_last_hall_period = 1.0f / last_hall_period;  // / ticks_since_last_hall_change;
-        if (foc_vars.Idq_req[1] > 0)
-        {
-            foc_vars.HallAngle = current_hall_angle - 5461;
-        }
-        else
-        {
-            foc_vars.HallAngle = current_hall_angle + 5461;
-        }
+        foc_vars.HallAngle = current_hall_angle;
     }
     //        (uint16_t)((16383 * ((uint32_t)foc_vars.HallAngle) + (uint32_t)temp_current_hall_angle) >> 14) +
     //        (uint16_t)(one_on_last_hall_period * 10922);

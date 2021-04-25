@@ -32,7 +32,7 @@ void motor_init() {
 }
 
 void hw_init() {
-    g_hw_setup.Vmax = 70.0;
+    g_hw_setup.Vmax = 80.0;
     g_hw_setup.Rshunt = 0.0005;
     g_hw_setup.RIphPU = 4700;
     g_hw_setup.RIphSR = 150;
@@ -43,6 +43,6 @@ void hw_init() {
     g_hw_setup.Igain =
         3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain *
                g_hw_setup.RIphPU / (g_hw_setup.RIphPU + g_hw_setup.RIphSR));
-    g_hw_setup.RawCurrLim = 4000;
+    g_hw_setup.RawCurrLim = 3276; //3276 is about 120A
     g_hw_setup.RawVoltLim = (uint16_t)(4096.0f*(g_hw_setup.Vmax/3.3f)*g_hw_setup.RVBB/(g_hw_setup.RVBB+g_hw_setup.RVBT));
 }
