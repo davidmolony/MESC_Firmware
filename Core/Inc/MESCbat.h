@@ -52,6 +52,15 @@ typedef struct BATProfile BATProfile;
 
 void bat_init( BATProfile const * profile );
 
+float battery_get_power(
+    float const Iq, float const Vq,
+    float const Id, float const Vd );
+
+float battery_get_current(
+    float const Iq, float const Vq,
+    float const Id, float const Vd,
+    float const Vbat );
+
 float bat_get_charge_level( float const V, float const I, float const ESR );
 
 #endif

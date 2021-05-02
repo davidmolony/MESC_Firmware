@@ -25,6 +25,22 @@ void bat_init( BATProfile const * profile )
     //Cscale = profile->Cmax / (profile->Cmax - profile->Clow); // Amp Hour
 }
 
+float battery_get_power(
+    float const Iq, float const Vq,
+    float const Id, float const Vd )
+{
+    return ((Iq * Vq) + (Id * Vd));
+}
+
+float battery_get_current(
+    float const Iq, float const Vq,
+    float const Id, float const Vd,
+    float const Vbat )
+{
+    float const power = battery_get_power( Iq, Vq, Id, Vd );
+    return (power / Vbat);
+}
+
 float bat_get_charge_level( float const V, float const I, float const ESR )
 {
     float const Vadj = (V + (I * ESR));
