@@ -17,13 +17,28 @@ W Write
        value
 */
 
-void cli_process_bool( void const * entry, char const c );
+void cli_process_int( char const c );
 
-void cli_register_variable_ro( char const * name, void const * address, uint32_t const size, void (* fn)( void const * entry, char const c ), void * info );
+void cli_process_uint( char const c );
 
-void cli_register_variable_rw( char const * name, void       * address, uint32_t const size, void (* fn)( void const * entry, char const c ), void * info );
+void cli_process_float( char const c );
 
-void cli_register_variable_wo( char const * name, void       * address, uint32_t const size, void (* fn)( void const * entry, char const c ), void * info );
+void cli_process_enum( char const c );
+
+void cli_register_variable_ro(
+    char const * name,
+    void const * address, uint32_t const size,
+    void (* fn)( char const c ) );
+
+void cli_register_variable_rw(
+    char const * name,
+    void       * address, uint32_t const size,
+    void (* fn)( char const c ) );
+
+void cli_register_variable_wo(
+    char const * name,
+    void       * address, uint32_t const size,
+    void (* fn)( char const c ) );
 
 void cli_process( char const c );
 

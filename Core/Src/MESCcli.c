@@ -3,6 +3,7 @@
 #include "MESCfnv.h"
 
 //#include <inttypes.h>//debug
+#include <math.h>
 #include <stddef.h>
 //#include <stdio.h>//debug
 #include <string.h>
@@ -28,6 +29,35 @@ static uint8_t cli_cmd;
 static uint8_t cli_hash_valid = 0;
 static uint32_t cli_hash = 0;
 
+enum CLIAccess
+{
+    CLI_ACCESS_NONE = 0x0,
+
+    CLI_ACCESS_R    = 0x1,
+    CLI_ACCESS_W    = 0x2,
+
+    CLI_ACCESS_RO   = CLI_ACCESS_R,
+    CLI_ACCESS_WO   = CLI_ACCESS_W,
+    CLI_ACCESS_RW   = (CLI_ACCESS_R | CLI_ACCESS_W),
+};
+
+typedef enum CLIAccess CLIAccess;
+
+struct CLIVar
+{
+    uint32_t        state;
+    union
+    {
+    int32_t         i;
+    uint32_t        u;
+    float           f;
+    };
+};
+
+typedef struct CLIVar CLIVar;
+
+static CLIVar cli_var = {0};
+
 struct CLIEntry
 {
     uint32_t        hash;
@@ -37,9 +67,8 @@ struct CLIEntry
     void const *    rvar;
     };
     uint32_t        size;
-    uint8_t         access;
-    void (*         fn)( void const *, char const );
-    void *          arg;
+    CLIAccess       access;
+    void (*         fn)( char const );
 };
 
 typedef struct CLIEntry CLIEntry;
@@ -48,16 +77,15 @@ static CLIEntry cli_lut[32];
 static uint32_t cli_lut_entries = 0;
 static CLIEntry * cli_lut_entry = NULL;
 
-static void cli_noop( void const * entry, char const c )
+static void cli_noop( char const c )
 {
     cli_state = CLI_STATE_ABORT;
     cli_hash_valid = 0;
 //fprintf( stderr, "WARNING: cli_noop (%c)\n", c );//debug
-    (void)entry;
     (void)c;
 }
 
-static void (* cli_process_value)( void const *, char const ) = cli_noop;
+static void (* cli_process_value)( char const ) = cli_noop;
 
 static void cli_execute( void )
 {
@@ -75,7 +103,7 @@ static void cli_execute( void )
             break;
         case 'W':
             // write or error
-            memcpy( cli_lut_entry->wvar, &cli_lut_entry->arg, cli_lut_entry->size );
+            memcpy( cli_lut_entry->wvar, &cli_var.u, cli_lut_entry->size );
 //fprintf( stderr, "INFO: Commit %" PRIu32 " bytes\n", cli_lut_entry->size );//debug
             break;
         default:
@@ -86,54 +114,8 @@ static void cli_execute( void )
 
     cli_hash_valid = 0;
     cli_state = CLI_STATE_IDLE;
+    cli_var.state = 0;
 }
-#if 0 // todo
-static uint32_t cli_value = 0;
-
-static void cli_process_bool( char const c )
-{
-    switch (cli_state)
-    {
-        case CLI_STATE_VALUE:
-            switch (c)
-            {
-                case ' ':
-                    return;
-                case '0':
-                    cli_value = 0;
-                    cli_state = CLI_STATE_EXECUTE;
-                    break;
-                case '1':
-                    cli_value = 1;
-                    cli_state = CLI_STATE_EXECUTE;
-                    break;
-                default:
-                    cli_state = CLI_STATE_ABORT;
-                    cli_hash_valid = 0;
-                    break;
-            }
-            break;
-        case CLI_STATE_EXECUTE:
-            switch (c)
-            {
-                case '\n':
-                    cli_execute();
-                    break;
-                case ' ':
-                    break;
-                default:
-                    cli_state = CLI_STATE_ABORT;
-                    cli_hash_valid = 0;
-                    break;
-            }
-            break;
-        default:
-            cli_state = CLI_STATE_ABORT;
-            cli_hash_valid = 0;
-            break;
-    }
-}
-#endif
 
 static CLIEntry * cli_lut_alloc( char const * name )
 {
@@ -154,30 +136,121 @@ static CLIEntry * cli_lut_alloc( char const * name )
     return entry;
 }
 
-void cli_process_bool( void const * entry, char const c )
+void cli_process_int( char const c )
 {
-    CLIEntry const * cli_entry = (CLIEntry const *)entry;
-    // TODO check cli_entry
-    // TODO check command
-    // TODO check access
-    switch (cli_cmd)
+    if ((cli_var.state == 0) && (c == '-'))
     {
-        case 'R':
-            cli_state = CLI_STATE_EXECUTE;
+        cli_var.i = INT32_C(-1);
+        cli_var.state = 1;
+    }
+
+    if (('0' <= c) && (c <= '9'))
+    {
+        if (cli_var.state == 0)
+        {
+            cli_var.i = INT32_C(0);
+        }
+        cli_var.i *= INT32_C(10);
+        cli_var.i += (c - '0');
+        cli_var.state = 1;
+    }
+    else if (cli_var.state == 0)
+    {
+        cli_state = CLI_STATE_ABORT;
+    }
+}
+
+void cli_process_uint( char const c )
+{
+    if (('0' <= c) && (c <= '9'))
+    {
+        if (cli_var.state == 0)
+        {
+            cli_var.u = UINT32_C(0);
+        }
+        cli_var.u *= UINT32_C(10);
+        cli_var.u += (c - '0');
+        cli_var.state = 1;
+    }
+    else
+    {
+        cli_state = CLI_STATE_ABORT;
+    }
+}
+
+void cli_process_float( char const c )
+{
+    switch (cli_var.state)
+    {
+        case 0:
+            cli_var.state = 1;
+            switch (c)
+            {
+                case '-':
+                    cli_var.f = -1.0f;
+                    break;
+                case '+':
+                    cli_var.f = +1.0f;
+                    break;
+                default:
+                    if (('0' <= c) && (c <= '9'))
+                    {
+                        cli_var.f = ((float)(c - '0'));
+                        cli_var.state = 2;
+                    }
+                    else
+                    {
+                        cli_state = CLI_STATE_ABORT;
+                    }
+                    break;
+            }
             break;
-        case 'W':
-//fprintf( stderr, "INFO: Write bool '%c'\n", c );//debug
-            *((uintptr_t *)&cli_entry->arg) |= (c ? 1 : 0);
-            cli_state = CLI_STATE_EXECUTE;
+        case 1:
+            cli_var.state = 2;
+            if (('0' <= c) && (c <= '9'))
+            {
+                cli_var.f *= ((float)(c - '0'));
+            }
+            else
+            {
+                cli_state = CLI_STATE_ABORT;
+            }
+            break;
+        case 2:
+            if (('0' <= c) && (c <= '9'))
+            {
+                float const sgn = (cli_var.f < 0.0f) ? -1.0f : 1.0f;
+                cli_var.f *= 10.0f;
+                cli_var.f += sgn * ((float)(c - '0'));
+            }
+            else if (c == '.')
+            {
+                cli_var.state = 3;
+            }
+            else
+            {
+                cli_state = CLI_STATE_ABORT;
+            }
             break;
         default:
-            cli_state = CLI_STATE_ABORT;
-            cli_hash_valid = 0;
+            if (('0' <= c) && (c <= '9'))
+            {
+                float const sgn = (cli_var.f < 0.0f) ? -1.0f : 1.0f;
+                cli_var.f += (sgn * ((float)(c - '0'))) / pow( 10.0f, (cli_var.state - 2)  );
+                cli_var.state++;
+            }
+            else
+            {
+                cli_state = CLI_STATE_ABORT;
+            }
             break;
     }
 }
 
-void cli_register_variable_ro( char const * name, void const * address, uint32_t const size, void (* fn)( void const * entry, char const c ), void * info )
+void cli_register_variable_ro(
+    char const * name,
+    void const * address, uint32_t const size,
+    void (* fn)( char const c ) )
 {
     CLIEntry * entry = cli_lut_alloc( name );
 
@@ -185,41 +258,44 @@ void cli_register_variable_ro( char const * name, void const * address, uint32_t
     {
         entry->rvar   = address;
         entry->size   = size;
-        entry->access = 0x1; // TODO
+        entry->access = CLI_ACCESS_RO;
         entry->fn     = fn;
-        entry->arg    = info;
 
         cli_lut_entries++;
     }
 }
 
-void cli_register_variable_rw( char const * name, void       * address, uint32_t const size, void (* fn)( void const * entry, char const c), void * info )
+void cli_register_variable_rw(
+    char const * name,
+    void       * address, uint32_t const size,
+    void (* fn)( char const c) )
 {
     CLIEntry * entry = cli_lut_alloc( name );
 
     if (entry != NULL)
     {
-        entry->wvar = address;
-        entry->size = size;
-        entry->access = 0x3; // TODO
+        entry->wvar   = address;
+        entry->size   = size;
+        entry->access = CLI_ACCESS_RW;
         entry->fn     = fn;
-        entry->arg    = info;
 
         cli_lut_entries++;
     }
 }
 
-void cli_register_variable_wo( char const * name, void       * address, uint32_t const size, void (* fn)( void const * entry, char const c ), void * info )
+void cli_register_variable_wo(
+    char const * name,
+    void       * address, uint32_t const size,
+    void (* fn)( char const c ) )
 {
     CLIEntry * entry = cli_lut_alloc( name );
 
     if (entry != NULL)
     {
-        entry->wvar = address;
-        entry->size = size;
-        entry->access = 0x2; // TODO
+        entry->wvar   = address;
+        entry->size   = size;
+        entry->access = CLI_ACCESS_WO;
         entry->fn     = fn;
-        entry->arg    = info;
 
         cli_lut_entries++;
     }
@@ -248,6 +324,27 @@ static void cli_process_variable( const char c )
             }
             break;
         case ' ':
+            cli_lut_entry = cli_lookup( cli_hash );
+            cli_hash_valid = 0;
+            {
+            CLIAccess access = CLI_ACCESS_NONE;
+            switch (cli_cmd)
+            {
+                case 'R':
+                    access = CLI_ACCESS_R;
+                    break;
+                case 'W':
+                    access = CLI_ACCESS_W;
+                    break;
+            }
+
+            if ((cli_lut_entry == NULL) || ((cli_lut_entry->access & access) != access))
+            {
+                cli_state = CLI_STATE_ABORT;
+                cli_process_value = cli_noop;
+                break;
+            }
+            }
             switch (cli_cmd)
             {
                 case 'R':
@@ -255,18 +352,7 @@ static void cli_process_variable( const char c )
                     break;
                 case 'W':
                     cli_state = CLI_STATE_VALUE;
-                    cli_lut_entry = cli_lookup( cli_hash );
-                    if (cli_lut_entry == NULL)
-                    {
-                        cli_state = CLI_STATE_ABORT;
-                        cli_hash_valid = 0;
-                        cli_process_value = cli_noop;
-                    }
-                    else
-                    {
-                        cli_hash_valid = 0;
-                        cli_process_value = cli_lut_entry->fn;
-                    }
+                    cli_process_value = cli_lut_entry->fn;
                     break;
             }
             break;
@@ -274,7 +360,7 @@ static void cli_process_variable( const char c )
             if (cli_hash_valid != 0)
             {
                 if  (
-                        (('0' <= c ) && (c <= '1'))
+                        (('0' <= c ) && (c <= '9'))
                     ||  (('A' <= c ) && (c <= 'Z'))
                     ||  (('a' <= c ) && (c <= 'z'))
                     ||  (c == '_')
@@ -286,6 +372,7 @@ static void cli_process_variable( const char c )
                 {
                     cli_state = CLI_STATE_IDLE;
                     cli_hash_valid = 0;
+                    cli_var.state = 0;
                 }
             }
             else
@@ -303,6 +390,7 @@ static void cli_process_variable( const char c )
                 {
                     cli_state = CLI_STATE_IDLE;
                     cli_hash_valid = 0;
+                    cli_var.state = 0;
                 }
                 else
                 {
@@ -339,6 +427,7 @@ void cli_process( char const c )
             if (c == '\n')
             {
                 cli_state = CLI_STATE_IDLE;
+                cli_var.state = 0;
             }
             break;
         case CLI_STATE_COMMAND:
@@ -346,6 +435,7 @@ void cli_process( char const c )
             {
                 case '\n':
                     cli_state = CLI_STATE_IDLE;
+                    cli_var.state = 0;
                     break;
                 case ' ':
                     cli_state = CLI_STATE_VARIABLE;
@@ -360,8 +450,16 @@ void cli_process( char const c )
             cli_process_variable( c );
             break;
         case CLI_STATE_VALUE:
-            cli_process_value( cli_lut_entry, c );
-            break;
+            if (c == ' ')
+            {
+                cli_state = CLI_STATE_EXECUTE;
+            }
+            else if (c != '\n')
+            {
+                cli_process_value( c );
+                break;
+            }
+            // fallthrough
         case CLI_STATE_EXECUTE:
             switch (c)
             {
