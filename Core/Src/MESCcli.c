@@ -51,7 +51,7 @@ struct CLIVar
     int32_t         i;
     uint32_t        u;
     float           f;
-    };
+    }               var;
 };
 
 typedef struct CLIVar CLIVar;
@@ -63,9 +63,9 @@ struct CLIEntry
     uint32_t        hash;
     union
     {
-    void       *    wvar;
-    void const *    rvar;
-    };
+    void       *    w;
+    void const *    r;
+    }               var;
     uint32_t        size;
     CLIAccess       access;
     void (*         fn)( char const );
@@ -103,7 +103,7 @@ static void cli_execute( void )
             break;
         case 'W':
             // write or error
-            memcpy( cli_lut_entry->wvar, &cli_var.u, cli_lut_entry->size );
+            memcpy( cli_lut_entry->var.w, &cli_var.var, cli_lut_entry->size );
 //fprintf( stderr, "INFO: Commit %" PRIu32 " bytes\n", cli_lut_entry->size );//debug
             break;
         default:
@@ -140,7 +140,7 @@ void cli_process_int( char const c )
 {
     if ((cli_var.state == 0) && (c == '-'))
     {
-        cli_var.i = INT32_C(-1);
+        cli_var.var.i = INT32_C(-1);
         cli_var.state = 1;
     }
 
@@ -148,10 +148,10 @@ void cli_process_int( char const c )
     {
         if (cli_var.state == 0)
         {
-            cli_var.i = INT32_C(0);
+            cli_var.var.i = INT32_C(0);
         }
-        cli_var.i *= INT32_C(10);
-        cli_var.i += (c - '0');
+        cli_var.var.i *= INT32_C(10);
+        cli_var.var.i += (c - '0');
         cli_var.state = 1;
     }
     else if (cli_var.state == 0)
@@ -166,10 +166,10 @@ void cli_process_uint( char const c )
     {
         if (cli_var.state == 0)
         {
-            cli_var.u = UINT32_C(0);
+            cli_var.var.u = UINT32_C(0);
         }
-        cli_var.u *= UINT32_C(10);
-        cli_var.u += (c - '0');
+        cli_var.var.u *= UINT32_C(10);
+        cli_var.var.u += (c - '0');
         cli_var.state = 1;
     }
     else
@@ -187,15 +187,15 @@ void cli_process_float( char const c )
             switch (c)
             {
                 case '-':
-                    cli_var.f = -1.0f;
+                    cli_var.var.f = -1.0f;
                     break;
                 case '+':
-                    cli_var.f = +1.0f;
+                    cli_var.var.f = +1.0f;
                     break;
                 default:
                     if (('0' <= c) && (c <= '9'))
                     {
-                        cli_var.f = ((float)(c - '0'));
+                        cli_var.var.f = ((float)(c - '0'));
                         cli_var.state = 2;
                     }
                     else
@@ -209,7 +209,7 @@ void cli_process_float( char const c )
             cli_var.state = 2;
             if (('0' <= c) && (c <= '9'))
             {
-                cli_var.f *= ((float)(c - '0'));
+                cli_var.var.f *= ((float)(c - '0'));
             }
             else
             {
@@ -219,9 +219,9 @@ void cli_process_float( char const c )
         case 2:
             if (('0' <= c) && (c <= '9'))
             {
-                float const sgn = (cli_var.f < 0.0f) ? -1.0f : 1.0f;
-                cli_var.f *= 10.0f;
-                cli_var.f += sgn * ((float)(c - '0'));
+                float const sgn = (cli_var.var.f < 0.0f) ? -1.0f : 1.0f;
+                cli_var.var.f *= 10.0f;
+                cli_var.var.f += sgn * ((float)(c - '0'));
             }
             else if (c == '.')
             {
@@ -235,8 +235,8 @@ void cli_process_float( char const c )
         default:
             if (('0' <= c) && (c <= '9'))
             {
-                float const sgn = (cli_var.f < 0.0f) ? -1.0f : 1.0f;
-                cli_var.f += (sgn * ((float)(c - '0'))) / (float)pow( 10.0f, (float)(cli_var.state - 2)  );
+                float const sgn = (cli_var.var.f < 0.0f) ? -1.0f : 1.0f;
+                cli_var.var.f += (sgn * ((float)(c - '0'))) / (float)pow( 10.0f, (float)(cli_var.state - 2)  );
                 cli_var.state++;
             }
             else
@@ -256,7 +256,7 @@ void cli_register_variable_ro(
 
     if (entry != NULL)
     {
-        entry->rvar   = address;
+        entry->var.r  = address;
         entry->size   = size;
         entry->access = CLI_ACCESS_RO;
         entry->fn     = fn;
@@ -274,7 +274,7 @@ void cli_register_variable_rw(
 
     if (entry != NULL)
     {
-        entry->wvar   = address;
+        entry->var.w  = address;
         entry->size   = size;
         entry->access = CLI_ACCESS_RW;
         entry->fn     = fn;
@@ -292,7 +292,7 @@ void cli_register_variable_wo(
 
     if (entry != NULL)
     {
-        entry->wvar   = address;
+        entry->var.w  = address;
         entry->size   = size;
         entry->access = CLI_ACCESS_WO;
         entry->fn     = fn;
