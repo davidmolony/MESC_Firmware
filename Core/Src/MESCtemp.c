@@ -96,7 +96,7 @@ static float temp_calculate_approximation( float const R_T )
 
     return T;
 }
-#if 0 // unused
+#if TEMP_STEINHART_HART // unused
 /*
 Steinhart & Hart method
 */
@@ -152,8 +152,9 @@ float temp_read( uint32_t const adc_raw )
 //fprintf( stderr, "R_T %.0f Ohm\n", R_T );//debug
 
     float const T = temp_calculate_approximation( R_T );
-    //float const T = temp_calculate_SteinhartHart( R_T );
-
+#if TEMP_STEINHART_HART
+    float const T = temp_calculate_SteinhartHart( R_T );
+#endif
     return T;
 }
 

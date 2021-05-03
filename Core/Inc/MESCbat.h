@@ -35,7 +35,7 @@ struct BATProfile
 {
     float   Vmax;   /* Volt     */
     float   Cmax;   /* Amp Hour */
-#if 0
+#if BAT_VTOP
     float   Vtop;   /* Volt     */
     float   Ctop[2];/* Amp Hour */
 #endif

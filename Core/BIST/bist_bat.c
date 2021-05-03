@@ -11,7 +11,7 @@ void bist_bat( void )
 
     bp.Vmax = 4.2f; // V
     bp.Cmax = 4.2f; // Ah
-#if 0
+#if BAT_VTOP
     bp.Vtop = 4.05f; // V
     bp.Ctop[0] = 4.0f; // Ah
     bp.Ctop[1] = 3.5f; // Ah
