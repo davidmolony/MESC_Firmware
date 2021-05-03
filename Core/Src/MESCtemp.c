@@ -90,7 +90,7 @@ Removing T_X appears to be more correct!
 
 static float temp_calculate_approximation( float const R_T )
 {
-    float const ln_R_T = log( R_T );
+    float const ln_R_T = (float)log( R_T );
     float const T_D = (temp_approx_T_lo + temp_approx_T_X);
     float const T = ((ln_R_T - temp_approx_T_B) / temp_approx_T_A) + T_D;
 
@@ -145,7 +145,7 @@ API
 //#include <stdio.h>//debug
 float temp_read( uint32_t const adc_raw )
 {
-    float const adc  = adc_raw;
+    float const adc  = (float)adc_raw;
     float const Vout = ((TEMP_V * adc) / temp_adc_range);
     float const R_T = temp_calculate_R_T( Vout );
 
@@ -160,7 +160,7 @@ float temp_read( uint32_t const adc_raw )
 
 uint32_t temp_get_adc( float const T )
 {
-    float const R_T = exp( ((T - temp_approx_T_lo) * temp_approx_T_A) + temp_approx_T_B );
+    float const R_T = (float)exp( ((T - temp_approx_T_lo) * temp_approx_T_A) + temp_approx_T_B );
     float const Vout = (TEMP_V * R_T) / (TEMP_R_F + R_T);
     uint32_t const adc_raw = (uint32_t)((Vout * ((float)temp_adc_range)) / TEMP_V);
 

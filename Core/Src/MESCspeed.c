@@ -14,7 +14,7 @@ static float gear_ratio; // gear_motor / gear_wheel
 
 void speed_set_motor( uint32_t const pole_pairs_ )
 {
-    pole_pairs = pole_pairs_;
+    pole_pairs = (float)pole_pairs_;
 }
 
 void speed_set_wheel( float const diameter )

@@ -236,7 +236,7 @@ void cli_process_float( char const c )
             if (('0' <= c) && (c <= '9'))
             {
                 float const sgn = (cli_var.f < 0.0f) ? -1.0f : 1.0f;
-                cli_var.f += (sgn * ((float)(c - '0'))) / pow( 10.0f, (cli_var.state - 2)  );
+                cli_var.f += (sgn * ((float)(c - '0'))) / (float)pow( 10.0f, (float)(cli_var.state - 2)  );
                 cli_var.state++;
             }
             else
