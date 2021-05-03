@@ -30,7 +30,7 @@
 #include "MESCfoc.h"
 #include "MESCmotor_state.h"
 
-extern char UART_rx_buffer[2];
+extern uint8_t UART_rx_buffer[2];
 extern uint16_t ICVals[2];
 
 extern UART_HandleTypeDef huart3;
@@ -91,7 +91,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
     else if (UART_rx_buffer[0] == 0x72)
     {  // r - Reset the controller
-        HAL_UART_Transmit_DMA(&huart3, "reset!", 6);
+        length = sprintf( (char *)message_buffer, "%s", "reset!" );
+        HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
         // HAL_Delay(10);
         __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(&htim1);
         HAL_NVIC_SystemReset();
@@ -104,7 +105,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     else if (UART_rx_buffer[0] == 0x70)
     {  // p - Get the parameters (hall table and L R)
         MotorState = MOTOR_STATE_DETECTING;
-        extern b_read_flash;
+        extern uint8_t b_read_flash;
         b_read_flash = 0;
         length = sprintf((char *)message_buffer, "Vbus%.2f\r", measurement_buffers.ConvertedADC[0][1]);
         HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
@@ -131,7 +132,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
     else
     {
-        HAL_UART_Transmit_DMA(&huart3, "Unrecognised!", 13);
+        length = sprintf( (char *)message_buffer, "%s", "Unrecognised!" );
+        HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
     }
     // Restart the UART interrupt, otherwise you're not getting the next byte!
     HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);

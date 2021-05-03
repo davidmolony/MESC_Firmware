@@ -22,6 +22,7 @@
 #include "cmsis_os.h"
 #include "flash_wrapper.h"
 #include "usb_device.h"
+#include <inttypes.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -87,7 +88,7 @@ const osThreadAttr_t BatCheckTask_attributes = {.name = "BatCheckTask", .priorit
 uint32_t ICVals[2] = {0, 0};
 // int initing = 1;
 char UART_buffer[12];
-char UART_rx_buffer[2];
+uint8_t UART_rx_buffer[2];
 char USBRxBuffer[12];
 extern uint8_t b_write_flash;
 extern uint8_t b_read_flash;
@@ -202,7 +203,11 @@ int main(void)
 
     // BLDCVars.BLDCduty = 70;
     HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
-    HAL_UART_Transmit_DMA(&huart3, "startup!!\r", 10);
+    {
+    char message[20];
+    int length = sprintf( message, "%s", "startup!!\r" );
+    HAL_UART_Transmit_DMA(&huart3, (uint8_t *)message, length);
+    }
 
     // Add a little area in which I can mess about without the RTOS
 
@@ -223,8 +228,8 @@ int main(void)
          */
         if(MotorState==MOTOR_STATE_ERROR){
         	char error_message[10];
-        	sprintf(error_message,"%d%d%d%d",measurement_buffers.adc1, measurement_buffers.adc2,measurement_buffers.adc3,measurement_buffers.adc4);
-        	HAL_UART_Transmit(&huart3, error_message, 10, 10);
+        	int length = sprintf(error_message,"%" PRIu32 "%" PRIu32 "%" PRIu32 "%" PRIu32,measurement_buffers.adc1, measurement_buffers.adc2,measurement_buffers.adc3,measurement_buffers.adc4);
+        	HAL_UART_Transmit(&huart3, (uint8_t *)error_message, length, 10);
         }
         if (b_write_flash)
         {
