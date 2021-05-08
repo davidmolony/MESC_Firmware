@@ -36,7 +36,6 @@ typedef uint16_t foc_angle_t;
 typedef float current_amps_t;
 typedef float voltage_t;
 
-// fixme: why is this in a struct?
 typedef struct
 {
     int initing;  // Flag to say we are initialising
@@ -61,11 +60,21 @@ typedef struct
 
     uint16_t hall_table[6][4];  // Lookup table, populated by the getHallTable() function and used in estimating the rotor position from
                                 // hall sensors in HallAngleEstimator()
+    int hall_forwards_adjust;
+    int hall_backwards_adjust;
+
+    float pwm_period;
+    float pwm_frequency;
+
+    float Id_pgain;  // Current controller gains
+    float Id_igain;
+    float Iq_pgain;
+    float Iq_igain;
+
 } MESCfoc_s;
 
 MESCfoc_s foc_vars;
 
-// fixme: why is this in a struct? what advantages does this give?
 typedef struct
 {
     int32_t RawADC[FOC_NUM_ADC][FOC_CONV_CHANNELS];  // ADC1 returns Ucurrent, DClink
@@ -86,11 +95,6 @@ foc_measurement_t measurement_buffers;  // fixme: floating function prototype
 
 /* Function prototypes -----------------------------------------------*/
 
-// fixme: inconsistent naming convention for functions. Choose one and stick to
-// it across entire codebase. Choice needs to be documented. I recommend
-// variable: lower_snake_case = 1;
-// function: lowerCamelCase();
-// constant: UPPER_CASE;
 void MESCInit();
 void fastLoop();
 void VICheck();
@@ -133,3 +137,5 @@ void phV_Break();
 void phV_Enable();
 void phW_Break();
 void phW_Enable();
+
+void calculateGains();

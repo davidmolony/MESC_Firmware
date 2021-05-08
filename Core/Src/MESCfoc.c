@@ -60,41 +60,16 @@ void MESCInit()
     HAL_OPAMP_Start(&hopamp2);
     HAL_OPAMP_Start(&hopamp3);
 
-    /// Dummy halltable, for avoiding the startup hall detection
-    //    foc_vars.hall_table[0][0] = 3;
-    //    foc_vars.hall_table[0][1] = 16000;
-    //    foc_vars.hall_table[1][0] = 1;
-    //    foc_vars.hall_table[1][1] = foc_vars.hall_table[0][1] + 10922;
-    //    foc_vars.hall_table[2][0] = 5;
-    //    foc_vars.hall_table[2][1] = foc_vars.hall_table[1][1] + 10922;
-    //    foc_vars.hall_table[3][0] = 4;
-    //    foc_vars.hall_table[3][1] = foc_vars.hall_table[2][1] + 10922;
-    //    foc_vars.hall_table[4][0] = 6;
-    //    foc_vars.hall_table[4][1] = foc_vars.hall_table[3][1] + 10922;
-    //    foc_vars.hall_table[5][0] = 2;
-    //    foc_vars.hall_table[5][1] = foc_vars.hall_table[4][1] + 10922;
-    //
-    //    for (int i = 0; i < 6; i++)  // Generate the mid point values of the hall table for hall locked loop
-    //    {
-    //        if (foc_vars.hall_table[i][1] < foc_vars.hall_table[(i + 1) % 6][1])
-    //        {
-    //            foc_vars.hall_table[i][2] =
-    //                (uint16_t)(((uint32_t)foc_vars.hall_table[i][1] + (uint32_t)foc_vars.hall_table[(i + 1) % 6][1]) / 2);
-    //        }
-    //        else
-    //        {  // take care of the loop around behaviour of the uint16_t
-    //            foc_vars.hall_table[i][2] =
-    //                (uint16_t)(((uint32_t)foc_vars.hall_table[i][1] + (uint32_t)foc_vars.hall_table[(i + 1) % 6][1] + 65535) / 2);
-    //        }
-    //    }
-
-    motor_init();  // Initialise the motor parameters, either with real values, or zeros if we are to determine the motor params at startup
-    hw_init();     // Populate the resistances, gains etc of the PCB - edit within this function if compiling for other PCBs
+    hw_init();  // Populate the resistances, gains etc of the PCB - edit within this function if compiling for other PCBs
     // motor.Rphase = 0.1; //Hack to make it skip over currently not used motor parameter detection
     foc_vars.initing = 1;  // Tell it we ARE initing...
                            // BLDCInit();	//Not currently using this, since FOC has taken over as primary method of interest
     // Although we are using an exponential filter over thousands of samples to find this offset, accuracy still improved by starting near
     // to the final value.
+    // Initiialise the hall sensor offsets
+    foc_vars.hall_forwards_adjust = 5460;
+    foc_vars.hall_backwards_adjust = 5460;
+
     measurement_buffers.ADCOffset[0] = 1900;
     measurement_buffers.ADCOffset[1] = 1900;
     measurement_buffers.ADCOffset[2] = 1900;
@@ -244,6 +219,10 @@ void fastLoop()
                 b_read_flash = 0;
                 break;
             }
+            else
+            {
+                motor_init();
+            }
             if (motor.Rphase == 0)
             {  // Every PWM cycle we enter this function until
                // the resistance measurement has converged at a
@@ -263,6 +242,7 @@ void fastLoop()
                 // measureInductance();
                 break;
             }
+
             break;
 
         case MOTOR_STATE_ERROR:
@@ -392,28 +372,28 @@ void ADCConversion()
         initcycles = initcycles + 1;
         if (initcycles > 1000)
         {
+            calculateGains();
             htim1.Instance->BDTR |= TIM_BDTR_MOE;
 
             foc_vars.initing = 0;
         }
     }
-    else
-    {
-        measurement_buffers.ConvertedADC[0][0] =
-            (float)(measurement_buffers.RawADC[0][0] - measurement_buffers.ADCOffset[0]) * g_hw_setup.Igain;  // Currents
-        measurement_buffers.ConvertedADC[1][0] =
-            (float)(measurement_buffers.RawADC[1][0] - measurement_buffers.ADCOffset[1]) * g_hw_setup.Igain;
-        measurement_buffers.ConvertedADC[2][0] =
-            (float)(measurement_buffers.RawADC[2][0] - measurement_buffers.ADCOffset[2]) * g_hw_setup.Igain;
-        measurement_buffers.ConvertedADC[0][1] = (float)measurement_buffers.RawADC[0][1] * g_hw_setup.VBGain;  // Vbus
-        measurement_buffers.ConvertedADC[0][2] = (float)measurement_buffers.RawADC[0][2] * g_hw_setup.VBGain;  // Usw
-        measurement_buffers.ConvertedADC[1][1] = (float)measurement_buffers.RawADC[1][1] * g_hw_setup.VBGain;  // Vsw
-        measurement_buffers.ConvertedADC[1][2] = (float)measurement_buffers.RawADC[1][2] * g_hw_setup.VBGain;  // Wsw
 
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Here we do the FOC transforms - Clark and Park, using the previous sin values, since they were the correct ones at the time of
-        // sampling
-        // clang-format off
+    measurement_buffers.ConvertedADC[0][0] =
+        (float)(measurement_buffers.RawADC[0][0] - measurement_buffers.ADCOffset[0]) * g_hw_setup.Igain;  // Currents
+    measurement_buffers.ConvertedADC[1][0] =
+        (float)(measurement_buffers.RawADC[1][0] - measurement_buffers.ADCOffset[1]) * g_hw_setup.Igain;
+    measurement_buffers.ConvertedADC[2][0] =
+        (float)(measurement_buffers.RawADC[2][0] - measurement_buffers.ADCOffset[2]) * g_hw_setup.Igain;
+    measurement_buffers.ConvertedADC[0][1] = (float)measurement_buffers.RawADC[0][1] * g_hw_setup.VBGain;  // Vbus
+    measurement_buffers.ConvertedADC[0][2] = (float)measurement_buffers.RawADC[0][2] * g_hw_setup.VBGain;  // Usw
+    measurement_buffers.ConvertedADC[1][1] = (float)measurement_buffers.RawADC[1][1] * g_hw_setup.VBGain;  // Vsw
+    measurement_buffers.ConvertedADC[1][2] = (float)measurement_buffers.RawADC[1][2] * g_hw_setup.VBGain;  // Wsw
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Here we do the FOC transforms - Clark and Park, using the previous sin values, since they were the correct ones at the time of
+    // sampling
+    // clang-format off
 
         // Clark - Power invariant version - 3 phases; tested, woring, but won't cope with high duty cycles without phase current sensors
         /*foc_vars.Iab[0] = 	(2.0f * measurement_buffers.ConvertedADC[0][0] -
@@ -448,10 +428,9 @@ void ADCConversion()
         // Park
         foc_vars.Idq[0] = foc_vars.sincosangle[1] * foc_vars.Iab[0] + foc_vars.sincosangle[0] * foc_vars.Iab[1];
         foc_vars.Idq[1] = foc_vars.sincosangle[1] * foc_vars.Iab[1] - foc_vars.sincosangle[0] * foc_vars.Iab[0];
-        // clang-format on
+    // clang-format on
 
-        adc_conv_end = htim1.Instance->CNT;
-    }
+    adc_conv_end = htim1.Instance->CNT;
 }
 /////////////////////////////////////////////////////////////////////////////
 ////////Hall Sensor Implementation///////////////////////////////////////////
@@ -465,45 +444,6 @@ static float last_hall_period = 65536;
 static float one_on_last_hall_period = 1;
 float angular_velocity = 0;
 
-void hallAngleEstimator_new()
-{
-    // 0. Check for hall sensor state errors
-    // 1. calculate bulk angle
-    // 2. add current velocity correction
-    static uint16_t base_angle = 0;
-    current_hall_state = ((GPIOB->IDR >> 6) & 0x7);
-
-    if (current_hall_state != last_hall_state)
-    {
-        if (current_hall_state == 0)
-        {
-            MotorState = MOTOR_STATE_ERROR;
-            MotorError = MOTOR_ERROR_HALL0;
-        }
-        else if (current_hall_state == 7)
-        {
-            MotorState = MOTOR_STATE_ERROR;
-            MotorError = MOTOR_ERROR_HALL7;
-        }
-
-        // todo: I want this section to have a PLL like property, adding only a proportion of the error, not rigidly locking it.
-        foc_vars.HallAngle = foc_vars.hall_table[current_hall_state - 1][2];
-        if (angular_velocity > 0)
-        {
-            base_angle = foc_vars.HallAngle - (foc_vars.hall_table[current_hall_state - 1][3] >> 1);
-        }
-        else
-        {
-            base_angle = foc_vars.HallAngle + (foc_vars.hall_table[current_hall_state - 1][3] >> 1);
-        }
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        last_hall_state = current_hall_state;
-    }
-    /* Add velocity correction */
-    uint16_t angle_correction = foc_vars.hall_table[last_hall_state - 1][3];
-    angle_correction *= angular_velocity * htim4.Instance->CNT;
-    foc_vars.HallAngle = base_angle + angular_velocity * htim4.Instance->CNT;  // angle_correction;
-}
 static int hall_error = 0;
 void hallAngleEstimator()
 {  // Implementation using the mid point of the hall sensor angles, which should be much more reliable to generate that the edges
@@ -531,13 +471,13 @@ void hallAngleEstimator()
         uint16_t a;
         if ((a = current_hall_angle - last_hall_angle) < 32000)
         {
-            hall_error = hall_error + 5460;
+            hall_error = hall_error + foc_vars.hall_forwards_adjust - one_on_last_hall_period * 10922;
             dir = 1.0f;
             // foc_vars.HallAngle = foc_vars.HallAngle - 5460;
         }
         else
         {
-            hall_error = hall_error - 5460;
+            hall_error = hall_error - foc_vars.hall_backwards_adjust + one_on_last_hall_period * 10922;
             dir = -1.0f;
             // foc_vars.HallAngle = foc_vars.HallAngle + 5460;
         }
@@ -591,7 +531,20 @@ void OLGenerateAngle()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // FOC PID algorithms//////////////////////////////////////////////////////////////////////////////////////////
 void MESCFOC()
-{  // Here we are going to do a PID loop to control the dq currents, converting Idq into Vdq
+{
+    // Here we are going to adjust the angle of the hall sensors to improve their accuracy
+    if (last_hall_period < 400)
+    {  // Placeholder for switching off if there is a requested Id current
+        if (foc_vars.Vdq[0] > 40)
+        {
+            foc_vars.hall_forwards_adjust = foc_vars.hall_forwards_adjust - 1;
+        }
+        else if (foc_vars.Vdq[0] < -40)
+        {
+            foc_vars.hall_forwards_adjust = foc_vars.hall_forwards_adjust + 1;
+        }
+    }
+    // Here we are going to do a PID loop to control the dq currents, converting Idq into Vdq
 
     // Calculate the errors
     static float Idq_err[2];
@@ -600,8 +553,8 @@ void MESCFOC()
 
     // Integral error
     static float Idq_int_err[2];
-    Idq_int_err[0] = Idq_int_err[0] + 0.05f * Idq_err[0];
-    Idq_int_err[1] = Idq_int_err[1] + 0.05f * Idq_err[1];
+    Idq_int_err[0] = Idq_int_err[0] + foc_vars.Id_igain * Idq_err[0];  // 0.05f * Idq_err[0];
+    Idq_int_err[1] = Idq_int_err[1] + foc_vars.Iq_igain * Idq_err[1];  // 0.05f * Idq_err[1];
 
     static int i = 0;
     if (i == 0)
@@ -609,7 +562,7 @@ void MESCFOC()
         // Bounding
         // clang-format off
         static int integral_d_limit = 150;
-        static int integral_q_limit = 600;
+        static int integral_q_limit = 400;
 
         if (Idq_int_err[0] > integral_d_limit){Idq_int_err[0] = integral_d_limit;}
         if (Idq_int_err[0] < -integral_d_limit){Idq_int_err[0] = -integral_d_limit;}
@@ -617,8 +570,9 @@ void MESCFOC()
         if (Idq_int_err[1] < -integral_q_limit){Idq_int_err[1] = -integral_q_limit;}
         // clang-format on
         // Apply the PID, and smooth the output for noise - sudden changes in VDVQ will create instability in the presence of inductance.
-        foc_vars.Vdq[0] = (3 * foc_vars.Vdq[0] + Idq_err[0] + Idq_int_err[0]) * 0.25;  // trial pgain
-        foc_vars.Vdq[1] = (3 * foc_vars.Vdq[1] + Idq_err[1] + Idq_int_err[1]) * 0.25;
+        foc_vars.Vdq[0] =
+            foc_vars.Id_pgain * Idq_err[0] + Idq_int_err[0];  //(3 * foc_vars.Vdq[0] + Idq_err[0] + Idq_int_err[0]) * 0.25;  // trial pgain
+        foc_vars.Vdq[1] = foc_vars.Iq_pgain * Idq_err[1] + Idq_int_err[1];  //(3 * foc_vars.Vdq[1] + Idq_err[1] + Idq_int_err[1]) * 0.25;
         i = FOC_PERIODS;
         // Field weakening? - The below works pretty nicely, but needs turning into an implementation where it is switchable by the user.
         // Can result in problems e.g. tripping PSUs...
@@ -1067,4 +1021,15 @@ void phW_Enable()
     htim1.Instance->CCMR2 = tmpccmrx;
     htim1.Instance->CCER |= TIM_CCER_CC3E;   // enable
     htim1.Instance->CCER |= TIM_CCER_CC3NE;  // enable
+}
+
+void calculateGains()
+{
+    foc_vars.pwm_period = 2.0f * (float)htim1.Instance->ARR / (float)HAL_RCC_GetHCLKFreq();
+    foc_vars.pwm_frequency = (float)HAL_RCC_GetHCLKFreq() / (2 * (float)htim1.Instance->ARR);
+    foc_vars.Iq_pgain =
+        foc_vars.pwm_frequency * motor.Lphase * ((float)htim1.Instance->ARR * 0.5) / (2 * measurement_buffers.ConvertedADC[0][1]);
+    foc_vars.Iq_igain = 0.1f*motor.Rphase * (htim1.Instance->ARR * 0.5) / (2 * measurement_buffers.ConvertedADC[0][1]);
+    foc_vars.Id_pgain = foc_vars.Iq_pgain / 2;
+    foc_vars.Id_igain = foc_vars.Iq_igain / 2;
 }
