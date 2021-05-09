@@ -24,6 +24,12 @@ static char const * commands[] =
     "R f",
 
     "X reset",      // function execution
+
+    "I i 10",       // Increase
+    "R i",
+
+    "D f 12.5",     // Decrease
+    "R f",
 };
 
 static int32_t  i;

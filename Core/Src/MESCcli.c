@@ -9,6 +9,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#define JOIN_(lhs,rhs) lhs ## rhs
+#define JOIN(lhs,rhs) JOIN_(lhs,rhs)
+
+#define MAKE_TYPE_SIZE(type,size)      ((uint32_t)((uint32_t)((type) << 4) | ((uint32_t)(size))))
+#define MAKE_TYPE_SIZE_CASE(type,size) ((uint32_t)((uint32_t)((JOIN( CLI_VARIABLE_, type)) << 4) | ((uint32_t)(size))))
+
 enum CLIState
 {
     CLI_STATE_IDLE,
@@ -110,6 +116,103 @@ static void cli_execute( void )
         case 'X':
             cli_lut_entry->var.x();
             break;
+        case 'I':
+        case 'D':
+        {
+            CLIVariableType const type = cli_lut_entry->type;
+            uint32_t const size = cli_lut_entry->size;
+            union
+            {
+                int8_t  i8;
+                uint8_t u8;
+
+                int16_t  i16;
+                uint16_t u16;
+
+                int32_t  i32;
+                uint32_t u32;
+
+                float    f32;
+            } * tmp = cli_lut_entry->var.w;
+
+            switch (MAKE_TYPE_SIZE( type, size ))
+            {
+                case MAKE_TYPE_SIZE_CASE( INT, 1 ):
+                    if (cli_cmd == 'I')
+                    {
+                        tmp->i8 += (int8_t)cli_var.var.i;
+                    }
+                    else
+                    {
+                        tmp->i8 -= (int8_t)cli_var.var.i;
+                    }
+                    break;
+                case MAKE_TYPE_SIZE_CASE( INT, 2 ):
+                    if (cli_cmd == 'I')
+                    {
+                        tmp->i16 += (int16_t)cli_var.var.i;
+                    }
+                    else
+                    {
+                        tmp->i16 -= (int16_t)cli_var.var.i;
+                    }
+                    break;
+                case MAKE_TYPE_SIZE_CASE( INT, 4 ):
+                    if (cli_cmd == 'I')
+                    {
+                        tmp->i32 += (int32_t)cli_var.var.i;
+                    }
+                    else
+                    {
+                        tmp->i32 -= (int32_t)cli_var.var.i;
+                    }
+                    break;
+                case MAKE_TYPE_SIZE_CASE( UINT, 1 ):
+                    if (cli_cmd == 'I')
+                    {
+                        tmp->u8 += (uint8_t)cli_var.var.u;
+                    }
+                    else
+                    {
+                        tmp->u8 -= (uint8_t)cli_var.var.u;
+                    }
+                    break;
+                case MAKE_TYPE_SIZE_CASE( UINT, 2 ):
+                    if (cli_cmd == 'I')
+                    {
+                        tmp->u16 += (uint16_t)cli_var.var.u;
+                    }
+                    else
+                    {
+                        tmp->u16 -= (uint16_t)cli_var.var.u;
+                    }
+                    break;
+                case MAKE_TYPE_SIZE_CASE( UINT, 4 ):
+                    if (cli_cmd == 'I')
+                    {
+                        tmp->u32 += (uint32_t)cli_var.var.u;
+                    }
+                    else
+                    {
+                        tmp->u32 -= (uint32_t)cli_var.var.u;
+                    }
+                    break;
+                case MAKE_TYPE_SIZE_CASE( FLOAT, 4 ):
+                    if (cli_cmd == 'I')
+                    {
+                        tmp->f32 += (float)cli_var.var.f;
+                    }
+                    else
+                    {
+                        tmp->f32 -= (float)cli_var.var.f;
+                    }
+                    break;
+                default:
+                    return;
+            }
+
+            break;
+        }
         default:
             // error
             break;
@@ -138,12 +241,6 @@ static CLIEntry * cli_lut_alloc( char const * name )
 //fprintf( stderr, "INFO: Registered '%s' as %08" PRIX32 "\n", name, hash );//debug
     return entry;
 }
-
-#define JOIN_(lhs,rhs) lhs ## rhs
-#define JOIN(lhs,rhs) JOIN_(lhs,rhs)
-
-#define MAKE_TYPE_SIZE(type,size)      ((uint32_t)((uint32_t)((type) << 4) | ((uint32_t)(size))))
-#define MAKE_TYPE_SIZE_CASE(type,size) ((uint32_t)((uint32_t)((JOIN( CLI_VARIABLE_, type)) << 4) | ((uint32_t)(size))))
 
 static void cli_process_read_xint( void )
 {
@@ -469,6 +566,10 @@ static void cli_process_variable( const char c )
                 case 'X':
                     access = CLI_ACCESS_X;
                     break;
+                case 'I':
+                case 'D':
+                    access = CLI_ACCESS_RW;
+                    break;
                 default:
                     break;
             }
@@ -502,6 +603,12 @@ static void cli_process_variable( const char c )
                 case 'W':
                     cli_state = CLI_STATE_VALUE;
                     cli_process_write_value = cli_process_write_type( cli_lut_entry->type );
+                    break;
+                case 'I':
+                case 'D':
+                    cli_state = CLI_STATE_VALUE;
+                    cli_process_write_value = cli_process_write_type( cli_lut_entry->type );
+                    cli_process_read_value = cli_process_read_type( cli_lut_entry->type );
                     break;
                 default:
                     cli_state = CLI_STATE_ABORT;
@@ -571,6 +678,8 @@ void cli_process( char const c )
                 case 'R':
                 case 'W':
                 case 'X':
+                case 'I':
+                case 'D':
                     cli_cmd = c;
                     cli_state = CLI_STATE_COMMAND;
                     break;
