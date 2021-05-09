@@ -12,4 +12,6 @@ uint32_t fnv1a_init( void );
 
 uint32_t fnv1a_process( uint32_t const fnv, uint8_t const byte );
 
+uint32_t fnv1a_process_data( uint32_t const fnv, void const * ptr, uint32_t const len );
+
 #endif

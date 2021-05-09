@@ -3,3 +3,4 @@ Release/
 .settings/
 Core/BIST/build/
 Core/BIST/bist
+Core/BIST/FLASH

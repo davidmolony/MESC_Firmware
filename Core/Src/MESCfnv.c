@@ -7,17 +7,21 @@
 #define FNV1A_PRIME_32  UINT32_C(0x01000193)
 #define FNV1A_OFFSET_32 UINT32_C(0x811C9DC5)
 
-uint32_t fnv1a_data( void const * ptr, uint32_t const len )
+uint32_t fnv1a_process_data( uint32_t const fnv, void const * ptr, uint32_t const len )
 {
-    uint32_t fnv = FNV1A_OFFSET_32;
+    uint32_t fnv_ = fnv;
 
     for ( uint32_t i = 0; i < len; ++i )
     {
-        fnv ^= ((uint8_t const *)ptr)[i];
-        fnv *= FNV1A_PRIME_32;
+        fnv_ = fnv1a_process( fnv_, ((uint8_t const *)ptr)[i] );
     }
 
-    return fnv;
+    return fnv_;
+}
+
+uint32_t fnv1a_data( void const * ptr, uint32_t const len )
+{
+    return fnv1a_process_data( FNV1A_OFFSET_32, ptr, len );
 }
 
 uint32_t fnv1a_str( char const * ptr )
