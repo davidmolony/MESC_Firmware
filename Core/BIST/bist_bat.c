@@ -34,5 +34,12 @@ void bist_bat( void )
         //fprintf( stdout, "%3.2f V => %1.1f Ah\n", V, C ); // Amp Hour
     }
 
+    for ( float L = 0.0f; (L <= 100.0f); L = L + 10.0f )
+    {
+        float const V = bat_get_level_voltage( L );
+
+        fprintf( stdout, "%3.0f %% => %3.2f V\n", L, V ); // Percent
+    }
+
     fprintf( stdout, "Finished Battery BIST\n" );
 }

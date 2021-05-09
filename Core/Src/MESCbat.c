@@ -82,3 +82,20 @@ float bat_get_charge_level( float const V, float const I, float const ESR )
 
     return C;
 }
+
+float bat_get_level_voltage( float const L )
+{
+    float Lrem = L;
+    float Lmid = (bat_profile->Cmid - bat_profile->Clow) * Cscale;
+
+    if (Lrem <= Lmid)
+    {
+        return (((Lrem * (bat_profile->Vmid - bat_profile->Vlow)) / Lmid) + bat_profile->Vlow);
+    }
+
+    Lrem = Lrem - Lmid;
+
+    float Ltop = (bat_profile->Cmax - bat_profile->Cmid) * Cscale;
+
+    return (((Lrem * (bat_profile->Vmax - bat_profile->Vmid)) / Ltop) + bat_profile->Vmid);
+}

@@ -63,4 +63,6 @@ float battery_get_current(
 
 float bat_get_charge_level( float const V, float const I, float const ESR );
 
+float bat_get_level_voltage( float const L );
+
 #endif
