@@ -2,10 +2,11 @@
 #include "MESCcli.h"
 #include "MESCfnv.h"
 
-//#include <inttypes.h>//debug
+#include <inttypes.h>
+#include <limits.h>
 #include <math.h>
 #include <stddef.h>
-//#include <stdio.h>//debug
+#include <stdio.h>
 #include <string.h>
 
 enum CLIState
@@ -35,6 +36,7 @@ enum CLIAccess
 
     CLI_ACCESS_R    = 0x1,
     CLI_ACCESS_W    = 0x2,
+    CLI_ACCESS_X    = 0x4,
 
     CLI_ACCESS_RO   = CLI_ACCESS_R,
     CLI_ACCESS_WO   = CLI_ACCESS_W,
@@ -65,10 +67,11 @@ struct CLIEntry
     {
     void       *    w;
     void const *    r;
+    void (*         x)( void );
     }               var;
     uint32_t        size;
     CLIAccess       access;
-    void (*         fn)( char const );
+    CLIVariableType type;
 };
 
 typedef struct CLIEntry CLIEntry;
@@ -77,38 +80,38 @@ static CLIEntry cli_lut[32];
 static uint32_t cli_lut_entries = 0;
 static CLIEntry * cli_lut_entry = NULL;
 
-static void cli_noop( char const c )
+static void cli_noop_write( char const c )
 {
     cli_state = CLI_STATE_ABORT;
     cli_hash_valid = 0;
-//fprintf( stderr, "WARNING: cli_noop (%c)\n", c );//debug
     (void)c;
 }
 
-static void (* cli_process_value)( char const ) = cli_noop;
+static void (* cli_process_write_value)( char const ) = cli_noop_write;
+
+static void cli_noop_read( void )
+{
+    cli_state = CLI_STATE_ABORT;
+    cli_hash_valid = 0;
+}
+
+static void (* cli_process_read_value)( void ) = cli_noop_read;
 
 static void cli_execute( void )
 {
-//fprintf( stderr, "INFO: Executing '%c'\n", cli_cmd );//debug
     switch (cli_cmd)
     {
         case 'R':
-            // read and echo or error
-//fprintf( stderr, "INFO: Read %" PRIu32 " bytes [ ", cli_lut_entry->size );//debug
-//            for ( uint32_t i = 0; i < cli_lut_entry->size; i = i + 1)//debug
-//            {//debug
-//fprintf( stderr, "%02" PRIX8 " ", *((uint8_t const *)cli_lut_entry->rvar) );//debug
-//            }//debug
-//fprintf( stderr, "]\n" );//debug
+            cli_process_read_value();
             break;
         case 'W':
-            // write or error
             memcpy( cli_lut_entry->var.w, &cli_var.var, cli_lut_entry->size );
-//fprintf( stderr, "INFO: Commit %" PRIu32 " bytes\n", cli_lut_entry->size );//debug
+            break;
+        case 'X':
+            cli_lut_entry->var.x();
             break;
         default:
             // error
-//fprintf( stderr, "ERROR: cli_execute failed (%02" PRIX8 ")\n", cli_cmd );//debug
             break;
     }
 
@@ -136,7 +139,71 @@ static CLIEntry * cli_lut_alloc( char const * name )
     return entry;
 }
 
-void cli_process_int( char const c )
+#define JOIN_(lhs,rhs) lhs ## rhs
+#define JOIN(lhs,rhs) JOIN_(lhs,rhs)
+
+#define MAKE_TYPE_SIZE(type,size)      ((uint32_t)((uint32_t)((type) << 4) | ((uint32_t)(size))))
+#define MAKE_TYPE_SIZE_CASE(type,size) ((uint32_t)((uint32_t)((JOIN( CLI_VARIABLE_, type)) << 4) | ((uint32_t)(size))))
+
+static void cli_process_read_xint( void )
+{
+    char cli_buffer[32];
+
+    if (cli_lut_entry != NULL)
+    {
+        CLIVariableType const type = cli_lut_entry->type;
+        uint32_t const size = cli_lut_entry->size;
+        char * fmt_10 = NULL;
+        char * fmt_16 = NULL;
+
+        switch (MAKE_TYPE_SIZE( type, size ))
+        {
+            case MAKE_TYPE_SIZE_CASE( INT, 1 ):
+                fmt_10 = PRId8;
+                fmt_16 = PRIX8;
+                break;
+            case MAKE_TYPE_SIZE_CASE( INT, 2 ):
+                fmt_10 = PRId16;
+                fmt_16 = PRIX16;
+                break;
+            case MAKE_TYPE_SIZE_CASE( INT, 4 ):
+                fmt_10 = PRId32;
+                fmt_16 = PRIX32;
+                break;
+            case MAKE_TYPE_SIZE_CASE( UINT, 1 ):
+                fmt_10 = PRIu8;
+                fmt_16 = PRIX8;
+                break;
+            case MAKE_TYPE_SIZE_CASE( UINT, 2 ):
+                fmt_10 = PRIu16;
+                fmt_16 = PRIX16;
+                break;
+            case MAKE_TYPE_SIZE_CASE( UINT, 4 ):
+                fmt_10 = PRIu32;
+                fmt_16 = PRIX32;
+                break;
+            default:
+                return;
+        }
+
+        uint32_t const nybbles = UINT32_C(2) * size;
+
+        sprintf( cli_buffer, "RETURN: "
+            "%%" "%s"
+            " 0x" "%%" "0%" PRIu32 "%s"
+            "\n",
+            fmt_10,
+            nybbles, fmt_16 );
+
+        uint32_t v = UINT32_C(0);
+
+        memcpy( &v, cli_lut_entry->var.r, size );
+
+        fprintf( stdout, cli_buffer, v, v );
+    }
+}
+
+static void cli_process_write_int( char const c )
 {
     if ((cli_var.state == 0) && (c == '-'))
     {
@@ -160,7 +227,7 @@ void cli_process_int( char const c )
     }
 }
 
-void cli_process_uint( char const c )
+static void cli_process_write_uint( char const c )
 {
     if (('0' <= c) && (c <= '9'))
     {
@@ -178,7 +245,26 @@ void cli_process_uint( char const c )
     }
 }
 
-void cli_process_float( char const c )
+static void cli_process_read_float( void )
+{
+    if (cli_lut_entry != NULL)
+    {
+        CLIVariableType const type = cli_lut_entry->type;
+        uint32_t const size = cli_lut_entry->size;
+
+        switch (MAKE_TYPE_SIZE( type, size ))
+        {
+            case MAKE_TYPE_SIZE_CASE( FLOAT, 4 ):
+                break;
+            default:
+                return;
+        }
+
+        fprintf( stdout, "RETURN: %f\n", *((float const *)cli_lut_entry->var.r) );
+    }
+}
+
+static void cli_process_write_float( char const c )
 {
     switch (cli_var.state)
     {
@@ -250,7 +336,7 @@ void cli_process_float( char const c )
 void cli_register_variable_ro(
     char const * name,
     void const * address, uint32_t const size,
-    void (* fn)( char const c ) )
+    CLIVariableType const type )
 {
     CLIEntry * entry = cli_lut_alloc( name );
 
@@ -259,7 +345,7 @@ void cli_register_variable_ro(
         entry->var.r  = address;
         entry->size   = size;
         entry->access = CLI_ACCESS_RO;
-        entry->fn     = fn;
+        entry->type   = type;
 
         cli_lut_entries++;
     }
@@ -268,7 +354,7 @@ void cli_register_variable_ro(
 void cli_register_variable_rw(
     char const * name,
     void       * address, uint32_t const size,
-    void (* fn)( char const c) )
+    CLIVariableType const type )
 {
     CLIEntry * entry = cli_lut_alloc( name );
 
@@ -277,7 +363,7 @@ void cli_register_variable_rw(
         entry->var.w  = address;
         entry->size   = size;
         entry->access = CLI_ACCESS_RW;
-        entry->fn     = fn;
+        entry->type   = type;
 
         cli_lut_entries++;
     }
@@ -286,7 +372,7 @@ void cli_register_variable_rw(
 void cli_register_variable_wo(
     char const * name,
     void       * address, uint32_t const size,
-    void (* fn)( char const c ) )
+    CLIVariableType const type )
 {
     CLIEntry * entry = cli_lut_alloc( name );
 
@@ -295,7 +381,24 @@ void cli_register_variable_wo(
         entry->var.w  = address;
         entry->size   = size;
         entry->access = CLI_ACCESS_WO;
-        entry->fn     = fn;
+        entry->type   = type;
+
+        cli_lut_entries++;
+    }
+}
+
+void cli_register_function(
+    char const * name,
+    void (* const fn)( void ) )
+{
+    CLIEntry * entry = cli_lut_alloc( name );
+
+    if (entry != NULL)
+    {
+        entry->var.x  = fn;
+        entry->size   = 0;
+        entry->access = CLI_ACCESS_X;
+        entry->type   = (CLIVariableType)INT_MAX;
 
         cli_lut_entries++;
     }
@@ -310,7 +413,37 @@ static CLIEntry * cli_lookup( uint32_t const hash )
             return &cli_lut[i];
         }
     }
+
     return NULL;
+}
+
+static void (* cli_process_write_type( CLIVariableType const type))( char const c )
+{
+    switch (type)
+    {
+        case CLI_VARIABLE_INT:
+            return cli_process_write_int;
+        case CLI_VARIABLE_UINT:
+            return cli_process_write_uint;
+        case CLI_VARIABLE_FLOAT:
+            return cli_process_write_float;
+        default:
+            return cli_noop_write;
+    }
+}
+
+static void (* cli_process_read_type( CLIVariableType const type))( void )
+{
+    switch (type)
+    {
+        case CLI_VARIABLE_INT:
+        case CLI_VARIABLE_UINT:
+            return cli_process_read_xint;
+        case CLI_VARIABLE_FLOAT:
+            return cli_process_read_float;
+        default:
+            return cli_noop_read;
+    }
 }
 
 static void cli_process_variable( const char c )
@@ -318,16 +451,13 @@ static void cli_process_variable( const char c )
     switch (c)
     {
         case '\n':
-            if (cli_hash_valid != 0)
-            {
-                cli_execute();
-            }
-            break;
         case ' ':
-            cli_lut_entry = cli_lookup( cli_hash );
-            cli_hash_valid = 0;
-            {
+        {
             CLIAccess access = CLI_ACCESS_NONE;
+
+            cli_process_write_value = cli_noop_write;
+            cli_process_read_value = cli_noop_read;
+
             switch (cli_cmd)
             {
                 case 'R':
@@ -336,26 +466,52 @@ static void cli_process_variable( const char c )
                 case 'W':
                     access = CLI_ACCESS_W;
                     break;
+                case 'X':
+                    access = CLI_ACCESS_X;
+                    break;
+                default:
+                    break;
             }
 
-            if ((cli_lut_entry == NULL) || ((cli_lut_entry->access & access) != access))
+            cli_lut_entry = cli_lookup( cli_hash );
+
+            if  (
+                    (cli_lut_entry == NULL)
+                ||  ((cli_lut_entry->access & access) != access)
+                )
             {
                 cli_state = CLI_STATE_ABORT;
-                cli_process_value = cli_noop;
                 break;
             }
-            }
+
             switch (cli_cmd)
             {
                 case 'R':
+                    cli_process_read_value = cli_process_read_type( cli_lut_entry->type );
+                    // fallthrough
+                case 'X':
                     cli_state = CLI_STATE_EXECUTE;
+                    if  (
+                            (c == '\n')
+                        &&  (cli_hash_valid != 0)
+                        )
+                    {
+                        cli_execute();
+                    }
                     break;
                 case 'W':
                     cli_state = CLI_STATE_VALUE;
-                    cli_process_value = cli_lut_entry->fn;
+                    cli_process_write_value = cli_process_write_type( cli_lut_entry->type );
+                    break;
+                default:
+                    cli_state = CLI_STATE_ABORT;
                     break;
             }
+
+            cli_hash_valid = 0;
+
             break;
+        }
         default:
             if (cli_hash_valid != 0)
             {
@@ -414,6 +570,7 @@ void cli_process( char const c )
                     break;
                 case 'R':
                 case 'W':
+                case 'X':
                     cli_cmd = c;
                     cli_state = CLI_STATE_COMMAND;
                     break;
@@ -456,7 +613,7 @@ void cli_process( char const c )
             }
             else if (c != '\n')
             {
-                cli_process_value( c );
+                cli_process_write_value( c );
                 break;
             }
             // fallthrough

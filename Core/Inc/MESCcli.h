@@ -5,40 +5,39 @@
 #include <stdint.h>
 
 /*
-C VVVV vvvv
-^
-R Read
-W Write
-
-  ^..^
-  variable name
-
-       ^..^
-       value
+Command             Description
+R <NAME>            Read variable <NAME>
+W <NAME> <VALUE>    Write variable <NAME> with <VALUE>
+X <NAME>            Execute function <NAME>
 */
 
-void cli_process_int( char const c );
+enum CLIVariableType
+{
+    CLI_VARIABLE_INT,
+    CLI_VARIABLE_UINT,
+    CLI_VARIABLE_FLOAT,
+};
 
-void cli_process_uint( char const c );
-
-void cli_process_float( char const c );
-
-void cli_process_enum( char const c );
+typedef enum CLIVariableType CLIVariableType;
 
 void cli_register_variable_ro(
     char const * name,
     void const * address, uint32_t const size,
-    void (* fn)( char const c ) );
+    CLIVariableType const type );
 
 void cli_register_variable_rw(
     char const * name,
     void       * address, uint32_t const size,
-    void (* fn)( char const c ) );
+    CLIVariableType const type );
 
 void cli_register_variable_wo(
     char const * name,
     void       * address, uint32_t const size,
-    void (* fn)( char const c ) );
+    CLIVariableType const type );
+
+void cli_register_function(
+    char const * name,
+    void (* const fn)( void ) );
 
 void cli_process( char const c );
 
