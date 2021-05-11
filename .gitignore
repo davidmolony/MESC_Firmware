@@ -4,3 +4,6 @@ Release/
 Core/BIST/build/
 Core/BIST/bist
 Core/BIST/FLASH
+Core/Gen/MESCsin_lut.c
+Core/Gen/util_ntc
+Core/Gen/util_sinlut

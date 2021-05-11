@@ -66,14 +66,14 @@ ln(R) - B
      A
 
     ln(R) - B
-T = --------- - T_lo - X, let D = T_lo + X where X is fudge factor
+T = --------- - T_lo
         A
 */
 
-static float const temp_approx_T_lo = -23.0f;           // Profile
-static float const temp_approx_T_A  = - 0.034479692f;   // Profile
-static float const temp_approx_T_B  =  11.0331166974f;  // Profile
-static float const temp_approx_T_X  = 0.0f;//-26.51939842f;    // Profile
+static float const temp_approx_T_lo = -23.000000f;
+static float const temp_approx_T_A  = -0.036523f;
+static float const temp_approx_T_B  = 11.061409f;
+
 /*
 Experimental (BIST)
 
@@ -91,8 +91,7 @@ Removing T_X appears to be more correct!
 static float temp_calculate_approximation( float const R_T )
 {
     float const ln_R_T = logf( R_T );
-    float const T_D = (temp_approx_T_lo + temp_approx_T_X);
-    float const T = ((ln_R_T - temp_approx_T_B) / temp_approx_T_A) + T_D;
+    float const T = ((ln_R_T - temp_approx_T_B) / temp_approx_T_A) + temp_approx_T_lo;
 
     return T;
 }
