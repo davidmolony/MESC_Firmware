@@ -81,18 +81,18 @@ static NTCNode * replot( NTCNode const * node, size_t const count, float const T
 #define DEGREE (2)
 #define PARTITIONS ((2 * DEGREE) + 1)
 
-static void derive_trend( NTCNode const * node, size_t const count, float const Tmin )
+static void derive_trend_2( NTCNode const * node, size_t const count, float const Tmin )
 {
-    NTCNode p[DEGREE];
+    NTCNode const * p[DEGREE];
 
     for ( size_t i = 0, j = 1; j < PARTITIONS; ++i, j = j + 2 )
     {
         size_t const k = ((count * j) / PARTITIONS);
-        p[i] = node[k];
+        p[i] = &node[k];
     }
 
-    float const g = (p[1].R - p[0].R) / (p[1].T - p[0].T);
-    float const c = (p[0].R - (g * p[0].T));
+    float const g = (p[1]->R - p[0]->R) / (p[1]->T - p[0]->T);
+    float const c = (p[0]->R - (g * p[0]->T));
 
     fprintf( stderr, "\n"
                      "Log Approximation\n"
@@ -124,13 +124,82 @@ static void derive_trend( NTCNode const * node, size_t const count, float const 
     fprintf( stderr, "FINISHED------------------------------------------------------------------------\n" );
 }
 
+static float const Steinhart_Hart_T0 = CVT_CELSIUS_TO_KELVIN_F( 25.0f ); // Profile (from NTC spec)
+static float const Steinhart_Hart_R0 = 10000.0f; // Profile (from NTC spec)
+
+static void derive_Steinhart_Hart( NTCNode const * node, size_t const count )
+{
+    NTCNode const * p[DEGREE];
+
+    for ( size_t i = 0, j = 1; j < PARTITIONS; ++i, j = j + 2 )
+    {
+        size_t const k = ((count * j) / PARTITIONS);
+        p[i] = &node[k];
+    }
+
+    float L[3];
+    float Y[3];
+    float sumL = 0.0f;
+
+    for ( uint32_t i = 0; i < 3; ++i )
+    {
+        L[i] = logf( p[i]->R );
+        sumL += L[i];
+        float const K = temp_cvt_C_to_K( p[i]->T );
+        Y[i] = (1.0f / K);
+    }
+
+    float G[3];
+
+    G[1] = ((Y[1] - Y[0])
+         /  (L[1] - L[0]));
+
+    G[2] = ((Y[2] - Y[0])
+         /  (L[2] - L[0]));
+
+    float const C = ((G[2] - G[1])
+                  / ((L[2] - L[1]) * sumL));
+    float const B = (G[1] - (C * ((L[0] * L[0]) + (L[1] * L[0]) + (L[1] * L[1]))));
+    float const A = (Y[0] - (L[0] * (B + (C * L[0] * L[0]))));
+
+    float const Beta = (1.0f / B);
+    float const r = Steinhart_Hart_R0 * expf( -Beta / Steinhart_Hart_T0 );
+
+    fprintf( stderr, "\n"
+                     "Steinhart-Hart\n"
+                     "\n"
+                     "    A %f\n"
+                     "    B %f\n"
+                     "    C %f\n"
+                     "\n",
+                     A, B, C );
+
+    fprintf( stderr, "Code Generation\n"
+                     "STARTING------------------------------------------------------------------------\n" );
+
+    fprintf( stdout, "static float const Steinhart_Hart_A = %ff;\n"
+                     "static float const Steinhart_Hart_B = %ff;\n"
+                     "static float const Steinhart_Hart_C = %ff;\n"
+                     "static float const Steinhart_Hart_Beta = %ff;\n"
+                     "static float const Steinhart_Hart_r = %ff;\n",
+                     A,
+                     B,
+                     C,
+                     Beta,
+                     r );
+
+    fprintf( stderr, "FINISHED------------------------------------------------------------------------\n" );
+}
+
 int main ( int argc, char ** argv )
 {
     float const Tmin = get_T_min( ntc_T_R, ntc_T_R_count );
 
     NTCNode * tbl = replot( ntc_T_R, ntc_T_R_count, Tmin );
 
-    derive_trend( tbl, ntc_T_R_count, Tmin );
+    derive_trend_2( tbl, ntc_T_R_count, Tmin );
+
+    derive_Steinhart_Hart( ntc_T_R, ntc_T_R_count );
 
     free( tbl );
 
