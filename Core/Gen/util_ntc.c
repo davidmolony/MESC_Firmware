@@ -27,14 +27,16 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "util_ntc.h"
+
+#include "conversions.h"
+
 #include <assert.h>
 #include <float.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "util_ntc.h"
 
 static float get_T_min( NTCNode const * node, size_t const count )
 {
@@ -145,7 +147,7 @@ static void derive_Steinhart_Hart( NTCNode const * node, size_t const count )
     {
         L[i] = logf( p[i]->R );
         sumL += L[i];
-        float const K = temp_cvt_C_to_K( p[i]->T );
+        float const K = CVT_CELSIUS_TO_KELVIN_F( p[i]->T );
         Y[i] = (1.0f / K);
     }
 
