@@ -61,7 +61,18 @@ static void ntc_T_minmax( float * Tmin, float * Tmax)
     assert( *Tmax != -FLT_MAX );
 }
 
-static float ntc_calculate( float const R_T )
+static float ntc_get_R_T_from_adc( TEMPProfile const * const tp, uint32_t const adc_raw )
+{
+    float const adc  = (float)adc_raw;
+    float const Vout = ((tp->V * adc) / (float)tp->adc_range);
+    float const num = (Vout * tp->R_F);
+    float const den = (tp->V - Vout);
+    float const R_T = (num / den);
+
+    return R_T;
+}
+
+static float ntc_get_T_from_R_T( float const R_T )
 {
     if (R_T > ntc_T_R[0].R)
     {
@@ -92,119 +103,11 @@ static float ntc_calculate( float const R_T )
     return 999.9f;
 }
 
-#define TEMP_V   (3.3f)     // Volts
-#define TEMP_R_F (4700.0f)  // Ohms
-
-/*
-Schematic
-
- -+- V
-  |
- | | R_F = 4k7
- |_|
-  |
-  +- Vout - >ADC
- \|
- |\| R_T
- |_\_
-  |
- -+-
-
-R_T = Vout * R_F
-      ----------
-      (V - Vout)
-*/
-
-static float temp_calculate_R_T( float const Vout )
-{
-    float const num = (Vout * TEMP_R_F);
-    float const den = (TEMP_V - Vout);
-    float const R_T = (num / den);
-
-    return R_T;
-}
-
-static uint32_t adc_range = UINT32_C(4096);    // Profile
-
-static float ntc_read( uint32_t const adc_raw )
-{
-    float const adc  = (float)adc_raw;
-    float const Vout = ((TEMP_V * adc) / adc_range);
-    float const R_T = temp_calculate_R_T( Vout );
-
-    float const T = ntc_calculate( R_T );
-
-    return T;
-}
-
-static float const Steinhart_Hart_T0 = CVT_CELSIUS_TO_KELVIN_F( 25.0f ); // Profile (from NTC spec)
-static float const Steinhart_Hart_R0 = 10000.0f; // Profile (from NTC spec)
-static float const Steinhart_Hart_Beta = 3437.864258f; // Profile (from NTC spec) OR derive from curve (util_ntc)
-static float const Steinhart_Hart_r = 0.098243f; // Derive from NTC spec
-
-#if 0 // C > 0
-static float const Steinhart_Hart_A = 0.000674f; // Derived from curve (util_ntc)
-static float const Steinhart_Hart_B = 0.000291f; // Derived from curve (util_ntc)
-static float const Steinhart_Hart_C = 0.000000f; // Derived from curve (util_ntc)
-#endif
-
-static float Steinhart_Hart( float const R_T )
-{
-#if 0 // ABC
-#if 0 // C > 0
-    return (1.0f / (Steinhart_Hart_A + (Steinhart_Hart_B * logf( R_T )) + (Steinhart_Hart_C * logf( R_T ) * logf( R_T ) * logf( R_T ))));
-#else
-    return (1.0f / (Steinhart_Hart_A + (Steinhart_Hart_B * logf( R_T ))));
-#endif
-#else // Beta r
-    return Steinhart_Hart_Beta / logf( R_T / Steinhart_Hart_r );
-#endif
-}
-
-static float ntc_read_SH( uint32_t const adc_raw )
-{
-    float const adc  = (float)adc_raw;
-    float const Vout = ((TEMP_V * adc) / adc_range);
-    float const R_T = temp_calculate_R_T( Vout );
-
-    float const K = Steinhart_Hart( R_T );
-
-    float const T = CVT_KELVIN_TO_CELSIUS_F( K );
-
-    return T;
-}
-
-static uint32_t SH_calculate( float const T )
-{
-    float const K = CVT_CELSIUS_TO_KELVIN_F( T );
-#if 0 // C > 0
-    float const x = (Steinhart_Hart_A - (1.0f / K)) / Steinhart_Hart_C;
-
-    float const x_d_2_p2 = (x / 2.0f)
-                         * (x / 2.0f);
-
-    float const B_d_3C_p3 = (Steinhart_Hart_B / (3.0f * Steinhart_Hart_C))
-                          * (Steinhart_Hart_B / (3.0f * Steinhart_Hart_C))
-                          * (Steinhart_Hart_B / (3.0f * Steinhart_Hart_C));
-
-    float const y = sqrtf( B_d_3C_p3 + x_d_2_p2 );
-
-    float const R_T = expf( pow( (y - (x / 2.0f)), (1.0f / 3.0f) ) - pow( (y + (x / 2.0f)), (1.0f / 3.0f) ) );
-#else
-    float const R_T = Steinhart_Hart_R0 * expf( Steinhart_Hart_Beta * ( (1.0f / K) - (1.0f / Steinhart_Hart_T0) ) );
-#endif
-
-    float const Vout = (TEMP_V * R_T) / (TEMP_R_F + R_T);
-    uint32_t const adc_raw = (uint32_t)((Vout * ((float)adc_range)) / TEMP_V);
-
-    return adc_raw;
-}
-
-static uint32_t adc_calculate( float const T )
+static uint32_t ntc_get_adc_from_T( TEMPProfile const * tp, float const T )
 {
     if (T < ntc_T_R[0].T)
     {
-        return (adc_range - 1);
+        return (tp->adc_range - 1);
     }
 
     for ( size_t i = 0; i < ntc_T_R_count; )
@@ -223,8 +126,8 @@ static uint32_t adc_calculate( float const T )
 
             float const R_T = (lo->R + ((dR * (T - lo->T)) / dT));
 
-            float const adc_range_ = (float)(adc_range - 1);
-            float const adc_ = ((adc_range_ * R_T) / (TEMP_R_F + R_T));
+            float const adc_range_ = (float)(tp->adc_range - 1);
+            float const adc_ = ((adc_range_ * R_T) / (tp->R_F + R_T));
 
             uint32_t const adc = (uint32_t)(adc_);
 
@@ -239,6 +142,28 @@ void bist_temp( void )
 {
     fprintf( stdout, "Starting Temperature BIST\n" );
 
+    TEMPProfile tp;
+    // From design
+    tp.V   = 3.3f;
+    tp.R_F = 4700.0f;
+
+    tp.adc_range = 4096;
+
+    // From util_ntc
+    tp.parameters.approx.A   = - 0.036523f;
+    tp.parameters.approx.B   =  11.061409f;
+    tp.parameters.approx.Tlo = -23.000000f;
+    // From util_ntc
+    tp.parameters.SH.A = 0.000674f;
+    tp.parameters.SH.B = 0.000291f;
+    tp.parameters.SH.C = 0.000000f;
+
+    tp.parameters.SH.Beta = 3437.864258f;
+    tp.parameters.SH.r    = 0.098243f;
+    // From spec
+    tp.parameters.SH.T0 = CVT_CELSIUS_TO_KELVIN_F( 25.0f );
+    tp.parameters.SH.R0 = 10000.0f;
+
     float Tmin;
     float Tmax;
 
@@ -247,8 +172,8 @@ void bist_temp( void )
     uint32_t const adc_granularity = UINT32_C(128);
     uint32_t const adc_mask        = (adc_granularity - 1);
 
-    uint32_t adc_min = temp_get_adc( Tmin );
-    uint32_t adc_max = temp_get_adc( Tmax );
+    uint32_t adc_min = ntc_get_adc_from_T( &tp, Tmin );
+    uint32_t adc_max = ntc_get_adc_from_T( &tp, Tmax );
 
     uint32_t adc_start;
     uint32_t adc_end;
@@ -273,22 +198,44 @@ void bist_temp( void )
         adc_end   = adc_min;
     }
 
+    fprintf( stdout, "Ideal\n" );
+
     for ( uint32_t adc = adc_start; adc <= adc_end; adc = adc + adc_granularity )
     {
-        float const Tapx = temp_read( adc );
-        float const Tact = ntc_read( adc );
-        float const Tsh = ntc_read_SH( adc );
+        float const R_T = ntc_get_R_T_from_adc( &tp, adc );
+        float const T = ntc_get_T_from_R_T( R_T );
 
-        fprintf( stdout, "ADC %03" PRIX32 " => %5.1f 'C (%5.1f 'C) %5.1f 'C\n", adc, Tapx, Tact, Tsh );
+        fprintf( stdout, "ADC: %03" PRIX32 " => %5.1f 'C\n", adc, T );
     }
 
     for ( float T = 0.0f; T <= 100.0f; T = T + 5.0f)
     {
-        uint32_t const adc = temp_get_adc( T );
-        uint32_t const adc_act = adc_calculate( T );
-        uint32_t const adc_SH = SH_calculate( T );
+        uint32_t const adc = ntc_get_adc_from_T( &tp, T );
 
-        fprintf( stdout, "%5.1f 'C => ADC %03" PRIX32 " (%03" PRIX32 ") %03" PRIX32 "\n", T, adc, adc_act, adc_SH );
+        fprintf( stdout, "%5.1f 'C => ADC: %03" PRIX32 "\n", T, adc );
+    }
+
+    for ( TEMPMethod m = TEMP_METHOD_CURVE_APPROX; (m <= TEMP_METHOD_STEINHART_HART_BETA_R); ++m )
+    {
+        fprintf( stdout, "Method %d\n", m );
+
+        tp.method = m;
+
+        temp_init( &tp );
+
+        for ( uint32_t adc = adc_start; adc <= adc_end; adc = adc + adc_granularity )
+        {
+            float const T = temp_read( adc );
+
+            fprintf( stdout, "ADC: %03" PRIX32 " => %5.1f 'C\n", adc, T );
+        }
+
+        for ( float T = 0.0f; T <= 100.0f; T = T + 5.0f)
+        {
+            uint32_t const adc = temp_get_adc( T );
+
+            fprintf( stdout, "%5.1f 'C => ADC %03" PRIX32 "\n", T, adc );
+        }
     }
 
     fprintf( stdout, "Finished Temperature BIST\n" );

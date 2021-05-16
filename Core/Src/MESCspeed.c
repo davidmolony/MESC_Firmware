@@ -31,45 +31,28 @@
 
 #include "conversions.h"
 
-static float wheel_circumference; // (wheel units)
-static float wheel_distance; // (wheel units) per (distance unit)
-static float pole_pairs;
-//static float factor = 6.0f;
-static float speed; // (distance unit) per hour
+#include <stddef.h>
 
-static float gear_ratio; // gear_motor / gear_wheel
+SPEEDProfile const * speed_profile = NULL;
 
-void speed_set_motor( uint32_t const pole_pairs_ )
+static float rev_speed; // Speedometer units per motor revolution
+
+void speed_init( SPEEDProfile const * const profile )
 {
-    pole_pairs = (float)pole_pairs_;
-}
+    speed_profile = profile;
 
-void speed_set_wheel( float const diameter )
-{
-    wheel_circumference = CONST_PI_F * diameter;
-}
+    float const gear_ratio = (float)speed_profile->gear_ratio.motor / (float)speed_profile->gear_ratio.wheel;
+    float const wheel_circumference = (speed_profile->wheel.diameter * CONST_PI_F);
 
-void speed_set_units( float const wheel_distance_ )
-{
-    wheel_distance = wheel_distance_;
-}
-
-void speed_set_gear_ratio(
-    uint32_t const gear_motor,
-    uint32_t const gear_wheel )
-{
-    gear_ratio = ((float)gear_motor) / ((float)gear_wheel);
+    rev_speed = (gear_ratio * wheel_circumference * CONST_SECONDS_PER_HOUR_F);
 }
 
 float speed_get( void )
 {
-    float const dtheta = 0.0f; // revolutions // TODO
-    float const dS = (dtheta * gear_ratio * wheel_circumference) / wheel_distance; // distamce
-    float const dt = 0.0f; // time (seconds) // TODO
+    float const drev = 0.0f; // revolutions (i.e. 0..1 is 0..2Pi radians)
+    float const dt   = 0.0f; // time (seconds) // TODO
 
-    float const v = ((CONST_SECONDS_PER_HOUR_F * dS) / dt);
+    float const v = ((drev * rev_speed) / dt); // speedometer units
 
-    speed = ((speed * 255.0f) + v) / 256.0f; // TODO
-
-    return speed;
+    return v;
 }

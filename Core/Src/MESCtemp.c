@@ -29,10 +29,27 @@
 
 #include "MESCtemp.h"
 
-#include <math.h>
+#include "conversions.h"
 
-#define TEMP_V   (3.3f)     // Volts
-#define TEMP_R_F (4700.0f)  // Ohms
+#include <math.h>
+#include <stddef.h>
+
+static TEMPProfile const * temp_profile = NULL;
+
+void temp_init( TEMPProfile const * const profile )
+{
+    temp_profile = profile;
+
+    switch (temp_profile->method)
+    {
+        case TEMP_METHOD_CURVE_APPROX:
+            break;
+        case TEMP_METHOD_STEINHART_HART_ABC:
+            break;
+        case TEMP_METHOD_STEINHART_HART_BETA_R:
+            break;
+    }
+}
 
 /*
 Schematic
@@ -56,14 +73,12 @@ R_T = Vout * R_F
 
 static float temp_calculate_R_T( float const Vout )
 {
-    float const num = (Vout * TEMP_R_F);
-    float const den = (TEMP_V - Vout);
+    float const num = (Vout * temp_profile->R_F);
+    float const den = (temp_profile->V - Vout);
     float const R_T = (num / den);
 
     return R_T;
 }
-
-static uint32_t temp_adc_range = UINT32_C(4096);    // Profile
 
 /*
 Approximation
@@ -80,41 +95,19 @@ T = --------- - T_lo
         A
 */
 
-static float const temp_approx_T_lo = -23.000000f;
-static float const temp_approx_T_A  = -0.036523f;
-static float const temp_approx_T_B  = 11.061409f;
-
-/*
-Experimental (BIST)
-
-ADC R_T     T   Actual (spec)
-1D0   600   111  120
-430  1666    82   80
-770  4100    56   50
-8D0  5800    46   40
-AE0 10000    30   25
-DC0 28722   - 1    0
-
-Removing T_X appears to be more correct!
-*/
-
 static float temp_calculate_approximation( float const R_T )
 {
     float const ln_R_T = logf( R_T );
-    float const T = ((ln_R_T - temp_approx_T_B) / temp_approx_T_A) + temp_approx_T_lo;
+    float const T = ((ln_R_T - temp_profile->parameters.approx.B) / temp_profile->parameters.approx.A) + temp_profile->parameters.approx.Tlo;
 
     return T;
 }
-#if TEMP_STEINHART_HART // unused
+
 /*
-Steinhart & Hart method
+Steinhart & Hart A/B/C method
 */
 
-static float temp_SteinhartHart_A = 0.0f; // Profile
-static float temp_SteinhartHart_B = 0.0f; // Profile
-static float temp_SteinhartHart_C = 0.0f; // Profile
-
-static void temp_calculate_SteinhartHart_ABC( float const (* const R)[3], float const (* const T)[3] )
+static void temp_derive_SteinhartHart_ABC_from_points( TEMPProfile * const profile, float const (* const R)[3], float const (* const T)[3] )
 {
     float L[3];
     float Y[3];
@@ -131,23 +124,45 @@ static void temp_calculate_SteinhartHart_ABC( float const (* const R)[3], float 
 
     float const L0_2 = (L[0] * L[0]);
 
-    temp_SteinhartHart_C = ((g[2] - g[1]) / (L[2] - L[1])) * (1.0 / (L[0] + L[1] + L[2]));
-    temp_SteinhartHart_B = (g[1] - (temp_SteinhartHart_C * (L0_2 + (L[0] * L[1]) + (L[1] * L[1]))));
-    temp_SteinhartHart_A = (Y[0] - (L[0] * (temp_SteinhartHart_B + (temp_SteinhartHart_C * L0_2))));
+    profile->parameters.SH.C = ((g[2] - g[1]) / (L[2] - L[1])) * (1.0 / (L[0] + L[1] + L[2]));
+    profile->parameters.SH.B = (g[1] - (profile->parameters.SH.C * (L0_2 + (L[0] * L[1]) + (L[1] * L[1]))));
+    profile->parameters.SH.A = (Y[0] - (L[0] * (profile->parameters.SH.B + (profile->parameters.SH.C * L0_2))));
 }
 
-static float temp_calculate_SteinhartHart( float const R_T )
+static void temp_derive_SteinhartHart_Beta_r_from_ABC( TEMPProfile * profile )
+{
+    profile->parameters.SH.Beta = (1.0f / profile->parameters.SH.B);
+    profile->parameters.SH.r    = profile->parameters.SH.R0 * expf( -profile->parameters.SH.Beta / profile->parameters.SH.T0 );
+}
+
+static float temp_calculate_SteinhartHart_ABC( float const R_T )
 {
     float const ln_R_T   = log( R_T );
     float const ln_R_T_3 = (ln_R_T * ln_R_T * ln_R_T);
 
     float const num = 1.0f;
-    float const den = (temp_SteinhartHart_A + (temp_SteinhartHart_B * ln_R_T) + (temp_SteinhartHart_C * ln_R_T_3));
+    float const den = (temp_profile->parameters.SH.A + (temp_profile->parameters.SH.B * ln_R_T) + (temp_profile->parameters.SH.C * ln_R_T_3));
     float const T   = (num / den);
 
     return T;
 }
-#endif
+
+/*
+Steinhart & Hart Beta/r method
+*/
+
+static void temp_derive_SteinhartHart_ABC_from_Beta( TEMPProfile * const profile )
+{
+    profile->parameters.SH.C = 0.0f; // C is always zero when using Beta
+    profile->parameters.SH.B = (1.0f / profile->parameters.SH.Beta);
+    profile->parameters.SH.A = (profile->parameters.SH.T0 - (profile->parameters.SH.B * logf( profile->parameters.SH.R0 )));
+}
+
+static float temp_calculate_SteinhartHart_Beta_r( float const R_T )
+{
+    return temp_profile->parameters.SH.Beta / logf( R_T / temp_profile->parameters.SH.r );
+}
+
 /*
 API
 */
@@ -155,23 +170,70 @@ API
 float temp_read( uint32_t const adc_raw )
 {
     float const adc  = (float)adc_raw;
-    float const Vout = ((TEMP_V * adc) / temp_adc_range);
+    float const Vout = ((temp_profile->V * adc) / (float)temp_profile->adc_range);
     float const R_T = temp_calculate_R_T( Vout );
 
 //fprintf( stderr, "R_T %.0f Ohm\n", R_T );//debug
+    float T;
 
-    float const T = temp_calculate_approximation( R_T );
-#if TEMP_STEINHART_HART
-    float const T = temp_calculate_SteinhartHart( R_T );
-#endif
+    switch (temp_profile->method)
+    {
+        case TEMP_METHOD_CURVE_APPROX:
+            T = temp_calculate_approximation( R_T );
+            break;
+        case TEMP_METHOD_STEINHART_HART_ABC:
+        {
+            float const K = temp_calculate_SteinhartHart_ABC( R_T );
+            T = CVT_KELVIN_TO_CELSIUS_F( K );
+            break;
+        }
+        case TEMP_METHOD_STEINHART_HART_BETA_R:
+        {
+            float const K = temp_calculate_SteinhartHart_Beta_r( R_T );
+            T = CVT_KELVIN_TO_CELSIUS_F( K );
+        }
+            break;
+    }
+
     return T;
 }
 
 uint32_t temp_get_adc( float const T )
 {
-    float const R_T = expf( ((T - temp_approx_T_lo) * temp_approx_T_A) + temp_approx_T_B );
-    float const Vout = (TEMP_V * R_T) / (TEMP_R_F + R_T);
-    uint32_t const adc_raw = (uint32_t)((Vout * ((float)temp_adc_range)) / TEMP_V);
+    float R_T;
+
+    switch (temp_profile->method)
+    {
+        case TEMP_METHOD_CURVE_APPROX:
+            R_T = expf( ((T - temp_profile->parameters.approx.Tlo) * temp_profile->parameters.approx.A) + temp_profile->parameters.approx.B );
+            break;
+        case TEMP_METHOD_STEINHART_HART_ABC:
+        {
+            float const K = CVT_CELSIUS_TO_KELVIN_F(T);
+
+            float const x = ((1.0f / temp_profile->parameters.SH.C) * (temp_profile->parameters.SH.A - (1.0f / K)));
+            float const Br3C = (temp_profile->parameters.SH.C / (3.0f * temp_profile->parameters.SH.C));
+            float const y = sqrtf( powf( Br3C, 3.0f ) + (x * x / 4.0f) );
+
+            float const p = (1.0f / 3.0f);
+            float const xr2 = (x / 2.0f);
+            float const y_m_xr2_p = powf( (y - xr2), p );
+            float const y_p_xr2_p = powf( (y + xr2), p );
+
+            R_T = expf( y_m_xr2_p - y_p_xr2_p );
+            break;
+        }
+        case TEMP_METHOD_STEINHART_HART_BETA_R:
+        {
+            float const K = CVT_CELSIUS_TO_KELVIN_F( T );
+            R_T = temp_profile->parameters.SH.r * expf( temp_profile->parameters.SH.Beta / K );
+            // OR R_T =  R0 * exp( Beta * (1 / K - 1 / T0) )
+            break;
+        }
+    }
+
+    float const Vout = (temp_profile->V * R_T) / (temp_profile->R_F + R_T);
+    uint32_t const adc_raw = (uint32_t)((Vout * ((float)temp_profile->adc_range)) / temp_profile->V);
 
     return adc_raw;
 }

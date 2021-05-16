@@ -29,6 +29,10 @@
 
 #include "MESCprofile.h"
 
+#include "MESCbat.h"
+#include "MESCspeed.h"
+#include "MESCtemp.h"
+
 #include <assert.h>
 #include <inttypes.h>
 #include <stddef.h>
@@ -288,7 +292,7 @@ void bist_profile( void )
     read_zero_on_error = 1;
     use_mem_not_fs = 1;
 
-    profile_configure_storage( read, write );
+    profile_configure_storage_io( read, write );
 
     fprintf( stdout, "INFO: Performing initial load & store\n" );
 
@@ -364,6 +368,48 @@ void bist_profile( void )
     }
 
     // TODO
+
+    void const * buffer = NULL;
+    uint32_t length = 0;
+
+    if (profile_get_entry( "MESC_BAT", MAKE_UINT32_STRING( 'M','B','P','E' ), &buffer, &length ) == PROFILE_STATUS_SUCCESS)
+    {
+        BATProfile const * bp = (BATProfile *)buffer;
+        (void)bp;
+        fprintf( stdout, "INFO: Found Battery entry\n" );
+    }
+    else
+    {
+        BATProfile bp;
+        (void)bp;
+        fprintf( stdout, "INFO: Adding Battery entry\n" );
+    }
+
+    if (profile_get_entry( "MESC_SPEED", MAKE_UINT32_STRING( 'M','S','P','E' ), &buffer, &length ) == PROFILE_STATUS_SUCCESS)
+    {
+        SPEEDProfile const * sp = (SPEEDProfile *)buffer;
+        (void)sp;
+        fprintf( stdout, "INFO: Found Speed entry\n" );
+    }
+    else
+    {
+        SPEEDProfile sp;
+        (void)sp;
+        fprintf( stdout, "INFO: Adding Speed entry\n" );
+    }
+
+    if (profile_get_entry( "MESC_TEMP", MAKE_UINT32_STRING( 'M','T','P','E' ), &buffer, &length ) == PROFILE_STATUS_SUCCESS)
+    {
+        TEMPProfile const * tp = (TEMPProfile *)buffer;
+        (void)tp;
+        fprintf( stdout, "INFO: Found Temperature entry\n" );
+    }
+    else
+    {
+        TEMPProfile tp;
+        (void)tp;
+        fprintf( stdout, "INFO: Adding Temperature entry\n" );
+    }
 
     reset();
 

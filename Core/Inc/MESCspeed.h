@@ -32,15 +32,28 @@
 
 #include <inttypes.h>
 
-void speed_set_motor( uint32_t const pole_pairs );
+struct SPEEDProfile
+{
+    struct
+    {
+    uint32_t    pole_pairs;
+    }           motor;
+    struct
+    {
+    uint32_t    motor;      // Teeth on motor
+    uint32_t    wheel;      // Teeth on wheel
+    }           gear_ratio; // Use 1:1 for no gear ratio
+    struct
+    {
+    float       diameter;   // In wheel size units (inches/centimetres)
+    float       conversion; // Conversion from wheel size units to speedometer units (miles/kilometres per hour)
+    }           wheel;
 
-void speed_set_wheel( float const diameter );
+};
 
-void speed_set_units( float const wheel_distance );
+typedef struct SPEEDProfile SPEEDProfile;
 
-void speed_set_gear_ratio(
-    uint32_t const gear_motor,
-    uint32_t const gear_wheel );
+void speed_init( SPEEDProfile const * const profile );
 
 float speed_get( void );
 

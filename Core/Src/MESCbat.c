@@ -29,15 +29,18 @@
 
 #include "MESCbat.h"
 
-static BATProfile const * bat_profile;
+#include <stddef.h>
+
+static BATProfile const * bat_profile = NULL;
 
 static float grad_upper;    // Amp Hour per Volt
 static float grad_lower;    // Amp Hour per Volt
 static float Cscale;        // Charge scale factor (Cmax..Clow)
 
-void bat_init( BATProfile const * profile )
+void bat_init( BATProfile const * const profile )
 {
     bat_profile = profile;
+    bat_notify_profile_update();
 
     float const u_dV = profile->Vmax - profile->Vmid;
     float const u_dC = profile->Cmax - profile->Cmid;
@@ -48,9 +51,19 @@ void bat_init( BATProfile const * profile )
     float const l_dC = profile->Cmid;
 
     grad_lower = l_dC / l_dV;
+}
 
-    Cscale = 100.0f / (profile->Cmax - profile->Clow); // Percent
-    //Cscale = profile->Cmax / (profile->Cmax - profile->Clow); // Amp Hour
+void bat_notify_profile_update( void )
+{
+    switch (bat_profile->display)
+    {
+        case BAT_DISPLAY_PERCENT:
+            Cscale = 100.0f / (bat_profile->Cmax - bat_profile->Clow);
+            break;
+        case BAT_DISPLAY_AMPHOUR:
+            Cscale = bat_profile->Cmax / (bat_profile->Cmax - bat_profile->Clow);
+            break;
+    }
 }
 
 float battery_get_power(
@@ -111,9 +124,9 @@ float bat_get_charge_level( float const V, float const I, float const ESR )
     return C;
 }
 
-float bat_get_level_voltage( float const L )
+float bat_get_level_voltage( float const L_C )
 {
-    float Lrem = L;
+    float Lrem = L_C;
     float Lmid = (bat_profile->Cmid - bat_profile->Clow) * Cscale;
 
     if (Lrem <= Lmid)

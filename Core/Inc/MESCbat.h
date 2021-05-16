@@ -59,6 +59,14 @@ Vmid and Vmid to Vmin. (Vtop region is ignored) These values are rebased on Vlow
 to reduce adverse impact on battery condition due to over discharge.
 */
 
+enum BATDisplay
+{
+    BAT_DISPLAY_PERCENT,
+    BAT_DISPLAY_AMPHOUR,
+};
+
+typedef enum BATDisplay BATDisplay;
+
 struct BATProfile
 {
     float   Vmax;   /* Volt     */
@@ -74,11 +82,15 @@ struct BATProfile
     float   Clow;   /* Amp Hour */
 
     float   Vmin;   /* Volt     */
+
+    BATDisplay  display;
 };
 
 typedef struct BATProfile BATProfile;
 
-void bat_init( BATProfile const * profile );
+void bat_init( BATProfile const * const profile );
+
+void bat_notify_profile_update( void );
 
 float battery_get_power(
     float const Iq, float const Vq,
@@ -91,6 +103,6 @@ float battery_get_current(
 
 float bat_get_charge_level( float const V, float const I, float const ESR );
 
-float bat_get_level_voltage( float const L );
+float bat_get_level_voltage( float const L_C );
 
 #endif

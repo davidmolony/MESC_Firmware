@@ -52,21 +52,49 @@ void bist_bat( void )
 
     bp.Vmin = 2.8f; // V
 
-    bat_init( &bp );
-
-    for ( float V = bp.Vmin; (V < bp.Vmax); V = V + 0.05f )
+    for ( BATDisplay d = BAT_DISPLAY_PERCENT; (d <= BAT_DISPLAY_AMPHOUR); ++d )
     {
-        float const C = bat_get_charge_level( V, 0.0f, 0.0f );
+        fprintf( stdout, "Display %d\n", d );
 
-        fprintf( stdout, "%3.2f V => %3.0f %%\n", V, C ); // Percent
-        //fprintf( stdout, "%3.2f V => %1.1f Ah\n", V, C ); // Amp Hour
-    }
+        bp.display = d;
 
-    for ( float L = 0.0f; (L <= 100.0f); L = L + 10.0f )
-    {
-        float const V = bat_get_level_voltage( L );
+        bat_init( &bp ); // NOTE calls bat_notify_profile_update
 
-        fprintf( stdout, "%3.0f %% => %3.2f V\n", L, V ); // Percent
+        for ( float V = bp.Vmin; (V < bp.Vmax); V = V + 0.05f )
+        {
+            float const C = bat_get_charge_level( V, 0.0f, 0.0f );
+
+            switch (bp.display)
+            {
+                case BAT_DISPLAY_PERCENT:
+                    fprintf( stdout, "%3.2f V => %3.0f %%\n", V, C );
+                    break;
+                case BAT_DISPLAY_AMPHOUR:
+                    fprintf( stdout, "%3.2f V => %1.1f Ah\n", V, C );
+                    break;
+            }
+        }
+
+        switch (bp.display)
+        {
+            case BAT_DISPLAY_PERCENT:
+
+                for ( float L = 0.0f; (L <= 100.0f); L = L + 10.0f )
+                {
+                    float const V = bat_get_level_voltage( L );
+
+                    fprintf( stdout, "%3.0f %% => %3.2f V\n", L, V );
+                }
+                break;
+            case BAT_DISPLAY_AMPHOUR:
+                for ( float C = 0.0f; (C <= bp.Cmax); C = C + 0.5f )
+                {
+                    float const V = bat_get_level_voltage( C );
+
+                    fprintf( stdout, "%1.1f Ah => %3.2f V\n", C, V );
+                }
+                break;
+        }
     }
 
     fprintf( stdout, "Finished Battery BIST\n" );

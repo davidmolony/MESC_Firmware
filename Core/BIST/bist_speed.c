@@ -37,10 +37,17 @@ void bist_speed( void )
 {
     fprintf( stdout, "Starting Speed BIST\n" );
 
-    speed_set_motor( 6 );
-    speed_set_wheel( 26.0f ); // Inches
-    speed_set_units( CONST_INCHES_PER_MILE_F );
-    speed_set_gear_ratio( 1, 1 );
+    SPEEDProfile sp;
+
+    sp.motor.pole_pairs = 6;
+
+    sp.gear_ratio.motor = 1;
+    sp.gear_ratio.wheel = 1;
+
+    sp.wheel.diameter = 26.0f; // Inches
+    sp.wheel.conversion = CONST_INCHES_PER_MILE_F;
+
+    speed_init( &sp );
 
     speed_get();
 

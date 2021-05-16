@@ -158,7 +158,7 @@ enum ProfileStatus
 
 typedef enum ProfileStatus ProfileStatus;
 
-void profile_configure_storage(
+void profile_configure_storage_io(
     ProfileStatus (* const read)( void * buffer, uint32_t const length ),
     ProfileStatus (* const write)( void const * buffer, uint32_t const length ) );
 

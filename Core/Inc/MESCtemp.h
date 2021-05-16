@@ -32,6 +32,52 @@
 
 #include <stdint.h>
 
+enum TEMPMethod
+{
+    TEMP_METHOD_CURVE_APPROX,
+
+    TEMP_METHOD_STEINHART_HART_ABC,
+    TEMP_METHOD_STEINHART_HART_BETA_R,
+};
+
+typedef enum TEMPMethod TEMPMethod;
+
+struct TEMPProfile
+{
+    float       V;
+    float       R_F;
+
+    uint32_t    adc_range;
+
+    TEMPMethod  method;
+
+    struct //union
+    {
+    struct
+    {
+    float       A;
+    float       B;
+    float       Tlo;
+    }           approx;
+    struct
+    {
+    float       A;
+    float       B;
+    float       C;
+
+    float       Beta;
+    float       r;
+
+    float       T0;
+    float       R0;
+    }           SH;
+    }           parameters;
+};
+
+typedef struct TEMPProfile TEMPProfile;
+
+void temp_init( TEMPProfile const * const profile );
+
 float temp_read( uint32_t const adc_raw );
 
 uint32_t temp_get_adc( float const T );
