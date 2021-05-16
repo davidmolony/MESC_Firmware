@@ -30,7 +30,10 @@
 #ifndef MESC_PROFILE_H
 #define MESC_PROFILE_H
 
+#include <assert.h>
 #include <stdint.h>
+
+#include "bit_op.h"
 
 #define MAKE_UINT32_STRING(a,b,c,d) \
        (((uint32_t)(a) <<  0) \
@@ -66,8 +69,6 @@ typedef struct ProfileHeader ProfileHeader;
 
 #define PROFILE_HEADER_SIZE (sizeof(ProfileHeader))
 
-#define PROFILE_HEADER_ENTRIES ((8/*BITS_PER_BYTE*/ * sizeof(((ProfileHeader *)NULL)->entry_map)) / 2/*ENTRY_MAP_BITS*/)
-
 enum ProfileEntryMap
 {
     // Access flags
@@ -86,6 +87,10 @@ typedef enum ProfileEntryMap ProfileEntryMap;
 
 #define PROFILE_ENTRY_BITS (2)
 #define PROFILE_ENTRY_MASK BIT_MASK_32( PROFILE_ENTRY_BITS )
+
+static_assert( ((BITS_PER_BYTE % PROFILE_ENTRY_BITS) == 0), "PROFILE_ENTRY_BITS must fit into a byte" );
+
+#define PROFILE_HEADER_ENTRIES ((BITS_PER_BYTE * sizeof(((ProfileHeader *)NULL)->entry_map)) / PROFILE_ENTRY_BITS)
 
 #define PROFILE_ENTRY_SIGNATURE MAKE_UINT32_STRING('M','P','E','H')
 

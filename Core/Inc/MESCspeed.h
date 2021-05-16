@@ -32,6 +32,8 @@
 
 #include <inttypes.h>
 
+#define SPEED_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','S','P','E')
+
 struct SPEEDProfile
 {
     struct

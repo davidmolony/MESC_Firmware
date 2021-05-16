@@ -59,6 +59,8 @@ Vmid and Vmid to Vmin. (Vtop region is ignored) These values are rebased on Vlow
 to reduce adverse impact on battery condition due to over discharge.
 */
 
+#define BAT_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','B','P','E')
+
 enum BATDisplay
 {
     BAT_DISPLAY_PERCENT,

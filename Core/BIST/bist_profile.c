@@ -372,7 +372,7 @@ void bist_profile( void )
     void const * buffer = NULL;
     uint32_t length = 0;
 
-    if (profile_get_entry( "MESC_BAT", MAKE_UINT32_STRING( 'M','B','P','E' ), &buffer, &length ) == PROFILE_STATUS_SUCCESS)
+    if (profile_get_entry( "MESC_BAT", BAT_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
     {
         BATProfile const * bp = (BATProfile *)buffer;
         (void)bp;
@@ -383,9 +383,11 @@ void bist_profile( void )
         BATProfile bp;
         (void)bp;
         fprintf( stdout, "INFO: Adding Battery entry\n" );
+
+        ret = profile_put_entry( "MESC_BAT", BAT_PROFILE_SIGNATURE, &bp, sizeof(bp) );
     }
 
-    if (profile_get_entry( "MESC_SPEED", MAKE_UINT32_STRING( 'M','S','P','E' ), &buffer, &length ) == PROFILE_STATUS_SUCCESS)
+    if (profile_get_entry( "MESC_SPEED", SPEED_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
     {
         SPEEDProfile const * sp = (SPEEDProfile *)buffer;
         (void)sp;
@@ -396,9 +398,11 @@ void bist_profile( void )
         SPEEDProfile sp;
         (void)sp;
         fprintf( stdout, "INFO: Adding Speed entry\n" );
+
+        ret = profile_put_entry( "MESC_SPEED", SPEED_PROFILE_SIGNATURE, &sp, sizeof(sp) );
     }
 
-    if (profile_get_entry( "MESC_TEMP", MAKE_UINT32_STRING( 'M','T','P','E' ), &buffer, &length ) == PROFILE_STATUS_SUCCESS)
+    if (profile_get_entry( "MESC_TEMP", TEMP_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
     {
         TEMPProfile const * tp = (TEMPProfile *)buffer;
         (void)tp;
@@ -409,6 +413,8 @@ void bist_profile( void )
         TEMPProfile tp;
         (void)tp;
         fprintf( stdout, "INFO: Adding Temperature entry\n" );
+
+        ret = profile_put_entry( "MESC_TEMP", TEMP_PROFILE_SIGNATURE, &tp, sizeof(tp) );
     }
 
     reset();

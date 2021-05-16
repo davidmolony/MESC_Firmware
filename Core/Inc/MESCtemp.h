@@ -32,6 +32,8 @@
 
 #include <stdint.h>
 
+#define TEMP_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','T','P','E')
+
 enum TEMPMethod
 {
     TEMP_METHOD_CURVE_APPROX,

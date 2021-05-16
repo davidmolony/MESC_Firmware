@@ -241,14 +241,16 @@ static ProfileStatus profile_entry_validate( ProfileHeader * const header, Profi
 
 static ProfileStatus profile_read_noop( void * data, uint32_t const length )
 {
-    return PROFILE_STATUS_UNKNOWN;
+	profile_status_storage = PROFILE_STATUS_UNKNOWN;
+    return PROFILE_STATUS_ERROR_STORAGE_READ;
     (void)data;
     (void)length;
 }
 
 static ProfileStatus profile_write_noop( void const * data, uint32_t const length )
 {
-    return PROFILE_STATUS_UNKNOWN;
+	profile_status_storage = PROFILE_STATUS_UNKNOWN;
+    return PROFILE_STATUS_ERROR_STORAGE_WRITE;
     (void)data;
     (void)length;
 }
