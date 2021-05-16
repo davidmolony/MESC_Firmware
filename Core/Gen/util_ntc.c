@@ -80,11 +80,10 @@ static NTCNode * replot( NTCNode const * node, size_t const count, float const T
     return ret;
 }
 
-#define DEGREE (2)
-#define PARTITIONS ((2 * DEGREE) + 1)
-
 static void derive_trend_2( NTCNode const * node, size_t const count, float const Tmin )
 {
+#define DEGREE (2)
+#define PARTITIONS ((2 * DEGREE) + 1)
     NTCNode const * p[DEGREE];
 
     for ( size_t i = 0, j = 1; j < PARTITIONS; ++i, j = j + 2 )
@@ -124,6 +123,8 @@ static void derive_trend_2( NTCNode const * node, size_t const count, float cons
                      c );
 
     fprintf( stderr, "FINISHED------------------------------------------------------------------------\n" );
+#undef DEGREE
+#undef PARTITIONS
 }
 
 static float const Steinhart_Hart_T0 = CVT_CELSIUS_TO_KELVIN_F( 25.0f ); // Profile (from NTC spec)
@@ -131,6 +132,8 @@ static float const Steinhart_Hart_R0 = 10000.0f; // Profile (from NTC spec)
 
 static void derive_Steinhart_Hart( NTCNode const * node, size_t const count )
 {
+#define DEGREE (3)
+#define PARTITIONS ((2 * DEGREE) + 1)
     NTCNode const * p[DEGREE];
 
     for ( size_t i = 0, j = 1; j < PARTITIONS; ++i, j = j + 2 )
@@ -191,6 +194,8 @@ static void derive_Steinhart_Hart( NTCNode const * node, size_t const count )
                      r );
 
     fprintf( stderr, "FINISHED------------------------------------------------------------------------\n" );
+#undef DEGREE
+#undef PARTITIONS
 }
 
 int main ( int argc, char ** argv )
