@@ -3,6 +3,8 @@
 
 #include "MESCfnv.h"
 
+#include "bit_op.h"
+
 #include <stddef.h>
 #include <string.h>
 
@@ -12,9 +14,9 @@ static union
     {
     ProfileHeader   header;
     ProfileEntry    entry[PROFILE_HEADER_ENTRIES];
-    uint8_t         _;
-    };
-    uint8_t         raw[4096];
+    uint8_t         data;
+    }               layout;
+    uint8_t         raw;
 }   profile_image;
 
 static uint8_t profile_modified = 0;
@@ -55,28 +57,28 @@ static void profile_init_default( void )
 {
     memset( &profile_image, 0, sizeof(profile_image) );
 
-    profile_image.header.signature      = PROFILE_SIGNATURE;
+    profile_image.layout.header.signature      = PROFILE_SIGNATURE;
 
-    profile_image.header.size           = PROFILE_HEADER_SIZE;
-    profile_image.header.version_major  = PROFILE_VERSION_MAJOR;
-    profile_image.header.version_minor  = PROFILE_VERSION_MINOR;
+    profile_image.layout.header.size           = PROFILE_HEADER_SIZE;
+    profile_image.layout.header.version_major  = PROFILE_VERSION_MAJOR;
+    profile_image.layout.header.version_minor  = PROFILE_VERSION_MINOR;
 
-    profile_image.header.checksum       = PROFILE_SIGNATURE;
+    profile_image.layout.header.checksum       = PROFILE_SIGNATURE;
 
-    profile_image.header.image_checksum = fnv1a_init();
+    profile_image.layout.header.image_checksum = fnv1a_init();
 
-    profile_image.header.checksum       = fnv1a_data( &profile_image.header, PROFILE_HEADER_SIZE );
+    profile_image.layout.header.checksum       = fnv1a_data( &profile_image.layout.header, PROFILE_HEADER_SIZE );
 
     uint32_t blk = 0;
     uint32_t fld = 0;
 
     for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
     {
-        profile_image.header.entry_map[blk] |= (PROFILE_ENTRY_FREE << fld);
+        profile_image.layout.header.entry_map[blk] |= (PROFILE_ENTRY_FREE << fld);
 
-        fld = fld + 2/*ENTRY_MAP_BITS*/;
+        fld = fld + PROFILE_ENTRY_BITS;
 
-        if (fld == 8/*BITS_PER_BYTE*/)
+        if (fld == BITS_PER_BYTE)
         {
             fld = 0;
             blk++;
@@ -129,7 +131,7 @@ static ProfileStatus profile_header_validate( ProfileHeader * const header )
 
     uint32_t const image_length = header->image_length;
 
-    if (image_length > (4096 - PROFILE_HEADER_SIZE))
+    if (image_length > (4096/*TODO*/ - PROFILE_HEADER_SIZE))
     {
         return PROFILE_STATUS_ERROR_IMAGE_LENGTH;
     }
@@ -152,11 +154,11 @@ static ProfileStatus profile_entry_validate( ProfileHeader * const header, Profi
 
     for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
     {
-        ProfileEntryMap const map = (ProfileEntryMap)((header->entry_map[blk] >> fld) & 3/*MASK(ENTRY_MAP_BITS)*/);
+        ProfileEntryMap const map = (ProfileEntryMap)((header->entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
 
-        fld = fld + 2/*ENTRY_MAP_BITS*/;
+        fld = fld + PROFILE_ENTRY_BITS;
 
-        if (fld == 8/*BITS_PER_BYTE*/)
+        if (fld == BITS_PER_BYTE)
         {
             fld = 0;
             blk++;
@@ -189,9 +191,9 @@ static ProfileStatus profile_entry_validate( ProfileHeader * const header, Profi
 
         if  (
                 (entry[i].data_length == 0)
-            ||  ((entry[i].data_offset & 3) != 0)
+            ||  ((entry[i].data_offset & 3) != 0) // align 4
             ||  (entry[i].data_offset < PROFILE_HEADER_SIZE)
-            ||  ((entry[i].data_offset + entry[i].data_length) > 4096)
+            ||  ((entry[i].data_offset + entry[i].data_length) > 4096/*TODO*/)
             )
         {
             return PROFILE_STATUS_ERROR_DATA_LENGTH;
@@ -223,11 +225,11 @@ static ProfileStatus profile_write_noop( void const * data, uint32_t const lengt
     (void)length;
 }
 
-static ProfileStatus (* profile_storage_read)( void *, uint32_t const ) = profile_read_noop;
-static ProfileStatus (* profile_storage_write)( void const * , uint32_t const ) = profile_write_noop;
+static ProfileStatus (* profile_storage_read)(  void       *, uint32_t const ) = profile_read_noop;
+static ProfileStatus (* profile_storage_write)( void const *, uint32_t const ) = profile_write_noop;
 
 void profile_configure_storage(
-    ProfileStatus (* const read)( void * buffer, uint32_t const length ),
+    ProfileStatus (* const read )( void       * buffer, uint32_t const length ),
     ProfileStatus (* const write)( void const * buffer, uint32_t const length ) )
 {
     if (read != NULL)
@@ -254,9 +256,9 @@ ProfileStatus profile_init( void )
         return PROFILE_STATUS_INIT_FALLBACK_DEFAULT;
     }
 
-    if (profile_image.header.signature != PROFILE_SIGNATURE)
+    if (profile_image.layout.header.signature != PROFILE_SIGNATURE)
     {
-        if (profile_image.header.signature == 0)
+        if (profile_image.layout.header.signature == 0)
         {
             profile_init_default();
             return PROFILE_STATUS_INIT_SUCCESS_DEFAULT;
@@ -268,7 +270,7 @@ ProfileStatus profile_init( void )
         }
     }
 
-    profile_status_header = profile_header_validate( &profile_image.header );
+    profile_status_header = profile_header_validate( &profile_image.layout.header );
 
     if (profile_status_header != PROFILE_STATUS_SUCCESS)
     {
@@ -276,7 +278,7 @@ ProfileStatus profile_init( void )
         return PROFILE_STATUS_INIT_FALLBACK_DEFAULT;
     }
 
-    profile_status_entry = profile_entry_validate( &profile_image.header, &profile_image.entry[0] );
+    profile_status_entry = profile_entry_validate( &profile_image.layout.header, &profile_image.layout.entry[0] );
 
     if (profile_status_entry != PROFILE_STATUS_SUCCESS)
     {
@@ -294,7 +296,7 @@ ProfileStatus profile_alloc_entry(
     uint32_t blk = 0;
     uint32_t fld = 0;
 
-    uint32_t const name_length = strlen( name );
+    uint32_t const name_length = (uint32_t)strlen( name );
 
     if (name_length > PROFILE_ENTRY_MAX_NAME_LENGTH)
     {
@@ -303,11 +305,11 @@ ProfileStatus profile_alloc_entry(
 
     for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
     {
-        ProfileEntryMap const map = (ProfileEntryMap)((profile_image.header.entry_map[blk] >> fld) & UINT8_C(3)/*MASK(ENTRY_MAP_BITS)*/);
+        ProfileEntryMap const map = (ProfileEntryMap)((profile_image.layout.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
 
-        fld = fld + 2/*ENTRY_MAP_BITS*/;
+        fld = fld + PROFILE_ENTRY_BITS;
 
-        if (fld == 8/*BITS_PER_BYTE*/)
+        if (fld == BITS_PER_BYTE)
         {
             fld = 0;
             blk++;
@@ -320,31 +322,31 @@ ProfileStatus profile_alloc_entry(
 
         if (fld == 0)
         {
-            fld = 8/*BITS_PER_BYTE*/;
+            fld = BITS_PER_BYTE;
             blk--;
         }
 
-        fld = fld - 2/*ENTRY_MAP_BITS*/;
+        fld = fld - PROFILE_ENTRY_BITS;
 
-        profile_image.header.entry_map[blk] &= (UINT8_C(3) << fld);
-        profile_image.header.entry_map[blk] |= (PROFILE_ENTRY_USED << fld);
+        profile_image.layout.header.entry_map[blk] &= (PROFILE_ENTRY_MASK << fld);
+        profile_image.layout.header.entry_map[blk] |= (PROFILE_ENTRY_USED << fld);
 
-        memset( &profile_image.entry[i], 0, PROFILE_ENTRY_SIZE );
+        memset( &profile_image.layout.entry[i], 0, PROFILE_ENTRY_SIZE );
 
-        profile_image.entry[i].signature = PROFILE_ENTRY_SIGNATURE;
+        profile_image.layout.entry[i].signature = PROFILE_ENTRY_SIGNATURE;
 
-        profile_image.entry[i].size = PROFILE_ENTRY_SIZE;
-        profile_image.entry[i].name_length = name_length;
-        strcpy( profile_image.entry[i].name, name );
+        profile_image.layout.entry[i].size = PROFILE_ENTRY_SIZE;
+        profile_image.layout.entry[i].name_length = (uint8_t)name_length;
+        strcpy( profile_image.layout.entry[i].name, name );
 
-        profile_image.entry[i].data_signature = signature;
+        profile_image.layout.entry[i].data_signature = signature;
 
-        profile_image.entry[i].data_length = 32;
-        profile_image.entry[i].data_offset = PROFILE_HEADER_SIZE; // TODO alloc
+        profile_image.layout.entry[i].data_length = 32; // TODO alloc
+        profile_image.layout.entry[i].data_offset = PROFILE_HEADER_SIZE; // TODO alloc
 
         // TODO allocate memeory region
-        *buffer = &profile_image.entry[i].data_offset;
-        *length = &profile_image.entry[i].data_length;
+        *buffer = &profile_image.layout.entry[i].data_offset;
+        *length = &profile_image.layout.entry[i].data_length;
 
         return PROFILE_STATUS_SUCCESS_ENTRY_ALLOC;
     }
@@ -362,11 +364,11 @@ ProfileStatus profile_get_entry(
 
     for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
     {
-        ProfileEntryMap const map = (ProfileEntryMap)((profile_image.header.entry_map[blk] >> fld) & 3/*MASK(ENTRY_MAP_BITS)*/);
+        ProfileEntryMap const map = (ProfileEntryMap)((profile_image.layout.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
 
-        fld = fld + 2/*ENTRY_MAP_BITS*/;
+        fld = fld + PROFILE_ENTRY_BITS;
 
-        if (fld == 8/*BITS_PER_BYTE*/)
+        if (fld == BITS_PER_BYTE)
         {
             fld = 0;
             blk++;
@@ -377,15 +379,15 @@ ProfileStatus profile_get_entry(
             continue;
         }
 
-        if (strncmp( profile_image.entry[i].name, name, PROFILE_ENTRY_MAX_NAME_LENGTH ) == 0)
+        if (strncmp( profile_image.layout.entry[i].name, name, PROFILE_ENTRY_MAX_NAME_LENGTH ) == 0)
         {
             ret = PROFILE_STATUS_ERROR_ENTRY_SIGNATURE;
 
-            if (profile_image.entry[i].signature == signature)
+            if (profile_image.layout.entry[i].signature == signature)
             {
-                uint32_t const offset = profile_image.entry[i].data_offset;
-                *buffer = &profile_image.raw[offset];
-                *length = profile_image.entry[i].data_length;
+                uint32_t const offset = profile_image.layout.entry[i].data_offset;
+                *buffer = &(&profile_image.raw)[offset];
+                *length = profile_image.layout.entry[i].data_length;
 
                 return PROFILE_STATUS_SUCCESS;
             }

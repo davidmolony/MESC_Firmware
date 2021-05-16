@@ -12,7 +12,7 @@ struct NTCNode
 
 typedef struct NTCNode NTCNode;
 
-NTCNode const * const ntc_T_R;
-size_t  const         ntc_T_R_count;
+extern NTCNode const * const ntc_T_R;
+extern size_t  const         ntc_T_R_count;
 
 #endif

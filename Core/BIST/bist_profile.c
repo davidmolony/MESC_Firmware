@@ -251,7 +251,7 @@ void bist_profile( void )
 
     fprintf( stdout, "Starting Profile BIST\n" );
 
-    mem = calloc( 4096, 1 );
+    mem = calloc( 4096/*TODO*/, 1 );
 
     demo_entry.x = 1;
     demo_entry.y = 3;

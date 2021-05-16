@@ -50,11 +50,11 @@ static NTCNode * replot( NTCNode const * node, size_t const count, float const T
     return ret;
 }
 
+#define DEGREE (2)
+#define PARTITIONS ((2 * DEGREE) + 1)
+
 static void derive_trend( NTCNode const * node, size_t const count, float const Tmin )
 {
-    static size_t const DEGREE = 2;
-    static size_t const PARTITIONS = ((2 * DEGREE) + 1);
-
     NTCNode p[DEGREE];
 
     for ( size_t i = 0, j = 1; j < PARTITIONS; ++i, j = j + 2 )

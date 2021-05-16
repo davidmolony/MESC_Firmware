@@ -2,15 +2,14 @@
 #include "MESCcli.h"
 #include "MESCfnv.h"
 
+#include "pp_op.h"
+
 #include <inttypes.h>
 #include <limits.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
-
-#define JOIN_(lhs,rhs) lhs ## rhs
-#define JOIN(lhs,rhs) JOIN_(lhs,rhs)
 
 #define MAKE_TYPE_SIZE(type,size)      ((uint32_t)((uint32_t)((type) << 4) | ((uint32_t)(size))))
 #define MAKE_TYPE_SIZE_CASE(type,size) ((uint32_t)((uint32_t)((JOIN( CLI_VARIABLE_, type)) << 4) | ((uint32_t)(size))))
@@ -53,7 +52,7 @@ typedef enum CLIAccess CLIAccess;
 
 struct CLIVar
 {
-    uint32_t        state;
+    uint32_t        state; // TODO enum
     union
     {
     int32_t         i;
@@ -82,7 +81,8 @@ struct CLIEntry
 
 typedef struct CLIEntry CLIEntry;
 
-static CLIEntry cli_lut[32];
+#define MAX_CLI_LUT_ENTRIES UINT32_C(32)
+static CLIEntry cli_lut[MAX_CLI_LUT_ENTRIES];
 static uint32_t cli_lut_entries = 0;
 static CLIEntry * cli_lut_entry = NULL;
 
@@ -225,6 +225,12 @@ static void cli_execute( void )
 
 static CLIEntry * cli_lut_alloc( char const * name )
 {
+    if (cli_lut_entries >= MAX_CLI_LUT_ENTRIES)
+    {
+//fprintf( stderr, "ERROR: No CLI LUT entries avilable\n" );//debug
+        return NULL;
+    }
+
     uint32_t const hash = fnv1a_str( name );
 
     for ( uint32_t i = 0; i < cli_lut_entries; ++i)

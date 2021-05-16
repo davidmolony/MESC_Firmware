@@ -38,24 +38,6 @@ static float temp_calculate_R_T( float const Vout )
 static uint32_t temp_adc_range = UINT32_C(4096);    // Profile
 
 /*
-Conversions
-*/
-
-#define TEMP_0C_K (273.15f)
-#define TEMP_CVT_C_TO_K(C) ((C) + TEMP_0C_K)
-#define TEMP_CVT_K_TO_C(K) ((K) - TEMP_0C_K)
-#if 0 // unused
-static float temp_cvt_C_to_K( float const C )
-{
-    return TEMP_CVT_C_TO_K(C);
-}
-
-static float temp_cvt_K_to_C( float const K )
-{
-    return TEMP_CVT_K_TO_C(K);
-}
-#endif
-/*
 Approximation
 
 x(t) = t + T_lo

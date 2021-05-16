@@ -56,6 +56,9 @@ enum ProfileEntryMap
 
 typedef enum ProfileEntryMap ProfileEntryMap;
 
+#define PROFILE_ENTRY_BITS (2)
+#define PROFILE_ENTRY_MASK BIT_MASK_32( PROFILE_ENTRY_BITS )
+
 #define PROFILE_ENTRY_SIGNATURE MAKE_UINT32_STRING('M','P','E','H')
 
 #define PROFILE_ENTRY_MAX_NAME_LENGTH UINT32_C(12)

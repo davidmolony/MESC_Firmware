@@ -9,6 +9,8 @@ Command             Description
 R <NAME>            Read variable <NAME>
 W <NAME> <VALUE>    Write variable <NAME> with <VALUE>
 X <NAME>            Execute function <NAME>
+I <NAME> <VALUE>    Increment variable <NAME> by <VALUE>
+D <NAME> <VALUE>    Decrement variable <NAME> by <VALUE>
 */
 
 enum CLIVariableType

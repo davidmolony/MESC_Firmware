@@ -151,14 +151,14 @@ void bist_temp( void )
 
     ntc_T_minmax( &Tmin, &Tmax );
 
-    uint16_t const adc_granularity = UINT16_C(128);
-    uint16_t const adc_mask        = (adc_granularity - 1);
+    uint32_t const adc_granularity = UINT32_C(128);
+    uint32_t const adc_mask        = (adc_granularity - 1);
 
-    uint16_t adc_min = temp_get_adc( Tmin );
-    uint16_t adc_max = temp_get_adc( Tmax );
+    uint32_t adc_min = temp_get_adc( Tmin );
+    uint32_t adc_max = temp_get_adc( Tmax );
 
-    uint16_t adc_start;
-    uint16_t adc_end;
+    uint32_t adc_start;
+    uint32_t adc_end;
 
     if (adc_min < adc_max)
     {
@@ -180,7 +180,7 @@ void bist_temp( void )
         adc_end   = adc_min;
     }
 
-    for ( uint16_t adc = adc_start; adc <= adc_end; adc = adc + adc_granularity )
+    for ( uint32_t adc = adc_start; adc <= adc_end; adc = adc + adc_granularity )
     {
         float const Tapx = temp_read( adc );
         float const Tact = ntc_read( adc );

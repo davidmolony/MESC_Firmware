@@ -1,6 +1,8 @@
 
 #include "MESCspeed.h"
 
+#include "conversions.h"
+
 #include <stdio.h>
 
 void bist_speed( void )
@@ -9,7 +11,7 @@ void bist_speed( void )
 
     speed_set_motor( 6 );
     speed_set_wheel( 26.0f ); // Inches
-    speed_set_units( 63360.0f ); // Inches per Mile
+    speed_set_units( CONST_INCHES_PER_MILE_F );
     speed_set_gear_ratio( 1, 1 );
 
     speed_get();
