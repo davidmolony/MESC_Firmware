@@ -62,7 +62,7 @@ void bist_bat( void )
 
         for ( float V = bp.cell.Vmin; (V < bp.cell.Vmax); V = V + 0.05f )
         {
-            float const C = bat_get_charge_level( V, 0.0f, 0.0f );
+            float const C = bat_get_charge_level( V, 0.0f );
 
             switch (bp.display)
             {

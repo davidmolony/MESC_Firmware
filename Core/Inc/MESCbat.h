@@ -71,21 +71,37 @@ typedef enum BATDisplay BATDisplay;
 
 struct BATProfile
 {
-    float   Vmax;   /* Volt     */
-    float   Cmax;   /* Amp Hour */
+    struct
+    {
+    float       Imax;   /* Amp      */
+    float       Vmax;   /* Volt     */
+    float       Cmax;   /* Amp Hour */
 #if BAT_VTOP
-    float   Vtop;   /* Volt     */
-    float   Ctop[2];/* Amp Hour */
+    float       Vtop;   /* Volt     */
+    float       Ctop[2];/* Amp Hour */
 #endif
-    float   Vmid;   /* Volt     */
-    float   Cmid;   /* Amp Hour */
+    float       Vmid;   /* Volt     */
+    float       Cmid;   /* Amp Hour */
 
-    float   Vlow;   /* Volt     */
-    float   Clow;   /* Amp Hour */
+    float       Vlow;   /* Volt     */
+    float       Clow;   /* Amp Hour */
 
-    float   Vmin;   /* Volt     */
+    float       Vmin;   /* Volt     */
+    }           cell;
+
+    struct
+    {
+    float       Imax;   /* Amp      */
+    float       Pmax;   /* Watt     */
+
+    float       ESR;    /* Ohm      */
+
+    uint8_t     parallel;
+    uint8_t     series;
+    }           battery;
 
     BATDisplay  display;
+    uint8_t     allow_regen;
 };
 
 typedef struct BATProfile BATProfile;
@@ -103,7 +119,7 @@ float battery_get_current(
     float const Id, float const Vd,
     float const Vbat );
 
-float bat_get_charge_level( float const V, float const I, float const ESR );
+float bat_get_charge_level( float const V, float const I );
 
 float bat_get_level_voltage( float const L_C );
 

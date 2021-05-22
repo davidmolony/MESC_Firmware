@@ -74,6 +74,12 @@ struct TEMPProfile
     float       R0;
     }           SH;
     }           parameters;
+
+    struct
+    {
+    float       Tmin;
+    float       Tmax;
+    }           limit;
 };
 
 typedef struct TEMPProfile TEMPProfile;

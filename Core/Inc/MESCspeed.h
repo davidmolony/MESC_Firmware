@@ -38,13 +38,29 @@ struct SPEEDProfile
 {
     struct
     {
-    uint32_t    pole_pairs;
+    uint32_t    Imax;       // Amp
+    uint32_t    Vmax;       // Volt
+    uint32_t    Pmax;       // Watt
+    uint32_t    RPMmax;
+    uint8_t     pole_pairs;
+    uint8_t     direction;
+    uint8_t     allow_regen;
+    uint8_t     _;
     }           motor;
+
+    struct
+    {
+    uint8_t     type;
+    uint8_t     hall_states[6];
+    uint8_t     _;
+    }           sensor;
+
     struct
     {
     uint32_t    motor;      // Teeth on motor
     uint32_t    wheel;      // Teeth on wheel
     }           gear_ratio; // Use 1:1 for no gear ratio
+
     struct
     {
     float       diameter;   // In wheel size units (inches/centimetres)

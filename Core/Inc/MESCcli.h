@@ -71,7 +71,7 @@ void cli_register_function(
 
 void cli_register_io(
     void * handle,
-    int (* const write)( void * handle, void * data, uint16_t size ) );
+    int (* const write)( void * handle, void * data, uint16_t size ) ); // NOTE: This prototype is deliberately punned to match HAL_UART_Transmit_DMA
 
 void cli_process( char const c );
 

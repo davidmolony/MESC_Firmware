@@ -42,13 +42,13 @@ void bat_init( BATProfile const * const profile )
     bat_profile = profile;
     bat_notify_profile_update();
 
-    float const u_dV = profile->Vmax - profile->Vmid;
-    float const u_dC = profile->Cmax - profile->Cmid;
+    float const u_dV = profile->cell.Vmax - profile->cell.Vmid;
+    float const u_dC = profile->cell.Cmax - profile->cell.Cmid;
 
     grad_upper = u_dC / u_dV;
 
-    float const l_dV = profile->Vmid - profile->Vmin;
-    float const l_dC = profile->Cmid;
+    float const l_dV = profile->cell.Vmid - profile->cell.Vmin;
+    float const l_dC = profile->cell.Cmid;
 
     grad_lower = l_dC / l_dV;
 }
@@ -58,10 +58,10 @@ void bat_notify_profile_update( void )
     switch (bat_profile->display)
     {
         case BAT_DISPLAY_PERCENT:
-            Cscale = 100.0f / (bat_profile->Cmax - bat_profile->Clow);
+            Cscale = 100.0f / (bat_profile->cell.Cmax - bat_profile->cell.Clow);
             break;
         case BAT_DISPLAY_AMPHOUR:
-            Cscale = bat_profile->Cmax / (bat_profile->Cmax - bat_profile->Clow);
+            Cscale = bat_profile->cell.Cmax / (bat_profile->cell.Cmax - bat_profile->cell.Clow);
             break;
     }
 }
@@ -82,40 +82,41 @@ float battery_get_current(
     return (power / Vbat);
 }
 
-float bat_get_charge_level( float const V, float const I, float const ESR )
+float bat_get_charge_level( float const V, float const I)
 {
-    float const Vadj = (V + (I * ESR));
+    float const Vbat = (V + (I * bat_profile->battery.ESR));
+    float const Vcell = (Vbat / bat_profile->battery.series);
     float dV;
     float  C;
 
-    if (Vadj <= bat_profile->Vlow)
+    if (Vcell <= bat_profile->cell.Vlow)
     {
         C = 0;
     }
-    else if (Vadj >= bat_profile->Vmax)
+    else if (Vcell >= bat_profile->cell.Vmax)
     {
-        C = bat_profile->Cmax;
+        C = bat_profile->cell.Cmax;
     }
     else
     {
-        if (Vadj > bat_profile->Vmid)
+        if (Vcell > bat_profile->cell.Vmid)
         {
-            dV = (Vadj - bat_profile->Vmid);
-            C  = bat_profile->Cmid + (grad_upper * dV);
+            dV = (Vcell - bat_profile->cell.Vmid);
+            C  = bat_profile->cell.Cmid + (grad_upper * dV);
         }
         else
         {
-            dV = (Vadj - bat_profile->Vmin);
+            dV = (Vcell - bat_profile->cell.Vmin);
             C  = (grad_lower * dV);
         }
 
-        if (bat_profile->Clow >= C)
+        if (bat_profile->cell.Clow >= C)
         {
             C = 0;
         }
         else
         {
-            C = (C - bat_profile->Clow);
+            C = (C - bat_profile->cell.Clow);
         }
     }
 
@@ -127,16 +128,16 @@ float bat_get_charge_level( float const V, float const I, float const ESR )
 float bat_get_level_voltage( float const L_C )
 {
     float Lrem = L_C;
-    float Lmid = (bat_profile->Cmid - bat_profile->Clow) * Cscale;
+    float Lmid = (bat_profile->cell.Cmid - bat_profile->cell.Clow) * Cscale;
 
     if (Lrem <= Lmid)
     {
-        return (((Lrem * (bat_profile->Vmid - bat_profile->Vlow)) / Lmid) + bat_profile->Vlow);
+        return (((Lrem * (bat_profile->cell.Vmid - bat_profile->cell.Vlow)) / Lmid) + bat_profile->cell.Vlow);
     }
 
     Lrem = Lrem - Lmid;
 
-    float Ltop = (bat_profile->Cmax - bat_profile->Cmid) * Cscale;
+    float Ltop = (bat_profile->cell.Cmax - bat_profile->cell.Cmid) * Cscale;
 
-    return (((Lrem * (bat_profile->Vmax - bat_profile->Vmid)) / Ltop) + bat_profile->Vmid);
+    return (((Lrem * (bat_profile->cell.Vmax - bat_profile->cell.Vmid)) / Ltop) + bat_profile->cell.Vmid);
 }
