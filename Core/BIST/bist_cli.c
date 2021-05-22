@@ -29,6 +29,7 @@
 
 #include "MESCcli.h"
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 
@@ -69,6 +70,17 @@ static void reset( void )
     fprintf( stdout, ">>> RESET <<<\n" );
 }
 
+static int write( void * handle, void * data, uint16_t size )
+{
+    fprintf( stderr, "VUART:>" );
+    int const ret = fwrite( data, 1, size, stderr );
+    assert( ret == size );
+    fprintf( stderr, "<:VUART\n" );
+
+    return 0;
+    (void)handle;
+}
+
 void bist_cli( void )
 {
     fprintf( stdout, "Starting CLI BIST\n" );
@@ -77,6 +89,8 @@ void bist_cli( void )
     cli_register_variable_rw( "u", &u, sizeof(u), CLI_VARIABLE_UINT  );
     cli_register_variable_rw( "f", &f, sizeof(f), CLI_VARIABLE_FLOAT );
     cli_register_function(  "reset", reset );
+
+    cli_register_io( NULL, write );
 
     for ( uint32_t cmd = 0; cmd < (sizeof(commands) / sizeof(commands[0])); ++cmd )
     {

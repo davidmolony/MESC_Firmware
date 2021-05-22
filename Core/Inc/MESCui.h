@@ -27,54 +27,58 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MESC_CLI_H
-#define MESC_CLI_H
+#ifndef MESC_UI_H
+#define MESC_UI_H
 
 #include <stdint.h>
 
-/*
-Command             Description
-R <NAME>            Read variable <NAME>
-W <NAME> <VALUE>    Write variable <NAME> with <VALUE>
-X <NAME>            Execute function <NAME>
-I <NAME> <VALUE>    Increment variable <NAME> by <VALUE>
-D <NAME> <VALUE>    Decrement variable <NAME> by <VALUE>
-*/
+#define UI_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','U','P','E')
 
-enum CLIVariableType
+enum UIProfileType
 {
-    CLI_VARIABLE_INT,
-    CLI_VARIABLE_UINT,
-    CLI_VARIABLE_FLOAT,
+    // Inputs
+    UI_PROFILE_THROTTLE,
+    UI_PROFILE_BRAKE,
+    UI_PROFILE_BUTTON,
+
+    // Outputs
+    UI_PROFILE_INDICATOR,
+    UI_PROFILE_SCREEN,
 };
 
-typedef enum CLIVariableType CLIVariableType;
+typedef enum UIProfileType UIProfileType;
 
-void cli_register_variable_ro(
-    char const * name,
-    void const * address, uint32_t const size,
-    CLIVariableType const type );
+struct UIProfile
+{
+    UIProfileType   type;
 
-void cli_register_variable_rw(
-    char const * name,
-    void       * address, uint32_t const size,
-    CLIVariableType const type );
+    union
+    {
+    // Inputs
+    struct
+    {
+    }               throttle;
 
-void cli_register_variable_wo(
-    char const * name,
-    void       * address, uint32_t const size,
-    CLIVariableType const type );
+    struct
+    {
+    }               brake;
 
-void cli_register_function(
-    char const * name,
-    void (* const fn)( void ) );
+    struct
+    {
+    }               button;
 
-void cli_register_io(
-    void * handle,
-    int (* const write)( void * handle, void * data, uint16_t size ) );
+    // Outputs
+        struct
+    {
+    }               indicator;
 
-void cli_process( char const c );
+    struct
+    {
+    }               screen;
 
-void cli_reply( char const * p, ... );
+    }               desc;
+};
+
+typedef struct UIProfile UIProfile;
 
 #endif

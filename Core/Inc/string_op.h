@@ -27,54 +27,19 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MESC_CLI_H
-#define MESC_CLI_H
+#ifndef MESC_STRING_OP_H
+#define MESC_STRING_OP_H
 
-#include <stdint.h>
+#include <stddef.h>
 
-/*
-Command             Description
-R <NAME>            Read variable <NAME>
-W <NAME> <VALUE>    Write variable <NAME> with <VALUE>
-X <NAME>            Execute function <NAME>
-I <NAME> <VALUE>    Increment variable <NAME> by <VALUE>
-D <NAME> <VALUE>    Decrement variable <NAME> by <VALUE>
-*/
+#define MAKE_UINT16_STRING(a,b) \
+       (((uint16_t)(a) <<  0) \
+    |   ((uint16_t)(b) <<  8))
 
-enum CLIVariableType
-{
-    CLI_VARIABLE_INT,
-    CLI_VARIABLE_UINT,
-    CLI_VARIABLE_FLOAT,
-};
-
-typedef enum CLIVariableType CLIVariableType;
-
-void cli_register_variable_ro(
-    char const * name,
-    void const * address, uint32_t const size,
-    CLIVariableType const type );
-
-void cli_register_variable_rw(
-    char const * name,
-    void       * address, uint32_t const size,
-    CLIVariableType const type );
-
-void cli_register_variable_wo(
-    char const * name,
-    void       * address, uint32_t const size,
-    CLIVariableType const type );
-
-void cli_register_function(
-    char const * name,
-    void (* const fn)( void ) );
-
-void cli_register_io(
-    void * handle,
-    int (* const write)( void * handle, void * data, uint16_t size ) );
-
-void cli_process( char const c );
-
-void cli_reply( char const * p, ... );
+#define MAKE_UINT32_STRING(a,b,c,d) \
+       (((uint32_t)(a) <<  0) \
+    |   ((uint32_t)(b) <<  8) \
+    |   ((uint32_t)(c) << 16) \
+    |   ((uint32_t)(d) << 24))
 
 #endif

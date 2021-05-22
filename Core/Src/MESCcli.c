@@ -35,6 +35,7 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -113,6 +114,18 @@ typedef struct CLIEntry CLIEntry;
 static CLIEntry cli_lut[MAX_CLI_LUT_ENTRIES];
 static uint32_t cli_lut_entries = 0;
 static CLIEntry * cli_lut_entry = NULL;
+
+static int cli_io_write_noop( void * handle, void * data, uint16_t size )
+{
+    (void)handle;
+    (void)data;
+    (void)size;
+
+    return 0;
+}
+
+static void * cli_io_handle = NULL;
+static int (* cli_io_write)( void *, void *, uint16_t ) = cli_io_write_noop;
 
 static void cli_noop_write( char const c )
 {
@@ -319,7 +332,7 @@ static void cli_process_read_xint( void )
 
         uint32_t const nybbles = UINT32_C(2) * size;
 
-        sprintf( cli_buffer, "RETURN: "
+        sprintf( cli_buffer,
             "%%" "%s"
             " 0x" "%%" "0%" PRIu32 "%s"
             "\n",
@@ -330,7 +343,7 @@ static void cli_process_read_xint( void )
 
         memcpy( &v, cli_lut_entry->var.r, size );
 
-        fprintf( stdout, cli_buffer, v, v );
+        cli_reply( cli_buffer, v, v );
     }
 }
 
@@ -391,7 +404,7 @@ static void cli_process_read_float( void )
                 return;
         }
 
-        fprintf( stdout, "RETURN: %f\n", *((float const *)cli_lut_entry->var.r) );
+        cli_reply( "%f\n", *((float const *)cli_lut_entry->var.r) );
     }
 }
 
@@ -533,6 +546,14 @@ void cli_register_function(
 
         cli_lut_entries++;
     }
+}
+
+void cli_register_io(
+    void * handle,
+    int (* const write)( void * handle, void * data, uint16_t size ) )
+{
+    cli_io_handle = handle;
+    cli_io_write = write;
 }
 
 static CLIEntry * cli_lookup( uint32_t const hash )
@@ -775,4 +796,22 @@ void cli_process( char const c )
             }
             break;
     }
+}
+
+void cli_reply( char const * p, ... )
+{
+    uint8_t buffer[256];
+    va_list va;
+
+    va_start( va, p );
+
+    int const len = vsprintf( (char *)buffer, p, va );
+
+    if (len > 0)
+    {
+        int const ret = cli_io_write( cli_io_handle, buffer, len );
+        (void)ret;
+    }
+
+    va_end( va );
 }

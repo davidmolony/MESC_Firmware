@@ -29,12 +29,16 @@
 
 #include "MESCprofile.h"
 
+#include "MESCcli.h"
 #include "MESCfnv.h"
 
 #include "bit_op.h"
 
+#include <inttypes.h>
 #include <stddef.h>
 #include <string.h>
+
+static MESCFingerprint const fingerprint = MESC_FINGERPRINT;
 
 static union
 {
@@ -113,6 +117,8 @@ static void profile_init_default( void )
         }
     }
 
+    memcpy( &profile_image.layout.header.fingerprint, &fingerprint, sizeof(fingerprint) );
+
     profile_status_other = PROFILE_STATUS_INIT_SUCCESS_DEFAULT;
 }
 
@@ -138,7 +144,7 @@ static ProfileStatus profile_header_validate( ProfileHeader * const header )
 
     if  (
             (header->_zero_signature != 0)
-        ||  (header->_reserved != 0)
+        ||  (header->fingerprint._zero != 0)
         )
     {
         return PROFILE_STATUS_ERROR_HEADER_ZEROS;
@@ -241,7 +247,7 @@ static ProfileStatus profile_entry_validate( ProfileHeader * const header, Profi
 
 static ProfileStatus profile_read_noop( void * data, uint32_t const length )
 {
-	profile_status_storage = PROFILE_STATUS_UNKNOWN;
+    profile_status_storage = PROFILE_STATUS_UNKNOWN;
     return PROFILE_STATUS_ERROR_STORAGE_READ;
     (void)data;
     (void)length;
@@ -249,7 +255,7 @@ static ProfileStatus profile_read_noop( void * data, uint32_t const length )
 
 static ProfileStatus profile_write_noop( void const * data, uint32_t const length )
 {
-	profile_status_storage = PROFILE_STATUS_UNKNOWN;
+    profile_status_storage = PROFILE_STATUS_UNKNOWN;
     return PROFILE_STATUS_ERROR_STORAGE_WRITE;
     (void)data;
     (void)length;
@@ -273,12 +279,93 @@ void profile_configure_storage_io(
     }
 }
 
+static void profile_cli_info( void )
+{
+    ProfileStatus const res = profile_header_validate( &profile_image.layout.header );
+
+    if (res != PROFILE_STATUS_SUCCESS )
+    {
+        cli_reply( "Invalid/Missing MESC Profile - %d\n", res );
+    }
+    else
+    {
+        cli_reply(
+            "%s v%" PRIu8 "." PRIu8 "\n"
+            "%s (",
+            (char const *)&profile_image.layout.header.signature,
+            profile_image.layout.header.version_major, profile_image.layout.header.version_minor,
+            (char const *)&profile_image.layout.header.fingerprint );
+
+        for ( uint32_t i = MESC_GITHASH_WORDS; i > 0; )
+        {
+            i--;
+
+            cli_reply(
+                "%08" PRIX32,
+                profile_image.layout.header.fingerprint.githash[i] );
+        }
+
+        cli_reply(
+            "\n"
+            "Size %" PRIu32 "\n",
+            profile_image.layout.header.image_length );
+
+        uint32_t blk = 0;
+        uint32_t fld = 0;
+
+        for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
+        {
+            ProfileEntryMap const map = (ProfileEntryMap)((profile_image.layout.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
+
+            fld = fld + PROFILE_ENTRY_BITS;
+
+            if (fld == BITS_PER_BYTE)
+            {
+                fld = 0;
+                blk++;
+            }
+
+            cli_reply( "Entry %" PRIu32 " ", i );
+
+            switch (map)
+            {
+                case PROFILE_ENTRY_DATA:
+                    cli_reply( "DATA\n" );
+                    continue;
+                case PROFILE_ENTRY_LOCK:
+                    cli_reply( "LOCK\n" );
+                    break;
+                case PROFILE_ENTRY_FREE:
+                    cli_reply( "FREE\n" );
+                    continue;
+                case PROFILE_ENTRY_USED:
+                    cli_reply( "USED\n" );
+                    break;
+                default:
+                    cli_reply( "?\n" );
+                    continue;
+            }
+
+            // NOTE - This point means there is a valid entry to decode
+
+            cli_reply(
+                "    %s (%s %08" PRIX32 ")\n"
+                "    %08" PRIX32 "-%08" PRIX32 "\n",
+                profile_image.layout.entry[i].signature,
+                profile_image.layout.entry[i].name, profile_image.layout.entry[i].data_signature,
+                profile_image.layout.entry[i].data_offset, profile_image.layout.entry[i].data_length );
+        }
+    }
+}
+
 ProfileStatus profile_init( void )
 {
     profile_status_storage = profile_storage_read( &profile_image, sizeof(profile_image) );
     profile_status_header  = PROFILE_STATUS_UNKNOWN;
     profile_status_entry   = PROFILE_STATUS_UNKNOWN;
     profile_status_other   = PROFILE_STATUS_UNKNOWN;
+
+    cli_register_function( "info", profile_cli_info );
 
     if (profile_status_storage != PROFILE_STATUS_SUCCESS)
     {

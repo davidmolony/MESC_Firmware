@@ -27,54 +27,36 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MESC_CLI_H
-#define MESC_CLI_H
+#ifndef MESC_FINGERPRINT_H
+#define MESC_FINGERPRINT_H
 
-#include <stdint.h>
+#include "string_op.h"
 
-/*
-Command             Description
-R <NAME>            Read variable <NAME>
-W <NAME> <VALUE>    Write variable <NAME> with <VALUE>
-X <NAME>            Execute function <NAME>
-I <NAME> <VALUE>    Increment variable <NAME> by <VALUE>
-D <NAME> <VALUE>    Decrement variable <NAME> by <VALUE>
-*/
+#define MESC_TIMESTAMP_YEAR   MAKE_UINT32_STRING('2','0','2','1')
+#define MESC_TIMESTAMP_MONTH  MAKE_UINT16_STRING('0','5')
+#define MESC_TIMESTAMP_DAY    MAKE_UINT16_STRING('2','2')
+#define MESC_TIMESTAMP_HOUR   MAKE_UINT16_STRING('1','7')
+#define MESC_TIMESTAMP_MINUTE MAKE_UINT16_STRING('4','5')
+#define MESC_GITHASH_WORDS (160 / 32)
+#define MESC_GITHASH {UINT32_C(0x444239cf),UINT32_C(0x6f380367),UINT32_C(0x218b0aa5),UINT32_C(0x12e58dd8),UINT32_C(0x2e41c197)}
 
-enum CLIVariableType
+struct MESCFingerprint
 {
-    CLI_VARIABLE_INT,
-    CLI_VARIABLE_UINT,
-    CLI_VARIABLE_FLOAT,
+    uint32_t    year;              // Timestamp (MESC_TIMESTAMP_YEAR)
+    uint16_t    month;             // Timestamp (MESC_TIMESTAMP_MONTH)
+    uint16_t    day;               // Timestamp (MESC_TIMESTAMP_DAY)
+
+    uint16_t    hour;              // Timestamp (MESC_TIMESTAMP_HOUR)
+    uint16_t    minute;            // Timestamp (MESC_TIMESTAMP_MINUTE)
+
+    uint8_t     _zero;             // Must be zero
+    uint8_t     reserved[3];
+
+    uint32_t    githash[MESC_GITHASH_WORDS]; // Git hash of firmware (MESC_GITHASH)
 };
 
-typedef enum CLIVariableType CLIVariableType;
+typedef struct MESCFingerprint MESCFingerprint;
 
-void cli_register_variable_ro(
-    char const * name,
-    void const * address, uint32_t const size,
-    CLIVariableType const type );
-
-void cli_register_variable_rw(
-    char const * name,
-    void       * address, uint32_t const size,
-    CLIVariableType const type );
-
-void cli_register_variable_wo(
-    char const * name,
-    void       * address, uint32_t const size,
-    CLIVariableType const type );
-
-void cli_register_function(
-    char const * name,
-    void (* const fn)( void ) );
-
-void cli_register_io(
-    void * handle,
-    int (* const write)( void * handle, void * data, uint16_t size ) );
-
-void cli_process( char const c );
-
-void cli_reply( char const * p, ... );
+#define MESC_FINGERPRINT {MESC_TIMESTAMP_YEAR,MESC_TIMESTAMP_MONTH,MESC_TIMESTAMP_DAY,MESC_TIMESTAMP_HOUR,MESC_TIMESTAMP_MINUTE,0,{0,0,0},MESC_GITHASH}
 
 #endif

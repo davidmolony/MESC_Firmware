@@ -34,35 +34,34 @@
 #include <stdint.h>
 
 #include "bit_op.h"
+#include "string_op.h"
 
-#define MAKE_UINT32_STRING(a,b,c,d) \
-       (((uint32_t)(a) <<  0) \
-    |   ((uint32_t)(b) <<  8) \
-    |   ((uint32_t)(c) << 16) \
-    |   ((uint32_t)(d) << 24))
+#include "fingerprint.h"
 
 #define PROFILE_SIGNATURE     MAKE_UINT32_STRING('M','E','S','C')
 
 #define PROFILE_VERSION_MAJOR UINT8_C(1)
 #define PROFILE_VERSION_MINOR UINT8_C(0)
 
+#define PROFILE_MAX_ENTRIES (8)
+
 struct ProfileHeader
 {
-    uint32_t signature;         // PROFILE_SIGNATURE
+    uint32_t    signature;         // PROFILE_SIGNATURE
 
-    uint8_t  _zero_signature;   // Must be zero
-    uint8_t  size;              // Size of this header in bytes (PROFILE_HEADER_SIZE)
-    uint8_t  version_major;     // Major version
-    uint8_t  version_minor;     // Minor version
+    uint8_t     _zero_signature;   // Must be zero
+    uint8_t     version_major;     // Major version
+    uint8_t     version_minor;     // Minor version
+    uint8_t     size;              // Size of this header in bytes (PROFILE_HEADER_SIZE)
 
-    uint32_t checksum;          // Checksum of header (excluding this field; treat as PROFILE_SIGNATURE)
+    uint32_t    checksum;          // Checksum of header (excluding this field; treat as PROFILE_SIGNATURE)
 
-    uint8_t  entry_map[8];      // ProfileEntry map (2 bits ProfileEntryMap per entry)
+    uint8_t     entry_map[PROFILE_MAX_ENTRIES]; // ProfileEntry map (2 bits ProfileEntryMap per entry)
 
-    uint32_t _reserved;
+    uint32_t    image_length;      // Length of image (after this header) in bytes
+    uint32_t    image_checksum;    // Checksum of image
 
-    uint32_t image_length;      // Length of image (after this header) in bytes
-    uint32_t image_checksum;    // Checksum of image
+    MESCFingerprint fingerprint;
 };
 
 typedef struct ProfileHeader ProfileHeader;

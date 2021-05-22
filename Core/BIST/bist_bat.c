@@ -37,20 +37,20 @@ void bist_bat( void )
 
     BATProfile bp;
 
-    bp.Vmax = 4.2f; // V
-    bp.Cmax = 4.2f; // Ah
+    bp.cell.Vmax = 4.2f; // V
+    bp.cell.Cmax = 4.2f; // Ah
 #if BAT_VTOP
-    bp.Vtop = 4.05f; // V
-    bp.Ctop[0] = 4.0f; // Ah
-    bp.Ctop[1] = 3.5f; // Ah
+    bp.cell.Vtop = 4.05f; // V
+    bp.cell.Ctop[0] = 4.0f; // Ah
+    bp.cell.Ctop[1] = 3.5f; // Ah
 #endif
-    bp.Vmid = 3.4f; // V
-    bp.Cmid = 0.7f; // Ah
+    bp.cell.Vmid = 3.4f; // V
+    bp.cell.Cmid = 0.7f; // Ah
 
-    bp.Vlow = 3.2f; // V
-    bp.Clow = 0.5f; // Ah
+    bp.cell.Vlow = 3.2f; // V
+    bp.cell.Clow = 0.5f; // Ah
 
-    bp.Vmin = 2.8f; // V
+    bp.cell.Vmin = 2.8f; // V
 
     for ( BATDisplay d = BAT_DISPLAY_PERCENT; (d <= BAT_DISPLAY_AMPHOUR); ++d )
     {
@@ -60,7 +60,7 @@ void bist_bat( void )
 
         bat_init( &bp ); // NOTE calls bat_notify_profile_update
 
-        for ( float V = bp.Vmin; (V < bp.Vmax); V = V + 0.05f )
+        for ( float V = bp.cell.Vmin; (V < bp.cell.Vmax); V = V + 0.05f )
         {
             float const C = bat_get_charge_level( V, 0.0f, 0.0f );
 
@@ -87,7 +87,7 @@ void bist_bat( void )
                 }
                 break;
             case BAT_DISPLAY_AMPHOUR:
-                for ( float C = 0.0f; (C <= bp.Cmax); C = C + 0.5f )
+                for ( float C = 0.0f; (C <= bp.cell.Cmax); C = C + 0.5f )
                 {
                     float const V = bat_get_level_voltage( C );
 

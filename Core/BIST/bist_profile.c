@@ -32,6 +32,7 @@
 #include "MESCbat.h"
 #include "MESCspeed.h"
 #include "MESCtemp.h"
+#include "MESCui.h"
 
 #include <assert.h>
 #include <inttypes.h>
@@ -126,6 +127,8 @@ static void apply_corruption()
     {
         uint32_t buffer = 0;
 
+        assert( corrupt_length <= sizeof(buffer) );
+
         memcpy( &buffer, &((uint8_t *)read_buffer)[corrupt_offset], corrupt_length );
 
         buffer ^= UINT32_MAX;
@@ -171,6 +174,7 @@ static ProfileStatus read( void * data, uint32_t const length )
 
         return PROFILE_STATUS_SUCCESS;
     }
+
     if (read_zero_on_error == 0)
     {
         return PROFILE_STATUS_ERROR_STORAGE_READ;
@@ -256,18 +260,21 @@ static struct
     CORRUPTION_ENTRY( ProfileHeader, signature ),
 
     CORRUPTION_ENTRY( ProfileHeader, _zero_signature ),
-    CORRUPTION_ENTRY( ProfileHeader, size ),
     CORRUPTION_ENTRY( ProfileHeader, version_major ),
     CORRUPTION_ENTRY( ProfileHeader, version_minor ),
+    CORRUPTION_ENTRY( ProfileHeader, size ),
 
     CORRUPTION_ENTRY( ProfileHeader, checksum ),
 
     // Skip ProfileHeader entry_map
 
-    CORRUPTION_ENTRY( ProfileHeader, _reserved ),
-
     CORRUPTION_ENTRY( ProfileHeader, image_length ),
     CORRUPTION_ENTRY( ProfileHeader, image_checksum ),
+
+    CORRUPTION_ENTRY( ProfileHeader, fingerprint.day ),
+    CORRUPTION_ENTRY( ProfileHeader, fingerprint._zero ),
+
+    CORRUPTION_ENTRY( ProfileHeader, fingerprint.githash[2] ),
 
     // End
     { 0, 0, NULL },
@@ -369,6 +376,8 @@ void bist_profile( void )
 
     // TODO
 
+    fprintf( stdout, "INFO: Scanning entries\n" );
+
     void const * buffer = NULL;
     uint32_t length = 0;
 
@@ -415,6 +424,21 @@ void bist_profile( void )
         fprintf( stdout, "INFO: Adding Temperature entry\n" );
 
         ret = profile_put_entry( "MESC_TEMP", TEMP_PROFILE_SIGNATURE, &tp, sizeof(tp) );
+    }
+
+    if (profile_get_entry( "MESC_UI", UI_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
+    {
+        UIProfile const * up = (UIProfile *)buffer;
+        (void)up;
+        fprintf( stdout, "INFO: Found UI entry\n" );
+    }
+    else
+    {
+        UIProfile up;
+        (void)up;
+        fprintf( stdout, "INFO: Adding UI entry\n" );
+
+        ret = profile_put_entry( "MESC_UI", UI_PROFILE_SIGNATURE, &up, sizeof(up) );
     }
 
     reset();
