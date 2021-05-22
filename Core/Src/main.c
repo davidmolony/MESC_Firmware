@@ -28,6 +28,11 @@
 /* USER CODE BEGIN Includes */
 //#include "usbd_cdc_if.c"
 //#include "usbd_cdc.h"
+
+#include "MESCflash.h"
+#include "MESCprofile.h"
+#include "MESCuart.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -177,6 +182,35 @@ int main(void)
     MX_NVIC_Init();
     /* USER CODE BEGIN 2 */
 
+    /*
+    Starting System Initialisation
+    */
+
+    // Attach flash IO to profile
+    flash_register_profile_io();
+    // Load stored profile
+    profile_init();
+    /*
+    Initialise enabled components:
+    - System
+        - Battery
+        - Speed
+        - Temperature (Controller)
+    - User Interface
+        - Brake(s)
+        - Button(s)
+        - Indicator(s)
+        - Screen(s)
+        - Throttle(s)
+    */
+
+    // Initialise UART CLI IO
+    uart_init();
+
+    /*
+    Finished System Initialisation
+    */
+
     /* check if flash is empty and read data.
      * This will populate the Halltable, Lphase, Rphase with values from flash.
      * foc_vars.hall_table
@@ -227,9 +261,9 @@ int main(void)
          * 3. Restore motor power.
          */
         if(MotorState==MOTOR_STATE_ERROR){
-        	char error_message[10];
-        	int length = sprintf(error_message,"%" PRIu32 "%" PRIu32 "%" PRIu32 "%" PRIu32,measurement_buffers.adc1, measurement_buffers.adc2,measurement_buffers.adc3,measurement_buffers.adc4);
-        	HAL_UART_Transmit(&huart3, (uint8_t *)error_message, length, 10);
+            char error_message[10];
+            int length = sprintf(error_message,"%" PRIu32 "%" PRIu32 "%" PRIu32 "%" PRIu32,measurement_buffers.adc1, measurement_buffers.adc2,measurement_buffers.adc3,measurement_buffers.adc4);
+            HAL_UART_Transmit(&huart3, (uint8_t *)error_message, length, 10);
         }
         if (b_write_flash)
         {
