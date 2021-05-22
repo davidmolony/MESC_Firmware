@@ -31,9 +31,11 @@
 
 #include "MESCcli.h"
 
+#include "MESCfoc.h"
 #include "MESCmotor_state.h"
 
 extern UART_HandleTypeDef huart3;
+extern TIM_HandleTypeDef htim1;
 
 extern uint8_t UART_rx_buffer[2];
 
@@ -46,6 +48,22 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     Commands may be executed here
     */
     HAL_UART_Receive_IT( &huart3, UART_rx_buffer, 1 );
+}
+
+static void cmd_hall_dec( void )
+{
+	for (int i = 0; i < 6; i++)
+	{
+	    foc_vars.hall_table[i][2] -= 100;
+	}
+}
+
+static void cmd_hall_inc( void )
+{
+	for (int i = 0; i < 6; i++)
+	{
+	    foc_vars.hall_table[i][2] += 100;
+	}
 }
 
 static void cmd_hello( void )
@@ -65,7 +83,7 @@ static void cmd_reset( void )
 {
     cli_reply( "%s", "RESET" );
 
-    __HAL_TIM_DOE_DISABLE_UNCONDITIONALLY( &htim1 );
+    __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY( &htim1 );
     HAL_NVIC_SystemReset();
 }
 
@@ -78,15 +96,16 @@ static void cmd_test( void )
 
 void uart_init( void )
 {
-    cli_register_variable_rw( "hall_table", &foc_vars.hall_table[i][2]             , sizeof(foc_vars.hall_table[i][2]             ), CLI_VARIABLE_UINT  );
     cli_register_variable_rw( "Idc"       , &foc_vars.Idq_req[0]                   , sizeof(foc_vars.Idq_req[0]                   ), CLI_VARIABLE_FLOAT );
     cli_register_variable_rw( "Iq"        , &foc_vars.Idq_req[1]                   , sizeof(foc_vars.Idq_req[1]                   ), CLI_VARIABLE_FLOAT );
     cli_register_variable_ro( "Vbus"      , &measurement_buffers.ConvertedADC[0][1], sizeof(measurement_buffers.ConvertedADC[0][1]), CLI_VARIABLE_FLOAT );
 
+	cli_register_function( "hall_dec", cmd_hall_dec );
+	cli_register_function( "hall_inc", cmd_hall_inc );
     cli_register_function( "hello      ", cmd_hello           );
     cli_register_function( "param_setup", cmd_parameter_setup );
     cli_register_function( "reset"      , cmd_reset           );
     cli_register_function( "test"       , cmd_test            );
 
-    cli_register_io( HAL_UART_Transmit_DMA );
+    cli_register_io( &huart3, (int(*)(void*,void*,uint16_t))HAL_UART_Transmit_DMA );
 }
