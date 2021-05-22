@@ -25,7 +25,16 @@
 #include "stm32f3xx_hal.h"
 
 #define FOC_SECTORS_PER_REVOLUTION (6)
-#define FOC_CONV_CHANNELS          (3)
+
+enum FOCChannels
+{
+	FOC_CHANNEL_PHASE_I,
+	FOC_CHANNEL_DC_V,
+	FOC_CHANNEL_PHASE_V,
+
+	FOC_CHANNELS
+};
+
 #define FOC_TRANSFORMED_CHANNELS   (2)
 #define FOC_NUM_ADC                (3)
 #define FOC_PERIODS                (1)
@@ -68,7 +77,7 @@ MESCfoc_s foc_vars;
 // fixme: why is this in a struct? what advantages does this give?
 typedef struct
 {
-    int32_t RawADC[FOC_NUM_ADC][FOC_CONV_CHANNELS];  // ADC1 returns Ucurrent, DClink
+    int32_t RawADC[FOC_NUM_ADC][FOC_CHANNELS];  // ADC1 returns Ucurrent, DClink
                                                      // voltage and U phase voltage
                                                      //  ADC2 returns Vcurrent, V and Wphase
                                                      //  voltages
@@ -76,7 +85,7 @@ typedef struct
     // We can use ints rather than uints, since this later helps the conversion of values to float, and the sign bit remains untouched (0)
     int32_t ADCOffset[FOC_NUM_ADC];                      // During detect phase, need to sense the
                                                          // zero current offset
-    float ConvertedADC[FOC_NUM_ADC][FOC_CONV_CHANNELS];  // We will fill this with currents
+    float ConvertedADC[FOC_NUM_ADC][FOC_CHANNELS];  // We will fill this with currents
                                                          // in A and voltages in Volts
     uint32_t adc1, adc2, adc3, adc4;
 

@@ -122,13 +122,13 @@ void MESCInit()
 
     __HAL_TIM_SET_COUNTER(&htim1, 10);
 
-    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&measurement_buffers.RawADC[0][0], 3);
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I], 3);
     __HAL_TIM_SET_COUNTER(&htim1, 10);
 
-    HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&measurement_buffers.RawADC[1][0], 3);
+    HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I], 3);
     __HAL_TIM_SET_COUNTER(&htim1, 10);
 
-    HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][0], 1);
+    HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I], 1);
 
     __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_EOS);  // We are using the ADC_DMA, so the HAL initialiser doesn't actually enable the ADC conversion
                                               // complete interrupt. This does.
@@ -340,8 +340,8 @@ void VICheck()
 {  // Check currents, voltages are within panic limits
     static int errorCount = 0;
 
-    if ((measurement_buffers.RawADC[0][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[1][0] > g_hw_setup.RawCurrLim) ||
-        (measurement_buffers.RawADC[2][0] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[0][1] > g_hw_setup.RawVoltLim))
+    if ((measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
+        (measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) || (measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V   ] > g_hw_setup.RawVoltLim))
     {
     	foc_vars.Idq_req[0]=foc_vars.Idq_req[0]*0.9;
     	foc_vars.Idq_req[1]=foc_vars.Idq_req[1]*0.9;
@@ -350,10 +350,10 @@ void VICheck()
         if (errorCount >= MAX_ERROR_COUNT)
         {
             generateBreak();
-            measurement_buffers.adc1 = measurement_buffers.RawADC[0][0];
-            measurement_buffers.adc2 = measurement_buffers.RawADC[1][0];
-            measurement_buffers.adc3 = measurement_buffers.RawADC[2][0];
-            measurement_buffers.adc4 = measurement_buffers.RawADC[0][1];
+            measurement_buffers.adc1 = measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I];
+            measurement_buffers.adc2 = measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I];
+            measurement_buffers.adc3 = measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I];
+            measurement_buffers.adc4 = measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V];
 
             MotorState = MOTOR_STATE_ERROR;
             MotorError = MOTOR_ERROR_OVER_LIMIT;
@@ -375,9 +375,9 @@ void ADCConversion()
 
     if (foc_vars.initing)
     {
-        measurement_buffers.ADCOffset[0] = (255 * measurement_buffers.ADCOffset[0] + measurement_buffers.RawADC[0][0]) / 256;
-        measurement_buffers.ADCOffset[1] = (255 * measurement_buffers.ADCOffset[1] + measurement_buffers.RawADC[1][0]) / 256;
-        measurement_buffers.ADCOffset[2] = (255 * measurement_buffers.ADCOffset[2] + measurement_buffers.RawADC[2][0]) / 256;
+        measurement_buffers.ADCOffset[0] = (255 * measurement_buffers.ADCOffset[0] + measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I]) / 256;
+        measurement_buffers.ADCOffset[1] = (255 * measurement_buffers.ADCOffset[1] + measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I]) / 256;
+        measurement_buffers.ADCOffset[2] = (255 * measurement_buffers.ADCOffset[2] + measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I]) / 256;
         static int initcycles = 0;
         initcycles = initcycles + 1;
         if (initcycles > 1000)
@@ -389,16 +389,16 @@ void ADCConversion()
     }
     else
     {
-        measurement_buffers.ConvertedADC[0][0] =
-            (float)(measurement_buffers.RawADC[0][0] - measurement_buffers.ADCOffset[0]) * g_hw_setup.Igain;  // Currents
-        measurement_buffers.ConvertedADC[1][0] =
-            (float)(measurement_buffers.RawADC[1][0] - measurement_buffers.ADCOffset[1]) * g_hw_setup.Igain;
-        measurement_buffers.ConvertedADC[2][0] =
-            (float)(measurement_buffers.RawADC[2][0] - measurement_buffers.ADCOffset[2]) * g_hw_setup.Igain;
-        measurement_buffers.ConvertedADC[0][1] = (float)measurement_buffers.RawADC[0][1] * g_hw_setup.VBGain;  // Vbus
-        measurement_buffers.ConvertedADC[0][2] = (float)measurement_buffers.RawADC[0][2] * g_hw_setup.VBGain;  // Usw
-        measurement_buffers.ConvertedADC[1][1] = (float)measurement_buffers.RawADC[1][1] * g_hw_setup.VBGain;  // Vsw
-        measurement_buffers.ConvertedADC[1][2] = (float)measurement_buffers.RawADC[1][2] * g_hw_setup.VBGain;  // Wsw
+        measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I] =
+            (float)(measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I] - measurement_buffers.ADCOffset[0]) * g_hw_setup.Igain;  // Currents
+        measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I] =
+            (float)(measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I] - measurement_buffers.ADCOffset[1]) * g_hw_setup.Igain;
+        measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I] =
+            (float)(measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] - measurement_buffers.ADCOffset[2]) * g_hw_setup.Igain;
+        measurement_buffers.ConvertedADC[0][FOC_CHANNEL_DC_V   ] = (float)measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V   ] * g_hw_setup.VBGain;  // Vbus
+        measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_V] = (float)measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_V] * g_hw_setup.VBGain;  // Usw
+        measurement_buffers.ConvertedADC[1][FOC_CHANNEL_DC_V   ] = (float)measurement_buffers.RawADC[1][FOC_CHANNEL_DC_V   ] * g_hw_setup.VBGain;  // Vsw
+        measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_V] = (float)measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_V] * g_hw_setup.VBGain;  // Wsw
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Here we do the FOC transforms - Clark and Park, using the previous sin values, since they were the correct ones at the time of
@@ -421,18 +421,18 @@ void ADCConversion()
         //Version of Clark transform that avoids low duty cycle ADC measurements - use only 2 phases
         if(htim1.Instance->CCR2>900){
         	//Clark using phase U and W
-        	foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][0];
-        	foc_vars.Iab[1] = -sqrt1_2*measurement_buffers.ConvertedADC[0][0]-sqrt2*measurement_buffers.ConvertedADC[2][0];
+        	foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
+        	foc_vars.Iab[1] = -sqrt1_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I]-sqrt2*measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
         }
         else if(htim1.Instance->CCR3>900){
         //Clark using phase U and V
-        	foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][0];
-        	foc_vars.Iab[1] = sqrt2*measurement_buffers.ConvertedADC[1][0]-sqrt1_2*measurement_buffers.ConvertedADC[0][0];
+        	foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
+        	foc_vars.Iab[1] = sqrt2*measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt1_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
         }
         else{
         	//Clark using phase V and W (hardware V1 has best ADC readings on channels V and W - U is plagued by the DCDC converter)
-        	foc_vars.Iab[0] = -sqrt3_2*measurement_buffers.ConvertedADC[1][0]-sqrt3_2*measurement_buffers.ConvertedADC[2][0];
-        	foc_vars.Iab[1] = sqrt1_2*measurement_buffers.ConvertedADC[1][0]-sqrt1_2*measurement_buffers.ConvertedADC[2][0];
+        	foc_vars.Iab[0] = -sqrt3_2*measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt3_2*measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
+        	foc_vars.Iab[1] = sqrt1_2*measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt1_2*measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
         }
 
         // Park
@@ -748,11 +748,11 @@ void measureResistance()
 
         if (PWMcycles < 5000)  // Resistance lower measurement point
         {
-            if (measurement_buffers.ConvertedADC[1][0] < 3.0f)
+            if (measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I] < 3.0f)
             {  // Here we set the PWM duty automatically for this conversion to ensure a current between 3A and 10A
                 testPWM1 = testPWM1 + 1;
             }
-            if (measurement_buffers.ConvertedADC[1][0] > 10.0f)
+            if (measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I] > 10.0f)
             {
                 testPWM1 = testPWM1 - 1;
             }
@@ -762,16 +762,16 @@ void measureResistance()
             // Accumulate the currents with an exponential smoother. This
             // averaging should remove some noise and increase
             // effective resolution
-            currAcc1 = (99 * currAcc1 + measurement_buffers.ConvertedADC[1][0]) * 0.01;
+            currAcc1 = (99 * currAcc1 + measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]) * 0.01;
         }
 
         else if (PWMcycles < 10000)  // Resistance higher measurement point
         {
-            if (measurement_buffers.ConvertedADC[1][0] < 10.0f)
+            if (measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I] < 10.0f)
             {  // Here we set the PWM to get a current between 10A and 20A
                 testPWM2 = testPWM2 + 1;
             }
-            if (measurement_buffers.ConvertedADC[1][0] > 20.0f)
+            if (measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I] > 20.0f)
             {
                 testPWM2 = testPWM2 - 1;
             }
@@ -779,7 +779,7 @@ void measureResistance()
             htim1.Instance->CCR2 = 0;
             htim1.Instance->CCR1 = testPWM2;
             // Accumulate the currents with an exponential smoother
-            currAcc2 = (99 * currAcc2 + measurement_buffers.ConvertedADC[1][0]) * 0.01;
+            currAcc2 = (99 * currAcc2 + measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]) * 0.01;
         }
         ///////////////////////////////////////////////////////INDUCTANCE/////////////////////////////////////////////////////////////////////
         else if (PWMcycles == 10000)
@@ -798,14 +798,14 @@ void measureResistance()
             if (a == 1)
             {
                 htim1.Instance->CCR1 = testPWM3;  // Write the high PWM, the next cycle will be a higher current
-                currAcc4 = (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
+                currAcc4 = (999 * currAcc4 + measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]) * 0.001;
 
                 a = 0;
             }
             else if (a == 0)
             {
                 htim1.Instance->CCR1 = 0;  // Write the PWM low, the next PWM pulse is skipped, and the current allowed to decay
-                currAcc3 = (999 * currAcc3 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
+                currAcc3 = (999 * currAcc3 + measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]) * 0.001;
 
                 a = 1;
             }
@@ -847,7 +847,7 @@ void measureResistance()
             phW_Break();
 
             motor.Rphase =
-                (((float)(testPWM2 - testPWM1)) / (2.0f * 1024.0f) * measurement_buffers.ConvertedADC[0][1]) / (currAcc2 - currAcc1);
+                (((float)(testPWM2 - testPWM1)) / (2.0f * 1024.0f) * measurement_buffers.ConvertedADC[0][FOC_CHANNEL_DC_V]) / (currAcc2 - currAcc1);
             motor.Lphase = ((currAcc3 + currAcc4) * motor.Rphase * (2048.0f / 72000000.0f) / ((currAcc4 - currAcc3) * 2));
             // L=iRdt/di, where R in this case is 2*motor.Rphase
             MotorState = MOTOR_STATE_DETECTING;  // MOTOR_STATE_HALL_RUN;
