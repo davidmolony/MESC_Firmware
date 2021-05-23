@@ -124,7 +124,6 @@ void fastLoop()
     current_hall_state = ((GPIOB->IDR >> 6) & 0x7);
     // Call this directly from the ADC callback IRQ
     ADCConversion();  // First thing we ever want to do is convert the ADC values to real, useable numbers.
-    static int dp_counter;
 
     switch (MotorState)
     {
@@ -256,63 +255,7 @@ void fastLoop()
             break;
         case MOTOR_STATE_TEST:
             // Double pulse test
-            if (dp_counter == 0)
-            {
-                htim1.Instance->CCR1 = 0;
-                htim1.Instance->CCR2 = 0;
-                htim1.Instance->CCR3 = 1023;
-                phU_Break();
-                dp_counter++;
-            }
-            else if (dp_counter == 1)
-            {
-                htim1.Instance->CCR2 = 0;
-                htim1.Instance->CCR3 = 1023;
-                dp_counter++;
-            }
-            else if (dp_counter == 2)
-            {
-                htim1.Instance->CCR2 = 0;
-                htim1.Instance->CCR3 = 1023;
-                dp_counter++;
-            }
-            else if (dp_counter == 3)
-            {
-                htim1.Instance->CCR2 = 0;
-                htim1.Instance->CCR3 = 1023;
-                dp_counter++;
-            }
-            else if (dp_counter == 4)
-            {
-                htim1.Instance->CCR2 = 0;
-                htim1.Instance->CCR3 = 1023;
-                dp_counter++;
-            }
-            else if (dp_counter == 5)
-            {
-                htim1.Instance->CCR2 = 0;
-                htim1.Instance->CCR3 = 1023;
-                dp_counter++;
-            }
-            else if (dp_counter == 6)
-            {
-                htim1.Instance->CCR2 = 0;
-                htim1.Instance->CCR3 = 1023;
-                dp_counter++;
-            }
-            else if (dp_counter == 7)
-            {
-                htim1.Instance->CCR2 = 0;
-                htim1.Instance->CCR3 = 100;
-                dp_counter++;
-            }
-            else
-            {
-                htim1.Instance->CCR2 = 0;
-                htim1.Instance->CCR3 = 0;
-                dp_counter = 0;
-                MotorState = MOTOR_STATE_IDLE;
-            }
+            doublePulseTest();
             break;
         case MOTOR_STATE_RECOVERING:
 
@@ -544,8 +487,8 @@ void MESCFOC()
             foc_vars.hall_forwards_adjust = foc_vars.hall_forwards_adjust + 1;
         }
     }
-    // Here we are going to do a PID loop to control the dq currents, converting Idq into Vdq
 
+    // Here we are going to do a PID loop to control the dq currents, converting Idq into Vdq
     // Calculate the errors
     static float Idq_err[2];
     Idq_err[0] = foc_vars.Idq[0] - foc_vars.Idq_req[0];
@@ -561,8 +504,8 @@ void MESCFOC()
     {  // set or release the PID controller; may want to do this for cycle skipping, which may help for high inductance motors
         // Bounding
         // clang-format off
-        static int integral_d_limit = 150;
-        static int integral_q_limit = 400;
+        static float integral_d_limit = 150.0f;
+        static float integral_q_limit = 550.0f;
 
         if (Idq_int_err[0] > integral_d_limit){Idq_int_err[0] = integral_d_limit;}
         if (Idq_int_err[0] < -integral_d_limit){Idq_int_err[0] = -integral_d_limit;}
@@ -573,6 +516,20 @@ void MESCFOC()
         foc_vars.Vdq[0] =
             foc_vars.Id_pgain * Idq_err[0] + Idq_int_err[0];  //(3 * foc_vars.Vdq[0] + Idq_err[0] + Idq_int_err[0]) * 0.25;  // trial pgain
         foc_vars.Vdq[1] = foc_vars.Iq_pgain * Idq_err[1] + Idq_int_err[1];  //(3 * foc_vars.Vdq[1] + Idq_err[1] + Idq_int_err[1]) * 0.25;
+
+        // Bounding final output
+        // These limits are experimental, but result in close to 100% modulation. Since Vd and Vq are
+        // orthogonal, limiting Vd is not especially helpful in reducing overall voltage magnitude, since the relation
+        // Vout=(Vd^2+Vq^2)^0.5 results in Vd having a small effect. Vd is primarily used to drive the resistive part of the
+        // field; there is no BEMF pushing against Vd and so it does not scale with RPM.
+        static float V_d_limit = 150.0f;
+        static float V_q_limit = 660.0f;
+
+        if (foc_vars.Vdq[0] > V_d_limit) (foc_vars.Vdq[0] = V_d_limit);
+        if (foc_vars.Vdq[0] < -V_d_limit) (foc_vars.Vdq[0] = -V_d_limit);
+        if (foc_vars.Vdq[1] > V_q_limit) (foc_vars.Vdq[1] = V_q_limit);
+        if (foc_vars.Vdq[1] < -V_q_limit) (foc_vars.Vdq[1] = -V_q_limit);
+
         i = FOC_PERIODS;
         // Field weakening? - The below works pretty nicely, but needs turning into an implementation where it is switchable by the user.
         // Can result in problems e.g. tripping PSUs...
@@ -610,7 +567,7 @@ void MESCFOC()
 void writePWM()
 {
     ///////////////////////////////////////////////
-    if ((foc_vars.Vdq[1] > 300) | (foc_vars.Vdq[1] < -300))
+    if ((foc_vars.Vdq[1] > 500) | (foc_vars.Vdq[1] < -500))
     {
         // Bottom Clamp implementation. Implemented initially because this avoids all nasty behaviour in the event of underflowing the timer
         // CCRs; if negative values fed to timers, they will saturate positive, which will result in a near instant overcurrent event.
@@ -1029,7 +986,36 @@ void calculateGains()
     foc_vars.pwm_frequency = (float)HAL_RCC_GetHCLKFreq() / (2 * (float)htim1.Instance->ARR);
     foc_vars.Iq_pgain =
         foc_vars.pwm_frequency * motor.Lphase * ((float)htim1.Instance->ARR * 0.5) / (2 * measurement_buffers.ConvertedADC[0][1]);
-    foc_vars.Iq_igain = 0.1f*motor.Rphase * (htim1.Instance->ARR * 0.5) / (2 * measurement_buffers.ConvertedADC[0][1]);
+    foc_vars.Iq_igain = 0.1f * motor.Rphase * (htim1.Instance->ARR * 0.5) / (2 * measurement_buffers.ConvertedADC[0][1]);
     foc_vars.Id_pgain = foc_vars.Iq_pgain / 2;
     foc_vars.Id_igain = foc_vars.Iq_igain / 2;
+}
+void doublePulseTest()
+{
+    static int dp_counter;
+    static int dp_periods = 7;
+    if (dp_counter < dp_periods)
+    {
+        htim1.Instance->CCR1 = 0;
+        htim1.Instance->CCR2 = 0;
+        htim1.Instance->CCR3 = 1023;
+        phU_Break();
+        test_vals.dp_current_final[dp_counter] = measurement_buffers.ConvertedADC[1][0];
+        dp_counter++;
+    }
+    else if (dp_counter == dp_periods)
+    {
+        htim1.Instance->CCR2 = 0;
+        htim1.Instance->CCR3 = 100;
+        test_vals.dp_current_final[dp_counter] = measurement_buffers.ConvertedADC[1][0];
+        dp_counter++;
+    }
+    else
+    {
+        htim1.Instance->CCR2 = 0;
+        htim1.Instance->CCR3 = 0;
+        test_vals.dp_current_final[dp_counter] = measurement_buffers.ConvertedADC[1][0];
+        dp_counter = 0;
+        MotorState = MOTOR_STATE_IDLE;
+    }
 }

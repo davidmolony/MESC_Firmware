@@ -77,6 +77,13 @@ MESCfoc_s foc_vars;
 
 typedef struct
 {
+    float dp_current_final[10];
+} MESCtest_s;
+
+MESCtest_s test_vals;
+
+typedef struct
+{
     int32_t RawADC[FOC_NUM_ADC][FOC_CONV_CHANNELS];  // ADC1 returns Ucurrent, DClink
                                                      // voltage and U phase voltage
                                                      //  ADC2 returns Vcurrent, V and Wphase
@@ -139,3 +146,5 @@ void phW_Break();
 void phW_Enable();
 
 void calculateGains();
+
+void doublePulseTest();

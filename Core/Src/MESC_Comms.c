@@ -36,7 +36,7 @@ extern uint16_t ICVals[2];
 extern UART_HandleTypeDef huart3;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim3;
-    uint8_t message_buffer[20];
+uint8_t message_buffer[100];
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // UART implementation
@@ -128,6 +128,16 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         MotorState = MOTOR_STATE_TEST;
         phV_Enable();
         phW_Enable();
+    }
+    else if (UART_rx_buffer[0] == 0x79)
+    {  // y - get test result
+        MotorState = MOTOR_STATE_IDLE;
+        for (int i = 0; i < 10; i++)
+        {
+            length = sprintf((char *)message_buffer, "DP Current: %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r", test_vals.dp_current_final[0], test_vals.dp_current_final[1], test_vals.dp_current_final[2], test_vals.dp_current_final[3], test_vals.dp_current_final[4], test_vals.dp_current_final[5], test_vals.dp_current_final[6], test_vals.dp_current_final[7], test_vals.dp_current_final[8], test_vals.dp_current_final[9]);
+            HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
+            HAL_Delay(20);
+        }
     }
     else
     {
