@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include "MESCBLDC.h"
 #include "MESCfoc.h"
+#include "MESChw_setup.h"
 #include "MESCmotor_state.h"
 
 extern char UART_rx_buffer[2];
@@ -101,8 +102,19 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         length = sprintf((char *)message_buffer, "Vbus%.2f\r", measurement_buffers.ConvertedADC[0][1]);
         HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
     }
+    else if (UART_rx_buffer[0] == 0x6D)
+    {  // p - Get the parameters (L R)
+        motor.Lphase = 0;
+        motor.Rphase = 0;
+        MotorState = MOTOR_STATE_MEASURING;
+        extern b_read_flash;
+        b_read_flash = 0;
+        length = sprintf((char *)message_buffer, "Vbus%.2f\r", measurement_buffers.ConvertedADC[0][1]);
+        HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
+    }
     else if (UART_rx_buffer[0] == 0x70)
-    {  // p - Get the parameters (hall table and L R)
+    {  // p - Get the parameters (hall table)
+
         MotorState = MOTOR_STATE_DETECTING;
         extern b_read_flash;
         b_read_flash = 0;
@@ -132,12 +144,41 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     else if (UART_rx_buffer[0] == 0x79)
     {  // y - get test result
         MotorState = MOTOR_STATE_IDLE;
-        for (int i = 0; i < 10; i++)
-        {
-            length = sprintf((char *)message_buffer, "DP Current: %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r", test_vals.dp_current_final[0], test_vals.dp_current_final[1], test_vals.dp_current_final[2], test_vals.dp_current_final[3], test_vals.dp_current_final[4], test_vals.dp_current_final[5], test_vals.dp_current_final[6], test_vals.dp_current_final[7], test_vals.dp_current_final[8], test_vals.dp_current_final[9]);
-            HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-            HAL_Delay(20);
-        }
+
+        length = sprintf((char *)message_buffer,
+                         "DP Current: %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r %.2f\r",
+                         test_vals.dp_current_final[0],
+                         test_vals.dp_current_final[1],
+                         test_vals.dp_current_final[2],
+                         test_vals.dp_current_final[3],
+                         test_vals.dp_current_final[4],
+                         test_vals.dp_current_final[5],
+                         test_vals.dp_current_final[6],
+                         test_vals.dp_current_final[7],
+                         test_vals.dp_current_final[8],
+                         test_vals.dp_current_final[9]);
+        HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
+        HAL_Delay(1000);
+        length = sprintf((char *)message_buffer, "Rmotor:%.2f\r Lmotor:%.2f\r", motor.Rphase, motor.Lphase);
+        HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
+        HAL_Delay(1000);
+        length = sprintf((char *)message_buffer,
+                         "DP Current: %d %d\r %df %df\r %d %d\r %d %d\r %d %d\r %d %d\r",
+                         foc_vars.hall_table[0][2],
+                         foc_vars.hall_table[0][3],
+                         foc_vars.hall_table[1][2],
+                         foc_vars.hall_table[1][3],
+                         foc_vars.hall_table[2][2],
+                         foc_vars.hall_table[2][3],
+                         foc_vars.hall_table[3][2],
+                         foc_vars.hall_table[3][3],
+                         foc_vars.hall_table[4][2],
+                         foc_vars.hall_table[5][3],
+                         foc_vars.hall_table[5][2],
+                         foc_vars.hall_table[5][3]);
+        HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
+        HAL_Delay(100);
+
     }
     else
     {

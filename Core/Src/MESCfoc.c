@@ -476,17 +476,18 @@ void OLGenerateAngle()
 void MESCFOC()
 {
     // Here we are going to adjust the angle of the hall sensors to improve their accuracy
-    if (last_hall_period < 400)
-    {  // Placeholder for switching off if there is a requested Id current
-        if (foc_vars.Vdq[0] > 40)
-        {
-            foc_vars.hall_forwards_adjust = foc_vars.hall_forwards_adjust - 1;
-        }
-        else if (foc_vars.Vdq[0] < -40)
-        {
-            foc_vars.hall_forwards_adjust = foc_vars.hall_forwards_adjust + 1;
-        }
-    }
+    // This is not stable at startup or with field weakening, therefore needs to be rolled into a setup routine.
+    //    if (last_hall_period < 400)
+    //    {  // Placeholder for switching off if there is a requested Id current
+    //        if (foc_vars.Vdq[0] > 40)
+    //        {
+    //            foc_vars.hall_forwards_adjust = foc_vars.hall_forwards_adjust - 1;
+    //        }
+    //        else if (foc_vars.Vdq[0] < -40)
+    //        {
+    //            foc_vars.hall_forwards_adjust = foc_vars.hall_forwards_adjust + 1;
+    //        }
+    //    }
 
     // Here we are going to do a PID loop to control the dq currents, converting Idq into Vdq
     // Calculate the errors
@@ -567,7 +568,7 @@ void MESCFOC()
 void writePWM()
 {
     ///////////////////////////////////////////////
-    if ((foc_vars.Vdq[1] > 500) | (foc_vars.Vdq[1] < -500))
+    if ((foc_vars.Vdq[1] > 300) | (foc_vars.Vdq[1] < -300))
     {
         // Bottom Clamp implementation. Implemented initially because this avoids all nasty behaviour in the event of underflowing the timer
         // CCRs; if negative values fed to timers, they will saturate positive, which will result in a near instant overcurrent event.
@@ -664,6 +665,10 @@ void measureResistance()
         static uint16_t testPWM1 = 0;  // Start it at zero point, adaptive current thingy can ramp it
         static uint16_t testPWM2 = 0;  //
         static uint16_t testPWM3 = 0;  // Use this for the inductance measurement, calculate it later
+        htim1.Instance->CCR1 = 0;
+        htim1.Instance->CCR2 = 0;
+        htim1.Instance->CCR3 = 0;
+
         phW_Break();
         phU_Enable();
         phV_Enable();
@@ -773,7 +778,8 @@ void measureResistance()
                 (((float)(testPWM2 - testPWM1)) / (2.0f * 1024.0f) * measurement_buffers.ConvertedADC[0][1]) / (currAcc2 - currAcc1);
             motor.Lphase = ((currAcc3 + currAcc4) * motor.Rphase * (2048.0f / 72000000.0f) / ((currAcc4 - currAcc3) * 2));
             // L=iRdt/di, where R in this case is 2*motor.Rphase
-            MotorState = MOTOR_STATE_DETECTING;  // MOTOR_STATE_HALL_RUN;
+            calculateGains();
+            MotorState = MOTOR_STATE_IDLE;  // MotorState = MOTOR_STATE_DETECTING;  // MOTOR_STATE_HALL_RUN;
             phU_Enable();
             phV_Enable();
             phW_Enable();
