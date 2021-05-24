@@ -20,11 +20,12 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
-#include "flash_wrapper.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "flash_wrapper.h"
+
 //#include "usbd_cdc_if.c"
 //#include "usbd_cdc.h"
 /* USER CODE END Includes */
@@ -47,9 +48,11 @@
 ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 ADC_HandleTypeDef hadc3;
+ADC_HandleTypeDef hadc4;
 DMA_HandleTypeDef hdma_adc1;
 DMA_HandleTypeDef hdma_adc2;
 DMA_HandleTypeDef hdma_adc3;
+DMA_HandleTypeDef hdma_adc4;
 
 COMP_HandleTypeDef hcomp1;
 COMP_HandleTypeDef hcomp2;
@@ -74,15 +77,6 @@ DMA_HandleTypeDef hdma_usart3_tx;
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {.name = "defaultTask", .priority = (osPriority_t)osPriorityNormal, .stack_size = 128 * 4};
-/* Definitions for SlowLoopTask */
-osThreadId_t SlowLoopTaskHandle;
-const osThreadAttr_t SlowLoopTask_attributes = {.name = "SlowLoopTask", .priority = (osPriority_t)osPriorityLow, .stack_size = 128 * 4};
-/* Definitions for ComsTask */
-osThreadId_t ComsTaskHandle;
-const osThreadAttr_t ComsTask_attributes = {.name = "ComsTask", .priority = (osPriority_t)osPriorityLow, .stack_size = 128 * 4};
-/* Definitions for BatCheckTask */
-osThreadId_t BatCheckTaskHandle;
-const osThreadAttr_t BatCheckTask_attributes = {.name = "BatCheckTask", .priority = (osPriority_t)osPriorityLow, .stack_size = 128 * 4};
 /* USER CODE BEGIN PV */
 uint32_t ICVals[2] = {0, 0};
 // int initing = 1;
@@ -112,10 +106,8 @@ static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_ADC4_Init(void);
 void StartDefaultTask(void *argument);
-void SlowLoopEntry(void *argument);
-void ComsTaskEntry(void *argument);
-void BatCheck(void *argument);
 
 static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
@@ -171,6 +163,7 @@ int main(void)
     MX_TIM3_Init();
     MX_TIM4_Init();
     MX_USART3_UART_Init();
+    MX_ADC4_Init();
 
     /* Initialize interrupts */
     MX_NVIC_Init();
@@ -191,6 +184,7 @@ int main(void)
 
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);
+    __HAL_TIM_ENABLE_IT(&htim3,TIM_IT_UPDATE);
     // Here we can auto set the prescaler to get the us input regardless of the main clock
     __HAL_TIM_SET_PRESCALER(&htim3, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
     // Place to mess about with PWM in
@@ -221,10 +215,16 @@ int main(void)
          * 2. Write data to flash.
          * 3. Restore motor power.
          */
-        if(MotorState==MOTOR_STATE_ERROR){
-        	char error_message[10];
-        	sprintf(error_message,"%d%d%d%d",measurement_buffers.adc1, measurement_buffers.adc2,measurement_buffers.adc3,measurement_buffers.adc4);
-        	HAL_UART_Transmit(&huart3, error_message, 10, 10);
+        if (MotorState == MOTOR_STATE_ERROR)
+        {
+            char error_message[10];
+            sprintf(error_message,
+                    "%d%d%d%d",
+                    measurement_buffers.adc1,
+                    measurement_buffers.adc2,
+                    measurement_buffers.adc3,
+                    measurement_buffers.adc4);
+            HAL_UART_Transmit(&huart3, error_message, 10, 10);
         }
         if (b_write_flash)
         {
@@ -234,8 +234,8 @@ int main(void)
             b_write_flash = 0;
         }
 
-        // sprintf(UART_buffer, "helloWorld/r");  //        HAL_UART_Transmit(&huart3, (uint8_t *)"HelloWorld\r", 12, 10);
-        // HAL_UART_Transmit_DMA(&huart3, UART_buffer, 10);
+        //         sprintf(UART_buffer, "helloWorld/r");  //        HAL_UART_Transmit(&huart3, (uint8_t *)"HelloWorld\r", 12, 10);
+        //         HAL_UART_Transmit_DMA(&huart3, UART_buffer, 10);
     }
     /* USER CODE END 2 */
 
@@ -262,18 +262,13 @@ int main(void)
     /* creation of defaultTask */
     defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-    /* creation of SlowLoopTask */
-    SlowLoopTaskHandle = osThreadNew(SlowLoopEntry, NULL, &SlowLoopTask_attributes);
-
-    /* creation of ComsTask */
-    ComsTaskHandle = osThreadNew(ComsTaskEntry, NULL, &ComsTask_attributes);
-
-    /* creation of BatCheckTask */
-    BatCheckTaskHandle = osThreadNew(BatCheck, NULL, &BatCheckTask_attributes);
-
     /* USER CODE BEGIN RTOS_THREADS */
     /* add threads, ... */
     /* USER CODE END RTOS_THREADS */
+
+    /* USER CODE BEGIN RTOS_EVENTS */
+    /* add events, ... */
+    /* USER CODE END RTOS_EVENTS */
 
     /* Start scheduler */
     osKernelStart();
@@ -348,7 +343,7 @@ void SystemClock_Config(void)
 static void MX_NVIC_Init(void)
 {
     /* DMA1_Channel2_IRQn interrupt configuration */
-    HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
 }
 
@@ -470,7 +465,7 @@ static void MX_ADC2_Init(void)
     hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_FALLING;
     hadc2.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T1_TRGO;
     hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-    hadc2.Init.NbrOfConversion = 3;
+    hadc2.Init.NbrOfConversion = 4;
     hadc2.Init.DMAContinuousRequests = ENABLE;
     hadc2.Init.EOCSelection = ADC_EOC_SEQ_CONV;
     hadc2.Init.LowPowerAutoWait = DISABLE;
@@ -504,6 +499,15 @@ static void MX_ADC2_Init(void)
      */
     sConfig.Channel = ADC_CHANNEL_2;
     sConfig.Rank = ADC_REGULAR_RANK_3;
+    if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    /** Configure Regular Channel
+     */
+    sConfig.Channel = ADC_CHANNEL_12;
+    sConfig.Rank = ADC_REGULAR_RANK_4;
+    sConfig.SamplingTime = ADC_SAMPLETIME_19CYCLES_5;
     if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
     {
         Error_Handler();
@@ -572,6 +576,59 @@ static void MX_ADC3_Init(void)
     /* USER CODE BEGIN ADC3_Init 2 */
 
     /* USER CODE END ADC3_Init 2 */
+}
+
+/**
+ * @brief ADC4 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_ADC4_Init(void)
+{
+    /* USER CODE BEGIN ADC4_Init 0 */
+
+    /* USER CODE END ADC4_Init 0 */
+
+    ADC_ChannelConfTypeDef sConfig = {0};
+
+    /* USER CODE BEGIN ADC4_Init 1 */
+
+    /* USER CODE END ADC4_Init 1 */
+    /** Common config
+     */
+    hadc4.Instance = ADC4;
+    hadc4.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+    hadc4.Init.Resolution = ADC_RESOLUTION_12B;
+    hadc4.Init.ScanConvMode = ADC_SCAN_DISABLE;
+    hadc4.Init.ContinuousConvMode = DISABLE;
+    hadc4.Init.DiscontinuousConvMode = DISABLE;
+    hadc4.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
+    hadc4.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T1_TRGO;
+    hadc4.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+    hadc4.Init.NbrOfConversion = 1;
+    hadc4.Init.DMAContinuousRequests = ENABLE;
+    hadc4.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+    hadc4.Init.LowPowerAutoWait = DISABLE;
+    hadc4.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
+    if (HAL_ADC_Init(&hadc4) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    /** Configure Regular Channel
+     */
+    sConfig.Channel = ADC_CHANNEL_3;
+    sConfig.Rank = ADC_REGULAR_RANK_1;
+    sConfig.SingleDiff = ADC_SINGLE_ENDED;
+    sConfig.SamplingTime = ADC_SAMPLETIME_19CYCLES_5;
+    sConfig.OffsetNumber = ADC_OFFSET_NONE;
+    sConfig.Offset = 0;
+    if (HAL_ADC_ConfigChannel(&hadc4, &sConfig) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    /* USER CODE BEGIN ADC4_Init 2 */
+
+    /* USER CODE END ADC4_Init 2 */
 }
 
 /**
@@ -1143,71 +1200,13 @@ void StartDefaultTask(void *argument)
     for (;;)
     {
         // CDC_Transmit_FS("Hello World", 11);
+        while (1)
+        {
+        }
 
         osDelay(100);
     }
     /* USER CODE END 5 */
-}
-
-/* USER CODE BEGIN Header_SlowLoopEntry */
-/**
- * @brief Function implementing the SlowLoopTask thread.
- * @param argument: Not used
- * @retval None
- */
-/* USER CODE END Header_SlowLoopEntry */
-void SlowLoopEntry(void *argument)
-{
-    /* USER CODE BEGIN SlowLoopEntry */
-    /* Infinite loop */
-    for (;;)
-    {
-        osDelay(100);
-    }
-    /* USER CODE END SlowLoopEntry */
-}
-
-/* USER CODE BEGIN Header_ComsTaskEntry */
-/**
- * @brief Function implementing the ComsTask thread.
- * @param argument: Not used
- * @retval None
- */
-/* USER CODE END Header_ComsTaskEntry */
-void ComsTaskEntry(void *argument)
-{
-    /* USER CODE BEGIN ComsTaskEntry */
-    /* Infinite loop */
-    for (;;)
-    {
-        osDelay(100);
-    }
-    /* USER CODE END ComsTaskEntry */
-}
-
-/* USER CODE BEGIN Header_BatCheck */
-/**
- * @brief Function implementing the BatCheckTask thread.
- * @param argument: Not used
- * @retval None
- */
-/* USER CODE END Header_BatCheck */
-void BatCheck(void *argument)
-{
-    /* USER CODE BEGIN BatCheck */
-    /* Infinite loop */
-    for (;;)
-    {
-        osDelay(100);
-        if (measurement_buffers.ConvertedADC[0][1] < 20)
-        {
-            htim1.Instance->BDTR &= ~(TIM_BDTR_MOE);
-            __NOP();
-        }
-        static uint16_t VbatThread = 0;
-        VbatThread++;
-    }
-    /* USER CODE END BatCheck */
 }
 
 /**

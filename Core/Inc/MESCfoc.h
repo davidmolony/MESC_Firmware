@@ -25,9 +25,9 @@
 #include "stm32f3xx_hal.h"
 
 #define FOC_SECTORS_PER_REVOLUTION (6)
-#define FOC_CONV_CHANNELS          (3)
+#define FOC_CONV_CHANNELS          (4)
 #define FOC_TRANSFORMED_CHANNELS   (2)
-#define FOC_NUM_ADC                (3)
+#define FOC_NUM_ADC                (4)
 #define FOC_PERIODS                (1)
 
 // fixme: I think this type of stuff is causing confusion later on especially in
@@ -36,7 +36,6 @@ typedef uint16_t foc_angle_t;
 typedef float current_amps_t;
 typedef float voltage_t;
 
-// fixme: why is this in a struct?
 typedef struct
 {
     int initing;  // Flag to say we are initialising
@@ -61,11 +60,28 @@ typedef struct
 
     uint16_t hall_table[6][4];  // Lookup table, populated by the getHallTable() function and used in estimating the rotor position from
                                 // hall sensors in HallAngleEstimator()
+    int hall_forwards_adjust;
+    int hall_backwards_adjust;
+
+    float pwm_period;
+    float pwm_frequency;
+
+    float Id_pgain;  // Current controller gains
+    float Id_igain;
+    float Iq_pgain;
+    float Iq_igain;
+
 } MESCfoc_s;
 
 MESCfoc_s foc_vars;
 
-// fixme: why is this in a struct? what advantages does this give?
+typedef struct
+{
+    float dp_current_final[10];
+} MESCtest_s;
+
+MESCtest_s test_vals;
+
 typedef struct
 {
     int32_t RawADC[FOC_NUM_ADC][FOC_CONV_CHANNELS];  // ADC1 returns Ucurrent, DClink
@@ -84,14 +100,8 @@ typedef struct
 
 foc_measurement_t measurement_buffers;  // fixme: floating function prototype
 
-
 /* Function prototypes -----------------------------------------------*/
 
-// fixme: inconsistent naming convention for functions. Choose one and stick to
-// it across entire codebase. Choice needs to be documented. I recommend
-// variable: lower_snake_case = 1;
-// function: lowerCamelCase();
-// constant: UPPER_CASE;
 void MESCInit();
 void fastLoop();
 void VICheck();
@@ -134,3 +144,7 @@ void phV_Break();
 void phV_Enable();
 void phW_Break();
 void phW_Enable();
+
+void calculateGains();
+
+void doublePulseTest();
