@@ -103,7 +103,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
     }
     else if (UART_rx_buffer[0] == 0x6D)
-    {  // p - Get the parameters (L R)
+    {  // m - Get the parameters (L R)
         motor.Lphase = 0;
         motor.Rphase = 0;
         MotorState = MOTOR_STATE_MEASURING;
@@ -178,7 +178,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
                          foc_vars.hall_table[5][3]);
         HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
         HAL_Delay(100);
-
     }
     else
     {
