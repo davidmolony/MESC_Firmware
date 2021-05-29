@@ -93,7 +93,9 @@ motor_sensor_mode_e MotorSensorMode;
 
 typedef enum
 {
-    MOTOR_ERROR_HALL,
+	MOTOR_ERROR_NONE,
+    MOTOR_ERROR_HALL0,
+    MOTOR_ERROR_HALL7,
     MOTOR_ERROR_OVER_LIMIT,
     MOTOR_ERROR_OTHER,
 } motor_error_type_e;
