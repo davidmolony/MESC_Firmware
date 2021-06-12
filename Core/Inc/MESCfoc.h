@@ -28,32 +28,26 @@
 
 enum FOCChannels
 {
-	FOC_CHANNEL_PHASE_I,
-	FOC_CHANNEL_DC_V,
-	FOC_CHANNEL_PHASE_V,
+    FOC_CHANNEL_PHASE_I,
+    FOC_CHANNEL_DC_V,
+    FOC_CHANNEL_PHASE_V,
 
-	FOC_CHANNELS
+    FOC_CHANNELS
 };
 
 #define FOC_TRANSFORMED_CHANNELS   (2)
 #define FOC_NUM_ADC                (4)
 #define FOC_PERIODS                (1)
 
-// fixme: I think this type of stuff is causing confusion later on especially in
-// the code that strives for maintainability. What does an alias give you?
-typedef uint16_t foc_angle_t;
-typedef float current_amps_t;
-typedef float voltage_t;
-
 typedef struct
 {
     int initing;  // Flag to say we are initialising
     uint16_t FOCError;
-    foc_angle_t RotorAngle;  // Rotor angle, either fetched from hall sensors or from observer
-    foc_angle_t AngleStep;   // At startup, step angle is zero, zero speed. This is the angle by which the inverter increments
+    uint16_t RotorAngle;  // Rotor angle, either fetched from hall sensors or from observer
+    uint16_t AngleStep;   // At startup, step angle is zero, zero speed. This is the angle by which the inverter increments
                              // each PWM cycle under open loop
 
-    foc_angle_t HallAngle;  // Angle generated in the hall sensor estimator
+    uint16_t HallAngle;  // Angle generated in the hall sensor estimator
 
     float sincosangle[2];  // This variable carries the current sin and cosine of the angle being used for Park and Clark transforms, so
                            // they only need computing once per pwm cycle

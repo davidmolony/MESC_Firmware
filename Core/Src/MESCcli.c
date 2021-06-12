@@ -127,10 +127,23 @@ static int cli_io_write_noop( void * handle, void * data, uint16_t size )
 static void * cli_io_handle = NULL;
 static int (* cli_io_write)( void *, void *, uint16_t ) = cli_io_write_noop;
 
-static void cli_noop_write( char const c )
+static void cli_idle( void )
+{
+    cli_state = CLI_STATE_IDLE;
+    cli_hash_valid = 0;
+    cli_hash = 0;
+}
+
+static void cli_abort( void )
 {
     cli_state = CLI_STATE_ABORT;
     cli_hash_valid = 0;
+    cli_hash = 0;
+}
+
+static void cli_noop_write( char const c )
+{
+    cli_abort();
     (void)c;
 }
 
@@ -138,8 +151,7 @@ static void (* cli_process_write_value)( char const ) = cli_noop_write;
 
 static void cli_noop_read( void )
 {
-    cli_state = CLI_STATE_ABORT;
-    cli_hash_valid = 0;
+    cli_abort();
 }
 
 static void (* cli_process_read_value)( void ) = cli_noop_read;
@@ -259,8 +271,7 @@ static void cli_execute( void )
             break;
     }
 
-    cli_hash_valid = 0;
-    cli_state = CLI_STATE_IDLE;
+    cli_idle();
     cli_var.state = 0;
 }
 
@@ -268,7 +279,6 @@ static CLIEntry * cli_lut_alloc( char const * name )
 {
     if (cli_lut_entries >= MAX_CLI_LUT_ENTRIES)
     {
-//fprintf( stderr, "ERROR: No CLI LUT entries avilable\n" );//debug
         return NULL;
     }
 
@@ -285,7 +295,7 @@ static CLIEntry * cli_lut_alloc( char const * name )
 
     CLIEntry * entry = &cli_lut[cli_lut_entries];
     entry->hash = hash;
-//fprintf( stderr, "INFO: Registered '%s' as %08" PRIX32 "\n", name, hash );//debug
+
     return entry;
 }
 
@@ -367,7 +377,7 @@ static void cli_process_write_int( char const c )
     }
     else if (cli_var.state == 0)
     {
-        cli_state = CLI_STATE_ABORT;
+        cli_abort();
     }
 }
 
@@ -385,7 +395,7 @@ static void cli_process_write_uint( char const c )
     }
     else
     {
-        cli_state = CLI_STATE_ABORT;
+        cli_abort();
     }
 }
 
@@ -430,7 +440,7 @@ static void cli_process_write_float( char const c )
                     }
                     else
                     {
-                        cli_state = CLI_STATE_ABORT;
+                        cli_abort();
                     }
                     break;
             }
@@ -443,7 +453,7 @@ static void cli_process_write_float( char const c )
             }
             else
             {
-                cli_state = CLI_STATE_ABORT;
+                cli_abort();
             }
             break;
         case 2:
@@ -459,7 +469,7 @@ static void cli_process_write_float( char const c )
             }
             else
             {
-                cli_state = CLI_STATE_ABORT;
+                cli_abort();
             }
             break;
         default:
@@ -471,7 +481,7 @@ static void cli_process_write_float( char const c )
             }
             else
             {
-                cli_state = CLI_STATE_ABORT;
+                cli_abort();
             }
             break;
     }
@@ -608,7 +618,7 @@ static void cli_process_variable( const char c )
             CLIAccess access = CLI_ACCESS_NONE;
 
             cli_process_write_value = cli_noop_write;
-            cli_process_read_value = cli_noop_read;
+            cli_process_read_value  = cli_noop_read;
 
             switch (cli_cmd)
             {
@@ -636,7 +646,7 @@ static void cli_process_variable( const char c )
                 ||  ((cli_lut_entry->access & access) != access)
                 )
             {
-                cli_state = CLI_STATE_ABORT;
+                cli_abort();
                 break;
             }
 
@@ -647,31 +657,42 @@ static void cli_process_variable( const char c )
                     // fallthrough
                 case 'X':
                     cli_state = CLI_STATE_EXECUTE;
-                    if  (
-                            (c == '\n')
-                        &&  (cli_hash_valid != 0)
-                        )
+
+                    if  (c == '\n')
                     {
-                        cli_execute();
+                        if (cli_hash_valid != 0)
+                        {
+                            cli_execute();
+                        }
+                        else
+                        {
+                            cli_abort();
+                        }
                     }
+
                     break;
                 case 'W':
-                    cli_state = CLI_STATE_VALUE;
                     cli_process_write_value = cli_process_write_type( cli_lut_entry->type );
+
+                    cli_state = CLI_STATE_VALUE;
+                    cli_hash_valid = 0;
+                    cli_hash = 0;
+
                     break;
                 case 'I':
                 case 'D':
-                    cli_state = CLI_STATE_VALUE;
                     cli_process_write_value = cli_process_write_type( cli_lut_entry->type );
                     cli_process_read_value = cli_process_read_type( cli_lut_entry->type );
+
+                    cli_state = CLI_STATE_VALUE;
+                    cli_hash_valid = 0;
+                    cli_hash = 0;
+
                     break;
                 default:
-                    cli_state = CLI_STATE_ABORT;
+                    cli_abort();
                     break;
             }
-
-            cli_hash_valid = 0;
-
             break;
         }
         default:
@@ -688,8 +709,7 @@ static void cli_process_variable( const char c )
                 }
                 else
                 {
-                    cli_state = CLI_STATE_IDLE;
-                    cli_hash_valid = 0;
+                    cli_idle();
                     cli_var.state = 0;
                 }
             }
@@ -706,14 +726,12 @@ static void cli_process_variable( const char c )
                 }
                 else if (c == '\n')
                 {
-                    cli_state = CLI_STATE_IDLE;
-                    cli_hash_valid = 0;
+                    cli_idle();
                     cli_var.state = 0;
                 }
                 else
                 {
-                    cli_state = CLI_STATE_ABORT;
-                    cli_hash_valid = 0;
+                    cli_abort();
                 }
             }
 //fprintf( stderr, "HASH %08" PRIX32 "\n", cli_hash );//debug
@@ -721,8 +739,10 @@ static void cli_process_variable( const char c )
     }
 }
 
-void cli_process( char const c )
+int cli_process( char const c )
 {
+    cli_reply( "%c", c );
+
     switch (cli_state)
     {
         case CLI_STATE_IDLE:
@@ -739,15 +759,14 @@ void cli_process( char const c )
                     cli_state = CLI_STATE_COMMAND;
                     break;
                 default:
-                    cli_state = CLI_STATE_ABORT;
-                    cli_hash_valid = 0;
+                    cli_abort();
                     break;
             }
             break;
         case CLI_STATE_ABORT:
             if (c == '\n')
             {
-                cli_state = CLI_STATE_IDLE;
+                cli_idle();
                 cli_var.state = 0;
             }
             break;
@@ -755,15 +774,14 @@ void cli_process( char const c )
             switch (c)
             {
                 case '\n':
-                    cli_state = CLI_STATE_IDLE;
+                    cli_idle();
                     cli_var.state = 0;
                     break;
                 case ' ':
                     cli_state = CLI_STATE_VARIABLE;
                     break;
                 default:
-                    cli_state = CLI_STATE_ABORT;
-                    cli_hash_valid = 0;
+                    cli_abort();
                     break;
             }
             break;
@@ -790,12 +808,13 @@ void cli_process( char const c )
                 case ' ':
                     break;
                 default:
-                    cli_state = CLI_STATE_ABORT;
-                    cli_hash_valid = 0;
+                    cli_abort();
                     break;
             }
             break;
     }
+
+    return cli_state;
 }
 
 void cli_reply( char const * p, ... )

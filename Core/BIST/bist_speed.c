@@ -31,25 +31,102 @@
 
 #include "conversions.h"
 
+#include <math.h>
 #include <stdio.h>
+
+static float drev = 0.0f;
+static float dt   = 0.0f;
 
 void bist_speed( void )
 {
     fprintf( stdout, "Starting Speed BIST\n" );
 
+    speed_register_vars( &drev, &dt );
+
     SPEEDProfile sp;
 
-    sp.motor.pole_pairs = 6;
+    sp.motor.Imax =  40.0f;
+    sp.motor.Vmax = 100.0f;
+    sp.motor.Pmax = 250.0f;
 
-    sp.gear_ratio.motor = 1;
-    sp.gear_ratio.wheel = 1;
+    sp.motor.RPMmax = 1000;
+
+    sp.motor.pole_pairs  = 6;
+    sp.motor.direction   = 0;
+    sp.motor.allow_regen = 0;
+
+    sp.gear_ratio.motor  = 1;
+    sp.gear_ratio.wheel  = 1;
 
     sp.wheel.diameter = 26.0f; // Inches
     sp.wheel.conversion = CONST_INCHES_PER_MILE_F;
 
     speed_init( &sp );
 
-    speed_get();
+    // Extract internal variable using identity parameters
+    drev = 1.0f;
+    dt   = 1.0f;
+
+    float const rev_speed = speed_get();
+
+    // Sweep rpm range
+    fprintf( stdout, "RPM sweep\n" );
+
+    dt = CONST_SECONDS_PER_MINUTE_F;
+
+    for ( uint32_t i = 1; i <= 10; ++i )
+    {
+        uint32_t rpm = (sp.motor.RPMmax * i) / 10;
+
+        rpm = ((rpm / 100) * 100);
+
+        drev = rpm;
+
+        float const S = speed_get();
+
+        fprintf( stdout, "%5" PRIu32 " rpm => %4.1f uph\n", rpm, S );
+    }
+
+    // Sweep speed range
+    fprintf( stdout, "Speed sweep\n" );
+
+    drev = 1.0f;
+
+    for ( float v = 5.0f; v < 50.0f; v = v + 5.0f )
+    {
+        dt = (drev * rev_speed) / v;
+        fprintf( stdout, "Speed %4.1f uph is %4.2f seconds per motor revolution (%5.0f rpm)\n", v, dt, (CONST_SECONDS_PER_MINUTE_F / dt) );
+    }
+
+    // Sweep rotation rate
+    fprintf( stdout, "Rotation sweep\n" );
+
+    for ( int32_t f = -5; f <= 10; )
+    {
+        if (f < 0)
+        {
+            dt = fabs( (float)f );
+        }
+        else if (f == 0)
+        {
+            dt = 1.0f;
+        }
+        else
+        {
+            dt = 1.0f / fabs( (float)f );
+        }
+
+        float const S = speed_get();
+
+        fprintf( stdout, "%4.2f seconds per motor revolution (%5.0f rpm) => %4.1f uph\n", dt, (CONST_SECONDS_PER_MINUTE_F / dt), S );
+
+        if (f == -1)
+        {
+            f = 1;
+        }
+
+        f++;
+    }
 
     fprintf( stdout, "Finished Speed BIST\n" );
 }

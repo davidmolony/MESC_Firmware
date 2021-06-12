@@ -29,14 +29,26 @@
 
 #include <stdlib.h>
 
+#include <string.h>
+
 extern void bist_bat( void );
 extern void bist_cli( void );
+extern void i_cli( void );
 extern void bist_profile( void );
 extern void bist_speed( void );
 extern void bist_temp( void );
 
 int main( int argc, char * argv[] )
 {
+    for ( int a = 1; a < argc; ++a )
+    {
+        if (strcmp( argv[a], "--cli:i" ) == 0)
+        {
+            i_cli();
+            return EXIT_SUCCESS;
+        }
+    }
+
     bist_bat();
     bist_cli();
     bist_profile();

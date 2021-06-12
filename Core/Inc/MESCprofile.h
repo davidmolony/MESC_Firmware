@@ -68,6 +68,8 @@ typedef struct ProfileHeader ProfileHeader;
 
 #define PROFILE_HEADER_SIZE (sizeof(ProfileHeader))
 
+static_assert( ((PROFILE_HEADER_SIZE % 16) == 0), "PROFILE_HEADER_SIZE must be 16-byte aligned" );
+
 enum ProfileEntryMap
 {
     // Access flags
@@ -115,6 +117,8 @@ typedef struct ProfileEntry ProfileEntry;
 
 #define PROFILE_ENTRY_SIZE (sizeof(ProfileEntry))
 
+static_assert( ((PROFILE_ENTRY_SIZE % 16) == 0), "PROFILE_ENTRY_SIZE must be 16-byte aligned" );
+
 enum ProfileStatus
 {
     PROFILE_STATUS_UNKNOWN,                 // Result unknown
@@ -130,6 +134,9 @@ enum ProfileStatus
 
     PROFILE_STATUS_ERROR_ENTRY_ALLOC,       // No free entries available
     PROFILE_STATUS_ERROR_ENTRY_READONLY,    // Cannot modify read-only entry
+
+    PROFILE_STATUS_ERROR_ENTRY_0,           // Additional error indicator
+    PROFILE_STATUS_ERROR_ENTRY_N = (PROFILE_STATUS_ERROR_ENTRY_0 + PROFILE_HEADER_ENTRIES - 1),
 
     PROFILE_STATUS_ERROR_HEADER_SIGNATURE,  // Invalid header signature
     PROFILE_STATUS_ERROR_HEADER_SIZE,       // Invalid header size
@@ -162,9 +169,11 @@ enum ProfileStatus
 
 typedef enum ProfileStatus ProfileStatus;
 
+#define PROFILE_STATUS_ERROR_ENTRY(e) ((ProfileStatus)(PROFILE_STATUS_ERROR_ENTRY_0 + (e)))
+
 void profile_configure_storage_io(
-    ProfileStatus (* const read)( void * buffer, uint32_t const length ),
-    ProfileStatus (* const write)( void const * buffer, uint32_t const length ) );
+    ProfileStatus (* const read)(  void       * buffer, uint32_t const address, uint32_t const length ),
+    ProfileStatus (* const write)( void const * buffer, uint32_t const address, uint32_t const length ) );
 
 ProfileStatus profile_init( void );
 
@@ -176,15 +185,15 @@ void profile_get_last(
 
 ProfileStatus profile_alloc_entry(
     char const * name, uint32_t const signature,
-    void const ** const buffer, uint32_t ** const length );
+    void * const buffer, uint32_t const * const length );
 
 ProfileStatus profile_get_entry(
     char const * name, uint32_t const signature,
-    void const ** const buffer, uint32_t * const length );
+    void * const buffer, uint32_t * const length );
 
 ProfileStatus profile_put_entry(
     char const * name, uint32_t const signature,
-    void const * const buffer, uint32_t const length );
+    void * const buffer, uint32_t * const length );
 
 ProfileStatus profile_del_entry(
     char const * name, uint32_t const signature );

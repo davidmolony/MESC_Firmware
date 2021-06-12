@@ -37,6 +37,9 @@ SPEEDProfile const * speed_profile = NULL;
 
 static float rev_speed; // Speedometer units per motor revolution
 
+static float const * speed_drev = NULL; // Motor revolutions (i.e. 0..1 is 0..2Pi radians)
+static float const * speed_dt   = NULL; // time (seconds) // TODO
+
 void speed_init( SPEEDProfile const * const profile )
 {
     speed_profile = profile;
@@ -44,15 +47,16 @@ void speed_init( SPEEDProfile const * const profile )
     float const gear_ratio = (float)speed_profile->gear_ratio.motor / (float)speed_profile->gear_ratio.wheel;
     float const wheel_circumference = (speed_profile->wheel.diameter * CONST_PI_F);
 
-    rev_speed = (gear_ratio * wheel_circumference * CONST_SECONDS_PER_HOUR_F);
+    rev_speed = (gear_ratio * wheel_circumference * CONST_SECONDS_PER_HOUR_F) / speed_profile->wheel.conversion;
+}
+
+void speed_register_vars( float const * const drev, float const * const dt )
+{
+    speed_drev = drev;
+    speed_dt   = dt;
 }
 
 float speed_get( void )
 {
-    float const drev = 0.0f; // revolutions (i.e. 0..1 is 0..2Pi radians)
-    float const dt   = 0.0f; // time (seconds) // TODO
-
-    float const v = ((drev * rev_speed) / dt); // speedometer units
-
-    return v;
+    return ((*speed_drev * rev_speed) / *speed_dt);
 }

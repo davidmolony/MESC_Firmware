@@ -37,8 +37,9 @@ void bist_bat( void )
 
     BATProfile bp;
 
-    bp.cell.Vmax = 4.2f; // V
-    bp.cell.Cmax = 4.2f; // Ah
+    bp.cell.Imax = 30.0f; // A
+    bp.cell.Vmax =  4.2f; // V
+    bp.cell.Cmax =  4.2f; // Ah
 #if BAT_VTOP
     bp.cell.Vtop = 4.05f; // V
     bp.cell.Ctop[0] = 4.0f; // Ah
@@ -52,6 +53,22 @@ void bist_bat( void )
 
     bp.cell.Vmin = 2.8f; // V
 
+    bp.battery.Imax =  50.0f; // A (fuse)
+    bp.battery.Pmax = 250.0f; // W
+
+    bp.battery.parallel =  2;
+    bp.battery.series   = 20;
+
+    bp.battery.ESR  = ((0.030f/*Cell ESR*/ * (float)bp.battery.series) / (float)bp.battery.parallel);
+
+    float const Vmax = bp.cell.Vmax * (float)bp.battery.series;
+    float const Vdel =        0.05f * (float)bp.battery.series;
+    float const Vlow = bp.cell.Vlow * (float)bp.battery.series;
+
+    float const Cmax = bp.cell.Cmax * (float)bp.battery.series * (float)bp.battery.parallel;
+    float const Cdel =         0.5f * (float)bp.battery.series * (float)bp.battery.parallel;
+    float const Clow = bp.cell.Clow * (float)bp.battery.series * (float)bp.battery.parallel;
+
     for ( BATDisplay d = BAT_DISPLAY_PERCENT; (d <= BAT_DISPLAY_AMPHOUR); ++d )
     {
         fprintf( stdout, "Display %d\n", d );
@@ -60,7 +77,7 @@ void bist_bat( void )
 
         bat_init( &bp ); // NOTE calls bat_notify_profile_update
 
-        for ( float V = bp.cell.Vmin; (V < bp.cell.Vmax); V = V + 0.05f )
+        for ( float V = Vlow; (V <= Vmax); V = V + Vdel )
         {
             float const C = bat_get_charge_level( V, 0.0f );
 
@@ -70,7 +87,7 @@ void bist_bat( void )
                     fprintf( stdout, "%3.2f V => %3.0f %%\n", V, C );
                     break;
                 case BAT_DISPLAY_AMPHOUR:
-                    fprintf( stdout, "%3.2f V => %1.1f Ah\n", V, C );
+                    fprintf( stdout, "%3.2f V => %5.1f Ah\n", V, C );
                     break;
             }
         }
@@ -83,15 +100,15 @@ void bist_bat( void )
                 {
                     float const V = bat_get_level_voltage( L );
 
-                    fprintf( stdout, "%3.0f %% => %3.2f V\n", L, V );
+                    fprintf( stdout, "%3.0f %% => %5.2f V\n", L, V );
                 }
                 break;
             case BAT_DISPLAY_AMPHOUR:
-                for ( float C = 0.0f; (C <= bp.cell.Cmax); C = C + 0.5f )
+                for ( float C = Clow; (C <= Cmax); C = C + Cdel )
                 {
                     float const V = bat_get_level_voltage( C );
 
-                    fprintf( stdout, "%1.1f Ah => %3.2f V\n", C, V );
+                    fprintf( stdout, "%5.1f Ah => %5.2f V\n", C, V );
                 }
                 break;
         }

@@ -42,6 +42,7 @@
 #include <string.h>
 
 #define ID_ENTRY(id) { id, #id }
+#define ID_INDEX(id,n) { id(0x##n), #id "_" #n }
 
 static char const * getProfileStatusName( ProfileStatus const ps )
 {
@@ -64,6 +65,39 @@ static char const * getProfileStatusName( ProfileStatus const ps )
 
         ID_ENTRY( PROFILE_STATUS_ERROR_ENTRY_ALLOC      ),
         ID_ENTRY( PROFILE_STATUS_ERROR_ENTRY_READONLY   ),
+
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 00        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 01        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 02        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 03        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 04        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 05        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 06        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 07        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 08        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 09        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 0A        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 0B        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 0C        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 0D        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 0E        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 0F        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 10        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 11        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 12        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 13        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 14        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 15        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 16        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 17        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 18        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 19        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 1A        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 1B        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 1C        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 1D        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 1E        ),
+        ID_INDEX( PROFILE_STATUS_ERROR_ENTRY, 1F        ),
 
         ID_ENTRY( PROFILE_STATUS_ERROR_HEADER_SIGNATURE ),
         ID_ENTRY( PROFILE_STATUS_ERROR_HEADER_SIZE      ),
@@ -109,6 +143,7 @@ struct DemoEntry
 typedef struct DemoEntry DemoEntry;
 
 static DemoEntry demo_entry;
+static uint32_t demo_entry_size = sizeof(demo_entry);
 
 static void * read_buffer = NULL;
 static void const * write_buffer = NULL;
@@ -139,7 +174,7 @@ static void apply_corruption()
 
 #define revoke_corruption apply_corruption
 
-static ProfileStatus read( void * data, uint32_t const length )
+static ProfileStatus read( void * data, uint32_t const address, uint32_t const length )
 {
     read_buffer = data;
 
@@ -152,6 +187,8 @@ static ProfileStatus read( void * data, uint32_t const length )
 
     if (f != NULL)
     {
+        fseek( f, address, SEEK_SET );
+
         size_t const len = fread( data, 1, length, f );
 
         fclose( f );
@@ -189,7 +226,7 @@ static ProfileStatus read( void * data, uint32_t const length )
     }
 }
 
-static ProfileStatus write( void const * data, uint32_t const length )
+static ProfileStatus write( void const * data, uint32_t const address, uint32_t const length )
 {
     write_buffer = data;
 
@@ -197,11 +234,13 @@ static ProfileStatus write( void const * data, uint32_t const length )
 
     if (use_mem_not_fs == 0)
     {
-        f = fopen( "FLASH", "wb" );
+        f = fopen( "FLASH", "r+" );
     }
 
     if (f != NULL)
     {
+        fseek( f, address, SEEK_SET );
+
         size_t const len = fwrite( data, 1, length, f );
 
         fclose( f );
@@ -305,7 +344,11 @@ void bist_profile( void )
 
     ret = profile_init();
     profile_get_last( &s, &h, &e, & o );
-    fprintf( stdout, "INFO: Load S:%d %s H:%d %s E:%d %s O:%d %s\n",
+    fprintf( stdout, "INFO: Load\n"
+                     "    S:%d %s\n"
+                     "    H:%d %s\n"
+                     "    E:%d %s\n"
+                     "    O:%d %s\n",
         s, getProfileStatusName(s),
         h, getProfileStatusName(h),
         e, getProfileStatusName(e),
@@ -313,17 +356,25 @@ void bist_profile( void )
 
     ret = profile_commit();
     profile_get_last( &s, &h, &e, & o );
-    fprintf( stdout, "INFO: Store (no update) S:%d %s H:%d %s E:%d %s O:%d %s\n",
+    fprintf( stdout, "INFO: Store (no update)\n"
+                     "    S:%d %s\n"
+                     "    H:%d %s\n"
+                     "    E:%d %s\n"
+                     "    O:%d %s\n",
         s, getProfileStatusName(s),
         h, getProfileStatusName(h),
         e, getProfileStatusName(e),
         o, getProfileStatusName(o)  );
 
-    profile_put_entry( "demo_entry", 0x12345678, &demo_entry, sizeof(demo_entry) );
+    profile_put_entry( "demo_entry", 0x12345678, &demo_entry, &demo_entry_size );
 
     ret = profile_commit();
     profile_get_last( &s, &h, &e, & o );
-    fprintf( stdout, "INFO: Store (update) S:%d %s H:%d %s E:%d %s O:%d %s\n",
+    fprintf( stdout, "INFO: Store (update)\n"
+                     "    S:%d %s\n"
+                     "    H:%d %s\n"
+                     "    E:%d %s\n"
+                     "    O:%d %s\n",
         s, getProfileStatusName(s),
         h, getProfileStatusName(h),
         e, getProfileStatusName(e),
@@ -342,28 +393,44 @@ void bist_profile( void )
         switch (ret)
         {
             case PROFILE_STATUS_INIT_SUCCESS_DEFAULT:
-                fprintf( stdout, "INFO: PROFILE_STATUS_INIT_SUCCESS_DEFAULT S:%d %s H:%d %s E:%d %s O:%d %s\n",
+                fprintf( stdout, "INFO: PROFILE_STATUS_INIT_SUCCESS_DEFAULT\n"
+                                 "    S:%d %s\n"
+                                 "    H:%d %s\n"
+                                 "    E:%d %s\n"
+                                 "    O:%d %s\n",
                     s, getProfileStatusName(s),
                     h, getProfileStatusName(h),
                     e, getProfileStatusName(e),
                     o, getProfileStatusName(o) );
                 break;
             case PROFILE_STATUS_INIT_SUCCESS_LOADED:
-                fprintf( stdout, "INFO: PROFILE_STATUS_INIT_SUCCESS_LOADED S:%d %s H:%d %s E:%d %s O:%d %s\n",
+                fprintf( stdout, "INFO: PROFILE_STATUS_INIT_SUCCESS_LOADED\n"
+                                 "    S:%d %s\n"
+                                 "    H:%d %s\n"
+                                 "    E:%d %s\n"
+                                 "    O:%d %s\n",
                     s, getProfileStatusName(s),
                     h, getProfileStatusName(h),
                     e, getProfileStatusName(e),
                     o, getProfileStatusName(o) );
                 break;
             case PROFILE_STATUS_INIT_FALLBACK_DEFAULT:
-                fprintf( stdout, "INFO: PROFILE_STATUS_INIT_FALLBACK_DEFAULT S:%d %s H:%d %s E:%d %s O:%d %s\n",
+                fprintf( stdout, "INFO: PROFILE_STATUS_INIT_FALLBACK_DEFAULT\n"
+                                 "    S:%d %s\n"
+                                 "    H:%d %s\n"
+                                 "    E:%d %s\n"
+                                 "    O:%d %s\n",
                     s, getProfileStatusName(s),
                     h, getProfileStatusName(h),
                     e, getProfileStatusName(e),
                     o, getProfileStatusName(o) );
                 break;
             default:
-                fprintf( stdout, "ERROR: S:%d %s H:%d %s E:%d %s O:%d %s\n",
+                fprintf( stdout, "ERROR:\n"
+                                 "    S:%d %s\n"
+                                 "    H:%d %s\n"
+                                 "    E:%d %s\n"
+                                 "    O:%d %s\n",
                     s, getProfileStatusName(s),
                     h, getProfileStatusName(h),
                     e, getProfileStatusName(e),
@@ -389,11 +456,12 @@ void bist_profile( void )
     }
     else
     {
-        BATProfile bp;
+        static BATProfile bp;
+        static uint32_t bp_size = sizeof(bp);
         (void)bp;
         fprintf( stdout, "INFO: Adding Battery entry\n" );
 
-        ret = profile_put_entry( "MESC_BAT", BAT_PROFILE_SIGNATURE, &bp, sizeof(bp) );
+        ret = profile_put_entry( "MESC_BAT", BAT_PROFILE_SIGNATURE, &bp, &bp_size );
     }
 
     if (profile_get_entry( "MESC_SPEED", SPEED_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
@@ -404,11 +472,12 @@ void bist_profile( void )
     }
     else
     {
-        SPEEDProfile sp;
+        static SPEEDProfile sp;
+        static uint32_t sp_size = sizeof(sp);
         (void)sp;
         fprintf( stdout, "INFO: Adding Speed entry\n" );
 
-        ret = profile_put_entry( "MESC_SPEED", SPEED_PROFILE_SIGNATURE, &sp, sizeof(sp) );
+        ret = profile_put_entry( "MESC_SPEED", SPEED_PROFILE_SIGNATURE, &sp, &sp_size );
     }
 
     if (profile_get_entry( "MESC_TEMP", TEMP_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
@@ -419,11 +488,12 @@ void bist_profile( void )
     }
     else
     {
-        TEMPProfile tp;
+        static TEMPProfile tp;
+        static uint32_t tp_size = sizeof(tp);
         (void)tp;
         fprintf( stdout, "INFO: Adding Temperature entry\n" );
 
-        ret = profile_put_entry( "MESC_TEMP", TEMP_PROFILE_SIGNATURE, &tp, sizeof(tp) );
+        ret = profile_put_entry( "MESC_TEMP", TEMP_PROFILE_SIGNATURE, &tp, &tp_size );
     }
 
     if (profile_get_entry( "MESC_UI", UI_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
@@ -434,11 +504,12 @@ void bist_profile( void )
     }
     else
     {
-        UIProfile up;
+        static UIProfile up;
+        static uint32_t up_size = sizeof(up);
         (void)up;
         fprintf( stdout, "INFO: Adding UI entry\n" );
 
-        ret = profile_put_entry( "MESC_UI", UI_PROFILE_SIGNATURE, &up, sizeof(up) );
+        ret = profile_put_entry( "MESC_UI", UI_PROFILE_SIGNATURE, &up, &up_size );
     }
 
     reset();

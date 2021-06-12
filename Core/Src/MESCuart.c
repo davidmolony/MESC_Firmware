@@ -43,6 +43,11 @@ extern uint8_t b_read_flash;
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
+    if (UART_rx_buffer[0] == '\r')
+    {
+        UART_rx_buffer[0] = '\n';
+    }
+
     cli_process( UART_rx_buffer[0] );
     /*
     Commands may be executed here
@@ -52,18 +57,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 static void cmd_hall_dec( void )
 {
-	for (int i = 0; i < 6; i++)
-	{
-	    foc_vars.hall_table[i][2] -= 100;
-	}
+    for (int i = 0; i < 6; i++)
+    {
+        foc_vars.hall_table[i][2] -= 100;
+    }
 }
 
 static void cmd_hall_inc( void )
 {
-	for (int i = 0; i < 6; i++)
-	{
-	    foc_vars.hall_table[i][2] += 100;
-	}
+    for (int i = 0; i < 6; i++)
+    {
+        foc_vars.hall_table[i][2] += 100;
+    }
 }
 
 static void cmd_hello( void )
@@ -100,12 +105,12 @@ void uart_init( void )
     cli_register_variable_rw( "Iq"        , &foc_vars.Idq_req[1]                   , sizeof(foc_vars.Idq_req[1]                   ), CLI_VARIABLE_FLOAT );
     cli_register_variable_ro( "Vbus"      , &measurement_buffers.ConvertedADC[0][1], sizeof(measurement_buffers.ConvertedADC[0][1]), CLI_VARIABLE_FLOAT );
 
-	cli_register_function( "hall_dec", cmd_hall_dec );
-	cli_register_function( "hall_inc", cmd_hall_inc );
-    cli_register_function( "hello      ", cmd_hello           );
-    cli_register_function( "param_setup", cmd_parameter_setup );
-    cli_register_function( "reset"      , cmd_reset           );
-    cli_register_function( "test"       , cmd_test            );
+    cli_register_function( "hall_dec"     , cmd_hall_dec        );
+    cli_register_function( "hall_inc"     , cmd_hall_inc        );
+    cli_register_function( "hello"        , cmd_hello           );
+    cli_register_function( "param_setup"  , cmd_parameter_setup );
+    cli_register_function( "reset"        , cmd_reset           );
+    cli_register_function( "test"         , cmd_test            );
 
     cli_register_io( &huart3, (int(*)(void*,void*,uint16_t))HAL_UART_Transmit_DMA );
 }

@@ -38,9 +38,9 @@ struct SPEEDProfile
 {
     struct
     {
-    uint32_t    Imax;       // Amp
-    uint32_t    Vmax;       // Volt
-    uint32_t    Pmax;       // Watt
+    float       Imax;       // Amp
+    float       Vmax;       // Volt
+    float       Pmax;       // Watt
     uint32_t    RPMmax;
     uint8_t     pole_pairs;
     uint8_t     direction;
@@ -72,6 +72,8 @@ struct SPEEDProfile
 typedef struct SPEEDProfile SPEEDProfile;
 
 void speed_init( SPEEDProfile const * const profile );
+
+void speed_register_vars( float const * const drev, float const * const dt );
 
 float speed_get( void );
 

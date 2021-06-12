@@ -48,6 +48,22 @@ enum UIProfileType
 
 typedef enum UIProfileType UIProfileType;
 
+enum UIResponse
+{
+    UI_RESPONSE_LINEAR,
+    UI_RESPONSE_LOG,
+};
+
+typedef enum UIResponse UIResponse;
+
+enum UIActivation
+{
+    UI_ACTIVATION_LEVEL,
+    UI_ACTIVATION_EDGE,
+};
+
+typedef enum UIActivation UIActivation;
+
 struct UIProfile
 {
     UIProfileType   type;
@@ -57,23 +73,40 @@ struct UIProfile
     // Inputs
     struct
     {
+    uint32_t        adc_min;
+    uint32_t        adc_max;
+    UIResponse      response;
     }               throttle;
 
     struct
     {
+    uint32_t        adc_min;
+    uint32_t        adc_max;
+    UIResponse      response;
     }               brake;
 
     struct
     {
+    uint32_t        interface;
+    uint32_t        address;
+    uint32_t        identifier;
     }               button;
 
     // Outputs
-        struct
+    struct
     {
+    uint32_t        interface;
+    uint32_t        address;
+    uint32_t        identifier;
+    UIActivation    activation;
     }               indicator;
 
     struct
     {
+    uint32_t        interface;
+    uint32_t        address;
+    uint32_t        width;
+    uint32_t        height;
     }               screen;
 
     }               desc;

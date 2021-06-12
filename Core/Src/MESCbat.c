@@ -58,10 +58,10 @@ void bat_notify_profile_update( void )
     switch (bat_profile->display)
     {
         case BAT_DISPLAY_PERCENT:
-            Cscale = 100.0f / (bat_profile->cell.Cmax - bat_profile->cell.Clow);
+            Cscale = (100.0f / (bat_profile->cell.Cmax - bat_profile->cell.Clow));
             break;
         case BAT_DISPLAY_AMPHOUR:
-            Cscale = bat_profile->cell.Cmax / (bat_profile->cell.Cmax - bat_profile->cell.Clow);
+            Cscale = ((float)bat_profile->battery.series * (float)bat_profile->battery.parallel);
             break;
     }
 }
@@ -85,7 +85,7 @@ float battery_get_current(
 float bat_get_charge_level( float const V, float const I)
 {
     float const Vbat = (V + (I * bat_profile->battery.ESR));
-    float const Vcell = (Vbat / bat_profile->battery.series);
+    float const Vcell = (Vbat / (float)bat_profile->battery.series);
     float dV;
     float  C;
 
@@ -95,7 +95,7 @@ float bat_get_charge_level( float const V, float const I)
     }
     else if (Vcell >= bat_profile->cell.Vmax)
     {
-        C = bat_profile->cell.Cmax;
+        C = (bat_profile->cell.Cmax - bat_profile->cell.Clow);
     }
     else
     {
@@ -127,17 +127,29 @@ float bat_get_charge_level( float const V, float const I)
 
 float bat_get_level_voltage( float const L_C )
 {
-    float Lrem = L_C;
-    float Lmid = (bat_profile->cell.Cmid - bat_profile->cell.Clow) * Cscale;
+    float const Lrem = bat_profile->cell.Clow + (L_C / Cscale);
+    float V;
 
-    if (Lrem <= Lmid)
+    if (Lrem <= bat_profile->cell.Clow)
     {
-        return (((Lrem * (bat_profile->cell.Vmid - bat_profile->cell.Vlow)) / Lmid) + bat_profile->cell.Vlow);
+        V = bat_profile->cell.Vlow;
+    }
+    else if (Lrem <= bat_profile->cell.Cmid)
+    {
+        float const dL = (Lrem - bat_profile->cell.Clow);
+
+        V = (dL / grad_lower) + bat_profile->cell.Vlow;
+    }
+    else if (Lrem <= bat_profile->cell.Cmax)
+    {
+        float const dL = (Lrem - bat_profile->cell.Cmid);
+
+        V = (dL / grad_upper) + bat_profile->cell.Vmid;
+    }
+    else
+    {
+        V = bat_profile->cell.Vmax;
     }
 
-    Lrem = Lrem - Lmid;
-
-    float Ltop = (bat_profile->cell.Cmax - bat_profile->cell.Cmid) * Cscale;
-
-    return (((Lrem * (bat_profile->cell.Vmax - bat_profile->cell.Vmid)) / Ltop) + bat_profile->cell.Vmid);
+    return (V * (float)bat_profile->battery.series);
 }

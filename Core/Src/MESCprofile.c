@@ -40,16 +40,17 @@
 
 static MESCFingerprint const fingerprint = MESC_FINGERPRINT;
 
-static union
+static struct
 {
-    struct
-    {
     ProfileHeader   header;
     ProfileEntry    entry[PROFILE_HEADER_ENTRIES];
-    uint8_t         data;
-    }               layout;
-    uint8_t         raw;
-}   profile_image;
+}   profile_stub;
+
+static struct
+{
+    void           * buffer;
+    uint32_t const * length;
+}   profile_entry[PROFILE_HEADER_ENTRIES];
 
 static uint8_t profile_modified = 0;
 
@@ -87,26 +88,26 @@ void profile_get_last(
 
 static void profile_init_default( void )
 {
-    memset( &profile_image, 0, sizeof(profile_image) );
+    memset( &profile_stub, 0, sizeof(profile_stub) );
 
-    profile_image.layout.header.signature      = PROFILE_SIGNATURE;
+    profile_stub.header.signature      = PROFILE_SIGNATURE;
 
-    profile_image.layout.header.size           = PROFILE_HEADER_SIZE;
-    profile_image.layout.header.version_major  = PROFILE_VERSION_MAJOR;
-    profile_image.layout.header.version_minor  = PROFILE_VERSION_MINOR;
+    profile_stub.header.size           = PROFILE_HEADER_SIZE;
+    profile_stub.header.version_major  = PROFILE_VERSION_MAJOR;
+    profile_stub.header.version_minor  = PROFILE_VERSION_MINOR;
 
-    profile_image.layout.header.checksum       = PROFILE_SIGNATURE;
+    profile_stub.header.checksum       = PROFILE_SIGNATURE;
 
-    profile_image.layout.header.image_checksum = fnv1a_init();
+    profile_stub.header.image_checksum = fnv1a_init();
 
-    profile_image.layout.header.checksum       = fnv1a_data( &profile_image.layout.header, PROFILE_HEADER_SIZE );
+    profile_stub.header.checksum       = fnv1a_data( &profile_stub.header, PROFILE_HEADER_SIZE );
 
     uint32_t blk = 0;
     uint32_t fld = 0;
 
     for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
     {
-        profile_image.layout.header.entry_map[blk] |= (PROFILE_ENTRY_FREE << fld);
+        profile_stub.header.entry_map[blk] |= (PROFILE_ENTRY_FREE << fld);
 
         fld = fld + PROFILE_ENTRY_BITS;
 
@@ -117,7 +118,7 @@ static void profile_init_default( void )
         }
     }
 
-    memcpy( &profile_image.layout.header.fingerprint, &fingerprint, sizeof(fingerprint) );
+    memcpy( &profile_stub.header.fingerprint, &fingerprint, sizeof(fingerprint) );
 
     profile_status_other = PROFILE_STATUS_INIT_SUCCESS_DEFAULT;
 }
@@ -165,7 +166,7 @@ static ProfileStatus profile_header_validate( ProfileHeader * const header )
 
     uint32_t const image_length = header->image_length;
 
-    if (image_length > (4096/*TODO*/ - PROFILE_HEADER_SIZE))
+    if (image_length == 0)
     {
         return PROFILE_STATUS_ERROR_IMAGE_LENGTH;
     }
@@ -181,92 +182,72 @@ static ProfileStatus profile_header_validate( ProfileHeader * const header )
     return PROFILE_STATUS_SUCCESS;
 }
 
-static ProfileStatus profile_entry_validate( ProfileHeader * const header, ProfileEntry * entry )
+static ProfileStatus profile_entry_validate( ProfileEntry * const entry )
 {
-    uint32_t blk = 0;
-    uint32_t fld = 0;
-
-    for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
+    if (entry->signature != PROFILE_ENTRY_SIGNATURE)
     {
-        ProfileEntryMap const map = (ProfileEntryMap)((header->entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
+        return PROFILE_STATUS_ERROR_ENTRY_SIGNATURE;
+    }
 
-        fld = fld + PROFILE_ENTRY_BITS;
+    if (entry->size != PROFILE_ENTRY_SIZE)
+    {
+        return PROFILE_STATUS_ERROR_ENTRY_SIZE;
+    }
 
-        if (fld == BITS_PER_BYTE)
-        {
-            fld = 0;
-            blk++;
-        }
+    if (entry->name_length > PROFILE_ENTRY_MAX_NAME_LENGTH)
+    {
+        return PROFILE_STATUS_ERROR_NAME_LENGTH;
+    }
 
-        if ((map & PROFILE_ENTRY_R) != PROFILE_ENTRY_R)
-        {
-            continue;
-        }
+    if (entry->data_signature == 0)
+    {
+        return PROFILE_STATUS_ERROR_DATA_SIGNATURE;
+    }
 
-        if (entry[i].signature != PROFILE_ENTRY_SIGNATURE)
-        {
-            return PROFILE_STATUS_ERROR_ENTRY_SIGNATURE;
-        }
+    if  (
+            (entry->data_length == 0)
+        ||  ((entry->data_offset & 3) != 0) // align 4
+        ||  (entry->data_offset < PROFILE_HEADER_SIZE)
+        )
+    {
+        return PROFILE_STATUS_ERROR_DATA_LENGTH;
+    }
 
-        if (entry[i].size != PROFILE_ENTRY_SIZE)
-        {
-            return PROFILE_STATUS_ERROR_ENTRY_SIZE;
-        }
-
-        if (entry[i].name_length > PROFILE_ENTRY_MAX_NAME_LENGTH)
-        {
-            return PROFILE_STATUS_ERROR_NAME_LENGTH;
-        }
-
-        if (entry[i].data_signature == 0)
-        {
-            return PROFILE_STATUS_ERROR_DATA_SIGNATURE;
-        }
-
-        if  (
-                (entry[i].data_length == 0)
-            ||  ((entry[i].data_offset & 3) != 0) // align 4
-            ||  (entry[i].data_offset < PROFILE_HEADER_SIZE)
-            ||  ((entry[i].data_offset + entry[i].data_length) > 4096/*TODO*/)
-            )
-        {
-            return PROFILE_STATUS_ERROR_DATA_LENGTH;
-        }
-
-        if  (
-                (entry[i]._zero_signature != 0)
-            ||  (entry[i]._zero_name != 0)
-            )
-        {
-            return PROFILE_STATUS_ERROR_ENTRY_ZEROS;
-        }
+    if  (
+            (entry->_zero_signature != 0)
+        ||  (entry->_zero_name != 0)
+        )
+    {
+        return PROFILE_STATUS_ERROR_ENTRY_ZEROS;
     }
 
     return PROFILE_STATUS_SUCCESS;
 }
 
-static ProfileStatus profile_read_noop( void * data, uint32_t const length )
+static ProfileStatus profile_read_noop( void * data, uint32_t const address, uint32_t const length )
 {
     profile_status_storage = PROFILE_STATUS_UNKNOWN;
     return PROFILE_STATUS_ERROR_STORAGE_READ;
     (void)data;
+    (void)address;
     (void)length;
 }
 
-static ProfileStatus profile_write_noop( void const * data, uint32_t const length )
+static ProfileStatus profile_write_noop( void const * data, uint32_t const address, uint32_t const length )
 {
     profile_status_storage = PROFILE_STATUS_UNKNOWN;
     return PROFILE_STATUS_ERROR_STORAGE_WRITE;
     (void)data;
+    (void)address;
     (void)length;
 }
 
-static ProfileStatus (* profile_storage_read)(  void       *, uint32_t const ) = profile_read_noop;
-static ProfileStatus (* profile_storage_write)( void const *, uint32_t const ) = profile_write_noop;
+static ProfileStatus (* profile_storage_read)(  void       *, uint32_t const , uint32_t const ) = profile_read_noop;
+static ProfileStatus (* profile_storage_write)( void const *, uint32_t const , uint32_t const ) = profile_write_noop;
 
 void profile_configure_storage_io(
-    ProfileStatus (* const read )( void       * buffer, uint32_t const length ),
-    ProfileStatus (* const write)( void const * buffer, uint32_t const length ) )
+    ProfileStatus (* const read )( void       * buffer, uint32_t const address, uint32_t const length ),
+    ProfileStatus (* const write)( void const * buffer, uint32_t const address, uint32_t const length ) )
 {
     if (read != NULL)
     {
@@ -281,7 +262,7 @@ void profile_configure_storage_io(
 
 static void profile_cli_info( void )
 {
-    ProfileStatus const res = profile_header_validate( &profile_image.layout.header );
+    ProfileStatus const res = profile_header_validate( &profile_stub.header );
 
     if (res != PROFILE_STATUS_SUCCESS )
     {
@@ -292,9 +273,9 @@ static void profile_cli_info( void )
         cli_reply(
             "%s v%" PRIu8 "." PRIu8 "\n"
             "%s (",
-            (char const *)&profile_image.layout.header.signature,
-            profile_image.layout.header.version_major, profile_image.layout.header.version_minor,
-            (char const *)&profile_image.layout.header.fingerprint );
+            (char const *)&profile_stub.header.signature,
+            profile_stub.header.version_major, profile_stub.header.version_minor,
+            (char const *)&profile_stub.header.fingerprint );
 
         for ( uint32_t i = MESC_GITHASH_WORDS; i > 0; )
         {
@@ -302,20 +283,20 @@ static void profile_cli_info( void )
 
             cli_reply(
                 "%08" PRIX32,
-                profile_image.layout.header.fingerprint.githash[i] );
+                profile_stub.header.fingerprint.githash[i] );
         }
 
         cli_reply(
             "\n"
             "Size %" PRIu32 "\n",
-            profile_image.layout.header.image_length );
+            profile_stub.header.image_length );
 
         uint32_t blk = 0;
         uint32_t fld = 0;
 
         for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
         {
-            ProfileEntryMap const map = (ProfileEntryMap)((profile_image.layout.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
+            ProfileEntryMap const map = (ProfileEntryMap)((profile_stub.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
 
             fld = fld + PROFILE_ENTRY_BITS;
 
@@ -351,19 +332,23 @@ static void profile_cli_info( void )
             cli_reply(
                 "    %s (%s %08" PRIX32 ")\n"
                 "    %08" PRIX32 "-%08" PRIX32 "\n",
-                profile_image.layout.entry[i].signature,
-                profile_image.layout.entry[i].name, profile_image.layout.entry[i].data_signature,
-                profile_image.layout.entry[i].data_offset, profile_image.layout.entry[i].data_length );
+                profile_stub.entry[i].signature,
+                profile_stub.entry[i].name, profile_stub.entry[i].data_signature,
+                profile_stub.entry[i].data_offset, profile_stub.entry[i].data_length );
         }
     }
 }
 
 ProfileStatus profile_init( void )
 {
-    profile_status_storage = profile_storage_read( &profile_image, sizeof(profile_image) );
+    uint32_t address = 0;
+
+    profile_status_storage = profile_storage_read( &profile_stub.header, address, sizeof(profile_stub.header) );
     profile_status_header  = PROFILE_STATUS_UNKNOWN;
     profile_status_entry   = PROFILE_STATUS_UNKNOWN;
     profile_status_other   = PROFILE_STATUS_UNKNOWN;
+
+    address = address + sizeof(profile_stub.header);
 
     cli_register_function( "info", profile_cli_info );
 
@@ -373,34 +358,44 @@ ProfileStatus profile_init( void )
         return PROFILE_STATUS_INIT_FALLBACK_DEFAULT;
     }
 
-    if (profile_image.layout.header.signature != PROFILE_SIGNATURE)
-    {
-        if (profile_image.layout.header.signature == 0)
-        {
-            profile_init_default();
-            return PROFILE_STATUS_INIT_SUCCESS_DEFAULT;
-        }
-        else
-        {
-            profile_init_default();
-            return PROFILE_STATUS_INIT_FALLBACK_DEFAULT;
-        }
-    }
+    profile_status_header = profile_header_validate( &profile_stub.header );
 
-    profile_status_header = profile_header_validate( &profile_image.layout.header );
-
-    if (profile_status_header != PROFILE_STATUS_SUCCESS)
+    if (profile_stub.header.signature != PROFILE_STATUS_SUCCESS)
     {
         profile_init_default();
         return PROFILE_STATUS_INIT_FALLBACK_DEFAULT;
     }
 
-    profile_status_entry = profile_entry_validate( &profile_image.layout.header, &profile_image.layout.entry[0] );
+    uint32_t blk = 0;
+    uint32_t fld = 0;
 
-    if (profile_status_entry != PROFILE_STATUS_SUCCESS)
+    for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
     {
-        profile_init_default();
-        return PROFILE_STATUS_INIT_FALLBACK_DEFAULT;
+        ProfileEntryMap const map = (ProfileEntryMap)((profile_stub.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
+
+        if ((map &PROFILE_ENTRY_R) == PROFILE_ENTRY_R)
+        {
+            profile_status_storage = profile_storage_read( &profile_stub.entry[i], address, sizeof(profile_stub.entry[i]) );
+
+            if (profile_status_storage != PROFILE_STATUS_SUCCESS)
+            {
+                profile_status_other = PROFILE_STATUS_ERROR_ENTRY(i);
+                profile_init_default();
+                return PROFILE_STATUS_INIT_FALLBACK_DEFAULT;
+            }
+
+            profile_status_entry = profile_entry_validate( &profile_stub.entry[i] );
+        }
+
+        address = address + sizeof(ProfileEntry);
+
+        fld = fld + PROFILE_ENTRY_BITS;
+
+        if (fld == BITS_PER_BYTE)
+        {
+            fld = 0;
+            blk++;
+        }
     }
 
     return PROFILE_STATUS_INIT_SUCCESS_LOADED;
@@ -408,7 +403,7 @@ ProfileStatus profile_init( void )
 
 ProfileStatus profile_alloc_entry(
     char const * name, uint32_t const signature,
-    void const ** const buffer, uint32_t ** const length )
+    void * const buffer, uint32_t const * const length )
 {
     uint32_t blk = 0;
     uint32_t fld = 0;
@@ -422,7 +417,31 @@ ProfileStatus profile_alloc_entry(
 
     for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
     {
-        ProfileEntryMap const map = (ProfileEntryMap)((profile_image.layout.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
+        ProfileEntryMap const map = (ProfileEntryMap)((profile_stub.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
+
+        if (map == PROFILE_ENTRY_FREE)
+        {
+            profile_stub.header.entry_map[blk] &= ~(PROFILE_ENTRY_MASK << fld);
+            profile_stub.header.entry_map[blk] |=  (PROFILE_ENTRY_USED << fld);
+
+            memset( &profile_stub.entry[i], 0, PROFILE_ENTRY_SIZE );
+
+            profile_stub.entry[i].signature = PROFILE_ENTRY_SIGNATURE;
+
+            profile_stub.entry[i].size = PROFILE_ENTRY_SIZE;
+            profile_stub.entry[i].name_length = (uint8_t)name_length;
+            strcpy( profile_stub.entry[i].name, name );
+
+            profile_stub.entry[i].data_signature = signature;
+
+            profile_stub.entry[i].data_length = 0; // Deferred (profile_entry[i].length)
+            profile_stub.entry[i].data_offset = 0; // Deferred (alloc)
+
+            profile_entry[i].buffer = buffer;
+            profile_entry[i].length = length;
+
+            return PROFILE_STATUS_SUCCESS_ENTRY_ALLOC;
+        }
 
         fld = fld + PROFILE_ENTRY_BITS;
 
@@ -431,41 +450,6 @@ ProfileStatus profile_alloc_entry(
             fld = 0;
             blk++;
         }
-
-        if (map != PROFILE_ENTRY_FREE)
-        {
-            continue;
-        }
-
-        if (fld == 0)
-        {
-            fld = BITS_PER_BYTE;
-            blk--;
-        }
-
-        fld = fld - PROFILE_ENTRY_BITS;
-
-        profile_image.layout.header.entry_map[blk] &= (PROFILE_ENTRY_MASK << fld);
-        profile_image.layout.header.entry_map[blk] |= (PROFILE_ENTRY_USED << fld);
-
-        memset( &profile_image.layout.entry[i], 0, PROFILE_ENTRY_SIZE );
-
-        profile_image.layout.entry[i].signature = PROFILE_ENTRY_SIGNATURE;
-
-        profile_image.layout.entry[i].size = PROFILE_ENTRY_SIZE;
-        profile_image.layout.entry[i].name_length = (uint8_t)name_length;
-        strcpy( profile_image.layout.entry[i].name, name );
-
-        profile_image.layout.entry[i].data_signature = signature;
-
-        profile_image.layout.entry[i].data_length = 32; // TODO alloc
-        profile_image.layout.entry[i].data_offset = PROFILE_HEADER_SIZE; // TODO alloc
-
-        // TODO allocate memeory region
-        *buffer = &profile_image.layout.entry[i].data_offset;
-        *length = &profile_image.layout.entry[i].data_length;
-
-        return PROFILE_STATUS_SUCCESS_ENTRY_ALLOC;
     }
 
     return PROFILE_STATUS_ERROR_ENTRY_ALLOC;
@@ -473,7 +457,7 @@ ProfileStatus profile_alloc_entry(
 
 ProfileStatus profile_get_entry(
     char const * name, uint32_t const signature,
-    void const ** const buffer, uint32_t * const length )
+    void * const buffer, uint32_t * const length )
 {
     ProfileStatus ret = PROFILE_STATUS_ERROR_NAME;
     uint32_t blk = 0;
@@ -481,7 +465,7 @@ ProfileStatus profile_get_entry(
 
     for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
     {
-        ProfileEntryMap const map = (ProfileEntryMap)((profile_image.layout.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
+        ProfileEntryMap const map = (ProfileEntryMap)((profile_stub.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
 
         fld = fld + PROFILE_ENTRY_BITS;
 
@@ -496,18 +480,57 @@ ProfileStatus profile_get_entry(
             continue;
         }
 
-        if (strncmp( profile_image.layout.entry[i].name, name, PROFILE_ENTRY_MAX_NAME_LENGTH ) == 0)
+        if (strncmp( profile_stub.entry[i].name, name, PROFILE_ENTRY_MAX_NAME_LENGTH ) == 0)
         {
             ret = PROFILE_STATUS_ERROR_ENTRY_SIGNATURE;
 
-            if (profile_image.layout.entry[i].signature == signature)
+            if (profile_stub.entry[i].signature == signature)
             {
-                uint32_t const offset = profile_image.layout.entry[i].data_offset;
-                *buffer = &(&profile_image.raw)[offset];
-                *length = profile_image.layout.entry[i].data_length;
+                if  (
+                        (buffer == NULL)
+                    &&  (length == NULL)
+                    )
+                {
+                    if (map == PROFILE_ENTRY_USED)
+                    {
+                        profile_stub.header.entry_map[blk] &= ~(PROFILE_ENTRY_MASK << fld);
+                        profile_stub.header.entry_map[blk] |=  (PROFILE_ENTRY_FREE << fld);
 
-                return PROFILE_STATUS_SUCCESS;
+                        profile_entry[i].buffer = NULL;
+                        profile_entry[i].length = NULL;
+
+                        profile_modified = 1;
+
+                        ret = PROFILE_STATUS_SUCCESS_ENTRY_FREE;
+                    }
+                    else
+                    {
+                        ret = PROFILE_STATUS_ERROR_ENTRY_READONLY;
+                    }
+                }
+                else if (
+                            (profile_entry[i].buffer == NULL)
+                        &&  (profile_entry[i].length == NULL)
+                        )
+                {
+                    if (*length != profile_stub.entry[i].data_offset)
+                    {
+                        return PROFILE_STATUS_ERROR_DATA_LENGTH;
+                    }
+
+                    ret = profile_storage_read( buffer, profile_stub.entry[i].data_offset, profile_stub.entry[i].data_length );
+
+                    if (ret == PROFILE_STATUS_SUCCESS)
+                    {
+                        profile_entry[i].buffer = buffer;
+                        profile_entry[i].length = length;
+
+                        *length = profile_stub.entry[i].data_length;
+                    }
+                }
             }
+
+            break;
         }
     }
 
@@ -516,33 +539,21 @@ ProfileStatus profile_get_entry(
 
 ProfileStatus profile_put_entry(
     char const * name, uint32_t const signature,
-    void const * const buffer, uint32_t const length )
+    void * const buffer, uint32_t * const length )
 {
-    void const * entry_buffer = NULL;
-    uint32_t     entry_length_ = 0;
-    uint32_t *   entry_length = &entry_length_;
-
-    profile_status_entry = profile_get_entry( name, signature, &entry_buffer, &entry_length_ );
+    profile_status_entry = profile_get_entry( name, signature, buffer, length );
 
     if (profile_status_entry != PROFILE_STATUS_SUCCESS)
     {
-        profile_status_entry = profile_alloc_entry( name, signature, &entry_buffer, &entry_length );
+        profile_status_entry = profile_alloc_entry( name, signature, buffer, length );
     }
 
     switch (profile_status_entry)
     {
         case PROFILE_STATUS_SUCCESS_ENTRY_ALLOC:
-            // The entry is new; populate
-            // TODO
-            (void)buffer;
-            (void)length;
             profile_status_other = PROFILE_STATUS_SUCCESS_ENTRY_ALLOC;
             break;
         case PROFILE_STATUS_SUCCESS:
-            // The entry already exists; update
-            // TODO
-            (void)buffer;
-            (void)length;
             profile_status_other = PROFILE_STATUS_SUCCESS_ENTRY_UPDATE;
             break;
         default:
@@ -558,21 +569,7 @@ ProfileStatus profile_put_entry(
 ProfileStatus profile_del_entry(
     char const * name, uint32_t const signature )
 {
-    void const * entry_buffer = NULL;
-    uint32_t     entry_length = 0;
-
-    profile_status_entry = profile_get_entry( name, signature, &entry_buffer, &entry_length );
-
-    if (profile_status_entry == PROFILE_STATUS_SUCCESS)
-    {
-        // TODO remove entry
-
-        profile_modified = 1;
-
-        return PROFILE_STATUS_SUCCESS_ENTRY_FREE;
-    }
-
-    return PROFILE_STATUS_SUCCESS_ENTRY_NOOP;
+    return profile_get_entry( name, signature, NULL, NULL );
 }
 
 ProfileStatus profile_commit( void )
@@ -583,9 +580,78 @@ ProfileStatus profile_commit( void )
         return PROFILE_STATUS_SUCCESS;
     }
 
-    // TODO determine size
+    uint32_t address = 0;
 
-    profile_status_storage = profile_storage_write( &profile_image, sizeof(profile_image) );
+    // Write stub
+    profile_status_storage = profile_storage_write( &profile_stub, address, sizeof(profile_stub) );
+
+    address = address + sizeof(profile_stub);
+
+    if (profile_status_storage != PROFILE_STATUS_SUCCESS)
+    {
+        return PROFILE_STATUS_ERROR_STORAGE_WRITE;
+    }
+    // TODO copy out uncaptured entries before resequencing
+    uint32_t blk = 0;
+    uint32_t fld = 0;
+
+    // Write entries
+    for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
+    {
+        ProfileEntryMap const map = (ProfileEntryMap)((profile_stub.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
+
+        fld = fld + PROFILE_ENTRY_BITS;
+
+        if (fld == BITS_PER_BYTE)
+        {
+            fld = 0;
+            blk++;
+        }
+
+        if (map == PROFILE_ENTRY_FREE)
+        {
+            continue;
+        }
+
+        profile_status_storage = profile_storage_write( &profile_stub.entry[i], address, sizeof(profile_stub.entry[i]) );
+
+        address = address + sizeof(profile_stub.entry[i]);
+
+        if (profile_status_storage != PROFILE_STATUS_SUCCESS)
+        {
+            return PROFILE_STATUS_ERROR_STORAGE_WRITE;
+        }
+    }
+
+    // Write Entry data
+    for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
+    {
+        ProfileEntryMap const map = (ProfileEntryMap)((profile_stub.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
+
+        fld = fld + PROFILE_ENTRY_BITS;
+
+        if (fld == BITS_PER_BYTE)
+        {
+            fld = 0;
+            blk++;
+        }
+
+        if ((map & PROFILE_ENTRY_R) != PROFILE_ENTRY_R)
+        {
+            continue;
+        }
+
+        profile_status_storage = profile_storage_write( profile_entry[i].buffer, address, *profile_entry[i].length );
+
+        address = address + *profile_entry[i].length;
+        address = (address + 0xF) & ~0xF;
+
+        if (profile_status_storage != PROFILE_STATUS_SUCCESS)
+        {
+            return PROFILE_STATUS_ERROR_STORAGE_WRITE;
+        }
+    }
+
     profile_modified = 0;
 
     return PROFILE_STATUS_SUCCESS;

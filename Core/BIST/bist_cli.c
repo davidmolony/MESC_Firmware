@@ -32,6 +32,7 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 
 static char const * commands[] =
 {
@@ -88,7 +89,8 @@ void bist_cli( void )
     cli_register_variable_rw( "i", &i, sizeof(i), CLI_VARIABLE_INT   );
     cli_register_variable_rw( "u", &u, sizeof(u), CLI_VARIABLE_UINT  );
     cli_register_variable_rw( "f", &f, sizeof(f), CLI_VARIABLE_FLOAT );
-    cli_register_function(  "reset", reset );
+
+    cli_register_function( "reset", reset );
 
     cli_register_io( NULL, write );
 
@@ -97,18 +99,63 @@ void bist_cli( void )
         fprintf( stdout, "Processing command line '%s'\n", commands[cmd] );
 
         char const * p = commands[cmd];
+        int state;
 
         // Process command string
         for ( uint32_t chr = 0; (p[chr] != '\0') ; ++chr )
         {
             char const c = p[chr];
 
-            cli_process( c );
+            state = cli_process( c );
+            fprintf( stderr, "CLIState:%d\n", state );
         }
 
         // Commit command line
-        cli_process( '\n' );
+        state = cli_process( '\n' );
+        fprintf( stderr, "CLIState:%d\n", state );
     }
 
     fprintf( stdout, "Finished CLI BIST\n" );
+}
+
+static int running = 1;
+
+static void i_cli_quit( void )
+{
+    running = 0;
+}
+
+void i_cli( void )
+{
+    fprintf( stdout, "Starting CLI Interactive\n" );
+
+    cli_register_variable_rw( "i", &i, sizeof(i), CLI_VARIABLE_INT   );
+    cli_register_variable_rw( "u", &u, sizeof(u), CLI_VARIABLE_UINT  );
+    cli_register_variable_rw( "f", &f, sizeof(f), CLI_VARIABLE_FLOAT );
+
+    cli_register_function(  "reset", reset );
+    cli_register_function(  "quit" , i_cli_quit );
+
+    cli_register_io( NULL, write );
+
+    fprintf( stdout, "INFO: Use 'X quit' to exit\n" );
+
+    while (running)
+    {
+        int const ch = getchar();
+
+        if (ch == EOF)
+        {
+            running = 0;
+        }
+        else
+        {
+            char const c = (char)ch;
+
+            int const state = cli_process( c );
+            fprintf( stderr, "CLIState:%d\n", state );
+        }
+    }
+
+    fprintf( stdout, "Finished CLI Interactive\n" );
 }
