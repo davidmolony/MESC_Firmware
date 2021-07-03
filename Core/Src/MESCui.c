@@ -27,36 +27,64 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MESC_FINGERPRINT_H
-#define MESC_FINGERPRINT_H
+#include "MESCui.h"
 
-#include "string_op.h"
+#include "MESCcli.h"
+#include "MESCprofile.h"
 
-#define MESC_TIMESTAMP_YEAR   MAKE_UINT32_STRING('2','0','2','1')
-#define MESC_TIMESTAMP_MONTH  MAKE_UINT16_STRING('0','7')
-#define MESC_TIMESTAMP_DAY    MAKE_UINT16_STRING('0','3')
-#define MESC_TIMESTAMP_HOUR   MAKE_UINT16_STRING('2','1')
-#define MESC_TIMESTAMP_MINUTE MAKE_UINT16_STRING('0','3')
-#define MESC_GITHASH_WORDS (160 / 32)
-#define MESC_GITHASH {UINT32_C(0xfb843bef),UINT32_C(0xe2c47d9f),UINT32_C(0xe72ad565),UINT32_C(0x16d37556),UINT32_C(0xfd226dba)}
+#define UI_PROFILE_MAX_ENTRIES UINT32_C(8)
 
-struct MESCFingerprint
+static UIProfile    ui_profile[UI_PROFILE_MAX_ENTRIES];
+static char const * ui_profile_name[UI_PROFILE_MAX_ENTRIES];
+
+void ui_init( UIProfile const * const profile )
 {
-    uint32_t    year;              // Timestamp (MESC_TIMESTAMP_YEAR)
-    uint16_t    month;             // Timestamp (MESC_TIMESTAMP_MONTH)
-    uint16_t    day;               // Timestamp (MESC_TIMESTAMP_DAY)
+    if (profile == PROFILE_DEFAULT)
+    {
+        uint32_t i = 0;
+        uint32_t d = 0;
+        uint32_t ui_length = sizeof(UIProfile);
 
-    uint16_t    hour;              // Timestamp (MESC_TIMESTAMP_HOUR)
-    uint16_t    minute;            // Timestamp (MESC_TIMESTAMP_MINUTE)
+        do
+        {
+            ProfileStatus ret = profile_scan_entry(
+                &i, UI_PROFILE_SIGNATURE,
+                &ui_profile[d], &ui_length,
+                &ui_profile_name[d] );
 
-    uint8_t     _zero;             // Must be zero
-    uint8_t     reserved[3];
+            if (ret != PROFILE_STATUS_SUCCESS)
+            {
+                return;
+            }
 
-    uint32_t    githash[MESC_GITHASH_WORDS]; // Git hash of firmware (MESC_GITHASH)
-};
+            cli_reply( "UI ADD %d\n", ui_profile[d].type );
 
-typedef struct MESCFingerprint MESCFingerprint;
+            ui_init( &ui_profile[d] );
+            d++;
+        }
+        while (d < UI_PROFILE_MAX_ENTRIES);
+    }
 
-#define MESC_FINGERPRINT {MESC_TIMESTAMP_YEAR,MESC_TIMESTAMP_MONTH,MESC_TIMESTAMP_DAY,MESC_TIMESTAMP_HOUR,MESC_TIMESTAMP_MINUTE,0,{0,0,0},MESC_GITHASH}
-
-#endif
+    switch (profile->type)
+    {
+    // Inputs
+        case UI_PROFILE_THROTTLE:
+            //profile->desc.throttle;
+            break;
+        case UI_PROFILE_BRAKE:
+            //profile->desc.brake;
+            break;
+        case UI_PROFILE_BUTTON:
+            //profile->desc.button;
+            break;
+    // Outputs
+        case UI_PROFILE_INDICATOR:
+            //profile->desc.indicator;
+            break;
+        case UI_PROFILE_SCREEN:
+            //profile->desc.screen;
+            break;
+        default:
+            break;
+    }
+}

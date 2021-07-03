@@ -27,36 +27,17 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MESC_FINGERPRINT_H
-#define MESC_FINGERPRINT_H
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
 
-#include "string_op.h"
-
-#define MESC_TIMESTAMP_YEAR   MAKE_UINT32_STRING('2','0','2','1')
-#define MESC_TIMESTAMP_MONTH  MAKE_UINT16_STRING('0','7')
-#define MESC_TIMESTAMP_DAY    MAKE_UINT16_STRING('0','3')
-#define MESC_TIMESTAMP_HOUR   MAKE_UINT16_STRING('2','1')
-#define MESC_TIMESTAMP_MINUTE MAKE_UINT16_STRING('0','3')
-#define MESC_GITHASH_WORDS (160 / 32)
-#define MESC_GITHASH {UINT32_C(0xfb843bef),UINT32_C(0xe2c47d9f),UINT32_C(0xe72ad565),UINT32_C(0x16d37556),UINT32_C(0xfd226dba)}
-
-struct MESCFingerprint
+int virt_uart_write( void * handle, void * data, uint16_t size )
 {
-    uint32_t    year;              // Timestamp (MESC_TIMESTAMP_YEAR)
-    uint16_t    month;             // Timestamp (MESC_TIMESTAMP_MONTH)
-    uint16_t    day;               // Timestamp (MESC_TIMESTAMP_DAY)
+    fprintf( stderr, "VUART:>" );
+    int const ret = fwrite( data, 1, size, stderr );
+    assert( ret == size );
+    fprintf( stderr, "<:VUART\n" );
 
-    uint16_t    hour;              // Timestamp (MESC_TIMESTAMP_HOUR)
-    uint16_t    minute;            // Timestamp (MESC_TIMESTAMP_MINUTE)
-
-    uint8_t     _zero;             // Must be zero
-    uint8_t     reserved[3];
-
-    uint32_t    githash[MESC_GITHASH_WORDS]; // Git hash of firmware (MESC_GITHASH)
-};
-
-typedef struct MESCFingerprint MESCFingerprint;
-
-#define MESC_FINGERPRINT {MESC_TIMESTAMP_YEAR,MESC_TIMESTAMP_MONTH,MESC_TIMESTAMP_DAY,MESC_TIMESTAMP_HOUR,MESC_TIMESTAMP_MINUTE,0,{0,0,0},MESC_GITHASH}
-
-#endif
+    return 0;
+    (void)handle;
+}

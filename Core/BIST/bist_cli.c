@@ -71,16 +71,7 @@ static void reset( void )
     fprintf( stdout, ">>> RESET <<<\n" );
 }
 
-static int write( void * handle, void * data, uint16_t size )
-{
-    fprintf( stderr, "VUART:>" );
-    int const ret = fwrite( data, 1, size, stderr );
-    assert( ret == size );
-    fprintf( stderr, "<:VUART\n" );
-
-    return 0;
-    (void)handle;
-}
+extern int virt_uart_write( void * handle, void * data, uint16_t size );
 
 void bist_cli( void )
 {
@@ -92,7 +83,7 @@ void bist_cli( void )
 
     cli_register_function( "reset", reset );
 
-    cli_register_io( NULL, write );
+    cli_register_io( NULL, virt_uart_write );
 
     for ( uint32_t cmd = 0; cmd < (sizeof(commands) / sizeof(commands[0])); ++cmd )
     {
@@ -136,7 +127,7 @@ void i_cli( void )
     cli_register_function(  "reset", reset );
     cli_register_function(  "quit" , i_cli_quit );
 
-    cli_register_io( NULL, write );
+    cli_register_io( NULL, virt_uart_write );
 
     fprintf( stdout, "INFO: Use 'X quit' to exit\n" );
 

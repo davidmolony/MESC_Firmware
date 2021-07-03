@@ -32,6 +32,7 @@
 
 #include "MESCflash.h"
 #include "MESCprofile.h"
+#include "MESCspeed.h"
 #include "MESCuart.h"
 
 /* USER CODE END Includes */
@@ -179,26 +180,21 @@ int main(void)
     Starting System Initialisation
     */
 
+    // Initialise UART CLI IO
+    uart_init();
+    // NOTE - CLI messages are available after this point
+    
     // Attach flash IO to profile
     flash_register_profile_io();
     // Load stored profile
     profile_init();
-    /*
-    Initialise enabled components:
-    - System
-        - Battery
-        - Speed
-        - Temperature (Controller)
-    - User Interface
-        - Brake(s)
-        - Button(s)
-        - Indicator(s)
-        - Screen(s)
-        - Throttle(s)
-    */
 
-    // Initialise UART CLI IO
-    uart_init();
+    // Initialise components
+    bat_init( PROFILE_DEFAULT );
+    speed_init( PROFILE_DEFAULT );
+    temp_init( PROFILE_DEFAULT );
+    // Initialise user Interface
+    ui_init( PROFILE_DEFAULT );
 
     /*
     Finished System Initialisation

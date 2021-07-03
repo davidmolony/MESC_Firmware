@@ -29,6 +29,9 @@
 
 #include "MESCtemp.h"
 
+#include "MESCcli.h"
+#include "MESCprofile.h"
+
 #include "conversions.h"
 
 #include <math.h>
@@ -38,6 +41,24 @@ static TEMPProfile const * temp_profile = NULL;
 
 void temp_init( TEMPProfile const * const profile )
 {
+    if (profile == PROFILE_DEFAULT)
+    {
+        static TEMPProfile temp_profile;
+        uint32_t           temp_length = sizeof(temp_profile);
+
+        ProfileStatus ret = profile_get_entry(
+            "TEMP", TEMP_PROFILE_SIGNATURE,
+            &temp_profile, &temp_length );
+
+        if (ret != PROFILE_STATUS_SUCCESS)
+        {
+            cli_reply( "TEMP FAILED" );
+            return;
+        }
+
+        temp_init( &temp_profile );
+    }
+
     temp_profile = profile;
 
     switch (temp_profile->method)

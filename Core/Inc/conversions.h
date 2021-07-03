@@ -53,6 +53,50 @@ Distance
 #define CONST_CENTIMETRES_PER_KILOMETRE_F           (100000.0f)
 
 /*
+Mathematical
+*/
+
+/*
+SQRT(2)
+*/
+#define CONST_SQRT_2_F                      (1.41421356237f)
+
+/*
+   1
+-------
+SQRT(2)
+*/
+#define CONST_1_R_SQRT_2_F                  (0.70710678118f)
+
+/*
+    / 2 \
+SQRT| - |
+    \ 3 /
+*/
+#define CONST_SQRT_2_R_3_F                  (0.81649658092f)
+
+/*
+    / 3 \
+SQRT| - |
+    \ 2 /
+*/
+#define CONST_SQRT_3_R_2_F                  (1.22474487139f)
+
+/*
+   1
+-------
+SQRT(3)
+*/
+#define CONST_1_R_SQRT_3_F                  (0.57735026919f)
+
+/*
+   1
+-------
+SQRT(6)
+*/
+#define CONST_1_R_SQRT_6_F                  (0.40824829046f)
+
+/*
 Temperature
 */
 

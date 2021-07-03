@@ -69,7 +69,7 @@ HEAD
 
 TIMESTAMP=$(date "+%Y%m%d%H%M")
 
-echo "INFO: TIMESTAMP is ${TIMESTAMP}"
+1>&2 echo "INFO: TIMESTAMP is ${TIMESTAMP}"
 
 echo "#define MESC_TIMESTAMP_YEAR   MAKE_UINT32_STRING('${TIMESTAMP:0:1}','${TIMESTAMP:1:1}','${TIMESTAMP:2:1}','${TIMESTAMP:3:1}')"  >> ${OUTFIL}
 echo "#define MESC_TIMESTAMP_MONTH  MAKE_UINT16_STRING('${TIMESTAMP:4:1}','${TIMESTAMP:5:1}')"  >> ${OUTFIL}
@@ -79,7 +79,7 @@ echo "#define MESC_TIMESTAMP_MINUTE MAKE_UINT16_STRING('${TIMESTAMP:10:1}','${TI
 
 GITHASH=$(git log -n 1 | head -n 1 | awk '{print $2}')
 
-echo "INFO: GITHASH is ${GITHASH}"
+1>&2 echo "INFO: GITHASH is ${GITHASH}"
 
 echo "#define MESC_GITHASH_WORDS (160 / 32)" >> ${OUTFIL}
 echo "#define MESC_GITHASH {UINT32_C(0x${GITHASH:32:8}),UINT32_C(0x${GITHASH:24:8}),UINT32_C(0x${GITHASH:16:8}),UINT32_C(0x${GITHASH:8:8}),UINT32_C(0x${GITHASH:0:8})}" >> ${OUTFIL}
@@ -107,3 +107,6 @@ typedef struct MESCFingerprint MESCFingerprint;
 
 #endif
 FOOT
+
+# Provided for BIST virtual FLASH fingerprint generation
+echo "${TIMESTAMP}${GITHASH}"

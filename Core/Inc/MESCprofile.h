@@ -165,6 +165,8 @@ enum ProfileStatus
     PROFILE_STATUS_SUCCESS_ENTRY_FREE,      // Entry was removed
     PROFILE_STATUS_SUCCESS_ENTRY_NOOP,      // Entry was not present
     PROFILE_STATUS_SUCCESS_ENTRY_UPDATE,    // Entry was updated
+
+    PROFILE_STATUS_FAILURE_SCAN,            // End of scan
 };
 
 typedef enum ProfileStatus ProfileStatus;
@@ -191,6 +193,11 @@ ProfileStatus profile_get_entry(
     char const * name, uint32_t const signature,
     void * const buffer, uint32_t * const length );
 
+ProfileStatus profile_scan_entry(
+    uint32_t * const index, uint32_t const signature,
+    void * const buffer, uint32_t * const length,
+    char const ** const name );
+
 ProfileStatus profile_put_entry(
     char const * name, uint32_t const signature,
     void * const buffer, uint32_t * const length );
@@ -199,5 +206,7 @@ ProfileStatus profile_del_entry(
     char const * name, uint32_t const signature );
 
 ProfileStatus profile_commit( void );
+
+#define PROFILE_DEFAULT NULL // Generic symbol to indicate loading of default profile
 
 #endif

@@ -29,6 +29,9 @@
 
 #include "MESCbat.h"
 
+#include "MESCcli.h"
+#include "MESCprofile.h"
+
 #include <stddef.h>
 
 static BATProfile const * bat_profile = NULL;
@@ -39,6 +42,24 @@ static float Cscale;        // Charge scale factor (Cmax..Clow)
 
 void bat_init( BATProfile const * const profile )
 {
+    if (profile == PROFILE_DEFAULT)
+    {
+        static BATProfile bat_profile;
+        uint32_t          bat_length = sizeof(bat_profile);
+
+        ProfileStatus ret = profile_get_entry(
+            "BAT", BAT_PROFILE_SIGNATURE,
+            &bat_profile, &bat_length );
+
+        if (ret != PROFILE_STATUS_SUCCESS)
+        {
+            cli_reply( "BAT FAILED\n" );
+            return;
+        }
+
+        bat_init( &bat_profile );
+    }
+
     bat_profile = profile;
     bat_notify_profile_update();
 

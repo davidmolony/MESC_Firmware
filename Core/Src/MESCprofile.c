@@ -486,6 +486,8 @@ ProfileStatus profile_get_entry(
 
             if (profile_stub.entry[i].signature == signature)
             {
+                ret = PROFILE_STATUS_SUCCESS;
+
                 if  (
                         (buffer == NULL)
                     &&  (length == NULL)
@@ -513,7 +515,7 @@ ProfileStatus profile_get_entry(
                         &&  (profile_entry[i].length == NULL)
                         )
                 {
-                    if (*length != profile_stub.entry[i].data_offset)
+                    if (*length != profile_stub.entry[i].data_length)
                     {
                         return PROFILE_STATUS_ERROR_DATA_LENGTH;
                     }
@@ -524,9 +526,65 @@ ProfileStatus profile_get_entry(
                     {
                         profile_entry[i].buffer = buffer;
                         profile_entry[i].length = length;
-
-                        *length = profile_stub.entry[i].data_length;
                     }
+                }
+
+                break;
+            }
+        }
+    }
+
+    return ret;
+}
+
+ProfileStatus profile_scan_entry(
+    uint32_t * const index, uint32_t const signature,
+    void * const buffer, uint32_t * const length,
+    char const ** const name )
+{
+    ProfileStatus ret = PROFILE_STATUS_FAILURE_SCAN;
+    uint32_t blk = 0;
+    uint32_t fld = 0;
+
+    for ( uint32_t i = *index; i < PROFILE_HEADER_ENTRIES; ++i )
+    {
+        ProfileEntryMap const map = (ProfileEntryMap)((profile_stub.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
+
+        fld = fld + PROFILE_ENTRY_BITS;
+
+        if (fld == BITS_PER_BYTE)
+        {
+            fld = 0;
+            blk++;
+        }
+
+        if ((map & PROFILE_ENTRY_R) != PROFILE_ENTRY_R)
+        {
+            continue;
+        }
+
+        if  (profile_stub.entry[i].signature == signature)
+        {
+            ret = PROFILE_STATUS_SUCCESS;
+            *index = i;
+            *name = profile_stub.entry[i].name;
+
+            if (
+                    (profile_entry[i].buffer == NULL)
+                &&  (profile_entry[i].length == NULL)
+                )
+            {
+                if (*length != profile_stub.entry[i].data_length)
+                {
+                    return PROFILE_STATUS_ERROR_DATA_LENGTH;
+                }
+
+                ret = profile_storage_read( buffer, profile_stub.entry[i].data_offset, profile_stub.entry[i].data_length );
+
+                if (ret == PROFILE_STATUS_SUCCESS)
+                {
+                    profile_entry[i].buffer = buffer;
+                    profile_entry[i].length = length;
                 }
             }
 

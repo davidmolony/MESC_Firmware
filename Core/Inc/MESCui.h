@@ -114,4 +114,6 @@ struct UIProfile
 
 typedef struct UIProfile UIProfile;
 
+void ui_init( UIProfile const * const profile );
+
 #endif

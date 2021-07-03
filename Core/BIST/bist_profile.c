@@ -38,8 +38,18 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+
+extern void          virt_flash_configure( uint8_t const use_mem_not_fs, uint8_t const read_zero_on_error );
+extern void          virt_flash_apply_corruption( void );
+extern void          virt_flash_corrupt( char const * name, uint32_t const offset, uint32_t const length );
+extern ProfileStatus virt_flash_read(  void       * data, uint32_t const address, uint32_t const length );
+extern ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint32_t const length );
+extern void          virt_flash_reset( void );
+extern void          virt_flash_init( void );
+extern void          virt_flash_free( void );
+
+#define virt_flash_revoke_corruption virt_flash_apply_corruption
+
 
 #define ID_ENTRY(id) { id, #id }
 #define ID_INDEX(id,n) { id(0x##n), #id "_" #n }
@@ -126,6 +136,8 @@ static char const * getProfileStatusName( ProfileStatus const ps )
         ID_ENTRY( PROFILE_STATUS_SUCCESS_ENTRY_FREE     ),
         ID_ENTRY( PROFILE_STATUS_SUCCESS_ENTRY_NOOP     ),
         ID_ENTRY( PROFILE_STATUS_SUCCESS_ENTRY_UPDATE   ),
+
+        ID_ENTRY( PROFILE_STATUS_FAILURE_SCAN           ),
     };
 
     assert( status_id[ps].val == ps );
@@ -144,147 +156,6 @@ typedef struct DemoEntry DemoEntry;
 
 static DemoEntry demo_entry;
 static uint32_t demo_entry_size = sizeof(demo_entry);
-
-static void * read_buffer = NULL;
-static void const * write_buffer = NULL;
-
-static uint8_t use_mem_not_fs = 1;
-static uint8_t read_zero_on_error = 0;
-
-static uint8_t * mem = NULL;
-
-static uint32_t corrupt_offset = 0;
-static uint32_t corrupt_length = 0;
-
-static void apply_corruption()
-{
-    if (corrupt_length > 0)
-    {
-        uint32_t buffer = 0;
-
-        assert( corrupt_length <= sizeof(buffer) );
-
-        memcpy( &buffer, &((uint8_t *)read_buffer)[corrupt_offset], corrupt_length );
-
-        buffer ^= UINT32_MAX;
-
-        memcpy( &((uint8_t *)read_buffer)[corrupt_offset], &buffer, corrupt_length );
-    }
-}
-
-#define revoke_corruption apply_corruption
-
-static ProfileStatus read( void * data, uint32_t const address, uint32_t const length )
-{
-    read_buffer = data;
-
-    FILE * f = NULL;
-
-    if (use_mem_not_fs == 0)
-    {
-        f = fopen( "FLASH", "rb" );
-    }
-
-    if (f != NULL)
-    {
-        fseek( f, address, SEEK_SET );
-
-        size_t const len = fread( data, 1, length, f );
-
-        fclose( f );
-
-        if (len != length)
-        {
-            return PROFILE_STATUS_ERROR_STORAGE_READ;
-        }
-
-        apply_corruption();
-
-        return PROFILE_STATUS_SUCCESS;
-    }
-
-    if (use_mem_not_fs != 0)
-    {
-        memcpy( data, mem, length );
-
-        apply_corruption();
-
-        return PROFILE_STATUS_SUCCESS;
-    }
-
-    if (read_zero_on_error == 0)
-    {
-        return PROFILE_STATUS_ERROR_STORAGE_READ;
-    }
-    else
-    {
-        memset( data, 0, length );
-
-        apply_corruption();
-
-        return PROFILE_STATUS_SUCCESS;
-    }
-}
-
-static ProfileStatus write( void const * data, uint32_t const address, uint32_t const length )
-{
-    write_buffer = data;
-
-    FILE * f = NULL;
-
-    if (use_mem_not_fs == 0)
-    {
-        f = fopen( "FLASH", "r+" );
-    }
-
-    if (f != NULL)
-    {
-        fseek( f, address, SEEK_SET );
-
-        size_t const len = fwrite( data, 1, length, f );
-
-        fclose( f );
-
-        if (len != length)
-        {
-            return PROFILE_STATUS_ERROR_STORAGE_WRITE;
-        }
-
-        return PROFILE_STATUS_COMMIT_SUCCESS;
-    }
-
-    if (use_mem_not_fs != 0)
-    {
-        memcpy( mem, data, length );
-
-        return PROFILE_STATUS_COMMIT_SUCCESS;
-    }
-
-    return PROFILE_STATUS_ERROR_STORAGE_WRITE;
-}
-
-static void reset( void )
-{
-    if (use_mem_not_fs == 0)
-    {
-        remove( "FLASH" );
-    }
-}
-
-static void corrupt( char const * name, uint32_t const offset, uint32_t const length )
-{
-    if (length == 0)
-    {
-        fprintf( stdout, "INFO: Corruption disabled\n" );
-    }
-    else
-    {
-        fprintf( stdout, "INFO: Corrupting %s offset %" PRIu32 " size %" PRIu32 "\n", name, offset, length );
-    }
-
-    corrupt_offset = offset;
-    corrupt_length = length;
-}
 
 #define CORRUPTION_ENTRY(T,m) { offsetof(T,m), sizeof(((T *)NULL)->m), #T "." #m }
 
@@ -329,16 +200,15 @@ void bist_profile( void )
 
     fprintf( stdout, "Starting Profile BIST\n" );
 
-    mem = calloc( 4096/*TODO*/, 1 );
+    virt_flash_init();
 
     demo_entry.x = 1;
     demo_entry.y = 3;
     demo_entry.z = 2;
 
-    read_zero_on_error = 1;
-    use_mem_not_fs = 1;
+    virt_flash_configure( 1, 1 );
 
-    profile_configure_storage_io( read, write );
+    profile_configure_storage_io( virt_flash_read, virt_flash_write );
 
     fprintf( stdout, "INFO: Performing initial load & store\n" );
 
@@ -384,7 +254,7 @@ void bist_profile( void )
 
     for ( uint32_t i = 0; i < (sizeof(corruptions) / sizeof(*corruptions)); ++i )
     {
-        corrupt( corruptions[i].name, corruptions[i].offset, corruptions[i].length );
+        virt_flash_corrupt( corruptions[i].name, corruptions[i].offset, corruptions[i].length );
 
         ret = profile_init();
 
@@ -438,7 +308,7 @@ void bist_profile( void )
                 break;
         }
 
-        revoke_corruption();
+        virt_flash_revoke_corruption();
     }
 
     // TODO
@@ -512,9 +382,9 @@ void bist_profile( void )
         ret = profile_put_entry( "MESC_UI", UI_PROFILE_SIGNATURE, &up, &up_size );
     }
 
-    reset();
+    virt_flash_reset();
 
-    free( mem );
+    virt_flash_free();
 
     fprintf( stdout, "Finished Profile BIST\n" );
 }
