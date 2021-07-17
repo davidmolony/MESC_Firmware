@@ -27,36 +27,5 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MESC_FINGERPRINT_H
-#define MESC_FINGERPRINT_H
-
-#include "string_op.h"
-
-#define MESC_TIMESTAMP_YEAR   MAKE_UINT32_STRING('2','0','2','1')
-#define MESC_TIMESTAMP_MONTH  MAKE_UINT16_STRING('0','7')
-#define MESC_TIMESTAMP_DAY    MAKE_UINT16_STRING('1','7')
-#define MESC_TIMESTAMP_HOUR   MAKE_UINT16_STRING('1','8')
-#define MESC_TIMESTAMP_MINUTE MAKE_UINT16_STRING('0','5')
-#define MESC_GITHASH_WORDS (160 / 32)
-#define MESC_GITHASH {UINT32_C(0xd54b9037),UINT32_C(0xa1929e56),UINT32_C(0xef8bff2b),UINT32_C(0x35d8298a),UINT32_C(0x53995ba8)}
-
-struct MESCFingerprint
-{
-    uint32_t    year;              // Timestamp (MESC_TIMESTAMP_YEAR)
-    uint16_t    month;             // Timestamp (MESC_TIMESTAMP_MONTH)
-    uint16_t    day;               // Timestamp (MESC_TIMESTAMP_DAY)
-
-    uint16_t    hour;              // Timestamp (MESC_TIMESTAMP_HOUR)
-    uint16_t    minute;            // Timestamp (MESC_TIMESTAMP_MINUTE)
-
-    uint8_t     _zero;             // Must be zero
-    uint8_t     reserved[3];
-
-    uint32_t    githash[MESC_GITHASH_WORDS]; // Git hash of firmware (MESC_GITHASH)
-};
-
-typedef struct MESCFingerprint MESCFingerprint;
-
-#define MESC_FINGERPRINT {MESC_TIMESTAMP_YEAR,MESC_TIMESTAMP_MONTH,MESC_TIMESTAMP_DAY,MESC_TIMESTAMP_HOUR,MESC_TIMESTAMP_MINUTE,0,{0,0,0},MESC_GITHASH}
-
-#endif
+var TIMESTAMP = '202107171805'
+var GITHASH = '53995ba835d8298aef8bff2ba1929e56d54b9037'

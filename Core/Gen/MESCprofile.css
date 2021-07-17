@@ -1,0 +1,23 @@
+
+body { font-family: monospace; cursor: default; }
+
+canvas { border: 1px solid #000000; margin: 10px; }
+
+input { margin-right: 10px; width: 100px; }
+
+input[type=button] { cursor: pointer; }
+
+input[type=number] { text-align: right; }
+input[type=text] { text-align: right; }
+
+label { display: inline-block; font-weight: bold; width: 100px; }
+
+select           { cursor: pointer; margin-right: 10px; width: 100px; }
+select[disabled] { cursor: default; }
+
+textarea { height: 400px; width: 800px; min-width: 400px; min-height: 200px; };
+
+.action { cursor: pointer; }
+.action:hover { background-color: #FFFFE0; }
+
+.entrybox { border: 1px solid #000000; display: inline-block; margin-bottom: 10px; margin-right: 10px; padding: 10px; vertical-align: top; }
