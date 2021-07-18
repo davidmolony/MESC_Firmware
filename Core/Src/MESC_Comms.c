@@ -222,7 +222,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
             {  // Current control, ToDo convert to Enum
                 if (ICVals[1] > 1600)
                 {
-                    BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 10.0;
+                    BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 5.0;
                     foc_vars.Idq_req[0] = 0;
                     foc_vars.Idq_req[1] = ((float)ICVals[1] - 1600) / 5.0;
                 }
@@ -230,11 +230,11 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
                 // based on 1000-2000us PWM in
                 else if (ICVals[1] < 1400)
                 {
-                    BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 10.0;
+                    BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 5.0;
                     foc_vars.Idq_req[0] = 0;
-                    foc_vars.Idq_req[1] = ((float)ICVals[1] - 1400) / 10.0;
+                    foc_vars.Idq_req[1] = ((float)ICVals[1] - 1400) / 5.0;
                 }
-                // Crude hack, which gets current scaled to +/-40A
+                // Crude hack, which gets current scaled to +/-80A
                 // based on 1000-2000us PWM in
                 else
                 {
@@ -244,18 +244,6 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
                     foc_vars.Idq_req[1] = currentset;
                 }
             }
-
-            /*if (0)
-            {  // Duty cycle control, ToDo convert to Enum
-                if (a < 10)
-                {
-                    BLDCVars.BLDCduty = 0;
-                }
-                if (a > 9)
-                {
-                    BLDCVars.BLDCduty = 10 * (a - 9);
-                }
-            }*/
         }
     }
 }

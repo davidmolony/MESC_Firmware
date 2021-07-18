@@ -434,24 +434,33 @@ void hallAngleEstimator()
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         last_hall_period = ticks_since_last_hall_change;
-        one_on_last_hall_period = (one_on_last_hall_period + 1 / last_hall_period)*0.5;  // / ticks_since_last_hall_change;
-        angle_step = (2*angle_step + (1.0 / ticks_since_last_hall_change) * foc_vars.hall_table[last_hall_state - 1][3]) * 0.3333;
+        float one_on_ticks = (1.0 / ticks_since_last_hall_change);
+        one_on_last_hall_period = (one_on_last_hall_period + (one_on_ticks)) * 0.5;  // ;
+        angle_step = (angle_step + (one_on_ticks)*foc_vars.hall_table[last_hall_state - 1][3]) * 0.5;
+
+        // Reset the counters, track the previous state
         last_hall_state = current_hall_state;
         last_hall_angle = current_hall_angle;
         ticks_since_last_hall_change = 0;
     }
-
+    // Run the counter
     ticks_since_last_hall_change = ticks_since_last_hall_change + 1;
     if (ticks_since_last_hall_change <= 2.0 * last_hall_period)
     {
+    	 // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(dir*angle_step + one_on_last_hall_period * (-0.9 * hall_error));
+    	//Does not work... Why?
+
         if (dir > 0)
         {  // Apply a gain to the error as well as the feed forward from the last hall period. Gain of 0.9-1.1 seems to work well when using
            // corrected hall positions and spacings
-            foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(angle_step + one_on_last_hall_period * ( -0.9 * hall_error));
+            foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(angle_step + one_on_last_hall_period * (-0.9 * hall_error));
         }
         else if (dir < 0)
         {
-            foc_vars.HallAngle = foc_vars.HallAngle - (uint16_t)(one_on_last_hall_period * (10922 + 0.9 * hall_error));
+            //foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(-angle_step + one_on_last_hall_period * (-0.9 * hall_error));
+        	//Also does not work, Why??
+            foc_vars.HallAngle = foc_vars.HallAngle - (uint16_t)(angle_step + one_on_last_hall_period * (0.9 * hall_error));
+
         }
     }
     if (ticks_since_last_hall_change > 500.0f)
@@ -461,88 +470,6 @@ void hallAngleEstimator()
         one_on_last_hall_period = 1.0f / last_hall_period;  // / ticks_since_last_hall_change;
         foc_vars.HallAngle = current_hall_angle;
     }
-    //        (uint16_t)((16383 * ((uint32_t)foc_vars.HallAngle) + (uint32_t)temp_current_hall_angle) >> 14) +
-    //        (uint16_t)(one_on_last_hall_period * 10922);
-    //(uint16_t)(10922.0f * (current_hall_state + ticks_since_last_hall_change / last_hall_period));
-}
-void hallAngleEstimator2()
-{  // Implementation using the mid point of the hall sensor angles, which should be much more reliable to generate that the edges
-
-    if (current_hall_state != last_hall_state)
-    {
-        if (current_hall_state == 0)
-        {
-            MotorState = MOTOR_STATE_ERROR;
-            MotorError = MOTOR_ERROR_HALL0;
-        }
-        else if (current_hall_state == 7)
-        {
-            MotorState = MOTOR_STATE_ERROR;
-            MotorError = MOTOR_ERROR_HALL7;
-        }
-        //////////Implement the Hall table here, but the vector can be dynamically created/filled by another function/////////////
-        current_hall_angle = foc_vars.hall_table[current_hall_state - 1][2];
-
-        // Calculate Hall error
-        hall_error = foc_vars.HallAngle - current_hall_angle;
-
-        // Todo I want this section to have a PLL like property, adding only a proportion of the error, not rigidly locking it.
-        // foc_vars.HallAngle = foc_vars.hall_table[current_hall_state - 1][2];
-        uint16_t a;
-        if ((a = current_hall_angle - last_hall_angle) < 32000)
-        {
-            hall_error = hall_error + foc_vars.hall_forwards_adjust - one_on_last_hall_period * 10922;
-            dir = 1.0f;
-            // foc_vars.HallAngle = foc_vars.HallAngle - 5460;
-        }
-        else
-        {
-            hall_error = hall_error - foc_vars.hall_backwards_adjust + one_on_last_hall_period * 10922;
-            dir = -1.0f;
-            // foc_vars.HallAngle = foc_vars.HallAngle + 5460;
-        }
-        if (hall_error > 32000)
-        {
-            hall_error = hall_error - 65536;
-        }
-        if (hall_error < -32000)
-        {
-            hall_error = hall_error + 65536;
-        }
-
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        last_hall_state = current_hall_state;
-        last_hall_angle = current_hall_angle;
-        last_hall_period = (4 * last_hall_period + ticks_since_last_hall_change) * 0.2;
-        one_on_last_hall_period = 1 / last_hall_period;  // / ticks_since_last_hall_change;
-        ticks_since_last_hall_change = 0;
-    }
-
-    ticks_since_last_hall_change = ticks_since_last_hall_change + 1;
-    if (ticks_since_last_hall_change <= 1.2 * last_hall_period)
-    {
-        if (dir > 0)
-        {  // Apply a gain to the error as well as the feed forward from the last hall period. Gain between 0.05 and 1.8 seems stable, but
-           // 0.05 slow to respond to changing speeds, and approaching 2 it is clear that the overshoot on the error correction is about be
-           // unstable... NOISE A gain of ~0.2 seems to be a good compromise for dealing with poorly placed hall sensors while retaining
-           // strong phase locking.
-            foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(one_on_last_hall_period * (10922 - 0.2 * hall_error));
-        }
-        else if (dir < 0)
-        {
-            foc_vars.HallAngle = foc_vars.HallAngle - (uint16_t)(one_on_last_hall_period * (10922 + 0.2 * hall_error));
-        }
-    }
-    if (ticks_since_last_hall_change > 500.0f)
-    {
-        ticks_since_last_hall_change = 501.0f;
-        last_hall_period = 500.0f;                          //(ticks_since_last_hall_change);
-        one_on_last_hall_period = 1.0f / last_hall_period;  // / ticks_since_last_hall_change;
-        foc_vars.HallAngle = current_hall_angle;
-    }
-    //        (uint16_t)((16383 * ((uint32_t)foc_vars.HallAngle) + (uint32_t)temp_current_hall_angle) >> 14) +
-    //        (uint16_t)(one_on_last_hall_period * 10922);
-    //(uint16_t)(10922.0f * (current_hall_state + ticks_since_last_hall_change / last_hall_period));
 }
 
 void OLGenerateAngle()
@@ -575,8 +502,8 @@ void MESCFOC()
 
     // Integral error
     static float Idq_int_err[2];
-    Idq_int_err[0] = Idq_int_err[0] + foc_vars.Id_igain * Idq_err[0];  // 0.05f * Idq_err[0];
-    Idq_int_err[1] = Idq_int_err[1] + foc_vars.Iq_igain * Idq_err[1];  // 0.05f * Idq_err[1];
+    Idq_int_err[0] = Idq_int_err[0] + foc_vars.Id_igain * Idq_err[0];  // Apply the integral gain at this stage to enable bounding it
+    Idq_int_err[1] = Idq_int_err[1] + foc_vars.Iq_igain * Idq_err[1];  //
 
     static int i = 0;
     if (i == 0)
@@ -591,10 +518,11 @@ void MESCFOC()
         if (Idq_int_err[1] > integral_q_limit){Idq_int_err[1] = integral_q_limit;}
         if (Idq_int_err[1] < -integral_q_limit){Idq_int_err[1] = -integral_q_limit;}
         // clang-format on
-        // Apply the PID, and smooth the output for noise - sudden changes in VDVQ will create instability in the presence of inductance.
-        foc_vars.Vdq[0] =
-            foc_vars.Id_pgain * Idq_err[0] + Idq_int_err[0];  //(3 * foc_vars.Vdq[0] + Idq_err[0] + Idq_int_err[0]) * 0.25;  // trial pgain
-        foc_vars.Vdq[1] = foc_vars.Iq_pgain * Idq_err[1] + Idq_int_err[1];  //(3 * foc_vars.Vdq[1] + Idq_err[1] + Idq_int_err[1]) * 0.25;
+        // Apply the PID, and potentially smooth the output for noise - sudden changes in VDVQ may be undesirable for some motors.
+        // Integral error is pre-bounded to avoid integral windup, proportional gain needs to have effect even at max integral to stabilise
+        // and avoid trips
+        foc_vars.Vdq[0] = foc_vars.Id_pgain * Idq_err[0] + Idq_int_err[0];
+        foc_vars.Vdq[1] = foc_vars.Iq_pgain * Idq_err[1] + Idq_int_err[1];
 
         // Bounding final output
         // These limits are experimental, but result in close to 100% modulation. Since Vd and Vq are
@@ -611,12 +539,13 @@ void MESCFOC()
 
         i = FOC_PERIODS;
         // Field weakening? - The below works pretty nicely, but needs turning into an implementation where it is switchable by the user.
+        //Not useable when manually setting Id, or if there is an MTPA implementation
         // Can result in problems e.g. tripping PSUs...
         //        if((foc_vars.Vdq[1]>300)){
-        //        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]-300)*-0.1; //30A max field weakening current
+        //        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]-300)*-0.1; //36A max field weakening current
         //        }
         //        else if((foc_vars.Vdq[1]<-300)){
-        //        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]+300)*0.1; //30A max field weakening current
+        //        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]+300)*0.1; //36A max field weakening current
         //        }
         //        else{
         //        	foc_vars.Idq_req[0]=0; //30A max field weakening current
