@@ -382,10 +382,11 @@ static uint16_t testvar;
 static uint16_t current_hall_angle;
 static int last_hall_state;
 static uint16_t last_hall_angle;
-static float ticks_since_last_hall_change = 0;
+static float ticks_since_last_hall_change = 65535;
 static float last_hall_period = 65536;
 static float one_on_last_hall_period = 1;
 float angular_velocity = 0;
+static float angle_step = 0;
 
 static int hall_error = 0;
 void hallAngleEstimator()
@@ -431,22 +432,22 @@ void hallAngleEstimator()
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        last_hall_period = ticks_since_last_hall_change;
+        one_on_last_hall_period = (one_on_last_hall_period + 1 / last_hall_period)*0.5;  // / ticks_since_last_hall_change;
+        angle_step = (2*angle_step + (1.0 / ticks_since_last_hall_change) * foc_vars.hall_table[last_hall_state - 1][3]) * 0.3333;
         last_hall_state = current_hall_state;
         last_hall_angle = current_hall_angle;
-        last_hall_period = (4 * last_hall_period + ticks_since_last_hall_change) * 0.2;
-        one_on_last_hall_period = 1 / last_hall_period;  // / ticks_since_last_hall_change;
         ticks_since_last_hall_change = 0;
     }
 
     ticks_since_last_hall_change = ticks_since_last_hall_change + 1;
-    if (ticks_since_last_hall_change <= 1.2 * last_hall_period)
+    if (ticks_since_last_hall_change <= 2.0 * last_hall_period)
     {
         if (dir > 0)
-        {  // Apply a gain to the error as well as the feed forward from the last hall period. Gain between 0.05 and 1.8 seems stable, but
-           // 0.05 slow to respond to changing speeds, and approaching 2 it is clear that the overshoot on the error correction is about be
-           // unstable... NOISE A gain of ~0.2 seems to be a good compromise for dealing with poorly placed hall sensors while retaining
-           // strong phase locking.
-            foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(one_on_last_hall_period * (10922 - 0.9 * hall_error));
+        {  // Apply a gain to the error as well as the feed forward from the last hall period. Gain of 0.9-1.1 seems to work well when using
+           // corrected hall positions and spacings
+            foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(angle_step + one_on_last_hall_period * ( -0.9 * hall_error));
         }
         else if (dir < 0)
         {
