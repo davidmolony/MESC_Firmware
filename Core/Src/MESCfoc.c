@@ -407,6 +407,82 @@ void hallAngleEstimator()
         current_hall_angle = foc_vars.hall_table[current_hall_state - 1][2];
 
         // Calculate Hall error
+
+        uint16_t a;
+        if ((a = current_hall_angle - last_hall_angle) < 32000)  // Forwards
+        {
+            hall_error = foc_vars.HallAngle - foc_vars.hall_table[current_hall_state - 1][0];
+            dir = 1.0f;
+            // foc_vars.HallAngle = foc_vars.HallAngle - 5460;
+        }
+        else  // Backwards
+        {
+            hall_error = foc_vars.HallAngle - foc_vars.hall_table[current_hall_state - 1][1];
+            dir = -1.0f;
+            // foc_vars.HallAngle = foc_vars.HallAngle + 5460;
+        }
+        if (hall_error > 32000)
+        {
+            hall_error = hall_error - 65536;
+        }
+        if (hall_error < -32000)
+        {
+            hall_error = hall_error + 65536;
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        last_hall_state = current_hall_state;
+        last_hall_angle = current_hall_angle;
+        last_hall_period = (4 * last_hall_period + ticks_since_last_hall_change) * 0.2;
+        one_on_last_hall_period = 1 / last_hall_period;  // / ticks_since_last_hall_change;
+        ticks_since_last_hall_change = 0;
+    }
+
+    ticks_since_last_hall_change = ticks_since_last_hall_change + 1;
+    if (ticks_since_last_hall_change <= 1.2 * last_hall_period)
+    {
+        if (dir > 0)
+        {  // Apply a gain to the error as well as the feed forward from the last hall period. Gain between 0.05 and 1.8 seems stable, but
+           // 0.05 slow to respond to changing speeds, and approaching 2 it is clear that the overshoot on the error correction is about be
+           // unstable... NOISE A gain of ~0.2 seems to be a good compromise for dealing with poorly placed hall sensors while retaining
+           // strong phase locking.
+            foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(one_on_last_hall_period * (10922 - 0.9 * hall_error));
+        }
+        else if (dir < 0)
+        {
+            foc_vars.HallAngle = foc_vars.HallAngle - (uint16_t)(one_on_last_hall_period * (10922 + 0.9 * hall_error));
+        }
+    }
+    if (ticks_since_last_hall_change > 500.0f)
+    {
+        ticks_since_last_hall_change = 501.0f;
+        last_hall_period = 500.0f;                          //(ticks_since_last_hall_change);
+        one_on_last_hall_period = 1.0f / last_hall_period;  // / ticks_since_last_hall_change;
+        foc_vars.HallAngle = current_hall_angle;
+    }
+    //        (uint16_t)((16383 * ((uint32_t)foc_vars.HallAngle) + (uint32_t)temp_current_hall_angle) >> 14) +
+    //        (uint16_t)(one_on_last_hall_period * 10922);
+    //(uint16_t)(10922.0f * (current_hall_state + ticks_since_last_hall_change / last_hall_period));
+}
+void hallAngleEstimator2()
+{  // Implementation using the mid point of the hall sensor angles, which should be much more reliable to generate that the edges
+
+    if (current_hall_state != last_hall_state)
+    {
+        if (current_hall_state == 0)
+        {
+            MotorState = MOTOR_STATE_ERROR;
+            MotorError = MOTOR_ERROR_HALL0;
+        }
+        else if (current_hall_state == 7)
+        {
+            MotorState = MOTOR_STATE_ERROR;
+            MotorError = MOTOR_ERROR_HALL7;
+        }
+        //////////Implement the Hall table here, but the vector can be dynamically created/filled by another function/////////////
+        current_hall_angle = foc_vars.hall_table[current_hall_state - 1][2];
+
+        // Calculate Hall error
         hall_error = foc_vars.HallAngle - current_hall_angle;
 
         // Todo I want this section to have a PLL like property, adding only a proportion of the error, not rigidly locking it.
@@ -467,6 +543,7 @@ void hallAngleEstimator()
     //        (uint16_t)(one_on_last_hall_period * 10922);
     //(uint16_t)(10922.0f * (current_hall_state + ticks_since_last_hall_change / last_hall_period));
 }
+
 void OLGenerateAngle()
 {
     // ToDo
@@ -881,10 +958,12 @@ void getHallTable()
             }
         }
         for (int i = 0; i < 6; i++)
-        {
-            foc_vars.hall_table[i][0] = i;
-            foc_vars.hall_table[i][2] = hallangles[i + 1][0];
-            foc_vars.hall_table[i][3] = hallangles[i + 1][1];
+        {  // clang-format off
+            foc_vars.hall_table[i][2] = hallangles[i + 1][0];//This is the center angle of the hall state
+            foc_vars.hall_table[i][3] = hallangles[i + 1][1];//This is the width of the hall state
+            foc_vars.hall_table[i][0] = foc_vars.hall_table[i][2]-foc_vars.hall_table[i][3]/2;//This is the start angle of the hall state
+            foc_vars.hall_table[i][1] = foc_vars.hall_table[i][2]+foc_vars.hall_table[i][3]/2;//This is the end angle of the hall state
+            // clang-format on
         }
         b_write_flash = 1;
         MotorState = MOTOR_STATE_HALL_RUN;

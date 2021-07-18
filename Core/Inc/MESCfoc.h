@@ -113,7 +113,7 @@ void ADCConversion();  // Roll this into the V_I_Check? less branching, can
 // the Clark and Park transform now
 void hallAngleEstimator();  // Going to attempt to make a similar hall angle estimator that rolls the hall state into the main function,
                             // and calls a vector table to find the angle from hall offsets.
-
+void hallAngleEstimator2();
 void OLGenerateAngle();  // For open loop FOC startup, just use this to generate an angle and velocity ramp, then keep the phase currents at
                          // the requested value without really thinking about things like synchronising, phase etc...
 
