@@ -147,6 +147,7 @@ void fastLoop()
                 // foc_vars.Idq_req[0] = 2;
                 // foc_vars.Idq_req[1] = 2;
                 MESCFOC();
+                fluxIntegrator();
             }
             // Get the current position from HallTimer
             // Call the current and phase controller
@@ -447,8 +448,8 @@ void hallAngleEstimator()
     ticks_since_last_hall_change = ticks_since_last_hall_change + 1;
     if (ticks_since_last_hall_change <= 2.0 * last_hall_period)
     {
-    	 // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(dir*angle_step + one_on_last_hall_period * (-0.9 * hall_error));
-    	//Does not work... Why?
+        // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(dir*angle_step + one_on_last_hall_period * (-0.9 * hall_error));
+        // Does not work... Why?
 
         if (dir > 0)
         {  // Apply a gain to the error as well as the feed forward from the last hall period. Gain of 0.9-1.1 seems to work well when using
@@ -457,10 +458,9 @@ void hallAngleEstimator()
         }
         else if (dir < 0)
         {
-            //foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(-angle_step + one_on_last_hall_period * (-0.9 * hall_error));
-        	//Also does not work, Why??
+            // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(-angle_step + one_on_last_hall_period * (-0.9 * hall_error));
+            // Also does not work, Why??
             foc_vars.HallAngle = foc_vars.HallAngle - (uint16_t)(angle_step + one_on_last_hall_period * (0.9 * hall_error));
-
         }
     }
     if (ticks_since_last_hall_change > 500.0f)
@@ -470,6 +470,23 @@ void hallAngleEstimator()
         one_on_last_hall_period = 1.0f / last_hall_period;  // / ticks_since_last_hall_change;
         foc_vars.HallAngle = current_hall_angle;
     }
+}
+
+void fluxIntegrator()
+{
+	//We integrate the Valpha and Vbeta cycle by cycle, and add a damper to centre it about zero
+    foc_vars.VBEMFintegral[0] = 0.99f*(foc_vars.VBEMFintegral[0] + 0.03*foc_vars.Vab[0] - motor.Rphase*foc_vars.Iab[0]);//ignore the inductance for now, since it requires current derivatives, and motors on my desk are all low inductance
+    foc_vars.VBEMFintegral[1] = 0.99f*(foc_vars.VBEMFintegral[1] + 0.03*foc_vars.Vab[1] - motor.Rphase*foc_vars.Iab[1]);
+
+    if(foc_vars.VBEMFintegral[0]>foc_vars.VBEMFintegral[1]){
+    foc_vars.state[0]=1;
+    }
+    else{foc_vars.state[0]=0;}
+if(foc_vars.state[0]!=foc_vars.state[1]){
+	foc_vars.state[1]=foc_vars.state[0];
+	foc_vars.state[2] = foc_vars.HallAngle;
+}
+
 }
 
 void OLGenerateAngle()
@@ -539,7 +556,7 @@ void MESCFOC()
 
         i = FOC_PERIODS;
         // Field weakening? - The below works pretty nicely, but needs turning into an implementation where it is switchable by the user.
-        //Not useable when manually setting Id, or if there is an MTPA implementation
+        // Not useable when manually setting Id, or if there is an MTPA implementation
         // Can result in problems e.g. tripping PSUs...
         //        if((foc_vars.Vdq[1]>300)){
         //        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]-300)*-0.1; //36A max field weakening current
