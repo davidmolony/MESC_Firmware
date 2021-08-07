@@ -143,15 +143,11 @@ void fastLoop()
             }
             if (MotorControlType == MOTOR_CONTROL_TYPE_FOC)
             {
-                hallAngleEstimator();
-                // foc_vars.Idq_req[0] = 2;
-                // foc_vars.Idq_req[1] = 2;
+                // hallAngleEstimator();
+                angleObserver();
                 MESCFOC();
                 fluxIntegrator();
             }
-            // Get the current position from HallTimer
-            // Call the current and phase controller
-            // Write the PWM values
             break;
 
         case MOTOR_STATE_HALL_NEAR_STATIONARY:
@@ -379,13 +375,12 @@ void ADCConversion()
 /////////////////////////////////////////////////////////////////////////////
 ////////Hall Sensor Implementation///////////////////////////////////////////
 static float dir = 1;
-static uint16_t testvar;
 static uint16_t current_hall_angle;
 static int last_hall_state;
 static uint16_t last_hall_angle;
-static float ticks_since_last_hall_change = 65535;
-static float last_hall_period = 65536;
-static float one_on_last_hall_period = 1;
+static float ticks_since_last_observer_change = 65535;
+static float last_observer_period = 65536;
+static float one_on_last_observer_period = 1;
 float angular_velocity = 0;
 static float angle_step = 0;
 
@@ -395,6 +390,7 @@ void hallAngleEstimator()
 
     if (current_hall_state != last_hall_state)
     {
+        foc_vars.hall_update = 1;
         if (current_hall_state == 0)
         {
             MotorState = MOTOR_STATE_ERROR;
@@ -413,13 +409,13 @@ void hallAngleEstimator()
         uint16_t a;
         if ((a = current_hall_angle - last_hall_angle) < 32000)  // Forwards
         {
-            hall_error = foc_vars.HallAngle - foc_vars.hall_table[current_hall_state - 1][0];
+            hall_error = foc_vars.FOCAngle - foc_vars.hall_table[current_hall_state - 1][0];
             dir = 1.0f;
             // foc_vars.HallAngle = foc_vars.HallAngle - 5460;
         }
         else  // Backwards
         {
-            hall_error = foc_vars.HallAngle - foc_vars.hall_table[current_hall_state - 1][1];
+            hall_error = foc_vars.FOCAngle - foc_vars.hall_table[current_hall_state - 1][1];
             dir = -1.0f;
             // foc_vars.HallAngle = foc_vars.HallAngle + 5460;
         }
@@ -431,22 +427,48 @@ void hallAngleEstimator()
         {
             hall_error = hall_error + 65536;
         }
+    }
+}
 
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        last_hall_period = ticks_since_last_hall_change;
-        float one_on_ticks = (1.0 / ticks_since_last_hall_change);
-        one_on_last_hall_period = (one_on_last_hall_period + (one_on_ticks)) * 0.5;  // ;
+void angleObserver()
+{
+    // This function should take the available data (hall change, BEMF crossing etc...) and process it with a PLL type mechanism
+    if (foc_vars.hall_update == 1)
+    {
+        foc_vars.hall_update = 0;
+        last_observer_period = ticks_since_last_observer_change;
+        float one_on_ticks = (1.0 / ticks_since_last_observer_change);
+        one_on_last_observer_period = (one_on_last_observer_period + (one_on_ticks)) * 0.5;  // ;
         angle_step = (angle_step + (one_on_ticks)*foc_vars.hall_table[last_hall_state - 1][3]) * 0.5;
 
         // Reset the counters, track the previous state
         last_hall_state = current_hall_state;
         last_hall_angle = current_hall_angle;
-        ticks_since_last_hall_change = 0;
+        ticks_since_last_observer_change = 0;
+    }
+    if (foc_vars.BEMF_update == 1)
+    {
+        foc_vars.BEMF_update = 0;
+        last_observer_period = ticks_since_last_observer_change;
+        float one_on_ticks = (1.0 / ticks_since_last_observer_change);
+        one_on_last_observer_period =  (3*one_on_last_observer_period + (one_on_ticks)) * 0.25;  // ;
+        angle_step = (3 * angle_step + (one_on_ticks)*32768) * 0.25;
+        // Reset the counters
+        ticks_since_last_observer_change = 0;
+        hall_error = foc_vars.FOCAngle - foc_vars.state[2];  // FUDGE, Need to have different terms for error from different sources
+        dir = 1.0f;
+        if (hall_error > 32000)
+        {
+            hall_error = hall_error - 65536;
+        }
+        if (hall_error < -32000)
+        {
+            hall_error = hall_error + 65536;
+        }
     }
     // Run the counter
-    ticks_since_last_hall_change = ticks_since_last_hall_change + 1;
-    if (ticks_since_last_hall_change <= 2.0 * last_hall_period)
+    ticks_since_last_observer_change = ticks_since_last_observer_change + 1;
+    if (ticks_since_last_observer_change <= 2.0 * last_observer_period)
     {
         // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(dir*angle_step + one_on_last_hall_period * (-0.9 * hall_error));
         // Does not work... Why?
@@ -454,39 +476,59 @@ void hallAngleEstimator()
         if (dir > 0)
         {  // Apply a gain to the error as well as the feed forward from the last hall period. Gain of 0.9-1.1 seems to work well when using
            // corrected hall positions and spacings
-            foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(angle_step + one_on_last_hall_period * (-0.9 * hall_error));
+            foc_vars.FOCAngle = foc_vars.FOCAngle + (uint16_t)(angle_step + one_on_last_observer_period * (-0.9 * hall_error));
         }
         else if (dir < 0)
         {
             // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(-angle_step + one_on_last_hall_period * (-0.9 * hall_error));
             // Also does not work, Why??
-            foc_vars.HallAngle = foc_vars.HallAngle - (uint16_t)(angle_step + one_on_last_hall_period * (0.9 * hall_error));
+            foc_vars.FOCAngle = foc_vars.FOCAngle - (uint16_t)(angle_step + one_on_last_observer_period * (0.9 * hall_error));
         }
     }
-    if (ticks_since_last_hall_change > 500.0f)
+    if (ticks_since_last_observer_change > 1500.0f)
     {
-        ticks_since_last_hall_change = 501.0f;
-        last_hall_period = 500.0f;                          //(ticks_since_last_hall_change);
-        one_on_last_hall_period = 1.0f / last_hall_period;  // / ticks_since_last_hall_change;
-        foc_vars.HallAngle = current_hall_angle;
+        ticks_since_last_observer_change = 1501.0f;
+        last_observer_period = 500.0f;                              //(ticks_since_last_hall_change);
+        one_on_last_observer_period = 1.0f / last_observer_period;  // / ticks_since_last_hall_change;
+        foc_vars.FOCAngle = current_hall_angle;
     }
 }
-
+uint16_t flux_blanking;
 void fluxIntegrator()
 {
-	//We integrate the Valpha and Vbeta cycle by cycle, and add a damper to centre it about zero
-    foc_vars.VBEMFintegral[0] = 0.99f*(foc_vars.VBEMFintegral[0] + 0.03*foc_vars.Vab[0] - motor.Rphase*foc_vars.Iab[0]);//ignore the inductance for now, since it requires current derivatives, and motors on my desk are all low inductance
-    foc_vars.VBEMFintegral[1] = 0.99f*(foc_vars.VBEMFintegral[1] + 0.03*foc_vars.Vab[1] - motor.Rphase*foc_vars.Iab[1]);
+    // We integrate the Valpha and Vbeta cycle by cycle, and add a damper to centre it about zero
+    foc_vars.VBEMFintegral[0] = 0.99f * (foc_vars.VBEMFintegral[0] + 0.03 * foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0]);
+    // ignore the inductance for now, since it requires current
+    // derivatives, and motors on my desk are all low inductance
+    foc_vars.VBEMFintegral[1] = 0.99f * (foc_vars.VBEMFintegral[1] + 0.03 * foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1]);
 
-    if(foc_vars.VBEMFintegral[0]>foc_vars.VBEMFintegral[1]){
-    foc_vars.state[0]=1;
+    flux_blanking++;
+    if (flux_blanking > 10)  // Slight concern that when the crossing occurs, it could jitter due to ADC noise
+    {
+        if (foc_vars.VBEMFintegral[0] > foc_vars.VBEMFintegral[1])
+        {
+            foc_vars.state[0] = 1;
+        }
+        else
+        {
+            foc_vars.state[0] = 0;
+        }
+
+        if (foc_vars.state[0] != foc_vars.state[1])
+        {
+            flux_blanking = 0;
+            foc_vars.BEMF_update = 1;  // Signal to the observer that new change found
+            foc_vars.state[1] = foc_vars.state[0];
+            if (foc_vars.VBEMFintegral[0] > 0)
+            {
+                foc_vars.state[2] = 40960;  // This returns the higher angle (40960) in forward direction, not tested reverse
+            }
+            else  // The angle is 45 degrees (8192)
+            {
+                foc_vars.state[2] = 8192;
+            }
+        }
     }
-    else{foc_vars.state[0]=0;}
-if(foc_vars.state[0]!=foc_vars.state[1]){
-	foc_vars.state[1]=foc_vars.state[0];
-	foc_vars.state[2] = foc_vars.HallAngle;
-}
-
 }
 
 void OLGenerateAngle()
@@ -573,8 +615,8 @@ void MESCFOC()
 
     // Now we update the sin and cos values, since when we do the inverse transforms, we would like to use the most up to date
     // versions(or even the next predicted version...)
-    foc_vars.sincosangle[0] = sinwave[foc_vars.HallAngle >> 8];
-    foc_vars.sincosangle[1] = sinwave[(foc_vars.HallAngle >> 8) + 64];
+    foc_vars.sincosangle[0] = sinwave[foc_vars.FOCAngle >> 8];
+    foc_vars.sincosangle[1] = sinwave[(foc_vars.FOCAngle >> 8) + 64];
     // Inverse Park transform
     foc_vars.Vab[0] = foc_vars.sincosangle[1] * foc_vars.Vdq[0] - foc_vars.sincosangle[0] * foc_vars.Vdq[1];
     foc_vars.Vab[1] = foc_vars.sincosangle[0] * foc_vars.Vdq[0] + foc_vars.sincosangle[1] * foc_vars.Vdq[1];
@@ -818,7 +860,6 @@ void getHallTable()
     static int hallstate;
     hallstate = ((GPIOB->IDR >> 6) & 0x7);
     static int lasthallstate;
-    static int offset = 1000;
     static uint16_t pwm_count = 0;
     static int anglestep = 1;  // This defines how fast the motor spins
     static uint32_t hallangles[7][2];
@@ -837,7 +878,7 @@ void getHallTable()
         foc_vars.Idq_req[0] = 10;
         foc_vars.Idq_req[1] = 0;
 
-        foc_vars.HallAngle = 32768;
+        foc_vars.FOCAngle = 32768;
         a = a - 1;
     }
     else
@@ -847,11 +888,11 @@ void getHallTable()
         static int dir = 1;
         if (pwm_count < 65534)
         {
-            if (foc_vars.HallAngle < (anglestep))
+            if (foc_vars.FOCAngle < (anglestep))
             {
                 rollover = hallstate;
             }
-            if ((foc_vars.HallAngle < (30000)) && (foc_vars.HallAngle > (30000 - anglestep)))
+            if ((foc_vars.FOCAngle < (30000)) && (foc_vars.FOCAngle > (30000 - anglestep)))
             {
                 rollover = 0;
             }
@@ -861,8 +902,8 @@ void getHallTable()
                 hallangles[hallstate][0] = hallangles[hallstate][0] + (uint32_t)65535;  // Accumulate the angles through the sweep
             }
 
-            foc_vars.HallAngle = foc_vars.HallAngle + anglestep;                       // Increment the angle
-            hallangles[hallstate][0] = hallangles[hallstate][0] + foc_vars.HallAngle;  // Accumulate the angles through the sweep
+            foc_vars.FOCAngle = foc_vars.FOCAngle + anglestep;                        // Increment the angle
+            hallangles[hallstate][0] = hallangles[hallstate][0] + foc_vars.FOCAngle;  // Accumulate the angles through the sweep
             hallangles[hallstate][1]++;  // Accumulate the number of PWM pulses for this hall state
             pwm_count = pwm_count + 1;
         }
@@ -873,11 +914,11 @@ void getHallTable()
                 dir = 0;
                 rollover = 0;
             }
-            if ((foc_vars.HallAngle < (12000)) && (hallstate != last_hall_state))
+            if ((foc_vars.FOCAngle < (12000)) && (hallstate != last_hall_state))
             {
                 rollover = hallstate;
             }
-            if ((foc_vars.HallAngle < (65535)) && (foc_vars.HallAngle > (65535 - anglestep)))
+            if ((foc_vars.FOCAngle < (65535)) && (foc_vars.FOCAngle > (65535 - anglestep)))
             {
                 rollover = 0;
             }
@@ -887,8 +928,8 @@ void getHallTable()
                 hallangles[hallstate][0] = hallangles[hallstate][0] + (uint32_t)65535;  // Accumulate the angles through the sweep
             }
 
-            foc_vars.HallAngle = foc_vars.HallAngle - anglestep;                       // Increment the angle
-            hallangles[hallstate][0] = hallangles[hallstate][0] + foc_vars.HallAngle;  // Accumulate the angles through the sweep
+            foc_vars.FOCAngle = foc_vars.FOCAngle - anglestep;                        // Increment the angle
+            hallangles[hallstate][0] = hallangles[hallstate][0] + foc_vars.FOCAngle;  // Accumulate the angles through the sweep
             hallangles[hallstate][1]++;  // Accumulate the number of PWM pulses for this hall state
             pwm_count = pwm_count + 1;
         }

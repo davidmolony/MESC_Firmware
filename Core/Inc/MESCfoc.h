@@ -44,7 +44,7 @@ typedef struct
     foc_angle_t AngleStep;   // At startup, step angle is zero, zero speed. This is the angle by which the inverter increments
                              // each PWM cycle under open loop
 
-    foc_angle_t HallAngle;  // Angle generated in the hall sensor estimator
+    foc_angle_t FOCAngle;  // Angle generated in the hall sensor estimator
 
     float sincosangle[2];  // This variable carries the current sin and cosine of the angle being used for Park and Clark transforms, so
                            // they only need computing once per pwm cycle
@@ -71,7 +71,9 @@ typedef struct
     float Iq_pgain;
     float Iq_igain;
     float VBEMFintegral[2];
-    uint16_t state[3];  // current state, last state, angle change occurred
+    uint16_t state[4];  // current state, last state, angle change occurred
+    uint16_t hall_update;
+    uint16_t BEMF_update;
 
 } MESCfoc_s;
 
@@ -115,7 +117,7 @@ void ADCConversion();  // Roll this into the V_I_Check? less branching, can
 // the Clark and Park transform now
 void hallAngleEstimator();  // Going to attempt to make a similar hall angle estimator that rolls the hall state into the main function,
                             // and calls a vector table to find the angle from hall offsets.
-void hallAngleEstimator2();
+void angleObserver();
 void fluxIntegrator();
 void OLGenerateAngle();  // For open loop FOC startup, just use this to generate an angle and velocity ramp, then keep the phase currents at
                          // the requested value without really thinking about things like synchronising, phase etc...
