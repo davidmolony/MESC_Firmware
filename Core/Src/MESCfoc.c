@@ -143,10 +143,10 @@ void fastLoop()
             }
             if (MotorControlType == MOTOR_CONTROL_TYPE_FOC)
             {
-                // hallAngleEstimator();
+                 hallAngleEstimator();
                 angleObserver();
                 MESCFOC();
-                fluxIntegrator();
+                //fluxIntegrator();
             }
             break;
 
@@ -451,8 +451,8 @@ void angleObserver()
         foc_vars.BEMF_update = 0;
         last_observer_period = ticks_since_last_observer_change;
         float one_on_ticks = (1.0 / ticks_since_last_observer_change);
-        one_on_last_observer_period =  (3*one_on_last_observer_period + (one_on_ticks)) * 0.25;  // ;
-        angle_step = (3 * angle_step + (one_on_ticks)*32768) * 0.25;
+        one_on_last_observer_period = one_on_ticks;  // (3*one_on_last_observer_period + (one_on_ticks)) * 0.25;  // ;
+        angle_step = (angle_step + (one_on_ticks)*32768) * 0.5;
         // Reset the counters
         ticks_since_last_observer_change = 0;
         hall_error = foc_vars.FOCAngle - foc_vars.state[2];  // FUDGE, Need to have different terms for error from different sources
@@ -476,13 +476,13 @@ void angleObserver()
         if (dir > 0)
         {  // Apply a gain to the error as well as the feed forward from the last hall period. Gain of 0.9-1.1 seems to work well when using
            // corrected hall positions and spacings
-            foc_vars.FOCAngle = foc_vars.FOCAngle + (uint16_t)(angle_step + one_on_last_observer_period * (-0.9 * hall_error));
+            foc_vars.FOCAngle = foc_vars.FOCAngle + (uint16_t)(angle_step + one_on_last_observer_period * (-1.5 * hall_error));
         }
         else if (dir < 0)
         {
             // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(-angle_step + one_on_last_hall_period * (-0.9 * hall_error));
             // Also does not work, Why??
-            foc_vars.FOCAngle = foc_vars.FOCAngle - (uint16_t)(angle_step + one_on_last_observer_period * (0.9 * hall_error));
+            foc_vars.FOCAngle = foc_vars.FOCAngle - (uint16_t)(angle_step + one_on_last_observer_period * (2.0 * hall_error));
         }
     }
     if (ticks_since_last_observer_change > 1500.0f)
@@ -497,10 +497,10 @@ uint16_t flux_blanking;
 void fluxIntegrator()
 {
     // We integrate the Valpha and Vbeta cycle by cycle, and add a damper to centre it about zero
-    foc_vars.VBEMFintegral[0] = 0.99f * (foc_vars.VBEMFintegral[0] + 0.03 * foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0]);
+    foc_vars.VBEMFintegral[0] = 0.99f * (foc_vars.VBEMFintegral[0] + 0.03 * foc_vars.Vab[0] + motor.Rphase * foc_vars.Iab[0]);
     // ignore the inductance for now, since it requires current
     // derivatives, and motors on my desk are all low inductance
-    foc_vars.VBEMFintegral[1] = 0.99f * (foc_vars.VBEMFintegral[1] + 0.03 * foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1]);
+    foc_vars.VBEMFintegral[1] = 0.99f * (foc_vars.VBEMFintegral[1] + 0.03 * foc_vars.Vab[1] + motor.Rphase * foc_vars.Iab[1]);
 
     flux_blanking++;
     if (flux_blanking > 10)  // Slight concern that when the crossing occurs, it could jitter due to ADC noise
