@@ -143,10 +143,10 @@ void fastLoop()
             }
             if (MotorControlType == MOTOR_CONTROL_TYPE_FOC)
             {
-                 hallAngleEstimator();
+                // hallAngleEstimator();
                 angleObserver();
                 MESCFOC();
-                //fluxIntegrator();
+                fluxIntegrator();
             }
             break;
 
@@ -429,7 +429,7 @@ void hallAngleEstimator()
         }
     }
 }
-
+static float last_anglestep;
 void angleObserver()
 {
     // This function should take the available data (hall change, BEMF crossing etc...) and process it with a PLL type mechanism
@@ -439,7 +439,27 @@ void angleObserver()
         last_observer_period = ticks_since_last_observer_change;
         float one_on_ticks = (1.0 / ticks_since_last_observer_change);
         one_on_last_observer_period = (one_on_last_observer_period + (one_on_ticks)) * 0.5;  // ;
-        angle_step = (angle_step + (one_on_ticks)*foc_vars.hall_table[last_hall_state - 1][3]) * 0.5;
+        angle_step = (3 * angle_step + (one_on_ticks)*foc_vars.hall_table[last_hall_state - 1][3]) * 0.25;
+        //                if(hall_error>200){
+        //                	foc_vars.hall_table[current_hall_state - 1][0]=foc_vars.hall_table[current_hall_state - 1][0]+1;
+        //                	foc_vars.hall_table[last_hall_state - 1][0]=foc_vars.hall_table[last_hall_state - 1][0]-1;
+        //
+        //
+        //                }
+        //                if(hall_error<-200){
+        //                	foc_vars.hall_table[current_hall_state - 1][0] = foc_vars.hall_table[current_hall_state - 1][0]-1;
+        //                	foc_vars.hall_table[last_hall_state - 1][0]=foc_vars.hall_table[last_hall_state - 1][0]+1;
+        //
+        //                }
+        //                if(last_anglestep>angle_step){
+        //                	foc_vars.hall_table[last_hall_state - 1][3] = foc_vars.hall_table[last_hall_state - 1][3]+1;
+        //                }
+        //                if(last_anglestep<angle_step){
+        //                	foc_vars.hall_table[last_hall_state - 1][3] = foc_vars.hall_table[last_hall_state - 1][3]-1;
+        //                }
+        //                last_anglestep=angle_step;
+        // Attempting to make the halls auto adjust to reduce the error in load-less spinning. Promising behaviour (current ripple reduced)
+        // but seems to run away with itself
 
         // Reset the counters, track the previous state
         last_hall_state = current_hall_state;
@@ -482,10 +502,10 @@ void angleObserver()
         {
             // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(-angle_step + one_on_last_hall_period * (-0.9 * hall_error));
             // Also does not work, Why??
-            foc_vars.FOCAngle = foc_vars.FOCAngle - (uint16_t)(angle_step + one_on_last_observer_period * (2.0 * hall_error));
+            foc_vars.FOCAngle = foc_vars.FOCAngle - (uint16_t)(angle_step + one_on_last_observer_period * (1.5 * hall_error));
         }
     }
-    if (ticks_since_last_observer_change > 1500.0f)
+    if (ticks_since_last_observer_change > 3000.0f)
     {
         ticks_since_last_observer_change = 1501.0f;
         last_observer_period = 500.0f;                              //(ticks_since_last_hall_change);
@@ -494,13 +514,14 @@ void angleObserver()
     }
 }
 uint16_t flux_blanking;
+float BEMF_integral_check[2];
 void fluxIntegrator()
 {
     // We integrate the Valpha and Vbeta cycle by cycle, and add a damper to centre it about zero
-    foc_vars.VBEMFintegral[0] = 0.99f * (foc_vars.VBEMFintegral[0] + 0.03 * foc_vars.Vab[0] + motor.Rphase * foc_vars.Iab[0]);
+    foc_vars.VBEMFintegral[0] = 0.999f * (foc_vars.VBEMFintegral[0] + 0.02 * foc_vars.Vab[0] + motor.Rphase * foc_vars.Iab[0]);
     // ignore the inductance for now, since it requires current
     // derivatives, and motors on my desk are all low inductance
-    foc_vars.VBEMFintegral[1] = 0.99f * (foc_vars.VBEMFintegral[1] + 0.03 * foc_vars.Vab[1] + motor.Rphase * foc_vars.Iab[1]);
+    foc_vars.VBEMFintegral[1] = 0.999f * (foc_vars.VBEMFintegral[1] + 0.02 * foc_vars.Vab[1] + motor.Rphase * foc_vars.Iab[1]);
 
     flux_blanking++;
     if (flux_blanking > 10)  // Slight concern that when the crossing occurs, it could jitter due to ADC noise
@@ -516,6 +537,9 @@ void fluxIntegrator()
 
         if (foc_vars.state[0] != foc_vars.state[1])
         {
+            BEMF_integral_check[0] = foc_vars.VBEMFintegral[0];
+            BEMF_integral_check[1] = foc_vars.VBEMFintegral[1];
+
             flux_blanking = 0;
             foc_vars.BEMF_update = 1;  // Signal to the observer that new change found
             foc_vars.state[1] = foc_vars.state[0];
