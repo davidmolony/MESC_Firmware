@@ -143,10 +143,10 @@ void fastLoop()
             }
             if (MotorControlType == MOTOR_CONTROL_TYPE_FOC)
             {
-                // hallAngleEstimator();
+                 hallAngleEstimator();
                 angleObserver();
                 MESCFOC();
-                fluxIntegrator();
+                //fluxIntegrator();
             }
             break;
 
@@ -496,13 +496,13 @@ void angleObserver()
         if (dir > 0)
         {  // Apply a gain to the error as well as the feed forward from the last hall period. Gain of 0.9-1.1 seems to work well when using
            // corrected hall positions and spacings
-            foc_vars.FOCAngle = foc_vars.FOCAngle + (uint16_t)(angle_step + one_on_last_observer_period * (-1.5 * hall_error));
+            foc_vars.FOCAngle = foc_vars.FOCAngle + (uint16_t)(angle_step + one_on_last_observer_period * (-1.0 * hall_error));
         }
         else if (dir < 0)
         {
             // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(-angle_step + one_on_last_hall_period * (-0.9 * hall_error));
             // Also does not work, Why??
-            foc_vars.FOCAngle = foc_vars.FOCAngle - (uint16_t)(angle_step + one_on_last_observer_period * (1.5 * hall_error));
+            foc_vars.FOCAngle = foc_vars.FOCAngle - (uint16_t)(angle_step + one_on_last_observer_period * (1.0 * hall_error));
         }
     }
     if (ticks_since_last_observer_change > 3000.0f)
