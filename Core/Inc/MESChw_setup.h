@@ -56,6 +56,7 @@ typedef struct
                              //  generated break from ADC. Actual voltage equal to
                              /// RawVoltLim*3.3*Divider/4096			//
                              /// example 2303*3.3/4096*(R1k5+R47k/R1K5)=60V
+    float battMaxPower;      // Maximum battery power init...
 } hw_setup_s;
 
 hw_setup_s g_hw_setup;

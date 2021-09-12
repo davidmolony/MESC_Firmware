@@ -53,10 +53,14 @@ typedef struct
     float Idq[FOC_TRANSFORMED_CHANNELS];      // Float vector containing the Park transformed current in amps
 
     float Vdq[FOC_TRANSFORMED_CHANNELS];
+    float Vdq_smoothed[FOC_TRANSFORMED_CHANNELS];
     float Vab[FOC_TRANSFORMED_CHANNELS + 1];
     float inverterVoltage[FOC_TRANSFORMED_CHANNELS + 1];
     float smoothed_idq[2];
     float Idq_req[2];
+    float rawThrottleVal[2];
+    float currentPower;
+    float reqPower;
 
     uint16_t hall_table[6][4];  // Lookup table, populated by the getHallTable() function and used in estimating the rotor position from
                                 // hall sensors in HallAngleEstimator()
@@ -70,6 +74,8 @@ typedef struct
     float Id_igain;
     float Iq_pgain;
     float Iq_igain;
+    float Vdqres_to_Vdq;
+
     float VBEMFintegral[2];
     uint16_t state[4];  // current state, last state, angle change occurred
     uint16_t hall_update;

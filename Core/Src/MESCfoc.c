@@ -143,10 +143,10 @@ void fastLoop()
             }
             if (MotorControlType == MOTOR_CONTROL_TYPE_FOC)
             {
-                 hallAngleEstimator();
+                hallAngleEstimator();
                 angleObserver();
                 MESCFOC();
-                //fluxIntegrator();
+                // fluxIntegrator();
             }
             break;
 
@@ -594,7 +594,7 @@ void MESCFOC()
         // Bounding
         // clang-format off
         static float integral_d_limit = 150.0f;
-        static float integral_q_limit = 550.0f;
+        static float integral_q_limit = 650.0f;
 
         if (Idq_int_err[0] > integral_d_limit){Idq_int_err[0] = integral_d_limit;}
         if (Idq_int_err[0] < -integral_d_limit){Idq_int_err[0] = -integral_d_limit;}
@@ -613,13 +613,13 @@ void MESCFOC()
         // Vout=(Vd^2+Vq^2)^0.5 results in Vd having a small effect. Vd is primarily used to drive the resistive part of the
         // field; there is no BEMF pushing against Vd and so it does not scale with RPM.
         static float V_d_limit = 150.0f;
-        static float V_q_limit = 660.0f;
+        static float V_q_limit = 700.0f;
 
         if (foc_vars.Vdq[0] > V_d_limit) (foc_vars.Vdq[0] = V_d_limit);
         if (foc_vars.Vdq[0] < -V_d_limit) (foc_vars.Vdq[0] = -V_d_limit);
         if (foc_vars.Vdq[1] > V_q_limit) (foc_vars.Vdq[1] = V_q_limit);
         if (foc_vars.Vdq[1] < -V_q_limit) (foc_vars.Vdq[1] = -V_q_limit);
-
+        foc_vars.Vdq_smoothed[1] = (999 * foc_vars.Vdq_smoothed[1] + foc_vars.Vdq[1]) * 0.001;
         i = FOC_PERIODS;
         // Field weakening? - The below works pretty nicely, but needs turning into an implementation where it is switchable by the user.
         // Not useable when manually setting Id, or if there is an MTPA implementation
@@ -1086,7 +1086,9 @@ void calculateGains()
     foc_vars.Iq_igain = 0.1f * motor.Rphase * (htim1.Instance->ARR * 0.5) / (2 * measurement_buffers.ConvertedADC[0][1]);
     foc_vars.Id_pgain = foc_vars.Iq_pgain / 2;
     foc_vars.Id_igain = foc_vars.Iq_igain / 2;
+    foc_vars.Vdqres_to_Vdq = 0.333f * measurement_buffers.ConvertedADC[0][1] / 677.0f;
 }
+
 void doublePulseTest()
 {
     static int dp_counter;
