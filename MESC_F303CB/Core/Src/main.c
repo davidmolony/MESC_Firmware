@@ -78,10 +78,9 @@ DMA_HandleTypeDef hdma_usart3_tx;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {.name = "defaultTask", .priority = (osPriority_t)osPriorityNormal, .stack_size = 128 * 4};
 /* USER CODE BEGIN PV */
-uint32_t ICVals[2] = {0, 0};
 // int initing = 1;
 char UART_buffer[12];
-char UART_rx_buffer[2];
+extern char UART_rx_buffer[2];
 char USBRxBuffer[12];
 extern uint8_t b_write_flash;
 extern uint8_t b_read_flash;
@@ -184,7 +183,7 @@ int main(void)
 
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);
-    __HAL_TIM_ENABLE_IT(&htim3,TIM_IT_UPDATE);
+    __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
     // Here we can auto set the prescaler to get the us input regardless of the main clock
     __HAL_TIM_SET_PRESCALER(&htim3, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
     // Place to mess about with PWM in

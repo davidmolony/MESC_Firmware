@@ -30,4 +30,16 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>MESC_Common</name>
+			<type>2</type>
+			<location>C:/Users/Lenovo/Documents/MESC_Firmware/MESC_Common</location>
+		</link>
+		<link>
+			<name>Src</name>
+			<type>2</type>
+			<location>C:/Users/Lenovo/Documents/MESC_Firmware/MESC_Common/Src</location>
+		</link>
+	</linkedResources>
 </projectDescription>

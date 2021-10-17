@@ -22,16 +22,12 @@
  *      Author: David Molony
  */
 
-#include "stm32f3xx_hal.h"
+#include "stm32fxxx_hal.h"
 
-typedef struct
-{
-    uint16_t Delta;
-    uint16_t Length;
+typedef struct {
+  uint16_t Delta;
+  uint16_t Length;
 } MESC_RCPWMin_t;
-
-#include "stm32f3xx_hal.h"
-
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim);

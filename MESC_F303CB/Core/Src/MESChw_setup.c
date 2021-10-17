@@ -35,7 +35,7 @@ void hw_init()
 {
     g_hw_setup.Imax =
         120.0;  // Imax is the current at which we are either no longer able to read it, or hardware "don't ever exceed to avoid breakage"
-    g_hw_setup.Vmax = 48.0;  // Headroom beyond which likely to get avalanche of MOSFETs or DCDC converter
+    g_hw_setup.Vmax = 55.0;  // Headroom beyond which likely to get avalanche of MOSFETs or DCDC converter
     g_hw_setup.Vmin = 10;    // This implies that the PSU has crapped out or a wire has fallen out, and suddenly there will be no power.
     g_hw_setup.Rshunt = 0.0005;
     g_hw_setup.RIphPU = 4700;
@@ -51,5 +51,10 @@ void hw_init()
         g_hw_setup.RawCurrLim = 4000;
     }  // 4000 is 96 counts away from ADC saturation, allow headroom for opamp not pulling rail:rail.
     g_hw_setup.RawVoltLim = (uint16_t)(4096.0f * (g_hw_setup.Vmax / 3.3f) * g_hw_setup.RVBB / (g_hw_setup.RVBB + g_hw_setup.RVBT));
-    g_hw_setup.battMaxPower = 200.0f;
+    g_hw_setup.battMaxPower = 500.0f;
+}
+
+void getRawADC(void)
+{
+    // Do not need to do anything here; handled by DMA
 }
