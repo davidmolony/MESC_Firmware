@@ -171,3 +171,5 @@ void phW_Enable();
 void calculateGains();
 
 void doublePulseTest();
+
+void slowLoop(TIM_HandleTypeDef *htim);

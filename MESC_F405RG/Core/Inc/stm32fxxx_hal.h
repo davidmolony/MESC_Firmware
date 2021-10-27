@@ -16,4 +16,8 @@
 // MESCfoc.c
 // MESC_Comms.c
 
+#define MESC_GPIO_HALL GPIOC
+
+#define getHallState(...) ((MESC_GPIO_HALL->IDR >> 6) & 0x7)
+
 #endif /* INC_STM32FXXX_HAL_H_ */

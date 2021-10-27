@@ -20,6 +20,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f3xx_it.h"
+#include <math.h>
 #include "main.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -223,44 +224,44 @@ void USB_LP_CAN_RX0_IRQHandler(void)
 void TIM3_IRQHandler(void)
 {
     /* USER CODE BEGIN TIM3_IRQn 0 */
-	   uint32_t fCC1 = __HAL_TIM_GET_FLAG(&htim3, TIM_FLAG_CC1) & __HAL_TIM_GET_IT_SOURCE(&htim3, TIM_IT_CC1);
-	    uint32_t fUPD = __HAL_TIM_GET_FLAG(&htim3, TIM_FLAG_UPDATE) & __HAL_TIM_GET_IT_SOURCE(&htim3, TIM_IT_UPDATE);
+    uint32_t fCC1 = __HAL_TIM_GET_FLAG(&htim3, TIM_FLAG_CC1) & __HAL_TIM_GET_IT_SOURCE(&htim3, TIM_IT_CC1);
+    uint32_t fUPD = __HAL_TIM_GET_FLAG(&htim3, TIM_FLAG_UPDATE) & __HAL_TIM_GET_IT_SOURCE(&htim3, TIM_IT_UPDATE);
 
-	    HAL_TIM_IRQHandler(&htim3);
+    HAL_TIM_IRQHandler(&htim3);
 
-	    // If the event was CC1...
-	    if (fCC1 != RESET)
-	    {
-	        if (measurement_buffers.RawADC[1][3] > 700)
-	        {
-	            foc_vars.Idq_req[1] = foc_vars.Idq_req[1] + (((float)(measurement_buffers.RawADC[1][3] - 700)) * 0.06f);
-	        }
-	        else
-	        {
-	        }
-	    }
-	    // If the event was UPDATE ...
-	    else if (fUPD != RESET)
-	    {
-	        if (measurement_buffers.RawADC[1][3] > 700)
-	        {
-	            foc_vars.Idq_req[1] = (((float)(measurement_buffers.RawADC[1][3] - 700)) * 0.06f);
-	        }
-	        else
-	        {
-	            foc_vars.Idq_req[1] = 0.0f;
-	        }
-	    }
+    // If the event was CC1...
+    if (fCC1 != RESET)
+    {
+        if (measurement_buffers.RawADC[1][3] > 700)
+        {
+            foc_vars.Idq_req[1] = foc_vars.Idq_req[1] + (((float)(measurement_buffers.RawADC[1][3] - 700)) * 0.06f);
+        }
+        else
+        {
+        }
+    }
+    // If the event was UPDATE ...
+    else if (fUPD != RESET)
+    {
+        if (measurement_buffers.RawADC[1][3] > 700)
+        {
+            foc_vars.Idq_req[1] = (((float)(measurement_buffers.RawADC[1][3] - 700)) * 0.06f);
+        }
+        else
+        {
+            foc_vars.Idq_req[1] = 0.0f;
+        }
+    }
 
-	    // For anything else...
-	    foc_vars.rawThrottleVal[1] = foc_vars.Idq_req[1];
-	    foc_vars.currentPower = fabs(foc_vars.Vdq_smoothed[1] * foc_vars.Idq[1]*foc_vars.Vdqres_to_Vdq);
-	    foc_vars.reqPower = fabs(foc_vars.Vdq_smoothed[1] * foc_vars.Idq_req[1]*foc_vars.Vdqres_to_Vdq);
-	    if (foc_vars.reqPower > g_hw_setup.battMaxPower)
-	    {  // foc_vars.Vdq[0]*foc_vars.Idq[0]+
-	        // foc_vars.Idq_req[1] = foc_vars.Idq_req[1] * g_hw_setup.battMaxPower / foc_vars.reqPower;
-	        foc_vars.Idq_req[1] = g_hw_setup.battMaxPower / (fabs(foc_vars.Vdq_smoothed[1])*foc_vars.Vdqres_to_Vdq);
-	    }
+    // For anything else...
+    foc_vars.rawThrottleVal[1] = foc_vars.Idq_req[1];
+    foc_vars.currentPower = fabs(foc_vars.Vdq_smoothed[1] * foc_vars.Idq[1] * foc_vars.Vdqres_to_Vdq);
+    foc_vars.reqPower = fabs(foc_vars.Vdq_smoothed[1] * foc_vars.Idq_req[1] * foc_vars.Vdqres_to_Vdq);
+    if (foc_vars.reqPower > g_hw_setup.battMaxPower)
+    {  // foc_vars.Vdq[0]*foc_vars.Idq[0]+
+        // foc_vars.Idq_req[1] = foc_vars.Idq_req[1] * g_hw_setup.battMaxPower / foc_vars.reqPower;
+        foc_vars.Idq_req[1] = g_hw_setup.battMaxPower / (fabs(foc_vars.Vdq_smoothed[1]) * foc_vars.Vdqres_to_Vdq);
+    }
     /* USER CODE END TIM3_IRQn 0 */
 
     /* USER CODE BEGIN TIM3_IRQn 1 */

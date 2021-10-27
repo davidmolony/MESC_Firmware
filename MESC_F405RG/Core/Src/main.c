@@ -106,20 +106,16 @@ int main(void) {
   MX_TIM4_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_1);
+  HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_2);
+  __HAL_TIM_ENABLE_IT(&htim4, TIM_IT_UPDATE);
+  // Here we can auto set the prescaler to get the us input regardless of the
+  // main clock
+  __HAL_TIM_SET_PRESCALER(&htim4, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
+
+  MESCInit();
   // MESC_Init();
-
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-  htim1.Instance->CCR4 = 1022;
-
-  HAL_ADCEx_InjectedStart_IT(&hadc1);
-  HAL_ADCEx_InjectedStart_IT(&hadc2);
-  HAL_ADCEx_InjectedStart_IT(&hadc3);
 
   /* USER CODE END 2 */
 
@@ -127,15 +123,15 @@ int main(void) {
   /* USER CODE BEGIN WHILE */
   while (1) {
     /* USER CODE END WHILE */
-    uint16_t duty[6] = {512, 522, 522, 512, 502, 502};
-    static uint16_t a = 0;
-    static uint16_t b = 30;
-    HAL_Delay(b);
-    htim1.Instance->CCR1 = duty[a % 6];
-    htim1.Instance->CCR2 = duty[(a + 2) % 6];
-    htim1.Instance->CCR3 = duty[(a + 4) % 6];
+//    uint16_t duty[6] = {512, 522, 522, 512, 502, 502};
+//    static uint16_t a = 0;
+//    static uint16_t b = 30;
+//    HAL_Delay(b);
+//    htim1.Instance->CCR1 = duty[a % 6];
+//    htim1.Instance->CCR2 = duty[(a + 2) % 6];
+//    htim1.Instance->CCR3 = duty[(a + 4) % 6];
 
-    a = a + 1;
+//    a = a + 1;
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

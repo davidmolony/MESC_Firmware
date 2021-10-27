@@ -45,16 +45,13 @@ void hw_init() {
   g_hw_setup.Vmin = 10;  // This implies that the PSU has crapped out or a wire
                          // has fallen out, and suddenly there will be no power.
   g_hw_setup.Rshunt = 0.00033;
-  g_hw_setup.RIphPU = 4700;  // TODO
-  g_hw_setup.RIphSR = 150;   // TODO
-  g_hw_setup.RVBB = 1500;    // TODO
-  g_hw_setup.RVBT = 82000;   // TODO
-  g_hw_setup.OpGain = 16;    // Can this be inferred from the HAL declaration?
+  g_hw_setup.RVBB = 1500;   //
+  g_hw_setup.RVBT = 82000;  //
+  g_hw_setup.OpGain = 10;   // Can this be inferred from the HAL declaration?
   g_hw_setup.VBGain =
       (3.3f / 4096.0f) * (g_hw_setup.RVBB + g_hw_setup.RVBT) / g_hw_setup.RVBB;
   g_hw_setup.Igain =
-      3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain * g_hw_setup.RIphPU /
-             (g_hw_setup.RIphPU + g_hw_setup.RIphSR));  // TODO f(20)
+      3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain);  // TODO
   g_hw_setup.RawCurrLim =
       g_hw_setup.Imax * g_hw_setup.Rshunt * g_hw_setup.OpGain * (4096 / 3.3) +
       2048;
@@ -69,7 +66,10 @@ void hw_init() {
 }
 
 void getRawADC(void) {
-  measurement_buffers.RawADC[0][0] = hadc1.Instance->JDR1;  // TODO
-  measurement_buffers.RawADC[1][0] = hadc2.Instance->JDR1;  // TODO
-  measurement_buffers.RawADC[2][0] = hadc3.Instance->JDR1;  // TODO
+  measurement_buffers.RawADC[0][0] = hadc1.Instance->JDR1;  // U Current
+  measurement_buffers.RawADC[0][1] = hadc3.Instance->JDR2;  // DC Link Voltage
+
+  measurement_buffers.RawADC[1][0] = hadc2.Instance->JDR1;  // V Current
+  measurement_buffers.RawADC[2][0] = hadc3.Instance->JDR1;  // W Current
+  measurement_buffers.RawADC[1][3] = hadc1.Instance->JDR3;  // Throttle
 }

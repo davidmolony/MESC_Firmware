@@ -171,7 +171,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
   if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) {
-    ICVals[0] = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_1);
+    ICVals[0] = HAL_TIM_ReadCapturedValue(htim /*&htim3*/, TIM_CHANNEL_1);
 
     // Target is 20000 guard is +-10000
     if ((ICVals[0] < 10000) || (30000 < ICVals[0])) {
@@ -182,7 +182,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 
     else if (ICVals[0] != 0) {
       BLDCState = BLDC_FORWARDS;
-      ICVals[1] = HAL_TIM_ReadCapturedValue(&htim3, TIM_CHANNEL_2);
+      ICVals[1] = HAL_TIM_ReadCapturedValue(htim /*&htim3*/, TIM_CHANNEL_2);
       if (ICVals[1] > 2000) ICVals[1] = 2000;
       if (ICVals[1] < 1000) ICVals[1] = 1000;
 
