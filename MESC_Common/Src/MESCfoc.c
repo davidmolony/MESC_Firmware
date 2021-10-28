@@ -956,7 +956,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   void getHallTable() {
     static int firstturn = 1;
     static int hallstate;
-    hallstate = ((GPIOB->IDR >> 6) & 0x7);
+    hallstate = getHallState();
     static int lasthallstate;
     static uint16_t pwm_count = 0;
     static int anglestep = 1;  // This defines how fast the motor spins

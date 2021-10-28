@@ -116,12 +116,19 @@ int main(void) {
 
   MESCInit();
   // MESC_Init();
+  MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  HAL_Delay(1000);
+  MotorState = MOTOR_STATE_MEASURING;
+  while(MotorState==MOTOR_STATE_MEASURING){__NOP();}
+  MotorState = MOTOR_STATE_DETECTING;
+  while(MotorState==MOTOR_STATE_DETECTING){__NOP();}
   while (1) {
+	  __NOP();
     /* USER CODE END WHILE */
 //    uint16_t duty[6] = {512, 522, 522, 512, 502, 502};
 //    static uint16_t a = 0;
