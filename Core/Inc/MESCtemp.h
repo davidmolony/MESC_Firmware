@@ -44,6 +44,14 @@ enum TEMPMethod
 
 typedef enum TEMPMethod TEMPMethod;
 
+enum TEMPSchema
+{
+    TEMP_SCHEMA_R_F_ON_R_T,
+    TEMP_SCHEMA_R_T_ON_R_F
+};
+
+typedef enum TEMPSchema TEMPSchema;
+
 struct TEMPProfile
 {
     float       V;
@@ -52,6 +60,7 @@ struct TEMPProfile
     uint32_t    adc_range;
 
     TEMPMethod  method;
+    TEMPSchema  schema;
 
     struct //union
     {

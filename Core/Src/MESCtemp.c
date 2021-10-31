@@ -60,45 +60,74 @@ void temp_init( TEMPProfile const * const profile )
     }
 
     temp_profile = profile;
-
-    switch (temp_profile->method)
-    {
-        case TEMP_METHOD_CURVE_APPROX:
-            break;
-        case TEMP_METHOD_STEINHART_HART_ABC:
-            break;
-        case TEMP_METHOD_STEINHART_HART_BETA_R:
-            break;
-    }
 }
 
 /*
 Schematic
 
- -+- V
-  |
- | | R_F = 4k7
- |_|
-  |
-  +- Vout - >ADC
- \|
- |\| R_T
- |_\_
-  |
- -+-
+TEMP_SCHEMA_R_F_ON_R_T
 
-R_T = Vout * R_F
-      ----------
-      (V - Vout)
+     -+- V
+      |
+     | | R_F = 4k7
+     |_|
+      |
+      +- Vout - >ADC
+     \|
+     |\| R_T
+     |_\_
+      |
+     -+-
+
+    R_T = Vout * R_F
+          ----------
+          (V - Vout)
+
+TEMP_SCHEMA_R_T_ON_R_F
+
+     -+- V
+     \|
+     |\| R_T
+     |_\_
+      |
+      +- Vout - >ADC
+      |
+     | | R_F = 10k
+     |_|
+      |
+     -+-
+
+          V * R_F
+    R_T = ------- - R_F
+            Vout
 */
 
 static float temp_calculate_R_T( float const Vout )
 {
-    float const num = (Vout * temp_profile->R_F);
-    float const den = (temp_profile->V - Vout);
-    float const R_T = (num / den);
+    switch (temp_profile->schema)
+    {
+        case TEMP_SCHEMA_R_F_ON_R_T:
+        {
+            float const num = (Vout * temp_profile->R_F);
+            float const den = (temp_profile->V - Vout);
+            float const R_T = (num / den);
 
-    return R_T;
+            return R_T;
+        }
+        case TEMP_SCHEMA_R_T_ON_R_F:
+        {
+            float const num = (temp_profile->V * temp_profile->R_F);
+            float const den = Vout;
+            float const R_T = (num / den) - temp_profile->R_F;
+
+            return R_T;
+        }
+        default:
+        {
+            // error
+            return 0.0;
+        }
+    }
 }
 
 /*
@@ -200,8 +229,10 @@ float temp_read( uint32_t const adc_raw )
     switch (temp_profile->method)
     {
         case TEMP_METHOD_CURVE_APPROX:
+        {
             T = temp_calculate_approximation( R_T );
             break;
+        }
         case TEMP_METHOD_STEINHART_HART_ABC:
         {
             float const K = temp_calculate_SteinhartHart_ABC( R_T );
@@ -212,8 +243,8 @@ float temp_read( uint32_t const adc_raw )
         {
             float const K = temp_calculate_SteinhartHart_Beta_r( R_T );
             T = CVT_KELVIN_TO_CELSIUS_F( K );
-        }
             break;
+        }
     }
 
     return T;
@@ -226,8 +257,10 @@ uint32_t temp_get_adc( float const T )
     switch (temp_profile->method)
     {
         case TEMP_METHOD_CURVE_APPROX:
+        {
             R_T = expf( ((T - temp_profile->parameters.approx.Tlo) * temp_profile->parameters.approx.A) + temp_profile->parameters.approx.B );
             break;
+        }
         case TEMP_METHOD_STEINHART_HART_ABC:
         {
             float const K = CVT_CELSIUS_TO_KELVIN_F(T);
@@ -253,7 +286,22 @@ uint32_t temp_get_adc( float const T )
         }
     }
 
-    float const Vout = (temp_profile->V * R_T) / (temp_profile->R_F + R_T);
+    float Vout;
+
+    switch (temp_profile->schema)
+    {
+        case TEMP_SCHEMA_R_F_ON_R_T:
+        {
+            Vout = (temp_profile->V *               R_T) / (temp_profile->R_F + R_T);
+            break;
+        }
+        case TEMP_SCHEMA_R_T_ON_R_F:
+        {
+            Vout = (temp_profile->V * temp_profile->R_F) / (temp_profile->R_F + R_T);
+            break;
+        }
+    }
+
     uint32_t const adc_raw = (uint32_t)((Vout * ((float)temp_profile->adc_range)) / temp_profile->V);
 
     return adc_raw;

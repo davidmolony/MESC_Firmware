@@ -65,11 +65,31 @@ static float ntc_get_R_T_from_adc( TEMPProfile const * const tp, uint32_t const 
 {
     float const adc  = (float)adc_raw;
     float const Vout = ((tp->V * adc) / (float)tp->adc_range);
-    float const num = (Vout * tp->R_F);
-    float const den = (tp->V - Vout);
-    float const R_T = (num / den);
 
-    return R_T;
+    switch (tp->schema)
+    {
+        case TEMP_SCHEMA_R_F_ON_R_T:
+        {
+            float const num = (Vout * tp->R_F);
+            float const den = (tp->V - Vout);
+            float const R_T = (num / den);
+
+            return R_T;
+        }
+        case TEMP_SCHEMA_R_T_ON_R_F:
+        {
+            float const num = (tp->V * tp->R_F);
+            float const den = Vout;
+            float const R_T = (num / den) - tp->R_F;
+
+            return R_T;
+        }
+        default:
+        {
+            // error
+            return 0.0;
+        }
+    }
 }
 
 static float ntc_get_T_from_R_T( float const R_T )
@@ -127,7 +147,27 @@ static uint32_t ntc_get_adc_from_T( TEMPProfile const * tp, float const T )
             float const R_T = (lo->R + ((dR * (T - lo->T)) / dT));
 
             float const adc_range_ = (float)(tp->adc_range - 1);
-            float const adc_ = ((adc_range_ * R_T) / (tp->R_F + R_T));
+
+            float adc_ = 0.0;
+
+            switch (tp->schema)
+            {
+                case TEMP_SCHEMA_R_F_ON_R_T:
+                {
+                    adc_ = ((adc_range_ *     R_T) / (tp->R_F + R_T));
+                    break;
+                }
+                case TEMP_SCHEMA_R_T_ON_R_F:
+                {
+                    adc_ = ((adc_range_ * tp->R_F) / (tp->R_F + R_T));
+                    break;
+                }
+                default:
+                {
+                    // error
+                    break;
+                }
+            }
 
             uint32_t const adc = (uint32_t)(adc_);
 
@@ -143,11 +183,14 @@ void bist_temp( void )
     fprintf( stdout, "Starting Temperature BIST\n" );
 
     TEMPProfile tp;
-    // From design
+
     tp.V   = 3.3f;
-    tp.R_F = 4700.0f;
+    tp.R_F = 4700.0f; // 303 design
 
     tp.adc_range = 4096;
+
+    tp.method = TEMP_METHOD_CURVE_APPROX;
+    tp.schema = TEMP_SCHEMA_R_F_ON_R_T;  // 303 design
 
     // From util_ntc
     tp.parameters.approx.A   = - 0.036523f;
@@ -198,7 +241,51 @@ void bist_temp( void )
         adc_end   = adc_min;
     }
 
-    fprintf( stdout, "Ideal\n" );
+    fprintf( stdout, "Ideal 303\n" );
+
+    for ( uint32_t adc = adc_start; adc <= adc_end; adc = adc + adc_granularity )
+    {
+        float const R_T = ntc_get_R_T_from_adc( &tp, adc );
+        float const T = ntc_get_T_from_R_T( R_T );
+
+        fprintf( stdout, "ADC: %03" PRIX32 " => %5.1f 'C\n", adc, T );
+    }
+
+    for ( float T = 0.0f; T <= 100.0f; T = T + 5.0f)
+    {
+        uint32_t const adc = ntc_get_adc_from_T( &tp, T );
+
+        fprintf( stdout, "%5.1f 'C => ADC: %03" PRIX32 "\n", T, adc );
+    }
+
+    for ( TEMPMethod m = TEMP_METHOD_CURVE_APPROX; (m <= TEMP_METHOD_STEINHART_HART_BETA_R); ++m )
+    {
+        fprintf( stdout, "Method %d\n", m );
+
+        tp.method = m;
+
+        temp_init( &tp );
+
+        for ( uint32_t adc = adc_start; adc <= adc_end; adc = adc + adc_granularity )
+        {
+            float const T = temp_read( adc );
+
+            fprintf( stdout, "ADC: %03" PRIX32 " => %5.1f 'C\n", adc, T );
+        }
+
+        for ( float T = 0.0f; T <= 100.0f; T = T + 5.0f)
+        {
+            uint32_t const adc = temp_get_adc( T );
+
+            fprintf( stdout, "%5.1f 'C => ADC %03" PRIX32 "\n", T, adc );
+        }
+    }
+
+    fprintf( stdout, "Ideal 405\n" );
+
+    // 405 design
+    tp.R_F = 10000;
+    tp.schema = TEMP_SCHEMA_R_T_ON_R_F;
 
     for ( uint32_t adc = adc_start; adc <= adc_end; adc = adc + adc_granularity )
     {
