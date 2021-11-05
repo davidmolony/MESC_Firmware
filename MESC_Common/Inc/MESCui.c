@@ -57,7 +57,7 @@ void ui_init( UIProfile const * const profile )
                 return;
             }
 
-            cli_reply( "UI ADD %d\n", ui_profile[d].type );
+            cli_reply( "UI ADD %d" "\r" "\n", ui_profile[d].type );
 
             ui_init( &ui_profile[d] );
             d++;

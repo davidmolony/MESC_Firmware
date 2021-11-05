@@ -266,7 +266,7 @@ static void profile_cli_info( void )
 
     if (res != PROFILE_STATUS_SUCCESS )
     {
-        cli_reply( "Invalid/Missing MESC Profile - %d\n", res );
+        cli_reply( "Invalid/Missing MESC Profile - %d" "\r" "\n", res );
     }
     else
     {
@@ -288,7 +288,7 @@ static void profile_cli_info( void )
 
         cli_reply(
             "\n"
-            "Size %" PRIu32 "\n",
+            "Size %" PRIu32 "\r" "\n",
             profile_stub.header.image_length );
 
         uint32_t blk = 0;
@@ -311,27 +311,27 @@ static void profile_cli_info( void )
             switch (map)
             {
                 case PROFILE_ENTRY_DATA:
-                    cli_reply( "DATA\n" );
+                    cli_reply( "DATA" "\r" "\n" );
                     continue;
                 case PROFILE_ENTRY_LOCK:
-                    cli_reply( "LOCK\n" );
+                    cli_reply( "LOCK" "\r" "\n" );
                     break;
                 case PROFILE_ENTRY_FREE:
-                    cli_reply( "FREE\n" );
+                    cli_reply( "FREE" "\r" "\n" );
                     continue;
                 case PROFILE_ENTRY_USED:
-                    cli_reply( "USED\n" );
+                    cli_reply( "USED" "\r" "\n" );
                     break;
                 default:
-                    cli_reply( "?\n" );
+                    cli_reply( "?" "\r" "\n" );
                     continue;
             }
 
             // NOTE - This point means there is a valid entry to decode
 
             cli_reply(
-                "    %s (%s %08" PRIX32 ")\n"
-                "    %08" PRIX32 "-%08" PRIX32 "\n",
+                "    %s (%s %08" PRIX32 ")" "\r" "\n"
+                "    %08" PRIX32 "-%08" PRIX32 "\r" "\n",
                 profile_stub.entry[i].signature,
                 profile_stub.entry[i].name, profile_stub.entry[i].data_signature,
                 profile_stub.entry[i].data_offset, profile_stub.entry[i].data_length );

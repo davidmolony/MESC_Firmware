@@ -30,10 +30,13 @@
 //#include "usbd_cdc_if.c"
 //#include "usbd_cdc.h"
 
+#include "MESCbat.h"
 #include "MESCflash.h"
 #include "MESCprofile.h"
 #include "MESCspeed.h"
+#include "MESCtemp.h"
 #include "MESCuart.h"
+#include "MESCui.h"
 
 /* USER CODE END Includes */
 
@@ -228,7 +231,7 @@ int main(void)
     HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
     {
     char message[20];
-    int length = sprintf( message, "%s", "startup!!\r" );
+    int length = sprintf( message, "%s", "startup!!\r\n" );
     HAL_UART_Transmit_DMA(&huart3, (uint8_t *)message, length);
     }
 
@@ -251,9 +254,17 @@ int main(void)
          */
         if(MotorState==MOTOR_STATE_ERROR)
         {
-            char error_message[10];
-            int length = sprintf(error_message,"%" PRIu32 "%" PRIu32 "%" PRIu32 "%" PRIu32,measurement_buffers.adc1, measurement_buffers.adc2,measurement_buffers.adc3,measurement_buffers.adc4);
-            HAL_UART_Transmit(&huart3, (uint8_t *)error_message, length, 10);
+            char error_message[64];
+            int length = sprintf(error_message,
+            		"%" PRIu32
+					" %" PRIu32
+					" %" PRIu32
+					" %" PRIu32,
+					measurement_buffers.adc1,
+					measurement_buffers.adc2,
+					measurement_buffers.adc3,
+					measurement_buffers.adc4 );
+            HAL_UART_Transmit(&huart3, (uint8_t *)error_message, length, 100);
         }
         if (b_write_flash)
         {

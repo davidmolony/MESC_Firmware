@@ -115,17 +115,18 @@ static CLIEntry cli_lut[MAX_CLI_LUT_ENTRIES];
 static uint32_t cli_lut_entries = 0;
 static CLIEntry * cli_lut_entry = NULL;
 
-static int cli_io_write_noop( void * handle, void * data, uint16_t size )
+static int cli_io_write_noop( void * handle, void * data, uint16_t size, uint32_t timeout )
 {
     (void)handle;
     (void)data;
     (void)size;
+    (void)timeout;
 
     return 0;
 }
 
 static void * cli_io_handle = NULL;
-static int (* cli_io_write)( void *, void *, uint16_t ) = cli_io_write_noop;
+static int (* cli_io_write)( void *, void *, uint16_t, uint32_t ) = cli_io_write_noop;
 
 static void cli_idle( void )
 {
@@ -345,7 +346,7 @@ static void cli_process_read_xint( void )
         sprintf( cli_buffer,
             "%%" "%s"
             " 0x" "%%" "0%" PRIu32 "%s"
-            "\n",
+            "\r" "\n",
             fmt_10,
             nybbles, fmt_16 );
 
@@ -414,7 +415,7 @@ static void cli_process_read_float( void )
                 return;
         }
 
-        cli_reply( "%f\n", *((float const *)cli_lut_entry->var.r) );
+        cli_reply( "%f" "\r" "\n", *((float const *)cli_lut_entry->var.r) );
     }
 }
 
@@ -560,7 +561,7 @@ void cli_register_function(
 
 void cli_register_io(
     void * handle,
-    int (* const write)( void * handle, void * data, uint16_t size ) )
+    int (* const write)( void * handle, void * data, uint16_t size, uint32_t timeout ) )
 {
     cli_io_handle = handle;
     cli_io_write = write;
@@ -741,7 +742,14 @@ static void cli_process_variable( const char c )
 
 int cli_process( char const c )
 {
-    cli_reply( "%c", c );
+	if (c == '\n')
+	{
+		cli_reply( "%s", "\r\n" );
+	}
+	else
+	{
+		cli_reply( "%c", c );
+	}
 
     switch (cli_state)
     {
@@ -828,7 +836,7 @@ void cli_reply( char const * p, ... )
 
     if (len > 0)
     {
-        int const ret = cli_io_write( cli_io_handle, buffer, len );
+        int const ret = cli_io_write( cli_io_handle, buffer, len, (2 * len) );
         (void)ret;
     }
 

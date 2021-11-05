@@ -53,7 +53,7 @@ void bat_init( BATProfile const * const profile )
 
         if (ret != PROFILE_STATUS_SUCCESS)
         {
-            cli_reply( "BAT FAILED\n" );
+            cli_reply( "BAT FAILED" "\r" "\n" );
             return;
         }
 

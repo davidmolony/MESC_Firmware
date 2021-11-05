@@ -73,7 +73,7 @@ static void cmd_hall_inc( void )
 
 static void cmd_hello( void )
 {
-    cli_reply( "%s", "HELLO" );
+    cli_reply( "%s" "\r" "\n", "HELLO" );
 }
 
 static void cmd_parameter_setup( void )
@@ -81,12 +81,12 @@ static void cmd_parameter_setup( void )
     MotorState = MOTOR_STATE_DETECTING;
     b_read_flash = 0;
 
-    cli_reply( "Vbus%.2f", measurement_buffers.ConvertedADC[0][1] );
+    cli_reply( "Vbus%.2f" "\r" "\n", measurement_buffers.ConvertedADC[0][1] );
 }
 
 static void cmd_reset( void )
 {
-    cli_reply( "%s", "RESET" );
+    cli_reply( "%s" "\r" "\n", "RESET" );
 
     __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY( &htim1 );
     HAL_NVIC_SystemReset();
@@ -112,5 +112,5 @@ void uart_init( void )
     cli_register_function( "reset"        , cmd_reset           );
     cli_register_function( "test"         , cmd_test            );
 
-    cli_register_io( &huart3, (int(*)(void*,void*,uint16_t))HAL_UART_Transmit_DMA );
+    cli_register_io( &huart3, (int(*)(void*,void*,uint16_t,uint32_t))HAL_UART_Transmit_DMA );
 }

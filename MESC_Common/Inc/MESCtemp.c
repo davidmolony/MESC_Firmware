@@ -52,7 +52,7 @@ void temp_init( TEMPProfile const * const profile )
 
         if (ret != PROFILE_STATUS_SUCCESS)
         {
-            cli_reply( "TEMP FAILED" );
+            cli_reply( "TEMP FAILED" "\r" "\n" );
             return;
         }
 

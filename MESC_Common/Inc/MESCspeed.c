@@ -60,12 +60,12 @@ The diagnostic profile is for hardware bring-up and debugging purposes only
 
     if (ret != PROFILE_STATUS_SUCCESS)
     {
-        cli_reply( "SPDD FAILED\n" );
+        cli_reply( "SPDD FAILED\r\n" );
         return;
     }
 
     speed_init( &diag_profile );
-    cli_reply( "SPDD LOADED\n" );
+    cli_reply( "SPDD LOADED\r\n" );
 }
 
 static void speed_profile_road( void )
@@ -84,12 +84,12 @@ whatever local requirements there are.
 
     if (ret != PROFILE_STATUS_SUCCESS)
     {
-        cli_reply( "SPDR FAILED\n" );
+        cli_reply( "SPDR FAILED\r\n" );
         return;
     }
 
     speed_init( &road_profile );
-    cli_reply( "SPDR LOADED\n" );
+    cli_reply( "SPDR LOADED\r\n" );
 }
 
 static void speed_profile_toggle( void )
