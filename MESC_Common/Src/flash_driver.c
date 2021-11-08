@@ -9,6 +9,45 @@
 
 #include "stm32fxxx_hal.h"
 
+#ifdef STM32F405xx
+static uint32_t const flash_map[] = {
+    // 4 x  16k
+    FLASH_BASE + (0 * (16 << 10)),
+    FLASH_BASE + (1 * (16 << 10)),
+    FLASH_BASE + (2 * (16 << 10)),
+    FLASH_BASE + (3 * (16 << 10)),
+    // 1 x  64k
+    FLASH_BASE + (4 * (16 << 10)),
+    // 7 x 128k
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (0 * (128 << 10)),
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (1 * (128 << 10)),
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (2 * (128 << 10)),
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (3 * (128 << 10)),
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (4 * (128 << 10)),
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (5 * (128 << 10)),
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (6 * (128 << 10)),
+    // END
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (7 * (128 << 10)),
+};
+
+static uint32_t getFlashSectorAddress(uint32_t const sector) {
+  return flash_map[sector];
+}
+
+static uint32_t getFlashSectorIndex(uint32_t const address) {
+  for (uint32_t i = 0; i < ((sizeof(flash_map) / sizeof(*flash_map)) - 1);
+       i++) {
+    if ((flash_map[i] <= address) && (address < flash_map[i + 1])) {
+      return i;
+    }
+  }
+
+  // error
+  return UINT32_MAX;
+}
+#endif
+
+#ifdef STM32F303xC
 uint32_t *const p_flash =
     (uint32_t *)(0x0801F800);  // (see STM32Fxxx_FLASH.ld)
                                // FLASH_BASE+size-FLASH_PAGE_SIZE [303]
@@ -21,6 +60,7 @@ uint32_t *const p_flash =
 1 x  64k
 7 x 128k
 */
+#endif
 
 static uint32_t eraseFlash();
 
@@ -29,6 +69,7 @@ uint32_t writeFlash(uint32_t const *const p_data, uint32_t const count) {
   uint32_t const *p_data_runner = p_data;
   HAL_FLASH_Unlock();  // fixme: check unlocking is successful before
                        // proceeding.
+  uint32_t *p_flash = getFlashAddress();
   /* if intended destination is not empty... */
   if (*p_flash != EMPTY_SLOT) {
     /* ...erase entire page before proceeding. */
@@ -54,7 +95,7 @@ uint32_t writeFlash(uint32_t const *const p_data, uint32_t const count) {
 uint32_t readFlash(uint32_t *const p_data, uint32_t const count) {
   uint32_t number_read = 0;
   uint32_t *p_data_runner = p_data;
-  uint32_t *p_flash_runner = p_flash;
+  uint32_t *p_flash_runner = getFlashAddress();
   for (int i = 0; i < count; i++, p_data_runner++, p_flash_runner++) {
     *p_data_runner = *p_flash_runner;
     if (*p_flash_runner != EMPTY_SLOT) {
@@ -62,35 +103,6 @@ uint32_t readFlash(uint32_t *const p_data, uint32_t const count) {
     }
   }
   return (number_read);
-}
-
-static uint32_t getFlashSector(uint32_t const address) {
-  static uint32_t const map[] = {
-      // 4 x  16k
-      FLASH_BASE + (0 * (16 << 10)),
-      FLASH_BASE + (1 * (16 << 10)),
-      FLASH_BASE + (2 * (16 << 10)),
-      FLASH_BASE + (3 * (16 << 10)),
-      // 1 x  64k
-      FLASH_BASE + (4 * (16 << 10)),
-      // 7 x 128k
-      FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (0 * (128 << 10)),
-      FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (1 * (128 << 10)),
-      FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (2 * (128 << 10)),
-      FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (3 * (128 << 10)),
-      FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (4 * (128 << 10)),
-      FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (5 * (128 << 10)),
-      FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (6 * (128 << 10)),
-  };
-
-  for (uint32_t i = 0; i < ((sizeof(map) / sizeof(*map)) - 1); i++) {
-    if ((map[i] <= address) && (address < map[i + 1])) {
-      return i;
-    }
-  }
-
-  // error
-  return UINT32_MAX;
 }
 
 /**
@@ -110,7 +122,7 @@ static uint32_t eraseFlash() {
 #ifdef STM32F405xx
   page_erase.TypeErase = FLASH_TYPEERASE_SECTORS;
   page_erase.Banks = FLASH_BANK_1;  // (This should be ignored)
-  page_erase.Sector = getFlashSector((uint32_t)p_flash);
+  page_erase.Sector = getFlashSectorIndex(getFlashAddress());  // aka "11"
   page_erase.NbSectors = 1;
 #endif
   uint32_t result = 0;
@@ -118,4 +130,12 @@ static uint32_t eraseFlash() {
   return (result);
 }
 
-uint32_t *const getFlashAddress() { return (p_flash); }
+uint32_t *const getFlashAddress() {
+#ifdef STM32F303xC
+  return (p_flash);
+#endif
+#ifdef STM32F405xx
+  return getFlashSectorAddress(11);
+  // TODO const "11"
+#endif
+}

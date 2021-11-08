@@ -127,8 +127,8 @@ void MESCInit() {
 #endif
 #ifdef STM32F405xx
   HAL_ADCEx_InjectedStart_IT(&hadc1);
-  HAL_ADCEx_InjectedStart_IT(&hadc2);
-  HAL_ADCEx_InjectedStart_IT(&hadc3);
+  HAL_ADCEx_InjectedStart(&hadc2);
+  HAL_ADCEx_InjectedStart(&hadc3);
 
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
@@ -473,9 +473,9 @@ void VICheck() {  // Check currents, voltages are within panic limits
       one_on_last_observer_period =
           (4 * one_on_last_observer_period + (one_on_ticks)) * 0.2;  // ;
       angle_step =
-          (4 * angle_step +
+          (9 * angle_step +
            (one_on_ticks)*foc_vars.hall_table[last_hall_state - 1][3]) *
-          0.2;
+          0.1;
       //                if(hall_error>200){
       //                	foc_vars.hall_table[current_hall_state -
       //                1][0]=foc_vars.hall_table[current_hall_state - 1][0]+1;
@@ -543,7 +543,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
         foc_vars.FOCAngle =
             foc_vars.FOCAngle +
             (uint16_t)(angle_step +
-                       one_on_last_observer_period * (-0.8 * hall_error));
+                       one_on_last_observer_period * (-0.2 * hall_error));
       } else if (dir < 0) {
         // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(-angle_step +
         // one_on_last_hall_period * (-0.9 * hall_error)); Also does not work,
@@ -551,7 +551,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
         foc_vars.FOCAngle =
             foc_vars.FOCAngle -
             (uint16_t)(angle_step +
-                       one_on_last_observer_period * (0.8 * hall_error));
+                       one_on_last_observer_period * (0.2 * hall_error));
       }
     }
     if (ticks_since_last_observer_change > 3000.0f) {
@@ -812,10 +812,11 @@ void VICheck() {  // Check currents, voltages are within panic limits
       static uint16_t testPWM2 = 0;  //
       static uint16_t testPWM3 =
           0;  // Use this for the inductance measurement, calculate it later
-      htim1.Instance->CCR1 = 0;
-      htim1.Instance->CCR2 = 0;
-      htim1.Instance->CCR3 = 0;
-
+      if (PWMcycles < 1) {
+        htim1.Instance->CCR1 = 0;
+        htim1.Instance->CCR2 = 0;
+        htim1.Instance->CCR3 = 0;
+      }
       phW_Break();
       phU_Enable();
       phV_Enable();
@@ -862,7 +863,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       else if (PWMcycles == 10000) {
         // calculate the resistance from two accumulated currents and two
         // voltages
-        testPWM3 = testPWM2;  // We assign the value we determined was OK for
+        testPWM3 = 2*testPWM2;  // We assign the value we determined was OK for
                               // the resistance measurement as the value to use
                               // for inductance measurement, since we need an
                               // absolutely  stable steady state
@@ -877,21 +878,36 @@ void VICheck() {  // Check currents, voltages are within panic limits
       {
         static int a = 0;  // A variable local to here to track whether the PWM
                            // was high or low last time
-        if (a == 1) {
-          htim1.Instance->CCR1 = testPWM3;  // Write the high PWM, the next
-                                            // cycle will be a higher current
-          currAcc4 =
-              (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
+        if (a > 3) {
 
-          a = 0;
-        } else if (a == 0) {
+            htim1.Instance->CCR1 = testPWM3;  // Write the high PWM, the next
+            a = a - 1;
+          }
+          // cycle will be a higher current
+        else if(a==3){
+        	htim1.Instance->CCR1 = 0;
+        	a=a-1;
+        }
+        else if(a==2){
+
+          currAcc4 =
+                (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) *
+                0.001;
+          a = a - 1;
+
+
+        }
+        else if(a==1){
+        	a=a-1;
+        }
+        else if (a == 0) {
           htim1.Instance->CCR1 =
               0;  // Write the PWM low, the next PWM pulse is
                   // skipped, and the current allowed to decay
           currAcc3 =
               (999 * currAcc3 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
 
-          a = 1;
+          a = 5;
         }
       }
 
@@ -940,11 +956,15 @@ void VICheck() {  // Check currents, voltages are within panic limits
                         measurement_buffers.ConvertedADC[0][1]) /
                        (currAcc2 - currAcc1);
         motor.Lphase = ((currAcc3 + currAcc4) * motor.Rphase *
-                        (2048.0f / 72000000.0f) / ((currAcc4 - currAcc3) * 2));
+                        (2.0f*2048.0f / 72000000.0f) / ((currAcc4 - currAcc3)));
+        motor.Lphase = motor.Lphase/2.0f; // The above line calculates the phase to phase inductance, but since we want one phase inductance div2
+        if (motor.Lphase <= 0) {
+          motor.Lphase = 0.00001;
+        }
         // L=iRdt/di, where R in this case is 2*motor.Rphase
         calculateGains();
-        MotorState = MOTOR_STATE_IDLE;  // MotorState = MOTOR_STATE_DETECTING;
-                                        // // MOTOR_STATE_HALL_RUN;
+        // MotorState = MOTOR_STATE_IDLE;  //
+        MotorState = MOTOR_STATE_DETECTING;
         phU_Enable();
         phV_Enable();
         phW_Enable();

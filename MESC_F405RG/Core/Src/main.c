@@ -22,7 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "MESCmotor_state.h"
+#include "flash_wrapper.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -68,7 +69,8 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+extern uint8_t b_read_flash;
+extern uint8_t b_write_flash;
 /* USER CODE END 0 */
 
 /**
@@ -107,6 +109,11 @@ int main(void) {
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  if (getStatus() == VALID) {
+    b_read_flash = 1;
+    readData();
+  }
+
   HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_1);
   HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_2);
   __HAL_TIM_ENABLE_IT(&htim4, TIM_IT_UPDATE);
@@ -123,22 +130,27 @@ int main(void) {
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   HAL_Delay(1000);
-  MotorState = MOTOR_STATE_MEASURING;
-  while(MotorState==MOTOR_STATE_MEASURING){__NOP();}
-  MotorState = MOTOR_STATE_DETECTING;
-  while(MotorState==MOTOR_STATE_DETECTING){__NOP();}
-  while (1) {
-	  __NOP();
-    /* USER CODE END WHILE */
-//    uint16_t duty[6] = {512, 522, 522, 512, 502, 502};
-//    static uint16_t a = 0;
-//    static uint16_t b = 30;
-//    HAL_Delay(b);
-//    htim1.Instance->CCR1 = duty[a % 6];
-//    htim1.Instance->CCR2 = duty[(a + 2) % 6];
-//    htim1.Instance->CCR3 = duty[(a + 4) % 6];
 
-//    a = a + 1;
+  MotorState = MOTOR_STATE_MEASURING;  // NOTe fastloop transitions to RUN
+#if 0                                  // INIT FLASH
+  while (MotorState == MOTOR_STATE_MEASURING) {
+    __NOP();
+  }
+  MotorState = MOTOR_STATE_DETECTING;
+  while (MotorState == MOTOR_STATE_DETECTING) {
+    __NOP();
+  }
+#endif
+  while (1) {
+    __NOP();
+    if (b_write_flash) {
+      __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(&htim1);
+      writeData();
+      __HAL_TIM_MOE_ENABLE(&htim1);
+      b_write_flash = 0;
+    }
+    /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -312,7 +324,7 @@ static void MX_ADC2_Init(void) {
    */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_11;
   sConfigInjected.InjectedRank = 1;
-  sConfigInjected.InjectedNbrOfConversion = 3;
+  sConfigInjected.InjectedNbrOfConversion = 4;
   sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_15CYCLES;
   sConfigInjected.ExternalTrigInjecConvEdge =
       ADC_EXTERNALTRIGINJECCONVEDGE_RISING;
@@ -336,6 +348,14 @@ static void MX_ADC2_Init(void) {
    */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_1;
   sConfigInjected.InjectedRank = 3;
+  if (HAL_ADCEx_InjectedConfigChannel(&hadc2, &sConfigInjected) != HAL_OK) {
+    Error_Handler();
+  }
+  /** Configures for the selected ADC injected channel its corresponding rank in
+   * the sequencer and its sample time
+   */
+  sConfigInjected.InjectedChannel = ADC_CHANNEL_9;
+  sConfigInjected.InjectedRank = 4;
   if (HAL_ADCEx_InjectedConfigChannel(&hadc2, &sConfigInjected) != HAL_OK) {
     Error_Handler();
   }
@@ -512,7 +532,7 @@ static void MX_TIM4_Init(void) {
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 143;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 65535;
+  htim4.Init.Period = 50000;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK) {

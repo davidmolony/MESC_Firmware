@@ -22,6 +22,9 @@
  *      Author: David Molony
  */
 
+#ifndef MESC_MOTOR_STATE_H
+#define MESC_MOTOR_STATE_H
+
 #include "stm32fxxx_hal.h"
 
 typedef enum {
@@ -116,3 +119,5 @@ motor_control_type_e MotorControlType;
 /* Function prototypes -----------------------------------------------*/
 
 void MESC_Init();
+
+#endif

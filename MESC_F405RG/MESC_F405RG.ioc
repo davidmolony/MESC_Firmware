@@ -314,4 +314,4 @@ VP_TIM1_VS_no_output4.Signal=TIM1_VS_no_output4
 VP_TIM4_VS_ControllerModeReset.Mode=Reset Mode
 VP_TIM4_VS_ControllerModeReset.Signal=TIM4_VS_ControllerModeReset
 board=custom
-isbadioc=true
+isbadioc=false
