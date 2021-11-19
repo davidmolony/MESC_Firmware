@@ -89,3 +89,8 @@ void motor_init(void);  // Fills the parameters of the motor struct
 void hw_init(void);  // Fills the parameters of the hardware struct, simplifies
                      // some into useful overall gain values
 void getRawADC(void);
+
+void mesc_init_1( void ); // Perform HW specific initialisation for MESCInit() before delay
+void mesc_init_2( void ); // Perform HW specific initialisation for MESCInit() after delay
+void mesc_init_3( void ); // Perform HW specific initialisation for MESCInit() after hw_init()
+

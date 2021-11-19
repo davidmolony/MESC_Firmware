@@ -28,19 +28,15 @@
 #include "MESCBLDC.h"
 #include "MESChw_setup.h"
 #include "MESCmotor_state.h"
+#include "MESCtemp.h"
 #include "sin_cos.h"
 
 #include <math.h>
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
-#ifdef STM32F303xC
-extern OPAMP_HandleTypeDef hopamp1, hopamp2, hopamp3;
-#endif
 extern ADC_HandleTypeDef hadc1, hadc2, hadc3, hadc4;
-#ifdef STM32F303xC
-extern COMP_HandleTypeDef hcomp1, hcomp2, hcomp4, hcomp7;
-#endif
+
 float one_on_sqrt6 = 0.408248;
 float one_on_sqrt3 = 0.577350;
 float one_on_sqrt2 = 0.707107;
@@ -53,19 +49,14 @@ uint8_t b_write_flash = 0;
 uint8_t b_read_flash = 0;
 
 void MESCInit() {
-#ifdef STM32F303xC
-  HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-  HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
-  HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
-  HAL_ADCEx_Calibration_Start(&hadc4, ADC_SINGLE_ENDED);
-#endif
+
+  mesc_init_1();
+
   HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle,
                     // controller, PWM source...)
-#ifdef STM32F303xC
-  HAL_OPAMP_Start(&hopamp1);
-  HAL_OPAMP_Start(&hopamp2);
-  HAL_OPAMP_Start(&hopamp3);
-#endif
+
+  mesc_init_2();
+
   hw_init();  // Populate the resistances, gains etc of the PCB - edit within
               // this function if compiling for other PCBs
   // motor.Rphase = 0.1; //Hack to make it skip over currently not used motor
@@ -86,62 +77,8 @@ void MESCInit() {
   // Start the PWM channels, reset the counter to zero each time to avoid
   // triggering the ADC, which in turn triggers the ISR routine and wrecks the
   // startup
-#ifdef STM32F303xC
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
-  __HAL_TIM_SET_COUNTER(&htim1, 10);
+  mesc_init_3();
 
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
-  __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-  __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 1022);
-
-  // Initialise the comparators - 3 overcurrent and 1 overvoltage,
-  HAL_COMP_Start(&hcomp1);
-  HAL_COMP_Start(&hcomp2);
-  HAL_COMP_Start(&hcomp4);
-  // HAL_COMP_Start(&hcomp7);  // OVP comparator, may be unwanted if operating
-  // above the divider threshold, the ADC conversion can also be used to trigger
-  // a protection event
-
-  __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&measurement_buffers.RawADC[0][0], 3);
-  __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-  HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&measurement_buffers.RawADC[1][0], 4);
-  __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-  HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][0], 1);
-  __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-  HAL_ADC_Start_DMA(&hadc4, (uint32_t *)&measurement_buffers.RawADC[3][0], 1);
-
-  __HAL_ADC_ENABLE_IT(
-      &hadc1, ADC_IT_EOS);  // We are using the ADC_DMA, so the HAL initialiser
-                            // doesn't actually enable the ADC conversion
-                            // complete interrupt. This does.
-#endif
-#ifdef STM32F405xx
-  HAL_ADCEx_InjectedStart_IT(&hadc1);
-  HAL_ADCEx_InjectedStart(&hadc2);
-  HAL_ADCEx_InjectedStart(&hadc3);
-
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-  htim1.Instance->CCR4 = 1022;
-
-#endif
   htim1.Instance->BDTR |=
       TIM_BDTR_MOE;  // initialising the comparators triggers the break state,
                      // so turn it back on
@@ -295,14 +232,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       (measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
       (measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
       (measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V   ] > g_hw_setup.RawVoltLim) ||
-#ifdef STM32F405xx
-      (measurement_buffers.RawADC[3][0] > 3000)) {
-
-#endif
-#ifdef STM32F303xC
-
-      (measurement_buffers.RawADC[3][0] < 1000)) {
-#endif
+	  (temp_read( measurement_buffers.RawADC[3][0] ) >= 80.0)) { // TODO profile thermal limit
         foc_vars.Idq_req[0] = foc_vars.Idq_req[0] * 0.9;
         foc_vars.Idq_req[1] = foc_vars.Idq_req[1] * 0.9;
 
@@ -389,18 +319,18 @@ void VICheck() {  // Check currents, voltages are within panic limits
         //Version of Clark transform that avoids low duty cycle ADC measurements - use only 2 phases
         if(htim1.Instance->CCR2>900){
         	//Clark using phase U and W
-        	foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
+        	foc_vars.Iab[0] =  sqrt3_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
         	foc_vars.Iab[1] = -sqrt1_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I]-sqrt2*measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
         }
         else if(htim1.Instance->CCR3>900){
         //Clark using phase U and V
         	foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
-        	foc_vars.Iab[1] = sqrt2*measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt1_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
+        	foc_vars.Iab[1] = sqrt2  *measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt1_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
         }
         else{
         	//Clark using phase V and W (hardware V1 has best ADC readings on channels V and W - U is plagued by the DCDC converter)
         	foc_vars.Iab[0] = -sqrt3_2*measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt3_2*measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
-        	foc_vars.Iab[1] = sqrt1_2*measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt1_2*measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
+        	foc_vars.Iab[1] =  sqrt1_2*measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt1_2*measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
         }
 
         // Park

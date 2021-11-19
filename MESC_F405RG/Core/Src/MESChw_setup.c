@@ -32,6 +32,8 @@ extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 extern ADC_HandleTypeDef hadc3;
 
+extern TIM_HandleTypeDef htim1;
+
 void motor_init() {
   motor.Rphase = 0;  // We init at 0 to trigger the measurer to get the vals
   motor.Lphase = 0;  // We init at 0 to trigger the measurer to get the vals
@@ -168,4 +170,34 @@ ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
         default:
             return PROFILE_STATUS_UNKNOWN;
     }
+}
+
+void mesc_init_1( void )
+{
+	// Do nothing
+}
+
+void mesc_init_2( void )
+{
+	// Do nothing
+}
+
+void mesc_init_3( void )
+{
+	HAL_ADCEx_InjectedStart_IT( &hadc1 );
+	HAL_ADCEx_InjectedStart(    &hadc2 );
+	HAL_ADCEx_InjectedStart(    &hadc3 );
+
+	HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_1 );
+	HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_1 );
+
+	HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_2 );
+	HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_2 );
+
+	HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_3 );
+	HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_3 );
+
+	HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_4 );
+
+	htim1.Instance->CCR4 = 1022;
 }
