@@ -35,7 +35,7 @@
 		<link>
 			<name>MESC_Common</name>
 			<type>2</type>
-			<location>C:/Users/Lenovo/Documents/MESC_Firmware/MESC_Common</location>
+			<locationURI>PARENT-1-PROJECT_LOC/MESC_Common</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>

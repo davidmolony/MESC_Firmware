@@ -30,7 +30,7 @@
 #ifndef MESC_UART_H
 #define MESC_UART_H
 
-#include "stm32f3xx_hal.h"
+#include "stm32fxxx_hal.h"
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 

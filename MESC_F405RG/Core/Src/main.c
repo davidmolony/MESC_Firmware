@@ -22,7 +22,13 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "MESCbat.h"
+#include "MESCflash.h"
 #include "MESCmotor_state.h"
+#include "MESCspeed.h"
+#include "MESCtemp.h"
+#include "MESCuart.h"
+#include "MESCui.h"
 #include "flash_wrapper.h"
 /* USER CODE END Includes */
 
@@ -71,6 +77,7 @@ static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN 0 */
 extern uint8_t b_read_flash;
 extern uint8_t b_write_flash;
+uint8_t UART_rx_buffer[2];
 /* USER CODE END 0 */
 
 /**
@@ -108,6 +115,30 @@ int main(void) {
   MX_TIM4_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  /*
+  Starting System Initialisation
+  */
+
+  // Initialise UART CLI IO
+  uart_init();
+  // NOTE - CLI messages are available after this point
+  
+  // Attach flash IO to profile
+  flash_register_profile_io();
+  // Load stored profile
+  profile_init();
+
+  // Initialise components
+  bat_init( PROFILE_DEFAULT );
+  speed_init( PROFILE_DEFAULT );
+  temp_init( PROFILE_DEFAULT );
+  // Initialise user Interface
+  ui_init( PROFILE_DEFAULT );
+
+  /*
+  Finished System Initialisation
+  */
 
   if (getStatus() == VALID) {
     b_read_flash = 1;

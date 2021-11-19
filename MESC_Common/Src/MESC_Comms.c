@@ -33,13 +33,12 @@
 #include "MESChw_setup.h"
 #include "MESCmotor_state.h"
 
-extern uint16_t ICVals[2];
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // RCPWM implementation
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
+  uint16_t ICVals[2];
   if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) {
     ICVals[0] = HAL_TIM_ReadCapturedValue(htim /*&htim3*/, TIM_CHANNEL_1);
 

@@ -7,8 +7,8 @@
 
 #include "MESCflash.h"
 
-#include "stm32f3xx_hal.h"
-
+#include "stm32fxxx_hal.h"
+#ifdef STM32F303xC
 static uint32_t flash_address = 0x08000000; // NVM
 
 static uint32_t flash_page_address( uint32_t const page )
@@ -115,8 +115,20 @@ static ProfileStatus flash_write( void const * const buffer, uint32_t const addr
 
     return ret;
 }
+#endif
+#ifdef STM32F405xx
+static ProfileStatus flash_read( void        * const buffer, uint32_t const address, uint32_t const length )
+{
+	return PROFILE_STATUS_UNKNOWN;
+}
 
+static ProfileStatus flash_write( void const * const buffer, uint32_t const address, uint32_t const length )
+{
+	return PROFILE_STATUS_UNKNOWN;
+}
+#endif
 void flash_register_profile_io( void )
 {
     profile_configure_storage_io( flash_read, flash_write );
 }
+

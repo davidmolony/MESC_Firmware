@@ -22,6 +22,6 @@
  *      Author: David Molony
  */
 
-#include "stm32f3xx_hal.h"
+#include "stm32fxxx_hal.h"
 
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim);

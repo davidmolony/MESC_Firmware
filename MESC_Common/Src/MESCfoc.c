@@ -30,6 +30,8 @@
 #include "MESCmotor_state.h"
 #include "sin_cos.h"
 
+#include <math.h>
+
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
 #ifdef STM32F303xC
@@ -462,7 +464,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       }
     }
   }
-  static float last_anglestep;
+  //static float last_anglestep;
   void angleObserver() {
     // This function should take the available data (hall change, BEMF crossing
     // etc...) and process it with a PLL type mechanism
@@ -977,7 +979,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     static int firstturn = 1;
     static int hallstate;
     hallstate = getHallState();
-    static int lasthallstate;
+    static int lasthallstate = -1;
     static uint16_t pwm_count = 0;
     static int anglestep = 1;  // This defines how fast the motor spins
     static uint32_t hallangles[7][2];
@@ -985,6 +987,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
     if (firstturn) {
       lasthallstate = hallstate;
+      (void)lasthallstate;
       firstturn = 0;
     }
 
