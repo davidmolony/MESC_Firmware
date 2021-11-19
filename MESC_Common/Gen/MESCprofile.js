@@ -27,9 +27,79 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+var TEMP_SCHEMA_R_F_ON_R_T = 0;
+var TEMP_SCHEMA_R_T_ON_R_F = 1;
+
 var PROFILE_HEADER_ENTRIES = 32;
 var neid = 0;
 var eid = 0;
+
+function updateFavIcon() {
+    var favicon = document.getElementById('favicon');
+
+    var link = document.createElement('link');
+    link.id = 'favicon';
+    link.rel = 'shortcut icon';
+
+    var canvas = document.createElement('canvas');
+    canvas.width  = 32;
+    canvas.height = 32;
+
+    var context = canvas.getContext('2d');
+
+    context.beginPath();
+    context.rect( 0, 0, canvas.width, canvas.height );
+    context.fillStyle = "white";
+    context.fill();
+
+    context.beginPath();
+    context.strokeStyle = '#0080FF';
+    context.moveTo( 4, 16 );
+
+    for ( var i=1; i<24; ) {
+        var y = 12 - (8 * Math.sin( (2 * Math.PI * i) / 24 ));
+        context.lineTo( 4 + i, y );
+        i++;
+        if (i < 24) {
+            context.moveTo( 4 + i, y );
+        }
+    }
+
+    context.stroke();
+
+    context.font = '12px monospace';
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillStyle = '#000000';
+    context.fillText( "MESC", 16, 24 );
+
+    if (neid > 0) {
+        context.beginPath();
+        context.arc( canvas.width - canvas.width / 3 , canvas.height / 3, 32 / 3, 0, 2 * Math.PI );
+        context.fillStyle = '#FF0000';
+        context.fill();
+
+        var fontsize = '18';
+
+        if (neid > 9) {
+            fontsize = '16';
+        }
+
+        context.font = 'bold ' + fontsize + 'px "helvetica", sans-serif';
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillStyle = '#FFFFFF';
+        context.fillText( neid, canvas.width - canvas.width  / 3, 1 + canvas.height / 3 );
+    }
+
+    link.href = canvas.toDataURL('image/png');
+
+    if (favicon) {
+        document.head.removeChild( favicon );
+    }
+
+    document.head.appendChild( link );
+}
 
 function init() {
     var app = window.document.getElementById('app');
@@ -85,7 +155,7 @@ function add() {
     }
 
     var og = document.createElement('optgroup');
-    og.label = 'UI'
+    og.label = 'UI';
 
     let uitypes = [ 'Throttle', 'Brake', 'Button', 'Indicator', 'Screen' ];
 
@@ -113,6 +183,8 @@ function add() {
 
     neid = neid + 1;
     eid = eid + 1;
+
+    updateFavIcon();
 }
 
 function makeLabelledAddress(obj,id,label,value,change_fn,unit) {
@@ -201,7 +273,7 @@ function makeLabelledNumberUnit(obj,id,label,value,change_fn,unit) {
     return inp;
 }
 
-function makeOptions(obj,id,label,value,unit) {
+function makeOptions(obj,id,label,value,unit,change_fn) {
     var lbl = document.createElement('label');
 
     lbl.innerHTML = label;
@@ -219,6 +291,7 @@ function makeOptions(obj,id,label,value,unit) {
         inp.appendChild( opt );
     }
     obj.appendChild( inp );
+    inp.addEventListener( 'change', change_fn, false );
 
     obj.appendChild( document.createElement('br') );
 
@@ -441,7 +514,7 @@ function makeBattery(eN) {
     inp = makeLabelledNumber( o, 'bat-p', 'Parallel', 2, function() { plotBattery(this) }, '' );
     inp.min = 1;
 
-    inp = makeLabelledNumber( o, 'bat-s', 'Serial', 20, function() { plotBattery(this) }, '' );
+    inp = makeLabelledNumber( o, 'bat-s', 'Series', 20, function() { plotBattery(this) }, '' );
     inp.min = 1;
 
     inp = makeOptions( o, 'bat-disp', 'Display', 0, ['Percent (%)','Amp-Hour (Ah)'] );
@@ -597,9 +670,9 @@ function plotTemperature(obj) {
     var ldx = 51;
     var ldy = 0;
 
-    if (schema == 0) { // TEMP_SCHEMA_R_F_ON_R_T
+    if (schema == TEMP_SCHEMA_R_F_ON_R_T) {
         ldy = 75;
-    } else if (schema == 1) { // TEMP_SCHEMA_R_T_ON_R_F
+    } else if (schema == TEMP_SCHEMA_R_T_ON_R_F) {
         ldy = 75 + 250;
     }
 
@@ -630,18 +703,18 @@ function plotTemperature(obj) {
         var R_T  = r * Math.exp( beta / K );
         var vout = 0;
 
-        if (schema == 0) {
+        if (schema == TEMP_SCHEMA_R_F_ON_R_T) {
             vout = (V * R_T) / (R_F + R_T);
-        } else if (schema == 1) {
+        } else if (schema == TEMP_SCHEMA_R_T_ON_R_F) {
             vout = (V * R_F) / (R_F + R_T);
         }
 
         var adc_raw = ((vout * adc_range) / V);
 
         if (T == 0) {
-            if (schema == 0) {
+            if (schema == TEMP_SCHEMA_R_F_ON_R_T) {
                 adc_min = adc_raw;
-            } else if (schema == 1) {
+            } else if (schema == TEMP_SCHEMA_R_T_ON_R_F) {
                 adc_max = adc_raw;
                 adc_min = adc_range - adc_raw;
             }
@@ -653,9 +726,9 @@ function plotTemperature(obj) {
         var dx = (T * 250) / tmax;
         var dy = 0;
 
-        if (schema == 0) {
+        if (schema == TEMP_SCHEMA_R_F_ON_R_T) {
             dy = ((adc_min - adc_raw) * 250) / adc_min;
-        } else if (schema == 1) {
+        } else if (schema == TEMP_SCHEMA_R_T_ON_R_F) {
             dy = 250 - (((adc_raw - adc_max) * 250) / adc_min);
         }
 
@@ -711,7 +784,7 @@ function makeTemperature(eN) {
     inp = makeLabelledNumber( o, 'temp-rf', 'R_F', 4700, function() { plotTemperature(this) }, '&Omega;' );
     inp.min = 1;
 
-    inp = makeOptions( o, 'temp-schema', 'Schematic', 0, ['R_F on R_T','R_T on R_F'] );
+    inp = makeOptions( o, 'temp-schema', 'Schematic', 0, ['R_F on R_T','R_T on R_F'], function() { plotTemperature(this) } );
 
     inp = makeLabelledNumber( o, 'temp-adc', 'ADC', 3, function() { plotTemperature(this) }, '' );
     inp.min = 0;
@@ -755,7 +828,7 @@ function makeThrottle(eN) {
     h3.innerHTML = 'Sensor';
     o.appendChild( h3 );
 
-    var inp = makeOptions( o, 'thr-if', 'Interface', 0, ['?','??'] );
+    var inp = makeOptions( o, 'thr-if', 'Interface', 0, ['?','??'], function() { plotThrottle(this) } );
 
     inp = makeLabelledNumber( o, 'thr-adc-min', 'ADC min', 100, function() { plotThrottle(this) }, '' );
     inp.min = 0;
@@ -763,7 +836,7 @@ function makeThrottle(eN) {
     inp = makeLabelledNumber( o, 'thr-adc-max', 'ADC max', 2047, function() { plotThrottle(this) }, '' );
     inp.min = 0;
 
-    inp = makeOptions( o, 'thr-rsp', 'Response', 0, ['Linear','Logarithmic'] );
+    inp = makeOptions( o, 'thr-rsp', 'Response', 0, ['Linear','Logarithmic'], function() { plotThrottle(this) } );
 
     eN.appendChild( o );
 }
@@ -782,7 +855,7 @@ function makeBrake(eN) {
     inp = makeLabelledNumber( o, 'brk-adc-max', 'ADC max', 2047, function() { plotBrake(this) }, '' );
     inp.min = 0;
 
-    inp = makeOptions( o, 'brk-rsp', 'Response', 0, ['Linear','Logarithmic'] );
+    inp = makeOptions( o, 'brk-rsp', 'Response', 0, ['Linear','Logarithmic'], function() { plotBrake(this) } );
 
 
     eN.appendChild( o );
@@ -796,7 +869,7 @@ function makeButton(eN) {
     h3.innerHTML = 'Interface';
     o.appendChild( h3 );
 
-    var inp = makeOptions( o, 'btn-if', 'Interface', 0, ['?','??'] );
+    var inp = makeOptions( o, 'btn-if', 'Interface', 0, ['?','??'], function() { plotButton(this) } );
 
     inp = makeLabelledAddress( o, 'btn-a', 'Address', '80001000', function() { plotButton(this) }, '' );
     inp.min = 0;
@@ -815,7 +888,7 @@ function makeIndicator(eN) {
     h3.innerHTML = 'Interface';
     o.appendChild( h3 );
 
-    var inp = makeOptions( o, 'ind-if', 'Interface', 0, ['?','??'] );
+    var inp = makeOptions( o, 'ind-if', 'Interface', 0, ['?','??'], function() { plotInd(this) } );
 
     inp = makeLabelledAddress( o, 'ind-a', 'Address', '80002000', function() { plotInd(this) }, '' );
     inp.min = 0;
@@ -823,7 +896,7 @@ function makeIndicator(eN) {
     inp = makeLabelledNumber( o, 'ind-id', 'Id', 0, function() { plotInd(this) }, '' );
     inp.min = 0;
 
-    inp = makeOptions( o, 'ind-act', 'Activation', 0, ['Edge','Level'] );
+    inp = makeOptions( o, 'ind-act', 'Activation', 0, ['Edge','Level'], function() { plotInd(this) } );
 
     eN.appendChild( o );
 }
@@ -864,7 +937,7 @@ function makeScreen(eN) {
     h3.innerHTML = 'Interface';
     o.appendChild( h3 );
 
-    var inp = makeOptions( o, 'scrn-if', 'Interface', 0, ['?','??'] );
+    var inp = makeOptions( o, 'scrn-if', 'Interface', 0, ['?','??'], function() { plotScreen(this) } );
 
     inp = makeLabelledAddress( o, 'scrn-a', 'Address', '80003000', function() { plotScreen(this) }, '' );
     inp.min = 0;
@@ -931,4 +1004,5 @@ function rem(obj) {
     var eN = obj.parentNode;
     eN.parentNode.removeChild( eN );
     neid = neid - 1;
+    updateFavIcon();
 }
