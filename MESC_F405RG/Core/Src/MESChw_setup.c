@@ -26,6 +26,8 @@
 
 #include "MESCfoc.h"
 
+#include "MESCflash.h"
+
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 extern ADC_HandleTypeDef hadc3;
@@ -72,4 +74,98 @@ void getRawADC(void) {
   measurement_buffers.RawADC[1][0] = hadc2.Instance->JDR1;  // V Current
   measurement_buffers.RawADC[2][0] = hadc3.Instance->JDR1;  // W Current
   measurement_buffers.RawADC[1][3] = hadc1.Instance->JDR3;  // Throttle
+}
+
+static uint32_t const flash_sector_map[] = {
+    // 4 x  16k
+    FLASH_BASE + (0 * (16 << 10)),
+    FLASH_BASE + (1 * (16 << 10)),
+    FLASH_BASE + (2 * (16 << 10)),
+    FLASH_BASE + (3 * (16 << 10)),
+    // 1 x  64k
+    FLASH_BASE + (4 * (16 << 10)),
+    // 7 x 128k
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (0 * (128 << 10)),
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (1 * (128 << 10)),
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (2 * (128 << 10)),
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (3 * (128 << 10)),
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (4 * (128 << 10)),
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (5 * (128 << 10)),
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (6 * (128 << 10)),
+    // END
+    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (7 * (128 << 10)),
+};
+
+static uint32_t getFlashSectorAddress( uint32_t const index )
+{
+    return flash_sector_map[index];
+}
+
+static uint32_t getFlashSectorIndex(uint32_t const address)
+{
+    for (uint32_t i = 0; i < ((sizeof(flash_sector_map) / sizeof(*flash_sector_map)) - 1); i++)
+    {
+        if ((flash_sector_map[i] <= address) && (address < flash_sector_map[i + 1]))
+        {
+            return i;
+        }
+    }
+
+    // error
+    return UINT32_MAX;
+}
+
+uint32_t getFlashBaseAddress( void )
+{
+/*
+The base address is FLASH_BASE = 0x08000000 but this is shared with program
+memory and so a suitable offset should be used
+*/
+    return getFlashSectorAddress( 11 );
+}
+
+ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
+{
+    // Disallow zero length (could ignore)
+    if (length == 0)
+    {
+        return PROFILE_STATUS_ERROR_DATA_LENGTH;
+    }
+    
+    uint32_t const base  = getFlashBaseAddress();
+    
+    uint32_t const saddr = base + address;
+    uint32_t const eaddr = saddr + length - 1;
+    
+    uint32_t const ssector = getFlashSectorIndex( saddr );
+    uint32_t const esector = getFlashSectorIndex( eaddr );
+    
+    // Limit erasure to a single sector
+    if (ssector != esector)
+    {
+        return PROFILE_STATUS_ERROR_DATA_LENGTH;
+    }
+    
+    FLASH_EraseInitTypeDef sector_erase;
+    
+    sector_erase.TypeErase = FLASH_TYPEERASE_SECTORS;
+    sector_erase.Banks     = FLASH_BANK_1; // (ignored)
+    sector_erase.Sector    = ssector;
+    sector_erase.NbSectors = (esector - ssector + 1);
+    
+    uint32_t result = 0;
+    
+    HAL_FLASHEx_Erase( &sector_erase, &result );
+    
+    switch (result)
+    {
+        case HAL_OK:
+            return PROFILE_STATUS_SUCCESS;
+        case HAL_ERROR:
+            return PROFILE_STATUS_ERROR_STORAGE_WRITE;
+        case HAL_BUSY:
+        case HAL_TIMEOUT:
+        default:
+            return PROFILE_STATUS_UNKNOWN;
+    }
 }

@@ -8,7 +8,7 @@
 #ifndef SRC_FLASH_WRAPPER_H_
 #define SRC_FLASH_WRAPPER_H_
 
-#include "flash_driver.h"
+#include <stdint.h>
 
 typedef enum
 {
