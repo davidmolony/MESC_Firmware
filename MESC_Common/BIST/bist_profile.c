@@ -157,7 +157,7 @@ typedef struct DemoEntry DemoEntry;
 static DemoEntry demo_entry;
 static uint32_t demo_entry_size = sizeof(demo_entry);
 
-#define CORRUPTION_ENTRY(T,m) { offsetof(T,m), sizeof(((T *)NULL)->m), #T "." #m }
+#define CORRUPTION_ENTRY(T,m) { (uint32_t)offsetof(T,m), (uint32_t)sizeof(((T *)NULL)->m), #T "." #m }
 
 static struct
 {
@@ -315,7 +315,7 @@ void bist_profile( void )
 
     fprintf( stdout, "INFO: Scanning entries\n" );
 
-    void const * buffer = NULL;
+    void * buffer = NULL;
     uint32_t length = 0;
 
     if (profile_get_entry( "MESC_BAT", BAT_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)

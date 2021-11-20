@@ -34,7 +34,7 @@
 int virt_uart_write( void * handle, void * data, uint16_t size )
 {
     fprintf( stderr, "VUART:>" );
-    int const ret = fwrite( data, 1, size, stderr );
+    size_t const ret = fwrite( data, 1, size, stderr );
     assert( ret == size );
     fprintf( stderr, "<:VUART\n" );
 

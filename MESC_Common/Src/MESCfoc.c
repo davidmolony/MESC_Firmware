@@ -232,7 +232,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       (measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
       (measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
       (measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V   ] > g_hw_setup.RawVoltLim) ||
-	  (temp_read( measurement_buffers.RawADC[3][0] ) >= 80.0)) { // TODO profile thermal limit
+	  (temp_check( measurement_buffers.RawADC[3][0] ) == 0)) {
         foc_vars.Idq_req[0] = foc_vars.Idq_req[0] * 0.9;
         foc_vars.Idq_req[1] = foc_vars.Idq_req[1] * 0.9;
 

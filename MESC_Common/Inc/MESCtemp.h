@@ -99,4 +99,6 @@ float temp_read( uint32_t const adc_raw );
 
 uint32_t temp_get_adc( float const T );
 
+int temp_check( uint32_t const adc_raw );
+
 #endif

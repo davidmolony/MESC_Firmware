@@ -80,7 +80,7 @@ void bist_speed( void )
 
         rpm = ((rpm / 100) * 100);
 
-        drev = rpm;
+        drev = (float)rpm;
 
         float const S = speed_get();
 
@@ -105,7 +105,7 @@ void bist_speed( void )
     {
         if (f < 0)
         {
-            dt = fabs( (float)f );
+            dt = fabsf( (float)f );
         }
         else if (f == 0)
         {
@@ -113,7 +113,7 @@ void bist_speed( void )
         }
         else
         {
-            dt = 1.0f / fabs( (float)f );
+            dt = 1.0f / fabsf( (float)f );
         }
 
         float const S = speed_get();

@@ -56,6 +56,7 @@ SET( ${PROJECT_NAME}_hdr
     ${CMAKE_CURRENT_LIST_DIR}/../Inc/MESCprofile.h
     ${CMAKE_CURRENT_LIST_DIR}/../Inc/MESCspeed.h
     ${CMAKE_CURRENT_LIST_DIR}/../Inc/MESCtemp.h
+    ${CMAKE_CURRENT_LIST_DIR}/../Inc/MESCui.h
 )
 
 SET( ${PROJECT_NAME}_src
@@ -67,6 +68,7 @@ SET( ${PROJECT_NAME}_src
     ${CMAKE_CURRENT_LIST_DIR}/../Src/MESCprofile.c
     ${CMAKE_CURRENT_LIST_DIR}/../Src/MESCspeed.c
     ${CMAKE_CURRENT_LIST_DIR}/../Src/MESCtemp.c
+    ${CMAKE_CURRENT_LIST_DIR}/../Src/MESCui.c
 
     ${CMAKE_CURRENT_LIST_DIR}/bist.c
     ${CMAKE_CURRENT_LIST_DIR}/bist_bat.c
@@ -74,6 +76,8 @@ SET( ${PROJECT_NAME}_src
     ${CMAKE_CURRENT_LIST_DIR}/bist_profile.c
     ${CMAKE_CURRENT_LIST_DIR}/bist_speed.c
     ${CMAKE_CURRENT_LIST_DIR}/bist_temp.c
+    ${CMAKE_CURRENT_LIST_DIR}/virt_flash.c
+    ${CMAKE_CURRENT_LIST_DIR}/virt_uart.c
 )
 
 ADD_EXECUTABLE( ${PROJECT_NAME} ${${PROJECT_NAME}_hdr} ${${PROJECT_NAME}_src} )

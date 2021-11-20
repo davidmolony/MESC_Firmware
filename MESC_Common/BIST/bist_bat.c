@@ -95,7 +95,6 @@ void bist_bat( void )
         switch (bp.display)
         {
             case BAT_DISPLAY_PERCENT:
-
                 for ( float L = 0.0f; (L <= 100.0f); L = L + 10.0f )
                 {
                     float const V = bat_get_level_voltage( L );

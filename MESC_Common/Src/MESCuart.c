@@ -112,5 +112,5 @@ void uart_init( void )
     cli_register_function( "reset"        , cmd_reset           );
     cli_register_function( "test"         , cmd_test            );
 
-    cli_register_io( &huart3, (int(*)(void*,void*,uint16_t,uint32_t))HAL_UART_Transmit_DMA );
+    cli_register_io( &huart3, (int(*)(void*,void*,uint16_t))HAL_UART_Transmit_DMA );
 }

@@ -115,18 +115,17 @@ static CLIEntry cli_lut[MAX_CLI_LUT_ENTRIES];
 static uint32_t cli_lut_entries = 0;
 static CLIEntry * cli_lut_entry = NULL;
 
-static int cli_io_write_noop( void * handle, void * data, uint16_t size, uint32_t timeout )
+static int cli_io_write_noop( void * handle, void * data, uint16_t size )
 {
     (void)handle;
     (void)data;
     (void)size;
-    (void)timeout;
 
     return 0;
 }
 
 static void * cli_io_handle = NULL;
-static int (* cli_io_write)( void *, void *, uint16_t, uint32_t ) = cli_io_write_noop;
+static int (* cli_io_write)( void *, void *, uint16_t ) = cli_io_write_noop;
 
 static void cli_idle( void )
 {
@@ -561,7 +560,7 @@ void cli_register_function(
 
 void cli_register_io(
     void * handle,
-    int (* const write)( void * handle, void * data, uint16_t size, uint32_t timeout ) )
+    int (* const write)( void * handle, void * data, uint16_t size ) )
 {
     cli_io_handle = handle;
     cli_io_write = write;
@@ -836,7 +835,7 @@ void cli_reply( char const * p, ... )
 
     if (len > 0)
     {
-        int const ret = cli_io_write( cli_io_handle, buffer, len, (2 * len) );
+        int const ret = cli_io_write( cli_io_handle, buffer, (uint16_t)len );
         (void)ret;
     }
 

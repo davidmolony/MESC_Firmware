@@ -127,17 +127,25 @@ static void cmd_flash_new( void )
     virt_flash_this_header->image_checksum = fnv1a_init();
 
     fprintf( stdout, "Loading fingerprint...\n" );
-
+#if defined _MSC_VER
+    FILE * f = fopen( "../Gen/fingerprint.stdout", "r" );
+    char * p = fgets( (char*)&virt_flash_this_header->fingerprint,
+                       sizeof(virt_flash_this_header->fingerprint), f );
+#else
     FILE * pstdout = popen( "/bin/bash ../Gen/fingerprint.sh 2> /dev/null", "r" );
     assert( pstdout );
 
     char * p = fgets( (char *)&virt_flash_this_header->fingerprint,
                         sizeof(virt_flash_this_header->fingerprint), pstdout );
+#endif
     assert( p );
 
     fprintf( stdout, "%s\n", p );
-
+#if defined _MSC_VER
+    fclose( f );
+#else
     pclose( pstdout );
+#endif
 }
 
 static void cmd_flash_reload( void )
@@ -147,6 +155,7 @@ static void cmd_flash_reload( void )
         fprintf( stdout, "Reloading profile...\n" );
 
         virt_flash_this = malloc( 4096 );
+        assert( virt_flash_this );
         memcpy( virt_flash_this, virt_flash_load, 4096 );
 
         virt_flash_this_header = (ProfileHeader *)virt_flash_this;
@@ -174,6 +183,7 @@ static void cmd_flash_save( void )
     }
 
     virt_flash_this = calloc( 4096, 1 );
+    assert( virt_flash_this );
 
     virt_flash_this_header = (ProfileHeader *)virt_flash_this;
     ProfileEntry * s = (ProfileEntry *)(&virt_flash_this[sizeof(ProfileHeader)]);
@@ -308,11 +318,14 @@ static int virt_flash( int argc, char * argv[] )
     if (virt_flash_load)
     {
         virt_flash_this = malloc( 4096 );
+        assert( virt_flash_this );
+        
         memcpy( virt_flash_this, virt_flash_load, 4096 );
     }
     else
     {
         virt_flash_this = calloc( 4096, 1 );
+        assert( virt_flash_this );
     }
 
     virt_flash_this_header = (ProfileHeader *)virt_flash_this;

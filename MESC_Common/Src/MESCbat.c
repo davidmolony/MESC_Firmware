@@ -44,12 +44,12 @@ void bat_init( BATProfile const * const profile )
 {
     if (profile == PROFILE_DEFAULT)
     {
-        static BATProfile bat_profile;
-        uint32_t          bat_length = sizeof(bat_profile);
+        static BATProfile bat_profile_default;
+        uint32_t          bat_length = sizeof(bat_profile_default);
 
         ProfileStatus ret = profile_get_entry(
             "BAT", BAT_PROFILE_SIGNATURE,
-            &bat_profile, &bat_length );
+            &bat_profile_default, &bat_length );
 
         if (ret != PROFILE_STATUS_SUCCESS)
         {
@@ -57,21 +57,24 @@ void bat_init( BATProfile const * const profile )
             return;
         }
 
-        bat_init( &bat_profile );
+        bat_init( &bat_profile_default);
     }
+    else
+    {
+        bat_profile = profile;
 
-    bat_profile = profile;
-    bat_notify_profile_update();
+        bat_notify_profile_update();
 
-    float const u_dV = profile->cell.Vmax - profile->cell.Vmid;
-    float const u_dC = profile->cell.Cmax - profile->cell.Cmid;
+        float const u_dV = bat_profile->cell.Vmax - bat_profile->cell.Vmid;
+        float const u_dC = bat_profile->cell.Cmax - bat_profile->cell.Cmid;
 
-    grad_upper = u_dC / u_dV;
+        grad_upper = u_dC / u_dV;
 
-    float const l_dV = profile->cell.Vmid - profile->cell.Vmin;
-    float const l_dC = profile->cell.Cmid;
+        float const l_dV = bat_profile->cell.Vmid - bat_profile->cell.Vmin;
+        float const l_dC = bat_profile->cell.Cmid;
 
-    grad_lower = l_dC / l_dV;
+        grad_lower = l_dC / l_dV;
+    }
 }
 
 void bat_notify_profile_update( void )

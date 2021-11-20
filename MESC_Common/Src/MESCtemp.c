@@ -43,12 +43,37 @@ void temp_init( TEMPProfile const * const profile )
 {
     if (profile == PROFILE_DEFAULT)
     {
-        static TEMPProfile temp_profile;
-        uint32_t           temp_length = sizeof(temp_profile);
+        static TEMPProfile temp_profile_default =
+		{
+        	.V   = 3.3f,
+#ifdef STM32F303xC
+        	.R_F = 4700.0f,
+#endif
+#ifdef STM32F405xx
+        	.R_F = 10000.0f,
+#endif
+			.adc_range = 4096,
+
+			.method = TEMP_METHOD_STEINHART_HART_BETA_R,
+#ifdef STM32F303xC
+			.schema = TEMP_SCHEMA_R_F_ON_R_T,
+#endif
+#ifdef STM32F405xx
+			.schema = TEMP_SCHEMA_R_T_ON_R_F,
+#endif
+			.parameters.SH.Beta = 3437.864258f,
+			.parameters.SH.r = 0.098243f,
+			.parameters.SH.T0 = CVT_CELSIUS_TO_KELVIN_F( 25.0f ),
+			.parameters.SH.R0 = 10000.0f,
+
+			.limit.Tmin = CVT_CELSIUS_TO_KELVIN_F( 10.0f ),
+			.limit.Tmax = CVT_CELSIUS_TO_KELVIN_F( 80.0f ),
+		};
+        uint32_t           temp_length = sizeof(temp_profile_default);
 
         ProfileStatus ret = profile_get_entry(
             "TEMP", TEMP_PROFILE_SIGNATURE,
-            &temp_profile, &temp_length );
+            &temp_profile_default, &temp_length );
 
         if (ret != PROFILE_STATUS_SUCCESS)
         {
@@ -56,7 +81,7 @@ void temp_init( TEMPProfile const * const profile )
             return;
         }
 
-        temp_init( &temp_profile );
+        temp_init( &temp_profile_default);
     }
 
     temp_profile = profile;
@@ -111,7 +136,7 @@ static float temp_calculate_R_T( float const Vout )
             float const num = (Vout * temp_profile->R_F);
             float const den = (temp_profile->V - Vout);
             float const R_T = (num / den);
-
+            // return elec_potdiv_Rlo( temp_profile->V, Vout, temp_profile->R_F );
             return R_T;
         }
         case TEMP_SCHEMA_R_T_ON_R_F:
@@ -119,7 +144,7 @@ static float temp_calculate_R_T( float const Vout )
             float const num = (temp_profile->V * temp_profile->R_F);
             float const den = Vout;
             float const R_T = (num / den) - temp_profile->R_F;
-
+            // return elec_potdiv_Rhi( temp_profile->V, Vout, temp_profile->R_F );
             return R_T;
         }
         default:
@@ -165,7 +190,7 @@ static void temp_derive_SteinhartHart_ABC_from_points( TEMPProfile * const profi
 
     for ( int i = 0; i < 3; i++ )
     {
-        L[i] = log( (*R)[i] );
+        L[i] = logf( (*R)[i] );
         Y[i] = (1.0f / (*T)[i]);
     }
 
@@ -174,7 +199,7 @@ static void temp_derive_SteinhartHart_ABC_from_points( TEMPProfile * const profi
 
     float const L0_2 = (L[0] * L[0]);
 
-    profile->parameters.SH.C = ((g[2] - g[1]) / (L[2] - L[1])) * (1.0 / (L[0] + L[1] + L[2]));
+    profile->parameters.SH.C = ((g[2] - g[1]) / (L[2] - L[1])) * (1.f / (L[0] + L[1] + L[2]));
     profile->parameters.SH.B = (g[1] - (profile->parameters.SH.C * (L0_2 + (L[0] * L[1]) + (L[1] * L[1]))));
     profile->parameters.SH.A = (Y[0] - (L[0] * (profile->parameters.SH.B + (profile->parameters.SH.C * L0_2))));
 }
@@ -187,7 +212,7 @@ static void temp_derive_SteinhartHart_Beta_r_from_ABC( TEMPProfile * profile )
 
 static float temp_calculate_SteinhartHart_ABC( float const R_T )
 {
-    float const ln_R_T   = log( R_T );
+    float const ln_R_T   = logf( R_T );
     float const ln_R_T_3 = (ln_R_T * ln_R_T * ln_R_T);
 
     float const num = 1.0f;
@@ -245,6 +270,11 @@ float temp_read( uint32_t const adc_raw )
             T = CVT_KELVIN_TO_CELSIUS_F( K );
             break;
         }
+        default:
+        {
+            T = 0.0f;
+            break;
+        }
     }
 
     return T;
@@ -284,6 +314,11 @@ uint32_t temp_get_adc( float const T )
             // OR R_T =  R0 * exp( Beta * (1 / K - 1 / T0) )
             break;
         }
+        default:
+        {
+            R_T = 0.0f;
+            break;
+        }
     }
 
     float Vout;
@@ -293,11 +328,18 @@ uint32_t temp_get_adc( float const T )
         case TEMP_SCHEMA_R_F_ON_R_T:
         {
             Vout = (temp_profile->V *               R_T) / (temp_profile->R_F + R_T);
+            //Vout = elec_potdiv_Vout( temp_profile->V, temp_profile->R_F, R_T );
             break;
         }
         case TEMP_SCHEMA_R_T_ON_R_F:
         {
             Vout = (temp_profile->V * temp_profile->R_F) / (temp_profile->R_F + R_T);
+            //Vout = elec_potdiv_Vout( temp_profile->V, R_T, temp_profile->R_F );
+            break;
+        }
+        default:
+        {
+            Vout = 0.0f;
             break;
         }
     }
@@ -305,4 +347,19 @@ uint32_t temp_get_adc( float const T )
     uint32_t const adc_raw = (uint32_t)((Vout * ((float)temp_profile->adc_range)) / temp_profile->V);
 
     return adc_raw;
+}
+
+int temp_check( uint32_t const adc_raw )
+{
+	float const T = temp_read( adc_raw );
+
+	if  (
+			(T <= temp_profile->limit.Tmin)
+		||  (temp_profile->limit.Tmax <= T)
+		)
+	{
+		return 0;
+	}
+
+	return 1;
 }
