@@ -23,6 +23,9 @@
  */
 /* Includes ------------------------------------------------------------------*/
 #include "MESChw_setup.h"
+#include "MESCfoc.h"
+
+extern ADC_HandleTypeDef hadc1, hadc2, hadc3, hadc4;
 
 void motor_init()
 {
@@ -34,7 +37,7 @@ void motor_init()
 void hw_init()
 {
     g_hw_setup.Imax =
-        120.0;  // Imax is the current at which we are either no longer able to read it, or hardware "don't ever exceed to avoid breakage"
+        12.0;  // Imax is the current at which we are either no longer able to read it, or hardware "don't ever exceed to avoid breakage"
     g_hw_setup.Vmax = 55.0;  // Headroom beyond which likely to get avalanche of MOSFETs or DCDC converter
     g_hw_setup.Vmin = 10;    // This implies that the PSU has crapped out or a wire has fallen out, and suddenly there will be no power.
     g_hw_setup.Rshunt = 0.0005;
@@ -52,6 +55,60 @@ void hw_init()
     }  // 4000 is 96 counts away from ADC saturation, allow headroom for opamp not pulling rail:rail.
     g_hw_setup.RawVoltLim = (uint16_t)(4096.0f * (g_hw_setup.Vmax / 3.3f) * g_hw_setup.RVBB / (g_hw_setup.RVBB + g_hw_setup.RVBT));
     g_hw_setup.battMaxPower = 500.0f;
+}
+
+void setAWDVals()
+{
+    uint32_t AWD_top_set_point = g_hw_setup.RawCurrLim - 2048 + measurement_buffers.ADCOffset[0];
+    if (AWD_top_set_point > 4000)
+    {
+        AWD_top_set_point = 4000;
+    }
+
+    uint32_t AWD_bottom_set_point = measurement_buffers.ADCOffset[0] - (g_hw_setup.RawCurrLim - 2048);
+    if (AWD_bottom_set_point<96 | AWD_bottom_set_point> measurement_buffers.ADCOffset[0])
+    {
+        AWD_bottom_set_point = 96;
+    }
+
+    uint32_t AWD_setpoints = 0;
+    AWD_setpoints |= AWD_bottom_set_point;
+    AWD_setpoints |= (AWD_top_set_point << 16);
+
+    hadc1.Instance->TR1 = AWD_setpoints;
+    AWD_top_set_point = g_hw_setup.RawCurrLim - 2048 + measurement_buffers.ADCOffset[1];
+    if (AWD_top_set_point > 4000)
+    {
+        AWD_top_set_point = 4000;
+    }
+
+    AWD_bottom_set_point = measurement_buffers.ADCOffset[1] - (g_hw_setup.RawCurrLim - 2048);
+    if (AWD_bottom_set_point<96 | AWD_bottom_set_point> measurement_buffers.ADCOffset[1])
+    {
+        AWD_bottom_set_point = 96;
+    }
+
+    AWD_setpoints = 0;
+    AWD_setpoints |= AWD_bottom_set_point;
+    AWD_setpoints |= (AWD_top_set_point << 16);
+    hadc2.Instance->TR1 = AWD_setpoints;
+
+    AWD_top_set_point = g_hw_setup.RawCurrLim - 2048 + measurement_buffers.ADCOffset[2];
+    if (AWD_top_set_point > 4000)
+    {
+        AWD_top_set_point = 4000;
+    }
+
+    AWD_bottom_set_point = measurement_buffers.ADCOffset[2] - (g_hw_setup.RawCurrLim - 2048);
+    if (AWD_bottom_set_point<96 | AWD_bottom_set_point> measurement_buffers.ADCOffset[2])
+    {
+        AWD_bottom_set_point = 96;
+    }
+
+    AWD_setpoints = 0;
+    AWD_setpoints |= AWD_bottom_set_point;
+    AWD_setpoints |= (AWD_top_set_point << 16);
+    hadc3.Instance->TR1 = AWD_setpoints;
 }
 
 void getRawADC(void)

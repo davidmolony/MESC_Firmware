@@ -88,4 +88,6 @@ motor_s motor;
 void motor_init(void);  // Fills the parameters of the motor struct
 void hw_init(void);  // Fills the parameters of the hardware struct, simplifies
                      // some into useful overall gain values
+
+void setAWDVals();
 void getRawADC(void);

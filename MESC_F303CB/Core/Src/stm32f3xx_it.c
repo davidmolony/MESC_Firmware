@@ -20,10 +20,10 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f3xx_it.h"
-#include <math.h>
 #include "main.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -64,6 +64,8 @@ int IRQ_exit;
 extern PCD_HandleTypeDef hpcd_USB_FS;
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
+extern ADC_HandleTypeDef hadc3;
+extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim4;
 extern DMA_HandleTypeDef hdma_usart3_tx;
@@ -179,7 +181,6 @@ void DMA1_Channel2_IRQHandler(void)
 
     /* USER CODE END DMA1_Channel2_IRQn 0 */
     HAL_DMA_IRQHandler(&hdma_usart3_tx);
-
     /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
 
     /* USER CODE END DMA1_Channel2_IRQn 1 */
@@ -192,15 +193,18 @@ void ADC1_2_IRQHandler(void)
 {
     /* USER CODE BEGIN ADC1_2_IRQn 0 */
 
-    IRQ_entry = htim1.Instance->CNT;
-
-    fastLoop();
+    generateBreak();
+    MotorState = MOTOR_STATE_ERROR;
+    // ToDo Create logic looking at ADC flags to determine the error type
+    MotorError = MOTOR_ERROR_OVER_LIMIT_CURR1;
+    MotorError = MOTOR_ERROR_OVER_LIMIT_CURR2;
+    //ToDo, need to set up the overvoltage AWD
+    //MotorError = MOTOR_ERROR_OVER_LIMIT_VBUS;
 
     /* USER CODE END ADC1_2_IRQn 0 */
     HAL_ADC_IRQHandler(&hadc1);
     HAL_ADC_IRQHandler(&hadc2);
     /* USER CODE BEGIN ADC1_2_IRQn 1 */
-    IRQ_exit = htim1.Instance->CNT;
     /* USER CODE END ADC1_2_IRQn 1 */
 }
 
@@ -216,6 +220,26 @@ void USB_LP_CAN_RX0_IRQHandler(void)
     /* USER CODE BEGIN USB_LP_CAN_RX0_IRQn 1 */
 
     /* USER CODE END USB_LP_CAN_RX0_IRQn 1 */
+}
+
+/**
+ * @brief This function handles TIM1 update and TIM16 interrupts.
+ */
+void TIM1_UP_TIM16_IRQHandler(void)
+{
+    /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
+    if (htim1.Instance->CNT > 512)
+    {
+        IRQ_entry = htim1.Instance->CNT;
+        fastLoop();
+        IRQ_exit = htim1.Instance->CNT;
+    }
+
+    /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
+    HAL_TIM_IRQHandler(&htim1);
+    /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
+
+    /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
 }
 
 /**
@@ -263,7 +287,7 @@ void TIM3_IRQHandler(void)
         foc_vars.Idq_req[1] = g_hw_setup.battMaxPower / (fabs(foc_vars.Vdq_smoothed[1]) * foc_vars.Vdqres_to_Vdq);
     }
     /* USER CODE END TIM3_IRQn 0 */
-
+    HAL_TIM_IRQHandler(&htim3);
     /* USER CODE BEGIN TIM3_IRQn 1 */
 
     /* USER CODE END TIM3_IRQn 1 */
@@ -300,7 +324,7 @@ void TIM4_IRQHandler(void)
 
     /* when you commit after code regen comment this out. */
     /* USER CODE END TIM4_IRQn 0 */
-    // HAL_TIM_IRQHandler(&htim4);
+    HAL_TIM_IRQHandler(&htim4);
     /* USER CODE BEGIN TIM4_IRQn 1 */
 
     /* USER CODE END TIM4_IRQn 1 */
@@ -318,6 +342,23 @@ void USART3_IRQHandler(void)
     /* USER CODE BEGIN USART3_IRQn 1 */
 
     /* USER CODE END USART3_IRQn 1 */
+}
+
+/**
+ * @brief This function handles ADC3 global interrupt.
+ */
+void ADC3_IRQHandler(void)
+{
+    /* USER CODE BEGIN ADC3_IRQn 0 */
+    generateBreak();
+    MotorState = MOTOR_STATE_ERROR;
+    MotorError = MOTOR_ERROR_OVER_LIMIT_CURR3;
+
+    /* USER CODE END ADC3_IRQn 0 */
+    HAL_ADC_IRQHandler(&hadc3);
+    /* USER CODE BEGIN ADC3_IRQn 1 */
+
+    /* USER CODE END ADC3_IRQn 1 */
 }
 
 /**

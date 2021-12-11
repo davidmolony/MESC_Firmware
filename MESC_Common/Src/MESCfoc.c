@@ -120,10 +120,14 @@ void MESCInit() {
 
   HAL_ADC_Start_DMA(&hadc4, (uint32_t *)&measurement_buffers.RawADC[3][0], 1);
 
-  __HAL_ADC_ENABLE_IT(
-      &hadc1, ADC_IT_EOS);  // We are using the ADC_DMA, so the HAL initialiser
-                            // doesn't actually enable the ADC conversion
-                            // complete interrupt. This does.
+  __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD1);
+  __HAL_ADC_ENABLE_IT(&hadc2, ADC_IT_AWD1);
+  __HAL_ADC_ENABLE_IT(&hadc3, ADC_IT_AWD1);
+  // Using the ADC AWD to detect overcurrent events.
+
+  __HAL_TIM_ENABLE_IT(&htim1, TIM_IT_UPDATE);
+  // Using the timer updates to commute the motor
+
 #endif
 #ifdef STM32F405xx
   HAL_ADCEx_InjectedStart_IT(&hadc1);
@@ -176,7 +180,7 @@ void fastLoop() {
         hallAngleEstimator();
         angleObserver();
         MESCFOC();
-         //fluxIntegrator();
+        // fluxIntegrator();
       }
       break;
 
@@ -341,6 +345,10 @@ void VICheck() {  // Check currents, voltages are within panic limits
         for (uint32_t i = 0; i < 3; i++) {
           measurement_buffers.ADCOffset[i] /= 1000;
         }
+#ifdef STM32F303xC
+
+        setAWDVals();
+#endif
         foc_vars.initing = 0;
       }
     }
@@ -601,11 +609,13 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // We integrate the Valpha and Vbeta cycle by cycle, and add a damper to
     // centre it about zero
     foc_vars.VBEMFintegral[0] =
-        0.995f * (foc_vars.VBEMFintegral[0] + 0.5 * foc_vars.Vab[0] + 2.0f*motor.Rphase * foc_vars.Iab[0]);
+        0.995f * (foc_vars.VBEMFintegral[0] + 0.5 * foc_vars.Vab[0] +
+                  2.0f * motor.Rphase * foc_vars.Iab[0]);
     // ignore the inductance for now, since it requires current
     // derivatives, and motors on my desk are all low inductance
     foc_vars.VBEMFintegral[1] =
-        0.995f * (foc_vars.VBEMFintegral[1] + 0.5 * foc_vars.Vab[1] + 2.0f*motor.Rphase * foc_vars.Iab[1]);
+        0.995f * (foc_vars.VBEMFintegral[1] + 0.5 * foc_vars.Vab[1] +
+                  2.0f * motor.Rphase * foc_vars.Iab[1]);
 
     flux_blanking++;
     if (flux_blanking > 10)  // Slight concern that when the crossing occurs, it
