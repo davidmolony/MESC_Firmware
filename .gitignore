@@ -1,6 +1,7 @@
 Debug/
 Release/
 .settings/
+/**/.vscode/
 /**/BIST/build/
 /**/BIST/bist
 /**/BIST/FLASH
