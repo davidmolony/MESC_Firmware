@@ -32,6 +32,8 @@
 #include "MESCcli.h"
 #include "MESCprofile.h"
 
+#include "stm32fxxx_hal.h"
+
 #include "conversions.h"
 
 #include <math.h>
@@ -45,28 +47,17 @@ void temp_init( TEMPProfile const * const profile )
     {
         static TEMPProfile temp_profile_default =
 		{
-        	.V   = 3.3f,
-#ifdef STM32F303xC
-        	.R_F = 4700.0f,
-#endif
-#ifdef STM32F405xx
-        	.R_F = 10000.0f,
-#endif
-			.adc_range = 4096,
+        	.V                  = 3.3f,
+        	.R_F                = MESC_PROFILE_TEMP_R_F,
+			.adc_range          = 4096,
+			.method             = TEMP_METHOD_STEINHART_HART_BETA_R,
+			.schema             = MESC_PROFILE_TEMP_SCHEMA,
+			.parameters.SH.Beta = MESC_PROFILE_TEMP_SH_BETA,
+			.parameters.SH.r    = MESC_PROFILE_TEMP_SH_R,
+			.parameters.SH.T0   = CVT_CELSIUS_TO_KELVIN_F( 25.0f ),
+			.parameters.SH.R0   = MESC_PROFILE_TEMP_SH_R0,
 
-			.method = TEMP_METHOD_STEINHART_HART_BETA_R,
-#ifdef STM32F303xC
-			.schema = TEMP_SCHEMA_R_F_ON_R_T,
-#endif
-#ifdef STM32F405xx
-			.schema = TEMP_SCHEMA_R_T_ON_R_F,
-#endif
-			.parameters.SH.Beta = 3437.864258f,
-			.parameters.SH.r = 0.098243f,
-			.parameters.SH.T0 = CVT_CELSIUS_TO_KELVIN_F( 25.0f ),
-			.parameters.SH.R0 = 10000.0f,
-
-			.limit.Tmin = CVT_CELSIUS_TO_KELVIN_F( 10.0f ),
+			.limit.Tmin = CVT_CELSIUS_TO_KELVIN_F(  5.0f ),
 			.limit.Tmax = CVT_CELSIUS_TO_KELVIN_F( 80.0f ),
 		};
         uint32_t           temp_length = sizeof(temp_profile_default);
@@ -83,8 +74,10 @@ void temp_init( TEMPProfile const * const profile )
 
         temp_init( &temp_profile_default);
     }
-
-    temp_profile = profile;
+    else
+    {
+    	temp_profile = profile;
+    }
 }
 
 /*
@@ -129,6 +122,7 @@ TEMP_SCHEMA_R_T_ON_R_F
 
 static float temp_calculate_R_T( float const Vout )
 {
+// TODO ERROR temp_profile == NULL
     switch (temp_profile->schema)
     {
         case TEMP_SCHEMA_R_F_ON_R_T:
@@ -172,6 +166,7 @@ T = --------- - T_lo
 
 static float temp_calculate_approximation( float const R_T )
 {
+// TODO ERROR temp_profile == NULL
     float const ln_R_T = logf( R_T );
     float const T = ((ln_R_T - temp_profile->parameters.approx.B) / temp_profile->parameters.approx.A) + temp_profile->parameters.approx.Tlo;
 
@@ -212,6 +207,7 @@ static void temp_derive_SteinhartHart_Beta_r_from_ABC( TEMPProfile * profile )
 
 static float temp_calculate_SteinhartHart_ABC( float const R_T )
 {
+// TODO ERROR temp_profile == NULL
     float const ln_R_T   = logf( R_T );
     float const ln_R_T_3 = (ln_R_T * ln_R_T * ln_R_T);
 
@@ -235,6 +231,7 @@ static void temp_derive_SteinhartHart_ABC_from_Beta( TEMPProfile * const profile
 
 static float temp_calculate_SteinhartHart_Beta_r( float const R_T )
 {
+// TODO ERROR temp_profile == NULL
     return temp_profile->parameters.SH.Beta / logf( R_T / temp_profile->parameters.SH.r );
 }
 
@@ -244,6 +241,7 @@ API
 //#include <stdio.h>//debug
 float temp_read( uint32_t const adc_raw )
 {
+// TODO ERROR temp_profile == NULL
     float const adc  = (float)adc_raw;
     float const Vout = ((temp_profile->V * adc) / (float)temp_profile->adc_range);
     float const R_T = temp_calculate_R_T( Vout );
@@ -282,6 +280,7 @@ float temp_read( uint32_t const adc_raw )
 
 uint32_t temp_get_adc( float const T )
 {
+// TODO ERROR temp_profile == NULL
     float R_T;
 
     switch (temp_profile->method)
@@ -351,6 +350,7 @@ uint32_t temp_get_adc( float const T )
 
 int temp_check( uint32_t const adc_raw )
 {
+// TODO ERROR temp_profile == NULL
 	float const T = temp_read( adc_raw );
 
 	if  (

@@ -62,9 +62,7 @@ typedef struct {
   float battMaxPower;   // Maximum battery power init...
 } hw_setup_s;
 
-hw_setup_s g_hw_setup;
-// _OR_
-// void hw_setup_init( hw_setp_s * hw_setup );
+hw_setup_s g_hw_setup; // TODO PROFILE
 
 typedef struct {
   hardware_vars_t Rphase;  // unsigned int containing phase resistance in mOhms,
@@ -78,19 +76,49 @@ typedef struct {
                            // 0, at which point the resistance is accepted
 } motor_s;
 
-motor_s motor;
-// _OR_
-// void motor_init( struct motor_s *motor);	//Rob created prototype init,
-// unused for now
+motor_s motor;  // TODO PROFILE
 
-/* Function prototypes -----------------------------------------------*/
+/*
+Hardware-specific implementation
+
+The following function prototypes must be defined in the corresponding:
+    MESC_Fxxxx/Core/Src/MESChw_setup.c
+
+in addition to pre-processor defines in the corresponding:
+    MESC_Fxxxx/Core/Inc/stm32fxxx_hal.h
+*/
+
+/*
+Hardware identifiers
+
+#define MESC_GPIO_HALL
+*/
+
+/*
+Function prototypes
+*/
 
 void motor_init(void);  // Fills the parameters of the motor struct
 void hw_init(void);  // Fills the parameters of the hardware struct, simplifies
                      // some into useful overall gain values
 void getRawADC(void);
+/*
+#define getHallState(...)
+OR
+int getHallState( void );
+*/
 
 void mesc_init_1( void ); // Perform HW specific initialisation for MESCInit() before delay
 void mesc_init_2( void ); // Perform HW specific initialisation for MESCInit() after delay
 void mesc_init_3( void ); // Perform HW specific initialisation for MESCInit() after hw_init()
 
+/*
+Profile defaults
+
+Temperature parameters
+#define MESC_PROFILE_TEMP_R_F
+#define MESC_PROFILE_TEMP_SCHEMA
+#define MESC_PROFILE_TEMP_SH_BETA
+#define MESC_PROFILE_TEMP_SH_R
+#define MESC_PROFILE_TEMP_SH_R0
+*/
