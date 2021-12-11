@@ -176,7 +176,7 @@ void fastLoop() {
         hallAngleEstimator();
         angleObserver();
         MESCFOC();
-        // fluxIntegrator();
+         //fluxIntegrator();
       }
       break;
 
@@ -460,9 +460,42 @@ void VICheck() {  // Check currents, voltages are within panic limits
       if (hall_error < -32000) {
         hall_error = hall_error + 65536;
       }
+      if (foc_vars.Vdq[0] > 50) {
+        foc_vars.hall_table[last_hall_state - 1][0] =
+            foc_vars.hall_table[last_hall_state - 1][0] + 2;
+        foc_vars.hall_table[current_hall_state - 1][0] =
+            foc_vars.hall_table[current_hall_state - 1][0] - 2;
+      }
+      if (foc_vars.Vdq[0] < 50) {
+        foc_vars.hall_table[last_hall_state - 1][0] =
+            foc_vars.hall_table[last_hall_state - 1][0] - 2;
+        foc_vars.hall_table[current_hall_state - 1][0] =
+            foc_vars.hall_table[current_hall_state - 1][0] + 2;
+      }
     }
   }
+
   static float last_anglestep;
+  static float observerkp = 0.005;
+  static float observerki = 0.01;
+
+  void angleObservernew() {
+    // This version of the observer will eliminate all divide functions and
+    // correct based on a time rather than per cycle
+    if (foc_vars.hall_update == 1) {
+      foc_vars.hall_update = 0;
+      ticks_since_last_observer_change = ticks_since_last_observer_change + 1;
+    }
+    angle_step = angle_step - observerki * observerkp * hall_error;
+    foc_vars.FOCAngle =
+        foc_vars.FOCAngle +
+        (uint16_t)(angle_step - observerkp * hall_error * angle_step * 0.0005);
+
+    if (ticks_since_last_observer_change > 3000.0f) {
+      ticks_since_last_observer_change = 1501.0f;
+      foc_vars.FOCAngle = current_hall_angle;
+    }
+  }
   void angleObserver() {
     // This function should take the available data (hall change, BEMF crossing
     // etc...) and process it with a PLL type mechanism
@@ -473,9 +506,9 @@ void VICheck() {  // Check currents, voltages are within panic limits
       one_on_last_observer_period =
           (4 * one_on_last_observer_period + (one_on_ticks)) * 0.2;  // ;
       angle_step =
-          (9 * angle_step +
+          (4 * angle_step +
            (one_on_ticks)*foc_vars.hall_table[last_hall_state - 1][3]) *
-          0.1;
+          0.2;
       //                if(hall_error>200){
       //                	foc_vars.hall_table[current_hall_state -
       //                1][0]=foc_vars.hall_table[current_hall_state - 1][0]+1;
@@ -542,8 +575,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
                 // well when using corrected hall positions and spacings
         foc_vars.FOCAngle =
             foc_vars.FOCAngle +
-            (uint16_t)(angle_step +
-                       one_on_last_observer_period * (-0.2 * hall_error));
+            (uint16_t)(angle_step - one_on_last_observer_period * hall_error);
+        // one_on_last_observer_period * (-0.2 * hall_error));
       } else if (dir < 0) {
         // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(-angle_step +
         // one_on_last_hall_period * (-0.9 * hall_error)); Also does not work,
@@ -568,13 +601,11 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // We integrate the Valpha and Vbeta cycle by cycle, and add a damper to
     // centre it about zero
     foc_vars.VBEMFintegral[0] =
-        0.999f * (foc_vars.VBEMFintegral[0] + 0.02 * foc_vars.Vab[0] +
-                  motor.Rphase * foc_vars.Iab[0]);
+        0.995f * (foc_vars.VBEMFintegral[0] + 0.5 * foc_vars.Vab[0] + 2.0f*motor.Rphase * foc_vars.Iab[0]);
     // ignore the inductance for now, since it requires current
     // derivatives, and motors on my desk are all low inductance
     foc_vars.VBEMFintegral[1] =
-        0.999f * (foc_vars.VBEMFintegral[1] + 0.02 * foc_vars.Vab[1] +
-                  motor.Rphase * foc_vars.Iab[1]);
+        0.995f * (foc_vars.VBEMFintegral[1] + 0.5 * foc_vars.Vab[1] + 2.0f*motor.Rphase * foc_vars.Iab[1]);
 
     flux_blanking++;
     if (flux_blanking > 10)  // Slight concern that when the crossing occurs, it
@@ -863,10 +894,10 @@ void VICheck() {  // Check currents, voltages are within panic limits
       else if (PWMcycles == 10000) {
         // calculate the resistance from two accumulated currents and two
         // voltages
-        testPWM3 = 2*testPWM2;  // We assign the value we determined was OK for
-                              // the resistance measurement as the value to use
-                              // for inductance measurement, since we need an
-                              // absolutely  stable steady state
+        testPWM3 = 2 * testPWM2;  // We assign the value we determined was OK
+                                  // for the resistance measurement as the value
+                                  // to use for inductance measurement, since we
+                                  // need an absolutely  stable steady state
       }
 
       else if (PWMcycles <
@@ -879,28 +910,21 @@ void VICheck() {  // Check currents, voltages are within panic limits
         static int a = 0;  // A variable local to here to track whether the PWM
                            // was high or low last time
         if (a > 3) {
-
-            htim1.Instance->CCR1 = testPWM3;  // Write the high PWM, the next
-            a = a - 1;
-          }
-          // cycle will be a higher current
-        else if(a==3){
-        	htim1.Instance->CCR1 = 0;
-        	a=a-1;
+          htim1.Instance->CCR1 = testPWM3;  // Write the high PWM, the next
+          a = a - 1;
         }
-        else if(a==2){
-
+        // cycle will be a higher current
+        else if (a == 3) {
+          htim1.Instance->CCR1 = 0;
+          a = a - 1;
+        } else if (a == 2) {
           currAcc4 =
-                (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) *
-                0.001;
+              (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) * 0.001;
           a = a - 1;
 
-
-        }
-        else if(a==1){
-        	a=a-1;
-        }
-        else if (a == 0) {
+        } else if (a == 1) {
+          a = a - 1;
+        } else if (a == 0) {
           htim1.Instance->CCR1 =
               0;  // Write the PWM low, the next PWM pulse is
                   // skipped, and the current allowed to decay
@@ -955,9 +979,13 @@ void VICheck() {  // Check currents, voltages are within panic limits
         motor.Rphase = (((float)(testPWM2 - testPWM1)) / (2.0f * 1024.0f) *
                         measurement_buffers.ConvertedADC[0][1]) /
                        (currAcc2 - currAcc1);
-        motor.Lphase = ((currAcc3 + currAcc4) * motor.Rphase *
-                        (2.0f*2048.0f / 72000000.0f) / ((currAcc4 - currAcc3)));
-        motor.Lphase = motor.Lphase/2.0f; // The above line calculates the phase to phase inductance, but since we want one phase inductance div2
+        motor.Lphase =
+            ((currAcc3 + currAcc4) * motor.Rphase *
+             (2.0f * 2048.0f / 72000000.0f) / ((currAcc4 - currAcc3)));
+        motor.Lphase =
+            motor.Lphase /
+            2.0f;  // The above line calculates the phase to phase inductance,
+                   // but since we want one phase inductance div2
         if (motor.Lphase <= 0) {
           motor.Lphase = 0.00001;
         }
@@ -1166,15 +1194,19 @@ void VICheck() {  // Check currents, voltages are within panic limits
   void calculateGains() {
     foc_vars.pwm_period =
         2.0f * (float)htim1.Instance->ARR / (float)HAL_RCC_GetHCLKFreq();
+
     foc_vars.pwm_frequency =
         (float)HAL_RCC_GetHCLKFreq() / (2 * (float)htim1.Instance->ARR);
+
     foc_vars.Iq_pgain = foc_vars.pwm_frequency * motor.Lphase *
                         ((float)htim1.Instance->ARR * 0.5) /
                         (2 * measurement_buffers.ConvertedADC[0][1]);
-    foc_vars.Iq_igain = 0.1f * motor.Rphase * (htim1.Instance->ARR * 0.5) /
+
+    foc_vars.Iq_igain = 0.10f * motor.Rphase * (htim1.Instance->ARR * 0.5) /
                         (2 * measurement_buffers.ConvertedADC[0][1]);
-    foc_vars.Id_pgain = foc_vars.Iq_pgain / 2;
-    foc_vars.Id_igain = foc_vars.Iq_igain / 2;
+
+    foc_vars.Id_pgain = foc_vars.Iq_pgain;
+    foc_vars.Id_igain = foc_vars.Iq_igain;
     foc_vars.Vdqres_to_Vdq =
         0.333f * measurement_buffers.ConvertedADC[0][1] / 677.0f;
   }
