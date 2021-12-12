@@ -143,6 +143,7 @@ void MESCInit() {
   HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
   htim1.Instance->CCR4 = 1022;
+  __HAL_TIM_ENABLE_IT(&htim1, TIM_IT_UPDATE);
 
 #endif
   htim1.Instance->BDTR |=
