@@ -242,8 +242,8 @@ static ProfileStatus profile_write_noop( void const * data, uint32_t const addre
     (void)length;
 }
 
-static ProfileStatus (* profile_storage_read)(  void       *, uint32_t const , uint32_t const ) = profile_read_noop;
-static ProfileStatus (* profile_storage_write)( void const *, uint32_t const , uint32_t const ) = profile_write_noop;
+static ProfileStatus (* profile_storage_read)(  void       * data, uint32_t const address, uint32_t const length ) = profile_read_noop;
+static ProfileStatus (* profile_storage_write)( void const * data, uint32_t const address, uint32_t const length ) = profile_write_noop;
 
 void profile_configure_storage_io(
     ProfileStatus (* const read )( void       * buffer, uint32_t const address, uint32_t const length ),
@@ -258,6 +258,8 @@ void profile_configure_storage_io(
     {
         profile_storage_write = write;
     }
+
+    cli_configure_storage_io( (int(*)(void const *, uint32_t const, uint32_t const ))write );
 }
 
 static void profile_cli_info( void )

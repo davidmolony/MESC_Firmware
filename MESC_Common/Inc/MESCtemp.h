@@ -62,13 +62,19 @@ struct TEMPProfile
     TEMPMethod  method;
     TEMPSchema  schema;
 
-    struct //union
+    union
     {
     struct
     {
     float       A;
     float       B;
+    uint8_t     _0x08[4];
+
+    uint8_t     _0x0C[4];
+    uint8_t     _0x10[4];
+
     float       Tlo;
+    uint8_t     _0x18[4];
     }           approx;
     struct
     {
@@ -92,7 +98,17 @@ struct TEMPProfile
 };
 
 typedef struct TEMPProfile TEMPProfile;
+/*
+static_assert( sizeof(TEMPProfile.parameters.approx) == sizeof(TEMPProfile.parameters.SH) )
 
+static_assert( offsetof(TEMPProfile,parameters.approx.A  ) == offsetof(TEMPProfile,parameters.SH.A ) )
+static_assert( offsetof(TEMPProfile,parameters.approx.B  ) == offsetof(TEMPProfile,parameters.SH.B ) )
+static_assert( offsetof(TEMPProfile,parameters.approx.Tlo) == offsetof(TEMPProfile,parameters.SH.T0) )
+
+static_assert( sizeof(TEMPProfile.parameters.approx.A  ) == sizeof(TEMPProfile.parameters.SH.A ) )
+static_assert( sizeof(TEMPProfile.parameters.approx.B  ) == sizeof(TEMPProfile.parameters.SH.B ) )
+static_assert( sizeof(TEMPProfile.parameters.approx.Tlo) == sizeof(TEMPProfile.parameters.SH.T0) )
+*/
 void temp_init( TEMPProfile const * const profile );
 
 float temp_read( uint32_t const adc_raw );

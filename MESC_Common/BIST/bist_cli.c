@@ -28,6 +28,7 @@
 */
 
 #include "MESCcli.h"
+#include "MESCprofile.h"
 
 #include <assert.h>
 #include <inttypes.h>
@@ -60,6 +61,10 @@ static char const * commands[] =
 
     "D f 12.5",     // Decrease
     "R f",
+
+    // Flash
+    "F 40 4EA06D99",
+    "4D455343000100407EE3623B0000000000000000000000007EE3623B32303231313131393233333400000000B590B6B9F3FB7561FBF44D3C6E8232C9E12120FF",
 };
 
 static int32_t  i;
@@ -71,11 +76,26 @@ static void reset( void )
     fprintf( stdout, ">>> RESET <<<\n" );
 }
 
+extern void          virt_flash_configure(uint8_t const use_mem_not_fs, uint8_t const read_zero_on_error);
+extern void          virt_flash_apply_corruption(void);
+extern void          virt_flash_corrupt(char const* name, uint32_t const offset, uint32_t const length);
+extern ProfileStatus virt_flash_read(void* data, uint32_t const address, uint32_t const length);
+extern ProfileStatus virt_flash_write(void const* data, uint32_t const address, uint32_t const length);
+extern void          virt_flash_reset(void);
+extern void          virt_flash_init(void);
+extern void          virt_flash_free(void);
+
 extern int virt_uart_write( void * handle, void * data, uint16_t size );
 
 void bist_cli( void )
 {
     fprintf( stdout, "Starting CLI BIST\n" );
+
+    virt_flash_init();
+
+    virt_flash_configure( 1, 1 );
+
+    profile_configure_storage_io( virt_flash_read, virt_flash_write );
 
     cli_register_variable_rw( "i", &i, sizeof(i), CLI_VARIABLE_INT   );
     cli_register_variable_rw( "u", &u, sizeof(u), CLI_VARIABLE_UINT  );
@@ -105,6 +125,10 @@ void bist_cli( void )
         state = cli_process( '\n' );
         fprintf( stderr, "CLIState:%d\n", state );
     }
+
+    virt_flash_reset();
+
+    virt_flash_free();
 
     fprintf( stdout, "Finished CLI BIST\n" );
 }

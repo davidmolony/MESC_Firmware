@@ -29,7 +29,9 @@
 
 #include "MESCcli.h"
 #include "MESCfnv.h"
+#include "MESCprofile.h"
 
+#include "bit_op.h"
 #include "pp_op.h"
 
 #include <inttypes.h>
@@ -40,8 +42,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#define MAKE_TYPE_SIZE(type,size)      ((uint32_t)((uint32_t)((type) << 4) | ((uint32_t)(size))))
-#define MAKE_TYPE_SIZE_CASE(type,size) ((uint32_t)((uint32_t)((JOIN( CLI_VARIABLE_, type)) << 4) | ((uint32_t)(size))))
+#define MAKE_TYPE_SIZE(type,size)      ((uint32_t)((uint32_t)((type) << BITS_PER_NYBBLE) | ((uint32_t)(size))))
+#define MAKE_TYPE_SIZE_CASE(type,size) ((uint32_t)((uint32_t)((JOIN( CLI_VARIABLE_, type)) << BITS_PER_NYBBLE) | ((uint32_t)(size))))
 
 enum CLIState
 {
@@ -53,7 +55,12 @@ enum CLIState
     CLI_STATE_VARIABLE,
     CLI_STATE_VALUE,
 
+    CLI_STATE_PARAM_1,
+    CLI_STATE_PARAM_2,
+
     CLI_STATE_EXECUTE,
+
+    CLI_STATE_DATA,
 };
 
 typedef enum CLIState CLIState;
@@ -63,6 +70,26 @@ static uint8_t cli_cmd;
 
 static uint8_t cli_hash_valid = 0;
 static uint32_t cli_hash = 0;
+
+// Flash functions
+static int  cli_flash_write_noop( void const * buffer, uint32_t const address, uint32_t const length )
+{
+    (void)buffer;
+    (void)address;
+    (void)length;
+    return 0;
+}
+
+static int/*ProfileStatus*/ (* cli_flash_write)( void const * buffer, uint32_t const address, uint32_t const length ) = &cli_flash_write_noop;
+
+// Expected values
+static uint32_t cli_flash_exp_len = 0;
+static uint32_t cli_flash_exp_chk = 0;
+// Current values
+static uint32_t cli_flash_cur_off = 0;
+static uint32_t cli_flash_cur_chk = 0;
+
+static uint8_t cli_flash_buffer[2048];
 
 enum CLIAccess
 {
@@ -132,6 +159,8 @@ static void cli_idle( void )
     cli_state = CLI_STATE_IDLE;
     cli_hash_valid = 0;
     cli_hash = 0;
+    cli_var.state = 0;
+    cli_var.var.u = 0;
 }
 
 static void cli_abort( void )
@@ -190,7 +219,7 @@ static void cli_execute( void )
 
             switch (MAKE_TYPE_SIZE( type, size ))
             {
-                case MAKE_TYPE_SIZE_CASE( INT, 1 ):
+                case MAKE_TYPE_SIZE_CASE( INT, sizeof(int8_t) ):
                     if (cli_cmd == 'I')
                     {
                         tmp->i8 += (int8_t)cli_var.var.i;
@@ -200,7 +229,7 @@ static void cli_execute( void )
                         tmp->i8 -= (int8_t)cli_var.var.i;
                     }
                     break;
-                case MAKE_TYPE_SIZE_CASE( INT, 2 ):
+                case MAKE_TYPE_SIZE_CASE( INT, sizeof(int16_t) ):
                     if (cli_cmd == 'I')
                     {
                         tmp->i16 += (int16_t)cli_var.var.i;
@@ -210,7 +239,7 @@ static void cli_execute( void )
                         tmp->i16 -= (int16_t)cli_var.var.i;
                     }
                     break;
-                case MAKE_TYPE_SIZE_CASE( INT, 4 ):
+                case MAKE_TYPE_SIZE_CASE( INT, sizeof(int32_t) ):
                     if (cli_cmd == 'I')
                     {
                         tmp->i32 += (int32_t)cli_var.var.i;
@@ -220,7 +249,7 @@ static void cli_execute( void )
                         tmp->i32 -= (int32_t)cli_var.var.i;
                     }
                     break;
-                case MAKE_TYPE_SIZE_CASE( UINT, 1 ):
+                case MAKE_TYPE_SIZE_CASE( UINT, sizeof(uint8_t) ):
                     if (cli_cmd == 'I')
                     {
                         tmp->u8 += (uint8_t)cli_var.var.u;
@@ -230,7 +259,7 @@ static void cli_execute( void )
                         tmp->u8 -= (uint8_t)cli_var.var.u;
                     }
                     break;
-                case MAKE_TYPE_SIZE_CASE( UINT, 2 ):
+                case MAKE_TYPE_SIZE_CASE( UINT, sizeof(uint16_t) ):
                     if (cli_cmd == 'I')
                     {
                         tmp->u16 += (uint16_t)cli_var.var.u;
@@ -240,7 +269,7 @@ static void cli_execute( void )
                         tmp->u16 -= (uint16_t)cli_var.var.u;
                     }
                     break;
-                case MAKE_TYPE_SIZE_CASE( UINT, 4 ):
+                case MAKE_TYPE_SIZE_CASE( UINT, sizeof(uint32_t) ):
                     if (cli_cmd == 'I')
                     {
                         tmp->u32 += (uint32_t)cli_var.var.u;
@@ -250,7 +279,7 @@ static void cli_execute( void )
                         tmp->u32 -= (uint32_t)cli_var.var.u;
                     }
                     break;
-                case MAKE_TYPE_SIZE_CASE( FLOAT, 4 ):
+                case MAKE_TYPE_SIZE_CASE( FLOAT, sizeof(float) ):
                     if (cli_cmd == 'I')
                     {
                         tmp->f32 += (float)cli_var.var.f;
@@ -266,13 +295,14 @@ static void cli_execute( void )
 
             break;
         }
+        case 'F':
+            break;
         default:
             // error
             break;
     }
 
     cli_idle();
-    cli_var.state = 0;
 }
 
 static CLIEntry * cli_lut_alloc( char const * name )
@@ -399,6 +429,37 @@ static void cli_process_write_uint( char const c )
     }
 }
 
+static void cli_process_write_hex( char const c )
+{
+    if (cli_var.state < (NYBBLES_PER_BYTE * sizeof(cli_var.var.u)))
+    {
+        cli_var.state++;
+
+        cli_var.var.u = (cli_var.var.u << BITS_PER_NYBBLE);
+        
+        if (('0' <= c) && (c <= '9'))
+        {
+            cli_var.var.u = (cli_var.var.u | ((c - '0'     ) & BIT_MASK_32(BITS_PER_NYBBLE)));
+        }
+        else if (('A' <= c) && (c <= 'F'))
+        {
+            cli_var.var.u = (cli_var.var.u | ((c - 'A' + 10) & BIT_MASK_32(BITS_PER_NYBBLE)));
+        }
+        else if (('a' <= c) && (c <= 'f'))
+        {
+            cli_var.var.u = (cli_var.var.u | ((c - 'a' + 10) & BIT_MASK_32(BITS_PER_NYBBLE)));
+        }
+        else
+        {
+            cli_abort();
+        }
+    }
+    else
+    {
+        cli_abort();
+    }
+}
+
 static void cli_process_read_float( void )
 {
     if (cli_lut_entry != NULL)
@@ -484,6 +545,16 @@ static void cli_process_write_float( char const c )
                 cli_abort();
             }
             break;
+    }
+}
+
+void cli_configure_storage_io(
+    int  (* const write)( void const * buffer, uint32_t const address, uint32_t const length )
+    )
+{
+    if (write != NULL)
+    {
+        cli_flash_write = write;
     }
 }
 
@@ -710,7 +781,6 @@ static void cli_process_variable( const char c )
                 else
                 {
                     cli_idle();
-                    cli_var.state = 0;
                 }
             }
             else
@@ -727,7 +797,6 @@ static void cli_process_variable( const char c )
                 else if (c == '\n')
                 {
                     cli_idle();
-                    cli_var.state = 0;
                 }
                 else
                 {
@@ -739,13 +808,23 @@ static void cli_process_variable( const char c )
     }
 }
 
+static uint32_t byte_swap(uint32_t const value)
+{
+    return  (
+                ((value & UINT32_C(0x000000FF)) << 24)
+            |   ((value & UINT32_C(0x0000FF00)) <<  8)
+            |   ((value & UINT32_C(0x00FF0000)) >>  8)
+            |   ((value & UINT32_C(0xFF000000)) >> 24)
+        )   ;
+}
+
 int cli_process( char const c )
 {
 	if (c == '\n')
 	{
 		cli_reply( "%s", "\r\n" );
 	}
-	else
+	else if (cli_state != CLI_STATE_DATA)
 	{
 		cli_reply( "%c", c );
 	}
@@ -762,6 +841,7 @@ int cli_process( char const c )
                 case 'X':
                 case 'I':
                 case 'D':
+                case 'F':
                     cli_cmd = c;
                     cli_state = CLI_STATE_COMMAND;
                     break;
@@ -774,7 +854,6 @@ int cli_process( char const c )
             if (c == '\n')
             {
                 cli_idle();
-                cli_var.state = 0;
             }
             break;
         case CLI_STATE_COMMAND:
@@ -782,10 +861,22 @@ int cli_process( char const c )
             {
                 case '\n':
                     cli_idle();
-                    cli_var.state = 0;
                     break;
                 case ' ':
-                    cli_state = CLI_STATE_VARIABLE;
+                    if (cli_cmd == 'F')
+                    {
+                        cli_flash_exp_len = 0;
+                        cli_flash_exp_chk = 0;
+
+                        cli_flash_cur_off = 0;
+                        cli_flash_cur_chk = fnv1a_init();
+
+                        cli_state = CLI_STATE_PARAM_1;
+                    }
+                    else
+                    {
+                        cli_state = CLI_STATE_VARIABLE;
+                    }
                     break;
                 default:
                     cli_abort();
@@ -818,6 +909,92 @@ int cli_process( char const c )
                     cli_abort();
                     break;
             }
+            break;
+        case CLI_STATE_PARAM_1:
+            if (c == ' ')
+            {
+                cli_flash_exp_len = cli_var.var.u;
+
+                cli_var.state = 0;
+                cli_var.var.u = 0;
+
+                cli_state = CLI_STATE_PARAM_2;
+            }
+            else
+            {
+                cli_process_write_hex( c );
+            }
+            break;
+        case CLI_STATE_PARAM_2:
+            if (c == '\n')
+            {
+                cli_flash_exp_chk = cli_var.var.u;
+
+                cli_var.state = 0;
+                cli_var.var.u = 0;
+
+                if ((cli_flash_exp_len % sizeof(cli_var.var.u)) == 0)
+                {
+                    cli_state = CLI_STATE_DATA;
+                }
+                else
+                {
+                    cli_abort();
+                }
+            }
+            else
+            {
+                cli_process_write_hex( c );
+            }
+            break;
+        case CLI_STATE_DATA:
+            cli_process_write_hex( c );
+
+            if (cli_var.state == (NYBBLES_PER_BYTE * sizeof(cli_var.var.u)))
+            {
+                cli_var.var.u = byte_swap( cli_var.var.u );
+
+                cli_flash_cur_chk = fnv1a_process_data( cli_flash_cur_chk, &cli_var.var.u, sizeof(cli_var.var.u) );
+
+                *((uint32_t *)(&cli_flash_buffer[cli_flash_cur_off])) = cli_var.var.u;
+                cli_flash_cur_off = cli_flash_cur_off + sizeof(cli_var.var.u);
+
+                cli_var.state = 0;
+                cli_var.var.u = 0;
+            }
+
+            if  (
+                    (cli_flash_cur_off > cli_flash_exp_len)
+                ||  (
+                        (cli_flash_cur_off == cli_flash_exp_len)
+                    &&  (cli_flash_cur_chk != cli_flash_exp_chk)
+                    )
+                )
+            {
+                cli_reply("\nFAILURE (MISMATCH)");
+                cli_abort();
+            }
+            else if (
+                        (cli_flash_cur_off == cli_flash_exp_len)
+                    &&  (cli_flash_cur_chk == cli_flash_exp_chk)
+                    )
+            {
+                ProfileStatus const res = (ProfileStatus)cli_flash_write( cli_flash_buffer, 0, cli_flash_exp_len );
+
+                switch (res)
+                {
+                    case PROFILE_STATUS_SUCCESS:
+                    case PROFILE_STATUS_COMMIT_SUCCESS:
+                    case PROFILE_STATUS_COMMIT_SUCCESS_NOOP:
+                        cli_reply("\nSUCCESS", c);
+                        cli_idle();
+                        break;
+                    default:
+                        cli_reply("\nFAILURE (WRITE)");
+                        cli_abort();
+                }
+            }
+
             break;
     }
 

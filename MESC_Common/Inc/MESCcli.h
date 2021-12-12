@@ -39,6 +39,7 @@ W <NAME> <VALUE>    Write variable <NAME> with <VALUE>
 X <NAME>            Execute function <NAME>
 I <NAME> <VALUE>    Increment variable <NAME> by <VALUE>
 D <NAME> <VALUE>    Decrement variable <NAME> by <VALUE>
+F <SIZE> <CHECK>    Flash <SIZE> bytes with checksum <CHECK>
 */
 
 enum CLIVariableType
@@ -49,6 +50,10 @@ enum CLIVariableType
 };
 
 typedef enum CLIVariableType CLIVariableType;
+
+void cli_configure_storage_io(
+    int  (* const write )( void const * buffer, uint32_t const address, uint32_t const length )
+    );
 
 void cli_register_variable_ro(
     char const * name,
