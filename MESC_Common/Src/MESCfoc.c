@@ -121,6 +121,7 @@ void MESCInit() {
   HAL_ADC_Start_DMA(&hadc4, (uint32_t *)&measurement_buffers.RawADC[3][0], 1);
 
   __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD1);
+  __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD2);
   __HAL_ADC_ENABLE_IT(&hadc2, ADC_IT_AWD1);
   __HAL_ADC_ENABLE_IT(&hadc3, ADC_IT_AWD1);
   // Using the ADC AWD to detect overcurrent events.
@@ -327,7 +328,10 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
   void ADCConversion() {
     getRawADC();
-    VICheck();
+#ifdef STM32F405xx
+    VICheck();//The f303 now uses the analog watchdog to process the over limits
+    //The f405 currently does not...
+#endif
 
     // Here we take the raw ADC values, offset, cast to (float) and use the
     // hardware gain values to create volt and amp variables
@@ -341,14 +345,14 @@ void VICheck() {  // Check currents, voltages are within panic limits
       initcycles = initcycles + 1;
       if (initcycles == 1000) {
         calculateGains();
-        htim1.Instance->BDTR |= TIM_BDTR_MOE;
+
         for (uint32_t i = 0; i < 3; i++) {
           measurement_buffers.ADCOffset[i] /= 1000;
         }
 #ifdef STM32F303xC
-
         setAWDVals();
 #endif
+        htim1.Instance->BDTR |= TIM_BDTR_MOE;
         foc_vars.initing = 0;
       }
     }

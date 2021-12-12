@@ -38,7 +38,7 @@ void hw_init()
 {
     g_hw_setup.Imax =
         12.0;  // Imax is the current at which we are either no longer able to read it, or hardware "don't ever exceed to avoid breakage"
-    g_hw_setup.Vmax = 55.0;  // Headroom beyond which likely to get avalanche of MOSFETs or DCDC converter
+    g_hw_setup.Vmax = 30.0;  // Headroom beyond which likely to get avalanche of MOSFETs or DCDC converter
     g_hw_setup.Vmin = 10;    // This implies that the PSU has crapped out or a wire has fallen out, and suddenly there will be no power.
     g_hw_setup.Rshunt = 0.0005;
     g_hw_setup.RIphPU = 4700;
@@ -109,6 +109,10 @@ void setAWDVals()
     AWD_setpoints |= AWD_bottom_set_point;
     AWD_setpoints |= (AWD_top_set_point << 16);
     hadc3.Instance->TR1 = AWD_setpoints;
+    //Over Voltage
+    hadc1.Instance->TR2 = (g_hw_setup.RawVoltLim<<12);//AWD2 is an oddity since it only uses the top 8 bits
+    hadc1.Instance->AWD2CR = 0x2;//Set channel 0 as the guarded channel
+
 }
 
 void getRawADC(void)

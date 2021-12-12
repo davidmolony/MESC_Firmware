@@ -19,8 +19,8 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f3xx_it.h"
 #include "main.h"
+#include "stm32f3xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <math.h>
@@ -80,89 +80,89 @@ extern TIM_HandleTypeDef htim7;
 /*           Cortex-M4 Processor Interruption and Exception Handlers          */
 /******************************************************************************/
 /**
- * @brief This function handles Non maskable interrupt.
- */
+  * @brief This function handles Non maskable interrupt.
+  */
 void NMI_Handler(void)
 {
-    /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
+  /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
 
-    /* USER CODE END NonMaskableInt_IRQn 0 */
-    /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
+  /* USER CODE END NonMaskableInt_IRQn 0 */
+  /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
 
-    /* USER CODE END NonMaskableInt_IRQn 1 */
+  /* USER CODE END NonMaskableInt_IRQn 1 */
 }
 
 /**
- * @brief This function handles Hard fault interrupt.
- */
+  * @brief This function handles Hard fault interrupt.
+  */
 void HardFault_Handler(void)
 {
-    /* USER CODE BEGIN HardFault_IRQn 0 */
+  /* USER CODE BEGIN HardFault_IRQn 0 */
     generateBreak();
-    /* USER CODE END HardFault_IRQn 0 */
-    while (1)
-    {
-        /* USER CODE BEGIN W1_HardFault_IRQn 0 */
-        /* USER CODE END W1_HardFault_IRQn 0 */
-    }
+  /* USER CODE END HardFault_IRQn 0 */
+  while (1)
+  {
+    /* USER CODE BEGIN W1_HardFault_IRQn 0 */
+    /* USER CODE END W1_HardFault_IRQn 0 */
+  }
 }
 
 /**
- * @brief This function handles Memory management fault.
- */
+  * @brief This function handles Memory management fault.
+  */
 void MemManage_Handler(void)
 {
-    /* USER CODE BEGIN MemoryManagement_IRQn 0 */
+  /* USER CODE BEGIN MemoryManagement_IRQn 0 */
 
-    /* USER CODE END MemoryManagement_IRQn 0 */
-    while (1)
-    {
-        /* USER CODE BEGIN W1_MemoryManagement_IRQn 0 */
-        /* USER CODE END W1_MemoryManagement_IRQn 0 */
-    }
+  /* USER CODE END MemoryManagement_IRQn 0 */
+  while (1)
+  {
+    /* USER CODE BEGIN W1_MemoryManagement_IRQn 0 */
+    /* USER CODE END W1_MemoryManagement_IRQn 0 */
+  }
 }
 
 /**
- * @brief This function handles Pre-fetch fault, memory access fault.
- */
+  * @brief This function handles Pre-fetch fault, memory access fault.
+  */
 void BusFault_Handler(void)
 {
-    /* USER CODE BEGIN BusFault_IRQn 0 */
+  /* USER CODE BEGIN BusFault_IRQn 0 */
 
-    /* USER CODE END BusFault_IRQn 0 */
-    while (1)
-    {
-        /* USER CODE BEGIN W1_BusFault_IRQn 0 */
-        /* USER CODE END W1_BusFault_IRQn 0 */
-    }
+  /* USER CODE END BusFault_IRQn 0 */
+  while (1)
+  {
+    /* USER CODE BEGIN W1_BusFault_IRQn 0 */
+    /* USER CODE END W1_BusFault_IRQn 0 */
+  }
 }
 
 /**
- * @brief This function handles Undefined instruction or illegal state.
- */
+  * @brief This function handles Undefined instruction or illegal state.
+  */
 void UsageFault_Handler(void)
 {
-    /* USER CODE BEGIN UsageFault_IRQn 0 */
+  /* USER CODE BEGIN UsageFault_IRQn 0 */
 
-    /* USER CODE END UsageFault_IRQn 0 */
-    while (1)
-    {
-        /* USER CODE BEGIN W1_UsageFault_IRQn 0 */
-        /* USER CODE END W1_UsageFault_IRQn 0 */
-    }
+  /* USER CODE END UsageFault_IRQn 0 */
+  while (1)
+  {
+    /* USER CODE BEGIN W1_UsageFault_IRQn 0 */
+    /* USER CODE END W1_UsageFault_IRQn 0 */
+  }
 }
 
 /**
- * @brief This function handles Debug monitor.
- */
+  * @brief This function handles Debug monitor.
+  */
 void DebugMon_Handler(void)
 {
-    /* USER CODE BEGIN DebugMonitor_IRQn 0 */
+  /* USER CODE BEGIN DebugMonitor_IRQn 0 */
 
-    /* USER CODE END DebugMonitor_IRQn 0 */
-    /* USER CODE BEGIN DebugMonitor_IRQn 1 */
+  /* USER CODE END DebugMonitor_IRQn 0 */
+  /* USER CODE BEGIN DebugMonitor_IRQn 1 */
 
-    /* USER CODE END DebugMonitor_IRQn 1 */
+  /* USER CODE END DebugMonitor_IRQn 1 */
 }
 
 /******************************************************************************/
@@ -173,61 +173,64 @@ void DebugMon_Handler(void)
 /******************************************************************************/
 
 /**
- * @brief This function handles DMA1 channel2 global interrupt.
- */
+  * @brief This function handles DMA1 channel2 global interrupt.
+  */
 void DMA1_Channel2_IRQHandler(void)
 {
-    /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
 
-    /* USER CODE END DMA1_Channel2_IRQn 0 */
-    HAL_DMA_IRQHandler(&hdma_usart3_tx);
-    /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
+  /* USER CODE END DMA1_Channel2_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_usart3_tx);
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
 
-    /* USER CODE END DMA1_Channel2_IRQn 1 */
+  /* USER CODE END DMA1_Channel2_IRQn 1 */
 }
 
 /**
- * @brief This function handles ADC1 and ADC2 interrupts.
- */
+  * @brief This function handles ADC1 and ADC2 interrupts.
+  */
 void ADC1_2_IRQHandler(void)
 {
-    /* USER CODE BEGIN ADC1_2_IRQn 0 */
+  /* USER CODE BEGIN ADC1_2_IRQn 0 */
 
     generateBreak();
     MotorState = MOTOR_STATE_ERROR;
     // ToDo Create logic looking at ADC flags to determine the error type
-    MotorError = MOTOR_ERROR_OVER_LIMIT_CURR1;
-    MotorError = MOTOR_ERROR_OVER_LIMIT_CURR2;
-    //ToDo, need to set up the overvoltage AWD
-    //MotorError = MOTOR_ERROR_OVER_LIMIT_VBUS;
+    if(hadc1.Instance->ISR & ADC_ISR_AWD1){
+    MotorError = MOTOR_ERROR_OVER_LIMIT_CURR1;}
+    if(hadc2.Instance->ISR & ADC_ISR_AWD1){
+    MotorError = MOTOR_ERROR_OVER_LIMIT_CURR2;}
+    if(hadc1.Instance->ISR & ADC_ISR_AWD2){
+    MotorError = MOTOR_ERROR_OVER_LIMIT_VBUS;
+    	}
 
-    /* USER CODE END ADC1_2_IRQn 0 */
-    HAL_ADC_IRQHandler(&hadc1);
-    HAL_ADC_IRQHandler(&hadc2);
-    /* USER CODE BEGIN ADC1_2_IRQn 1 */
-    /* USER CODE END ADC1_2_IRQn 1 */
+  /* USER CODE END ADC1_2_IRQn 0 */
+  HAL_ADC_IRQHandler(&hadc1);
+  HAL_ADC_IRQHandler(&hadc2);
+  /* USER CODE BEGIN ADC1_2_IRQn 1 */
+  /* USER CODE END ADC1_2_IRQn 1 */
 }
 
 /**
- * @brief This function handles USB low priority or CAN_RX0 interrupts.
- */
+  * @brief This function handles USB low priority or CAN_RX0 interrupts.
+  */
 void USB_LP_CAN_RX0_IRQHandler(void)
 {
-    /* USER CODE BEGIN USB_LP_CAN_RX0_IRQn 0 */
+  /* USER CODE BEGIN USB_LP_CAN_RX0_IRQn 0 */
 
-    /* USER CODE END USB_LP_CAN_RX0_IRQn 0 */
-    HAL_PCD_IRQHandler(&hpcd_USB_FS);
-    /* USER CODE BEGIN USB_LP_CAN_RX0_IRQn 1 */
+  /* USER CODE END USB_LP_CAN_RX0_IRQn 0 */
+  HAL_PCD_IRQHandler(&hpcd_USB_FS);
+  /* USER CODE BEGIN USB_LP_CAN_RX0_IRQn 1 */
 
-    /* USER CODE END USB_LP_CAN_RX0_IRQn 1 */
+  /* USER CODE END USB_LP_CAN_RX0_IRQn 1 */
 }
 
 /**
- * @brief This function handles TIM1 update and TIM16 interrupts.
- */
+  * @brief This function handles TIM1 update and TIM16 interrupts.
+  */
 void TIM1_UP_TIM16_IRQHandler(void)
 {
-    /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
+  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
     if (htim1.Instance->CNT > 512)
     {
         IRQ_entry = htim1.Instance->CNT;
@@ -235,19 +238,19 @@ void TIM1_UP_TIM16_IRQHandler(void)
         IRQ_exit = htim1.Instance->CNT;
     }
 
-    /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
-    HAL_TIM_IRQHandler(&htim1);
-    /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
+  /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim1);
+  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
 
-    /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
+  /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
 }
 
 /**
- * @brief This function handles TIM3 global interrupt.
- */
+  * @brief This function handles TIM3 global interrupt.
+  */
 void TIM3_IRQHandler(void)
 {
-    /* USER CODE BEGIN TIM3_IRQn 0 */
+  /* USER CODE BEGIN TIM3_IRQn 0 */
     uint32_t fCC1 = __HAL_TIM_GET_FLAG(&htim3, TIM_FLAG_CC1) & __HAL_TIM_GET_IT_SOURCE(&htim3, TIM_IT_CC1);
     uint32_t fUPD = __HAL_TIM_GET_FLAG(&htim3, TIM_FLAG_UPDATE) & __HAL_TIM_GET_IT_SOURCE(&htim3, TIM_IT_UPDATE);
 
@@ -286,19 +289,19 @@ void TIM3_IRQHandler(void)
         // foc_vars.Idq_req[1] = foc_vars.Idq_req[1] * g_hw_setup.battMaxPower / foc_vars.reqPower;
         foc_vars.Idq_req[1] = g_hw_setup.battMaxPower / (fabs(foc_vars.Vdq_smoothed[1]) * foc_vars.Vdqres_to_Vdq);
     }
-    /* USER CODE END TIM3_IRQn 0 */
-    HAL_TIM_IRQHandler(&htim3);
-    /* USER CODE BEGIN TIM3_IRQn 1 */
+  /* USER CODE END TIM3_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim3);
+  /* USER CODE BEGIN TIM3_IRQn 1 */
 
-    /* USER CODE END TIM3_IRQn 1 */
+  /* USER CODE END TIM3_IRQn 1 */
 }
 
 /**
- * @brief This function handles TIM4 global interrupt.
- */
+  * @brief This function handles TIM4 global interrupt.
+  */
 void TIM4_IRQHandler(void)
 {
-    /* USER CODE BEGIN TIM4_IRQn 0 */
+  /* USER CODE BEGIN TIM4_IRQn 0 */
     /* check which interrupt fired */
     if ((htim4.Instance->SR & TIM_SR_CC1IF))
     {
@@ -323,56 +326,57 @@ void TIM4_IRQHandler(void)
     }
 
     /* when you commit after code regen comment this out. */
-    /* USER CODE END TIM4_IRQn 0 */
-    HAL_TIM_IRQHandler(&htim4);
-    /* USER CODE BEGIN TIM4_IRQn 1 */
+  /* USER CODE END TIM4_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim4);
+  /* USER CODE BEGIN TIM4_IRQn 1 */
 
-    /* USER CODE END TIM4_IRQn 1 */
+  /* USER CODE END TIM4_IRQn 1 */
 }
 
 /**
- * @brief This function handles USART3 global interrupt / USART3 wake-up interrupt through EXTI line 28.
- */
+  * @brief This function handles USART3 global interrupt / USART3 wake-up interrupt through EXTI line 28.
+  */
 void USART3_IRQHandler(void)
 {
-    /* USER CODE BEGIN USART3_IRQn 0 */
+  /* USER CODE BEGIN USART3_IRQn 0 */
 
-    /* USER CODE END USART3_IRQn 0 */
-    HAL_UART_IRQHandler(&huart3);
-    /* USER CODE BEGIN USART3_IRQn 1 */
+  /* USER CODE END USART3_IRQn 0 */
+  HAL_UART_IRQHandler(&huart3);
+  /* USER CODE BEGIN USART3_IRQn 1 */
 
-    /* USER CODE END USART3_IRQn 1 */
+  /* USER CODE END USART3_IRQn 1 */
 }
 
 /**
- * @brief This function handles ADC3 global interrupt.
- */
+  * @brief This function handles ADC3 global interrupt.
+  */
 void ADC3_IRQHandler(void)
 {
-    /* USER CODE BEGIN ADC3_IRQn 0 */
+  /* USER CODE BEGIN ADC3_IRQn 0 */
     generateBreak();
     MotorState = MOTOR_STATE_ERROR;
-    MotorError = MOTOR_ERROR_OVER_LIMIT_CURR3;
+    if(hadc3.Instance->ISR & ADC_ISR_AWD1){
+    MotorError = MOTOR_ERROR_OVER_LIMIT_CURR3;}
 
-    /* USER CODE END ADC3_IRQn 0 */
-    HAL_ADC_IRQHandler(&hadc3);
-    /* USER CODE BEGIN ADC3_IRQn 1 */
+  /* USER CODE END ADC3_IRQn 0 */
+  HAL_ADC_IRQHandler(&hadc3);
+  /* USER CODE BEGIN ADC3_IRQn 1 */
 
-    /* USER CODE END ADC3_IRQn 1 */
+  /* USER CODE END ADC3_IRQn 1 */
 }
 
 /**
- * @brief This function handles TIM7 global interrupt.
- */
+  * @brief This function handles TIM7 global interrupt.
+  */
 void TIM7_IRQHandler(void)
 {
-    /* USER CODE BEGIN TIM7_IRQn 0 */
+  /* USER CODE BEGIN TIM7_IRQn 0 */
 
-    /* USER CODE END TIM7_IRQn 0 */
-    HAL_TIM_IRQHandler(&htim7);
-    /* USER CODE BEGIN TIM7_IRQn 1 */
+  /* USER CODE END TIM7_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim7);
+  /* USER CODE BEGIN TIM7_IRQn 1 */
 
-    /* USER CODE END TIM7_IRQn 1 */
+  /* USER CODE END TIM7_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
