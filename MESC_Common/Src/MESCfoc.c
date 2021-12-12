@@ -62,7 +62,7 @@ void MESCInit() {
   // motor.Rphase = 0.1; //Hack to make it skip over currently not used motor
   // parameter detection
   foc_vars.initing = 1;  // Tell it we ARE initing...
-                         // BLDCInit();	//Not currently using this, since FOC
+                         // BLDCInit();    //Not currently using this, since FOC
                          // has taken over as primary method of interest
   // Although we are using an exponential filter over thousands of samples to
   // find this offset, accuracy still improved by starting near to the final
@@ -232,7 +232,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       (measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
       (measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
       (measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V   ] > g_hw_setup.RawVoltLim) ||
-	  (temp_check( measurement_buffers.RawADC[3][0] ) == 0)) {
+      (temp_check( measurement_buffers.RawADC[3][0] ) == 0)) {
         foc_vars.Idq_req[0] = foc_vars.Idq_req[0] * 0.9;
         foc_vars.Idq_req[1] = foc_vars.Idq_req[1] * 0.9;
 
@@ -304,33 +304,33 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // clang-format off
 
         // Clark - Power invariant version - 3 phases; tested, woring, but won't cope with high duty cycles without phase current sensors
-        /*foc_vars.Iab[0] = 	(2.0f * measurement_buffers.ConvertedADC[0][0] -
-        					measurement_buffers.ConvertedADC[1][0] -
-							measurement_buffers.ConvertedADC[2][0]) * one_on_sqrt6;
+        /*foc_vars.Iab[0] =     (2.0f * measurement_buffers.ConvertedADC[0][0] -
+                            measurement_buffers.ConvertedADC[1][0] -
+                            measurement_buffers.ConvertedADC[2][0]) * one_on_sqrt6;
 
-        foc_vars.Iab[1] = 	(measurement_buffers.ConvertedADC[1][0] -
-        					measurement_buffers.ConvertedADC[2][0]) * one_on_sqrt2;
+        foc_vars.Iab[1] =     (measurement_buffers.ConvertedADC[1][0] -
+                            measurement_buffers.ConvertedADC[2][0]) * one_on_sqrt2;
 
-        foc_vars.Iab[2] = 	(measurement_buffers.ConvertedADC[0][0] +
-        					measurement_buffers.ConvertedADC[1][0] +
-							measurement_buffers.ConvertedADC[2][0]) * 0.333f;
+        foc_vars.Iab[2] =     (measurement_buffers.ConvertedADC[0][0] +
+                            measurement_buffers.ConvertedADC[1][0] +
+                            measurement_buffers.ConvertedADC[2][0]) * 0.333f;
         */
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //Version of Clark transform that avoids low duty cycle ADC measurements - use only 2 phases
         if(htim1.Instance->CCR2>900){
-        	//Clark using phase U and W
-        	foc_vars.Iab[0] =  sqrt3_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
-        	foc_vars.Iab[1] = -sqrt1_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I]-sqrt2*measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
+            //Clark using phase U and W
+            foc_vars.Iab[0] =  sqrt3_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
+            foc_vars.Iab[1] = -sqrt1_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I]-sqrt2*measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
         }
         else if(htim1.Instance->CCR3>900){
         //Clark using phase U and V
-        	foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
-        	foc_vars.Iab[1] = sqrt2  *measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt1_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
+            foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
+            foc_vars.Iab[1] = sqrt2  *measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt1_2*measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I];
         }
         else{
-        	//Clark using phase V and W (hardware V1 has best ADC readings on channels V and W - U is plagued by the DCDC converter)
-        	foc_vars.Iab[0] = -sqrt3_2*measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt3_2*measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
-        	foc_vars.Iab[1] =  sqrt1_2*measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt1_2*measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
+            //Clark using phase V and W (hardware V1 has best ADC readings on channels V and W - U is plagued by the DCDC converter)
+            foc_vars.Iab[0] = -sqrt3_2*measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt3_2*measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
+            foc_vars.Iab[1] =  sqrt1_2*measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I]-sqrt1_2*measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
         }
 
         // Park
@@ -409,26 +409,26 @@ void VICheck() {  // Check currents, voltages are within panic limits
            (one_on_ticks)*foc_vars.hall_table[last_hall_state - 1][3]) *
           0.1;
       //                if(hall_error>200){
-      //                	foc_vars.hall_table[current_hall_state -
+      //                    foc_vars.hall_table[current_hall_state -
       //                1][0]=foc_vars.hall_table[current_hall_state - 1][0]+1;
-      //                	foc_vars.hall_table[last_hall_state -
+      //                    foc_vars.hall_table[last_hall_state -
       //                1][0]=foc_vars.hall_table[last_hall_state - 1][0]-1;
       //
       //
       //                }
       //                if(hall_error<-200){
-      //                	foc_vars.hall_table[current_hall_state - 1][0] =
+      //                    foc_vars.hall_table[current_hall_state - 1][0] =
       //                foc_vars.hall_table[current_hall_state - 1][0]-1;
-      //                	foc_vars.hall_table[last_hall_state -
+      //                    foc_vars.hall_table[last_hall_state -
       //                1][0]=foc_vars.hall_table[last_hall_state - 1][0]+1;
       //
       //                }
       //                if(last_anglestep>angle_step){
-      //                	foc_vars.hall_table[last_hall_state - 1][3] =
+      //                    foc_vars.hall_table[last_hall_state - 1][3] =
       //                foc_vars.hall_table[last_hall_state - 1][3]+1;
       //                }
       //                if(last_anglestep<angle_step){
-      //                	foc_vars.hall_table[last_hall_state - 1][3] =
+      //                    foc_vars.hall_table[last_hall_state - 1][3] =
       //                foc_vars.hall_table[last_hall_state - 1][3]-1;
       //                }
       //                last_anglestep=angle_step;
@@ -618,15 +618,15 @@ void VICheck() {  // Check currents, voltages are within panic limits
       // when manually setting Id, or if there is an MTPA implementation Can
       // result in problems e.g. tripping PSUs...
       //        if((foc_vars.Vdq[1]>300)){
-      //        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]-300)*-0.1; //36A
+      //            foc_vars.Idq_req[0]=(foc_vars.Vdq[1]-300)*-0.1; //36A
       //        max field weakening current
       //        }
       //        else if((foc_vars.Vdq[1]<-300)){
-      //        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]+300)*0.1; //36A max
+      //            foc_vars.Idq_req[0]=(foc_vars.Vdq[1]+300)*0.1; //36A max
       //        field weakening current
       //        }
       //        else{
-      //        	foc_vars.Idq_req[0]=0; //30A max field weakening current
+      //            foc_vars.Idq_req[0]=0; //30A max field weakening current
       //
       //        }
     }
@@ -817,8 +817,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
           }
           // cycle will be a higher current
         else if(a==3){
-        	htim1.Instance->CCR1 = 0;
-        	a=a-1;
+            htim1.Instance->CCR1 = 0;
+            a=a-1;
         }
         else if(a==2){
 
@@ -830,7 +830,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
         }
         else if(a==1){
-        	a=a-1;
+            a=a-1;
         }
         else if (a == 0) {
           htim1.Instance->CCR1 =

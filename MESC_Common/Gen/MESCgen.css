@@ -34,6 +34,7 @@ body {
 
 canvas {
     border : 1px solid #000000;
+    display: block;
     margin : 10px;
 }
 
@@ -52,6 +53,10 @@ input[type=number] {
 
 input[type=text] {
     text-align : right;
+}
+
+input[type=text].name {
+    text-align : left;
 }
 
 label {

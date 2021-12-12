@@ -34,7 +34,7 @@ cd build
 for cfg in Debug
 do
     mkdir -p ${cfg}
-    pushd ${cfg} > dev/null
+    pushd ${cfg} > /dev/null
     cmake -DCMAKE_BUILD_TYPE=${cfg} -G"Unix Makefiles" ../..
-    popd > dev/null
+    popd > /dev/null
 done

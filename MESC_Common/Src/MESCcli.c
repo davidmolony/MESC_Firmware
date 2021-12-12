@@ -820,14 +820,14 @@ static uint32_t byte_swap(uint32_t const value)
 
 int cli_process( char const c )
 {
-	if (c == '\n')
-	{
-		cli_reply( "%s", "\r\n" );
-	}
-	else if (cli_state != CLI_STATE_DATA)
-	{
-		cli_reply( "%c", c );
-	}
+    if (c == '\n')
+    {
+        cli_reply( "%s", "\r\n" );
+    }
+    else if (cli_state != CLI_STATE_DATA)
+    {
+        cli_reply( "%c", c );
+    }
 
     switch (cli_state)
     {

@@ -174,30 +174,30 @@ ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
 
 void mesc_init_1( void )
 {
-	// Do nothing
+    // Do nothing
 }
 
 void mesc_init_2( void )
 {
-	// Do nothing
+    // Do nothing
 }
 
 void mesc_init_3( void )
 {
-	HAL_ADCEx_InjectedStart_IT( &hadc1 );
-	HAL_ADCEx_InjectedStart(    &hadc2 );
-	HAL_ADCEx_InjectedStart(    &hadc3 );
+    HAL_ADCEx_InjectedStart_IT( &hadc1 );
+    HAL_ADCEx_InjectedStart(    &hadc2 );
+    HAL_ADCEx_InjectedStart(    &hadc3 );
 
-	HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_1 );
-	HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_1 );
+    HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_1 );
+    HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_1 );
 
-	HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_2 );
-	HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_2 );
+    HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_2 );
+    HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_2 );
 
-	HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_3 );
-	HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_3 );
+    HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_3 );
+    HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_3 );
 
-	HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_4 );
+    HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_4 );
 
-	htim1.Instance->CCR4 = 1022;
+    htim1.Instance->CCR4 = 1022;
 }

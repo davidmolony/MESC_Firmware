@@ -54,31 +54,35 @@ function dump_TEMPProfile( profile )
     hex = hex + dump_c_int( profile.method );
     hex = hex + dump_c_int( profile.schema );
 
-    // TEMP_METHOD_CURVE_APPROX
-    hex = hex + dump_c_float( profile.parameters.approx.A   );
-    hex = hex + dump_c_float( profile.parameters.approx.B   );
-    //hex = hex + dump_c_char( '', 4 ); //union
+    switch (profile.method)
+    {
+        case TEMP_METHOD_CURVE_APPROX:
+            hex = hex + dump_c_float( profile.parameters.approx.A   );
+            hex = hex + dump_c_float( profile.parameters.approx.B   );
+            hex = hex + dump_c_char( '', 4 );
 
-    //hex = hex + dump_c_char( '', 4 ); //union
-    //hex = hex + dump_c_char( '', 4 ); //union
+            hex = hex + dump_c_char( '', 4 );
+            hex = hex + dump_c_char( '', 4 );
 
-    hex = hex + dump_c_float( profile.parameters.approx.Tlo );
-    //hex = hex + dump_c_char( '', 4 ); //union
+            hex = hex + dump_c_float( profile.parameters.approx.Tlo );
+            hex = hex + dump_c_char( '', 4 );
+            break;
+        case TEMP_METHOD_STEINHART_HART_ABC:
+        case TEMP_METHOD_STEINHART_HART_BETA_R:
+            hex = hex + dump_c_float( profile.parameters.SH.A    );
+            hex = hex + dump_c_float( profile.parameters.SH.B    );
+            hex = hex + dump_c_float( profile.parameters.SH.C    );
 
-    // TEMP_METHOD_STEINHART_HART_ABC
-    // TEMP_METHOD_STEINHART_HART_BETA_R
-    hex = hex + dump_c_float( profile.parameters.SH.A    );
-    hex = hex + dump_c_float( profile.parameters.SH.B    );
-    hex = hex + dump_c_float( profile.parameters.SH.C    );
+            hex = hex + dump_c_float( profile.parameters.SH.Beta );
+            hex = hex + dump_c_float( profile.parameters.SH.r    );
 
-    hex = hex + dump_c_float( profile.parameters.SH.Beta );
-    hex = hex + dump_c_float( profile.parameters.SH.r    );
+            hex = hex + dump_c_float( profile.parameters.SH.T0   );
+            hex = hex + dump_c_float( profile.parameters.SH.R0   );
 
-    hex = hex + dump_c_float( profile.parameters.SH.T0   );
-    hex = hex + dump_c_float( profile.parameters.SH.R0   );
-
-    hex = hex + dump_c_float( profile.limit.Tmin );
-    hex = hex + dump_c_float( profile.limit.Tmax );
+            hex = hex + dump_c_float( profile.limit.Tmin );
+            hex = hex + dump_c_float( profile.limit.Tmax );
+            break;
+    }
 
     return hex;
 }

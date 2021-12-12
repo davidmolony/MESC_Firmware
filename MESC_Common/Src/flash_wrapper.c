@@ -69,7 +69,7 @@ uint32_t readData() {
   motor.Rphase = *(hardware_vars_t *)(p_data);
   p_data++;
   motor.Lphase = *(hardware_vars_t *)(p_data);
-  //    p_data++;	//this last increment is not necessary, but if more
+  //    p_data++;    //this last increment is not necessary, but if more
   //    variables are added, then uncomment it and follow the same pattern.
   return STORAGE_SIZE;
 }
@@ -91,12 +91,12 @@ uint32_t writeData() {
   *p_data = *(uint32_t *)(&motor.Rphase);
   p_data++;
   *p_data = *(uint32_t *)(&motor.Lphase);
-  //    p_data++;	//this last increment is not necessary, but if more
+  //    p_data++;    //this last increment is not necessary, but if more
   //    variables are added, then uncomment it and follow the same pattern.
   writeFlash( data_array, 0, (STORAGE_SIZE * sizeof(uint32_t)) );
   return STORAGE_SIZE;
 }
 
 void eraseData() {
-	eraseFlash( 0, (STORAGE_SIZE * sizeof(uint32_t)) );
+    eraseFlash( 0, (STORAGE_SIZE * sizeof(uint32_t)) );
 }

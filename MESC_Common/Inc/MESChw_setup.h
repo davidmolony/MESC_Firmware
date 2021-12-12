@@ -42,13 +42,13 @@ typedef struct {
   hardware_vars_t RVBT;    // Vbus top divider - Also for switch divider
   hardware_vars_t RVBB;    // Vbus bottom divider - Also for switch divider
   hardware_vars_t
-      VBGain;              //=RVBB/(RVBB+RVBT); 		//Resistor divider
+      VBGain;              //=RVBB/(RVBB+RVBT);         //Resistor divider
                            // network gain (fractional)
   hardware_vars_t RIphPU;  // phase current pullup
   hardware_vars_t RIphSR;  // phase current series resistance
   hardware_vars_t OpGain;  // OpAmp gain, if external, or internal PGA
   hardware_vars_t
-      Igain;  // e.g. Rshunt*OpGain*RIphPU/(RIphSR+RIphPU);	//network gain
+      Igain;  // e.g. Rshunt*OpGain*RIphPU/(RIphSR+RIphPU);    //network gain
               // network*opamp gain - total gain before the current hits the
               // ADC, might want this inverted to avoid using division?
   uint16_t RawCurrLim;  // Current limit that will trigger a software
@@ -57,7 +57,7 @@ typedef struct {
                         // (4096-2048)*3.3/(4096*16*0.001)= 103A
   uint16_t RawVoltLim;  // Voltage limit that will trigger a software
                         //  generated break from ADC. Actual voltage equal to
-                        /// RawVoltLim*3.3*Divider/4096			//
+                        /// RawVoltLim*3.3*Divider/4096            //
                         /// example 2303*3.3/4096*(R1k5+R47k/R1K5)=60V
   float battMaxPower;   // Maximum battery power init...
 } hw_setup_s;

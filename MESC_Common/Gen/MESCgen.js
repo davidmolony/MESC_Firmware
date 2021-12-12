@@ -27,8 +27,8 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+var header = new ProfileHeader();
 var neid = 0;
-var eid = 0;
 
 function updateFavIcon() {
     var favicon = document.getElementById('favicon');
@@ -128,18 +128,20 @@ function add() {
 
     var app_list = window.document.getElementById('app-list');
 
+    var entry_index = neid; // TODO replace header.findFreeEntry()
+
     var eN = document.createElement('div');
     eN.className = 'entrybox';
-    eN.id = 'e-' + eid;
+    eN.id = 'e-' + entry_index;
 
     var l = document.createElement('label');
-    l.for = 'e-' + eid;
+    l.for = 'e-' + entry_index;
     l.innerHTML = 'Type: ';
 
     eN.appendChild( l );
 
     var s = document.createElement('select');
-    s.id = 'e-' + eid + '-type';
+    s.id = 'e-' + entry_index + '-type';
 
     let types = [ '- Select -', 'Battery', 'Speed', 'Temperature' ];
 
@@ -170,7 +172,7 @@ function add() {
 
     var r = document.createElement('span');
     r.className = 'action';
-    r.innerHTML = '<input type="button" id="app-btn-rem-' + eid + '" value="Remove"/>';
+    r.innerHTML = '<input type="button" id="app-btn-rem-' + entry_index + '" value="Remove"/>';
     r.addEventListener( 'click', function() { rem(this) }, false );
 
     eN.appendChild( r );
@@ -178,22 +180,53 @@ function add() {
     app_list.appendChild( eN );
 
     neid = neid + 1;
-    eid = eid + 1;
 
     updateFavIcon();
 }
 
-function makeLabelledAddress(obj,id,label,value,change_fn,unit) {
+function updateName(obj) {
+    var entry_index = obj.id.split('-')[1];
+    var entry = header.getEntry( entry_index );
+    entry.setName( obj.value );
+}
+
+function makeLabelledText(obj,id,label, value) {
+    var entry_index = obj.id.split('-')[1];
     var lbl = document.createElement('label');
 
     lbl.innerHTML = label;
-    lbl.setAttribute( 'for', 'e-' + eid + '-' + id );
+    lbl.setAttribute( 'for', 'e-' + entry_index + '-' + id );
+
+    obj.appendChild( lbl );
+
+   var inp = document.createElement('input');
+
+    inp.id = 'e-' + entry_index + '-' + id;
+    inp.type = 'text';
+    inp.value = value;
+    inp.className = 'name';
+
+    obj.appendChild( inp );
+
+    inp.addEventListener( 'change', function() { updateName(this) }, false );
+
+    obj.appendChild( document.createElement('br') );
+
+    return inp;
+}
+
+function makeLabelledAddress(obj,id,label,value,change_fn,unit) {
+    var entry_index = obj.id.split('-')[1];
+    var lbl = document.createElement('label');
+
+    lbl.innerHTML = label;
+    lbl.setAttribute( 'for', 'e-' + entry_index + '-' + id );
 
     obj.appendChild( lbl );
 
     var inp = document.createElement('input');
 
-    inp.id = 'e-' + eid + '-' + id;
+    inp.id = 'e-' + entry_index + '-' + id;
     inp.type = 'text';
     inp.value = value;
 
@@ -211,16 +244,17 @@ function makeLabelledAddress(obj,id,label,value,change_fn,unit) {
 }
 
 function makeLabelledNumber(obj,id,label,value,change_fn,unit) {
+    var entry_index = obj.id.split('-')[1];
     var lbl = document.createElement('label');
 
     lbl.innerHTML = label;
-    lbl.setAttribute( 'for', 'e-' + eid + '-' + id );
+    lbl.setAttribute( 'for', 'e-' + entry_index + '-' + id );
 
     obj.appendChild( lbl );
 
     var inp = document.createElement('input');
 
-    inp.id = 'e-' + eid + '-' + id;
+    inp.id = 'e-' + entry_index + '-' + id;
     inp.type = 'number';
     inp.value = value;
 
@@ -238,16 +272,17 @@ function makeLabelledNumber(obj,id,label,value,change_fn,unit) {
 }
 
 function makeLabelledNumberUnit(obj,id,label,value,change_fn,unit) {
+    var entry_index = obj.id.split('-')[1];
     var lbl = document.createElement('label');
 
     lbl.innerHTML = label;
-    lbl.setAttribute( 'for', 'e-' + eid + '-' + id );
+    lbl.setAttribute( 'for', 'e-' + entry_index + '-' + id );
 
     obj.appendChild( lbl );
 
     var inp = document.createElement('input');
 
-    inp.id = 'e-' + eid + '-' + id;
+    inp.id = 'e-' + entry_index + '-' + id;
     inp.type = 'number';
     inp.value = value;
 
@@ -256,7 +291,7 @@ function makeLabelledNumberUnit(obj,id,label,value,change_fn,unit) {
     inp.addEventListener( 'change', change_fn, false );
 
     var unt = document.createElement('select');
-    unt.id = 'e-' + eid + '-' + id + '-unit';
+    unt.id = 'e-' + entry_index + '-' + id + '-unit';
     for ( i = 0; i < unit.length; i++ ) {
         var opt = document.createElement('option');
         opt.value = i;
@@ -270,15 +305,16 @@ function makeLabelledNumberUnit(obj,id,label,value,change_fn,unit) {
 }
 
 function makeOptions(obj,id,label,value,unit,change_fn) {
+    var entry_index = obj.id.split('-')[1];
     var lbl = document.createElement('label');
 
     lbl.innerHTML = label;
-    lbl.setAttribute( 'for', 'e-' + eid + '-' + id );
+    lbl.setAttribute( 'for', 'e-' + entry_index + '-' + id );
 
     obj.appendChild( lbl );
 
     var inp = document.createElement('select');
-    inp.id = 'e-' + eid + '-' + id;
+    inp.id = 'e-' + entry_index + '-' + id;
     inp.value = value;
     for ( i = 0; i < unit.length; i++ ) {
         var opt = document.createElement('option');
@@ -295,21 +331,21 @@ function makeOptions(obj,id,label,value,unit,change_fn) {
 }
 
 function plotBattery(obj) {
-    var eid = obj.id.split('-')[1];
-    var obj_graph = window.document.getElementById('e-' + eid + '-bat-graph');
+    var entry_index = obj.id.split('-')[1];
+    var obj_graph = window.document.getElementById('e-' + entry_index + '-bat-graph');
     var obj_ctx = obj_graph.getContext('2d');
 
-    var obj_imax = window.document.getElementById('e-' + eid + '-cell-imax');
-    var obj_vmax = window.document.getElementById('e-' + eid + '-cell-vmax');
-    var obj_cmax = window.document.getElementById('e-' + eid + '-cell-cmax');
+    var obj_imax = window.document.getElementById('e-' + entry_index + '-cell-imax');
+    var obj_vmax = window.document.getElementById('e-' + entry_index + '-cell-vmax');
+    var obj_cmax = window.document.getElementById('e-' + entry_index + '-cell-cmax');
 
-    var obj_vmid = window.document.getElementById('e-' + eid + '-cell-vmid');
-    var obj_cmid = window.document.getElementById('e-' + eid + '-cell-cmid');
+    var obj_vmid = window.document.getElementById('e-' + entry_index + '-cell-vmid');
+    var obj_cmid = window.document.getElementById('e-' + entry_index + '-cell-cmid');
 
-    var obj_vlow = window.document.getElementById('e-' + eid + '-cell-vlow');
-    var obj_clow = window.document.getElementById('e-' + eid + '-cell-clow');
+    var obj_vlow = window.document.getElementById('e-' + entry_index + '-cell-vlow');
+    var obj_clow = window.document.getElementById('e-' + entry_index + '-cell-clow');
 
-    var obj_vmin = window.document.getElementById('e-' + eid + '-cell-vmin');
+    var obj_vmin = window.document.getElementById('e-' + entry_index + '-cell-vmin');
 
     obj_ctx.clearRect( 0, 0, obj_graph.width, obj_graph.height );
 
@@ -412,8 +448,8 @@ function plotBattery(obj) {
 
     //
 
-    var obj_p = window.document.getElementById('e-' + eid + '-bat-p');
-    var obj_s = window.document.getElementById('e-' + eid + '-bat-s');
+    var obj_p = window.document.getElementById('e-' + entry_index + '-bat-p');
+    var obj_s = window.document.getElementById('e-' + entry_index + '-bat-s');
 
     var p = parseInt(obj_p.value);
     var s = parseInt(obj_s.value);
@@ -441,33 +477,38 @@ function plotBattery(obj) {
     obj_ctx.fillText( 'Cnom ' +  cnom      + ' Ah',  300, 50 );
     obj_ctx.fillText( 'Pnom ' +  pnom + ' ' + suffix + 'Wh',  300, 60 );
 
-    var obj_i = window.document.getElementById('e-' + eid + '-bat-imax');
+    var obj_i = window.document.getElementById('e-' + entry_index + '-bat-imax');
 
     var i = parseInt(obj_i.value);
 
     var pmax = (s * vmax * i);
 
-    var obj_pmax = window.document.getElementById('e-' + eid + '-bat-pmax');
+    var obj_pmax = window.document.getElementById('e-' + entry_index + '-bat-pmax');
 
     // TODO pmax
 
 }
 
 function makeBattery(eN) {
+    var entry_index = eN.id.split('-')[1];
     var o = document.createElement('div');
+    o.id = 'e-' + entry_index + '-disp';
 
     var c = document.createElement('canvas');
-    c.id = 'e-' + eid + '-bat-graph';
+    c.id = 'e-' + entry_index + '-bat-graph';
     c.width = 400;
     c.height = 400;
     o.appendChild( c );
+
+    var inp = makeLabelledText( o, 'cell-name', 'Name', 'Battery' );
+    inp.maxLength = PROFILE_ENTRY_MAX_NAME_LENGTH;
 
     // Cell
     var h3 = document.createElement('h3');
     h3.innerHTML = 'Cell';
     o.appendChild( h3 );
 
-    var inp = makeLabelledNumber( o, 'cell-imax', 'Imax', 30, function() { plotBattery(this) }, 'A' );
+    inp = makeLabelledNumber( o, 'cell-imax', 'Imax', 30, function() { plotBattery(this) }, 'A' );
     inp.min = 1;
 
     inp = makeLabelledNumber( o, 'cell-vmax', 'Vmax', 4.20, function() { plotBattery(this) }, 'V' );
@@ -517,10 +558,10 @@ function makeBattery(eN) {
 
     lbl = document.createElement('label');
     lbl.innerHTML = 'Regeneration';
-    lbl.setAttribute( 'for', 'e-' + eid + '-bat-regen' );
+    lbl.setAttribute( 'for', 'e-' + entry_index + '-bat-regen' );
     o.appendChild( lbl );
     inp = document.createElement('input');
-    inp.id = 'e-' + eid + '-bat-regen';
+    inp.id = 'e-' + entry_index + '-bat-regen';
     inp.type = 'checkbox';
     o.appendChild( inp );
 
@@ -534,14 +575,19 @@ function plotSpeed(obj) {
 }
 
 function makeSpeed(eN) {
+    var entry_index = eN.id.split('-')[1];
     var o = document.createElement('div');
+    o.id = 'e-' + entry_index + '-disp';
+
+    var inp = makeLabelledText( o, 'spd-name', 'Name', 'Speed' );
+    inp.maxLength = PROFILE_ENTRY_MAX_NAME_LENGTH;
 
     // Motor
     var h3 = document.createElement('h3');
     h3.innerHTML = 'Motor';
     o.appendChild( h3 );
 
-    var inp = makeLabelledNumber( o, 'spd-imax', 'Imax', 60, function() { plotSpeed(this) }, 'A' );
+    inp = makeLabelledNumber( o, 'spd-imax', 'Imax', 60, function() { plotSpeed(this) }, 'A' );
     inp.min = 1;
 
     inp = makeLabelledNumber( o, 'spd-vmax', 'Vmax', 100, function() { plotSpeed(this) }, 'V' );
@@ -558,20 +604,20 @@ function makeSpeed(eN) {
 
     lbl = document.createElement('label');
     lbl.innerHTML = 'Direction';
-    lbl.setAttribute( 'for', 'e-' + eid + '-spd-dir' );
+    lbl.setAttribute( 'for', 'e-' + entry_index + '-spd-dir' );
     o.appendChild( lbl );
     inp = document.createElement('input');
-    inp.id = 'e-' + eid + '-spd-dir';
+    inp.id = 'e-' + entry_index + '-spd-dir';
     inp.type = 'checkbox';
     o.appendChild( inp );
     o.appendChild( document.createElement('br') );
 
     lbl = document.createElement('label');
     lbl.innerHTML = 'Regeneration';
-    lbl.setAttribute( 'for', 'e-' + eid + '-spd-regen' );
+    lbl.setAttribute( 'for', 'e-' + entry_index + '-spd-regen' );
     o.appendChild( lbl );
     inp = document.createElement('input');
-    inp.id = 'e-' + eid + '-spd-regen';
+    inp.id = 'e-' + entry_index + '-spd-regen';
     inp.type = 'checkbox';
     o.appendChild( inp );
     o.appendChild( document.createElement('br') );
@@ -587,13 +633,13 @@ function makeSpeed(eN) {
         lbl = document.createElement('label');
 
         lbl.innerHTML = 'Hall ' + i;
-        lbl.setAttribute( 'for', 'e-' + eid + '-spd-hall' + i );
+        lbl.setAttribute( 'for', 'e-' + entry_index + '-spd-hall' + i );
 
         o.appendChild( lbl );
 
         inp = document.createElement('input');
 
-        inp.id = 'e-' + eid + '-spd-hall' + i;
+        inp.id = 'e-' + entry_index + '-spd-hall' + i;
         inp.type = 'number';
         inp.min = 0;
         inp.value = (0 + ((65535 / 7) * i)).toFixed(0);
@@ -631,24 +677,24 @@ function makeSpeed(eN) {
 }
 
 function plotTemperature(obj) {
-    var eid = obj.id.split('-')[1];
-    var obj_graph = window.document.getElementById('e-' + eid + '-temp-graph');
+    var entry_index = obj.id.split('-')[1];
+    var obj_graph = window.document.getElementById('e-' + entry_index + '-temp-graph');
     var obj_ctx = obj_graph.getContext('2d');
 
-    var obj_v    = window.document.getElementById('e-' + eid + '-temp-v');
-    var obj_rf   = window.document.getElementById('e-' + eid + '-temp-rf');
+    var obj_v    = window.document.getElementById('e-' + entry_index + '-temp-v');
+    var obj_rf   = window.document.getElementById('e-' + entry_index + '-temp-rf');
 
-    var obj_sch  = window.document.getElementById('e-' + eid + '-temp-schema');
+    var obj_sch  = window.document.getElementById('e-' + entry_index + '-temp-schema');
 
-    var obj_adcr = window.document.getElementById('e-' + eid + '-temp-adcrng');
+    var obj_adcr = window.document.getElementById('e-' + entry_index + '-temp-adcrng');
 
-    var obj_beta = window.document.getElementById('e-' + eid + '-temp-beta');
-    var obj_r    = window.document.getElementById('e-' + eid + '-temp-r');
+    var obj_beta = window.document.getElementById('e-' + entry_index + '-temp-beta');
+    var obj_r    = window.document.getElementById('e-' + entry_index + '-temp-r');
 
-    var obj_t0   = window.document.getElementById('e-' + eid + '-temp-t0');
+    var obj_t0   = window.document.getElementById('e-' + entry_index + '-temp-t0');
 
-    var obj_min  = window.document.getElementById('e-' + eid + '-temp-min');
-    var obj_max  = window.document.getElementById('e-' + eid + '-temp-max');
+    var obj_min  = window.document.getElementById('e-' + entry_index + '-temp-min');
+    var obj_max  = window.document.getElementById('e-' + entry_index + '-temp-max');
 
     var V         = parseFloat(obj_v.value);
     var R_F       = parseFloat(obj_rf.value);
@@ -760,20 +806,25 @@ function plotTemperature(obj) {
 }
 
 function makeTemperature(eN) {
+    var entry_index = eN.id.split('-')[1];
     var o = document.createElement('div');
+    o.id = 'e-' + entry_index + '-disp';
 
     var c = document.createElement('canvas');
-    c.id = 'e-' + eid + '-temp-graph';
+    c.id = 'e-' + entry_index + '-temp-graph';
     c.width = 400;
     c.height = 400;
     o.appendChild( c );
+
+    var inp = makeLabelledText( o, 'temp-name', 'Name', 'Temperature' );
+    inp.maxLength = PROFILE_ENTRY_MAX_NAME_LENGTH;
 
     // Sensor
     var h3 = document.createElement('h3');
     h3.innerHTML = 'Sensor';
     o.appendChild( h3 );
 
-    var inp = makeLabelledNumber( o, 'temp-v', 'V', 3.3, function() { plotTemperature(this) }, 'V' );
+    inp = makeLabelledNumber( o, 'temp-v', 'V', 3.3, function() { plotTemperature(this) }, 'V' );
     inp.min = 1.0;
     inp.step = 0.1;
 
@@ -817,7 +868,9 @@ function makeTemperature(eN) {
 }
 
 function makeThrottle(eN) {
+    var entry_index = eN.id.split('-')[1];
     var o = document.createElement('div');
+    o.id = 'e-' + entry_index + '-disp';
 
     // Sensor
     var h3 = document.createElement('h3');
@@ -838,14 +891,19 @@ function makeThrottle(eN) {
 }
 
 function makeBrake(eN) {
+    var entry_index = eN.id.split('-')[1];
     var o = document.createElement('div');
+    o.id = 'e-' + entry_index + '-disp';
+
+    var inp = makeLabelledText( o, 'brk-name', 'Name', 'E-Brake' );
+    inp.maxLength = PROFILE_ENTRY_MAX_NAME_LENGTH;
 
     // Sensor
     var h3 = document.createElement('h3');
     h3.innerHTML = 'Sensor';
     o.appendChild( h3 );
 
-    var inp = makeLabelledNumber( o, 'brk-adc-min', 'ADC min', 100, function() { plotBrake(this) }, '' );
+    inp = makeLabelledNumber( o, 'brk-adc-min', 'ADC min', 100, function() { plotBrake(this) }, '' );
     inp.min = 0;
 
     inp = makeLabelledNumber( o, 'brk-adc-max', 'ADC max', 2047, function() { plotBrake(this) }, '' );
@@ -858,14 +916,19 @@ function makeBrake(eN) {
 }
 
 function makeButton(eN) {
+    var entry_index = eN.id.split('-')[1];
     var o = document.createElement('div');
+    o.id = 'e-' + entry_index + '-disp';
+
+    var inp = makeLabelledText( o, 'btn-name', 'Name', 'Button' );
+    inp.maxLength = PROFILE_ENTRY_MAX_NAME_LENGTH;
 
     // Sensor
     var h3 = document.createElement('h3');
     h3.innerHTML = 'Interface';
     o.appendChild( h3 );
 
-    var inp = makeOptions( o, 'btn-if', 'Interface', 0, ['?','??'], function() { plotButton(this) } );
+    inp = makeOptions( o, 'btn-if', 'Interface', 0, ['?','??'], function() { plotButton(this) } );
 
     inp = makeLabelledAddress( o, 'btn-a', 'Address', '80001000', function() { plotButton(this) }, '' );
     inp.min = 0;
@@ -877,14 +940,19 @@ function makeButton(eN) {
 }
 
 function makeIndicator(eN) {
+    var entry_index = eN.id.split('-')[1];
     var o = document.createElement('div');
+    o.id = 'e-' + entry_index + '-disp';
+
+    var inp = makeLabelledText( o, 'ind-name', 'Name', 'Indicator' );
+    inp.maxLength = PROFILE_ENTRY_MAX_NAME_LENGTH;
 
     // Sensor
     var h3 = document.createElement('h3');
     h3.innerHTML = 'Interface';
     o.appendChild( h3 );
 
-    var inp = makeOptions( o, 'ind-if', 'Interface', 0, ['?','??'], function() { plotInd(this) } );
+    inp = makeOptions( o, 'ind-if', 'Interface', 0, ['?','??'], function() { plotInd(this) } );
 
     inp = makeLabelledAddress( o, 'ind-a', 'Address', '80002000', function() { plotInd(this) }, '' );
     inp.min = 0;
@@ -898,10 +966,10 @@ function makeIndicator(eN) {
 }
 
 function plotScreen(obj) {
-    var eid = obj.id.split('-')[1];
-    var obj_s = window.document.getElementById('e-' + eid + '-scrn'  );
-    var obj_w = window.document.getElementById('e-' + eid + '-scrn-w');
-    var obj_h = window.document.getElementById('e-' + eid + '-scrn-h');
+    var entry_index = obj.id.split('-')[1];
+    var obj_s = window.document.getElementById('e-' + entry_index + '-scrn'  );
+    var obj_w = window.document.getElementById('e-' + entry_index + '-scrn-w');
+    var obj_h = window.document.getElementById('e-' + entry_index + '-scrn-h');
 
     var w = parseFloat(obj_w.value);
     var h = parseFloat(obj_h.value);
@@ -926,15 +994,20 @@ function plotScreen(obj) {
 }
 
 function makeScreen(eN) {
+    var entry_index = eN.id.split('-')[1];
     var o = document.createElement('div');
+    o.id = 'e-' + entry_index + '-disp';
+
+    var inp = makeLabelledText( o, 'scrn-name', 'Name', 'Screen' );
+    inp.maxLength = PROFILE_ENTRY_MAX_NAME_LENGTH;
 
     // Interface
     var h3 = document.createElement('h3');
     h3.innerHTML = 'Interface';
     o.appendChild( h3 );
 
-    var inp = makeOptions( o, 'scrn-model', 'Model', 0, ['SH1106 (128x64)'], function() { plotScreen(this) } );
-    
+    inp = makeOptions( o, 'scrn-model', 'Model', 0, ['SH1106 (128x64)'], function() { plotScreen(this) } );
+
     inp = makeOptions( o, 'scrn-if', 'Interface', 0, ['?','??'], function() { plotScreen(this) } );
 
     inp = makeLabelledAddress( o, 'scrn-a', 'Address', '80003000', function() { plotScreen(this) }, '' );
@@ -954,7 +1027,7 @@ function makeScreen(eN) {
     o.appendChild( h3 );
 
     var c = document.createElement('div');
-    c.id = 'e-' + eid + '-scrn';
+    c.id = 'e-' + entry_index + '-scrn';
     c.className = 'screen';
     o.appendChild( c );
 
@@ -969,31 +1042,40 @@ function setType(obj) {
     obj.disabled = true;
 
     var eN = obj.parentNode;
+    var entry_index = obj.id.split('-')[1];
 
     switch (obj.value) {
         case '1':
             makeBattery( eN );
+            var entry = header.addEntry( entry_index, BAT_PROFILE_SIGNATURE );
             break;
         case '2':
             makeSpeed( eN );
+            var entry = header.addEntry( entry_index, SPEED_PROFILE_SIGNATURE );
             break;
         case '3':
             makeTemperature( eN );
+            var entry = header.addEntry( entry_index, TEMP_PROFILE_SIGNATURE );
             break;
         case '4':
             makeThrottle( eN );
+            // TODO add ui throttle entry
             break;
         case '5':
             makeBrake( eN );
+            // TODO add ui brake entry
             break;
         case '6':
             makeButton( eN );
+            // TODO add ui button entry
             break;
         case '7':
             makeIndicator( eN );
+            // TODO add ui indicator entry
             break;
         case '8':
             makeScreen( eN );
+            // TODO add ui screen entry
             break;
     }
 }
@@ -1008,7 +1090,7 @@ function rem(obj) {
 function gen()
 {
     var prf_dmp = window.document.getElementById('app-prf-dmp');
-    
+
     var header = new ProfileHeader();
 
     // TODO populate header

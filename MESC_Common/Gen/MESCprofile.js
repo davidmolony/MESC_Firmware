@@ -34,13 +34,56 @@ const PROFILE_VERSION_MINOR = 0;
 
 const PROFILE_MAX_ENTRIES = 8;
 
+const PROFILE_HEADER_SIZE = 64;
+
+// ProfileEntryMap
+const PROFILE_ENTRY_R = 1;
+const PROFILE_ENTRY_W = 2;
+
+const PROFILE_ENTRY_RW = (PROFILE_ENTRY_R | PROFILE_ENTRY_W);
+// Aliases
+const PROFILE_ENTRY_DATA = 0;
+const PROFILE_ENTRY_LOCK = PROFILE_ENTRY_R;
+const PROFILE_ENTRY_FREE = PROFILE_ENTRY_W;
+const PROFILE_ENTRY_USED = PROFILE_ENTRY_RW;
+//end
+
+const PROFILE_ENTRY_BITS = 2;
+const PROFILE_ENTRY_MASK = 3;
+
+const PROFILE_HEADER_ENTRIES = ((BITS_PER_BYTE * /*sizeof(ProfileHeader::entry_map)*/PROFILE_MAX_ENTRIES) / PROFILE_ENTRY_BITS);
+
+const PROFILE_ENTRY_SIGNATURE = 'MPEH';
+
+const PROFILE_ENTRY_MAX_NAME_LENGTH = 12;
+
+const ENTRIES_PER_MAP_ENTRY = (PROFILE_MAX_ENTRIES / PROFILE_ENTRY_BITS);
+
 // ProfileHeader
 
 function ProfileHeader()
 {
     this._image = []; //ArrayBuffer?
 
+    this._entry    = new Array( PROFILE_MAX_ENTRIES * ENTRIES_PER_MAP_ENTRY );
     this.entry_map = new Array( PROFILE_MAX_ENTRIES );
+}
+
+ProfileHeader.prototype.addEntry = function(index,signature)
+{
+    var entry_map_index  = index / ENTRIES_PER_MAP_ENTRY;
+    var entry_map_offset = index % ENTRIES_PER_MAP_ENTRY;
+
+    this.entry_map[entry_map_index] = (this.entry_map[entry_map_index] & ~(PROFILE_ENTRY_MASK << (entry_map_offset * PROFILE_ENTRY_BITS)))
+                                    |                                     (PROFILE_ENTRY_USED << (entry_map_offset * PROFILE_ENTRY_BITS));
+
+    this._entry[index] = new ProfileEntry(this,index,signature);
+    return this.getEntry(index);
+};
+
+ProfileHeader.prototype.getEntry = function(index)
+{
+    return this._entry[index];
 }
 
 ProfileHeader.prototype.dump_image = function()
@@ -74,8 +117,6 @@ ProfileHeader.prototype.image_checksum = function()
     return fnv;
 };
 
-const PROFILE_HEADER_SIZE = 64;
-
 function dump_ProfileHeader( header )
 {
     var hex = '';
@@ -104,26 +145,23 @@ function dump_ProfileHeader( header )
     return hex;
 }
 
-// ProfileEntryMap
-const PROFILE_ENTRY_R = 1;
-const PROFILE_ENTRY_W = 2;
+function ProfileEntry( header, index, signature )
+{
+    this._header = header;
+    this._index = index;
 
-const PROFILE_ENTRY_RW = (PROFILE_ENTRY_R | PROFILE_ENTRY_W);
-// Aliases
-const PROFILE_ENTRY_DATA = 0;
-const PROFILE_ENTRY_LOCK = PROFILE_ENTRY_R;
-const PROFILE_ENTRY_FREE = PROFILE_ENTRY_W;
-const PROFILE_ENTRY_USED = PROFILE_ENTRY_RW;
-//end
+    this._name = '';
 
-const PROFILE_ENTRY_BITS = 2;
-const PROFILE_ENTRY_MASK = 3;
+    this._data_signature = signature;
 
-const PROFILE_HEADER_ENTRIES = ((BITS_PER_BYTE * /*sizeof(ProfileHeader::entry_map)*/PROFILE_MAX_ENTRIES) / PROFILE_ENTRY_BITS);
+    this._data_length = 0;
+    this._data_offset= 0;
+}
 
-const PROFILE_ENTRY_SIGNATURE = 'MPEH';
+ProfileEntry.prototype.setName = function( name )
+{
 
-const PROFILE_ENTRY_MAX_NAME_LENGTH = 12;
+}
 
 // ProfileEntry
 function dump_ProfileEntry( entry )

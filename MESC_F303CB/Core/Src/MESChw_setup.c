@@ -141,58 +141,58 @@ ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
 
 void mesc_init_1( void )
 {
-	HAL_ADCEx_Calibration_Start( &hadc1, ADC_SINGLE_ENDED );
-	HAL_ADCEx_Calibration_Start( &hadc2, ADC_SINGLE_ENDED );
-	HAL_ADCEx_Calibration_Start( &hadc3, ADC_SINGLE_ENDED );
-	HAL_ADCEx_Calibration_Start( &hadc4, ADC_SINGLE_ENDED );
+    HAL_ADCEx_Calibration_Start( &hadc1, ADC_SINGLE_ENDED );
+    HAL_ADCEx_Calibration_Start( &hadc2, ADC_SINGLE_ENDED );
+    HAL_ADCEx_Calibration_Start( &hadc3, ADC_SINGLE_ENDED );
+    HAL_ADCEx_Calibration_Start( &hadc4, ADC_SINGLE_ENDED );
 }
 
 void mesc_init_2( void )
 {
-	HAL_OPAMP_Start( &hopamp1 );
-	HAL_OPAMP_Start( &hopamp2 );
-	HAL_OPAMP_Start( &hopamp3 );
+    HAL_OPAMP_Start( &hopamp1 );
+    HAL_OPAMP_Start( &hopamp2 );
+    HAL_OPAMP_Start( &hopamp3 );
 }
 
 void mesc_init_3( void )
 {
-	HAL_TIM_PWM_Start(     &htim1, TIM_CHANNEL_1 );
-	HAL_TIMEx_PWMN_Start(  &htim1, TIM_CHANNEL_1 );
-	__HAL_TIM_SET_COUNTER( &htim1, 10);
+    HAL_TIM_PWM_Start(     &htim1, TIM_CHANNEL_1 );
+    HAL_TIMEx_PWMN_Start(  &htim1, TIM_CHANNEL_1 );
+    __HAL_TIM_SET_COUNTER( &htim1, 10);
 
-	HAL_TIM_PWM_Start(     &htim1, TIM_CHANNEL_2 );
-	HAL_TIMEx_PWMN_Start(  &htim1, TIM_CHANNEL_2 );
-	__HAL_TIM_SET_COUNTER( &htim1, 10);
+    HAL_TIM_PWM_Start(     &htim1, TIM_CHANNEL_2 );
+    HAL_TIMEx_PWMN_Start(  &htim1, TIM_CHANNEL_2 );
+    __HAL_TIM_SET_COUNTER( &htim1, 10);
 
-	HAL_TIM_PWM_Start(     &htim1, TIM_CHANNEL_3 );
-	HAL_TIMEx_PWMN_Start(  &htim1, TIM_CHANNEL_3 );
-	__HAL_TIM_SET_COUNTER( &htim1, 10);
+    HAL_TIM_PWM_Start(     &htim1, TIM_CHANNEL_3 );
+    HAL_TIMEx_PWMN_Start(  &htim1, TIM_CHANNEL_3 );
+    __HAL_TIM_SET_COUNTER( &htim1, 10);
 
-	__HAL_TIM_SET_COMPARE( &htim1, TIM_CHANNEL_4, 1022 );
+    __HAL_TIM_SET_COMPARE( &htim1, TIM_CHANNEL_4, 1022 );
 
-	// Initialise the comparators - 3 overcurrent and 1 overvoltage,
-	HAL_COMP_Start( &hcomp1 );
-	HAL_COMP_Start( &hcomp2 );
-	HAL_COMP_Start( &hcomp4 );
-	// HAL_COMP_Start(&hcomp7);  // OVP comparator, may be unwanted if operating
-	// above the divider threshold, the ADC conversion can also be used to trigger
-	// a protection event
+    // Initialise the comparators - 3 overcurrent and 1 overvoltage,
+    HAL_COMP_Start( &hcomp1 );
+    HAL_COMP_Start( &hcomp2 );
+    HAL_COMP_Start( &hcomp4 );
+    // HAL_COMP_Start(&hcomp7);  // OVP comparator, may be unwanted if operating
+    // above the divider threshold, the ADC conversion can also be used to trigger
+    // a protection event
 
-	__HAL_TIM_SET_COUNTER(&htim1, 10);
+    __HAL_TIM_SET_COUNTER(&htim1, 10);
 
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&measurement_buffers.RawADC[0][0], 3);
-	__HAL_TIM_SET_COUNTER(&htim1, 10);
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&measurement_buffers.RawADC[0][0], 3);
+    __HAL_TIM_SET_COUNTER(&htim1, 10);
 
-	HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&measurement_buffers.RawADC[1][0], 4);
-	__HAL_TIM_SET_COUNTER(&htim1, 10);
+    HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&measurement_buffers.RawADC[1][0], 4);
+    __HAL_TIM_SET_COUNTER(&htim1, 10);
 
-	HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][0], 1);
-	__HAL_TIM_SET_COUNTER(&htim1, 10);
+    HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][0], 1);
+    __HAL_TIM_SET_COUNTER(&htim1, 10);
 
-	HAL_ADC_Start_DMA(&hadc4, (uint32_t *)&measurement_buffers.RawADC[3][0], 1);
+    HAL_ADC_Start_DMA(&hadc4, (uint32_t *)&measurement_buffers.RawADC[3][0], 1);
 
-	__HAL_ADC_ENABLE_IT(
-	  &hadc1, ADC_IT_EOS);  // We are using the ADC_DMA, so the HAL initialiser
-							// doesn't actually enable the ADC conversion
-							// complete interrupt. This does.
+    __HAL_ADC_ENABLE_IT(
+      &hadc1, ADC_IT_EOS);  // We are using the ADC_DMA, so the HAL initialiser
+                            // doesn't actually enable the ADC conversion
+                            // complete interrupt. This does.
 }

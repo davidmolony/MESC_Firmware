@@ -121,7 +121,7 @@ function dump_MESCFingerprint()
 //  hex = hex + dump_c_char( DATETIME, (4/*YYYY*/+2/*MM*/+2/*DD*/)+(2/*hh*/+2/*mm*/)+1/*NUL*/ );
 
     hex = hex + dump_c_char( TIMESTAMP );
-    hex = hex + dump_c_char( '', 1 );
+    hex = hex + dump_c_char( '', 1 ); // NUL
     hex = hex + dump_c_char( '', 3 );
     hex = hex + GITHASH.toUpperCase();
 

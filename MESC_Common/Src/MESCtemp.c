@@ -46,20 +46,20 @@ void temp_init( TEMPProfile const * const profile )
     if (profile == PROFILE_DEFAULT)
     {
         static TEMPProfile temp_profile_default =
-		{
-        	.V                  = 3.3f,
-        	.R_F                = MESC_PROFILE_TEMP_R_F,
-			.adc_range          = 4096,
-			.method             = TEMP_METHOD_STEINHART_HART_BETA_R,
-			.schema             = MESC_PROFILE_TEMP_SCHEMA,
-			.parameters.SH.Beta = MESC_PROFILE_TEMP_SH_BETA,
-			.parameters.SH.r    = MESC_PROFILE_TEMP_SH_R,
-			.parameters.SH.T0   = CVT_CELSIUS_TO_KELVIN_F( 25.0f ),
-			.parameters.SH.R0   = MESC_PROFILE_TEMP_SH_R0,
+        {
+            .V                  = 3.3f,
+            .R_F                = MESC_PROFILE_TEMP_R_F,
+            .adc_range          = 4096,
+            .method             = TEMP_METHOD_STEINHART_HART_BETA_R,
+            .schema             = MESC_PROFILE_TEMP_SCHEMA,
+            .parameters.SH.Beta = MESC_PROFILE_TEMP_SH_BETA,
+            .parameters.SH.r    = MESC_PROFILE_TEMP_SH_R,
+            .parameters.SH.T0   = CVT_CELSIUS_TO_KELVIN_F( 25.0f ),
+            .parameters.SH.R0   = MESC_PROFILE_TEMP_SH_R0,
 
-			.limit.Tmin = CVT_CELSIUS_TO_KELVIN_F(  5.0f ),
-			.limit.Tmax = CVT_CELSIUS_TO_KELVIN_F( 80.0f ),
-		};
+            .limit.Tmin = CVT_CELSIUS_TO_KELVIN_F(  5.0f ),
+            .limit.Tmax = CVT_CELSIUS_TO_KELVIN_F( 80.0f ),
+        };
         uint32_t           temp_length = sizeof(temp_profile_default);
 
         ProfileStatus ret = profile_get_entry(
@@ -76,7 +76,7 @@ void temp_init( TEMPProfile const * const profile )
     }
     else
     {
-    	temp_profile = profile;
+        temp_profile = profile;
     }
 }
 
@@ -351,15 +351,15 @@ uint32_t temp_get_adc( float const T )
 int temp_check( uint32_t const adc_raw )
 {
 // TODO ERROR temp_profile == NULL
-	float const T = temp_read( adc_raw );
+    float const T = temp_read( adc_raw );
 
-	if  (
-			(T <= temp_profile->limit.Tmin)
-		||  (temp_profile->limit.Tmax <= T)
-		)
-	{
-		return 0;
-	}
+    if  (
+            (T <= temp_profile->limit.Tmin)
+        ||  (temp_profile->limit.Tmax <= T)
+        )
+    {
+        return 0;
+    }
 
-	return 1;
+    return 1;
 }

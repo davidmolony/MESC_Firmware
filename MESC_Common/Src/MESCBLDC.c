@@ -65,8 +65,8 @@ void BLDCCommuteHall() {
                   // reverse torque
                   // FIXME: what is this supposed to accomplish?
     // commented out since this code does nothing and is likely removed by
-    // the compiler. 	if(!(CurrentHallState==CurrentHallState)){
-    //	}
+    // the compiler.     if(!(CurrentHallState==CurrentHallState)){
+    //    }
   } else if (BLDCState == BLDC_BRAKE) {
     int hallStateChange = CurrentHallState - LastHallState;
     // ToDo Logic to always be on synch or hanging 1 step in front or
