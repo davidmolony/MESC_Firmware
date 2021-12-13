@@ -179,10 +179,10 @@ void fastLoop() {
         BLDCCommuteHall();
       }
       if (MotorControlType == MOTOR_CONTROL_TYPE_FOC) {
-        hallAngleEstimator();
+        //hallAngleEstimator();
         angleObserver();
         MESCFOC();
-        // fluxIntegrator();
+         fluxIntegrator();
       }
       break;
 
@@ -718,7 +718,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       // primarily used to drive the resistive part of the field; there is no
       // BEMF pushing against Vd and so it does not scale with RPM.
       static float V_d_limit = 150.0f;
-      static float V_q_limit = 680.0f;
+      static float V_q_limit = 650.0f;
 
       if (foc_vars.Vdq[0] > V_d_limit) (foc_vars.Vdq[0] = V_d_limit);
       if (foc_vars.Vdq[0] < -V_d_limit) (foc_vars.Vdq[0] = -V_d_limit);
@@ -770,9 +770,52 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
 
   void writePWM() {
-    ///////////////////////////////////////////////
+
+      ////////////////////////////////////////////////////////
+      // SVPM implementation
+      //Try to do this as a "midpoint clamp" where rather than finding the lowest, we find
+      //the highest and lowest and subtract the middle
+      float mid_value=0;
+      if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[1]){
+    	  if(foc_vars.inverterVoltage[2] < foc_vars.inverterVoltage[0]){
+    		//C low B high
+    		  mid_value = 512.0f + 0.5*(foc_vars.inverterVoltage[2] + foc_vars.inverterVoltage[1]);
+    	  }
+    	  else{
+    		  if(foc_vars.inverterVoltage[2] > foc_vars.inverterVoltage[1]){
+    			//A low C high
+        		  mid_value = 512.0f + 0.5*(foc_vars.inverterVoltage[0] + foc_vars.inverterVoltage[2]);
+    		  }
+    		  else{
+    			  //A low B high
+        		  mid_value = 512.0f + 0.5*(foc_vars.inverterVoltage[0] + foc_vars.inverterVoltage[1]);
+    		  }
+    	  }
+      }
+      else{
+    	  if(foc_vars.inverterVoltage[2] < foc_vars.inverterVoltage[1]){
+    		  //C low A high
+    		  mid_value = 512.0f + 0.5*(foc_vars.inverterVoltage[2] + foc_vars.inverterVoltage[0]);
+    	  }
+    	  else if(foc_vars.inverterVoltage[2] > foc_vars.inverterVoltage[0]){
+    		  //B low C high
+    		  mid_value = 512.0f + 0.5*(foc_vars.inverterVoltage[1] + foc_vars.inverterVoltage[2]);
+    	  }
+    	  else {
+    		  //B low A high
+    		  mid_value = 512.0f + 0.5*(foc_vars.inverterVoltage[1] + foc_vars.inverterVoltage[0]);
+    	  }
+      }
+
+      ////////////////////////////////////////////////////////
+      // Actually write the value to the timer registers
+      htim1.Instance->CCR1 = (uint16_t)(foc_vars.inverterVoltage[0]+mid_value);
+      htim1.Instance->CCR2 = (uint16_t)(foc_vars.inverterVoltage[1]+mid_value);
+      htim1.Instance->CCR3 = (uint16_t)(foc_vars.inverterVoltage[2]+mid_value);
+/*
+	  ///////////////////////////////////////////////
     if ((foc_vars.Vdq[1] > 300) | (foc_vars.Vdq[1] < -300)) {
-      // Bottom Clamp implementation. Implemented initially because this avoids
+      // Bottom Clamp implementation. Implemented initially because I thought this avoids
       // all nasty behaviour in the event of underflowing the timer CCRs; if
       // negative values fed to timers, they will saturate positive, which will
       // result in a near instant overcurrent event.
@@ -795,9 +838,6 @@ void VICheck() {  // Check currents, voltages are within panic limits
       foc_vars.inverterVoltage[1] -= minimumValue;
       foc_vars.inverterVoltage[2] -= minimumValue;
 
-      ////////////////////////////////////////////////////////
-      // SVPM implementation
-      // ToDo HAHA not ready for that yet, makes my brain hurt.
 
       ////////////////////////////////////////////////////////
       // Actually write the value to the timer registers
@@ -814,6 +854,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       htim1.Instance->CCR2 = (uint16_t)(512.0f + foc_vars.inverterVoltage[1]);
       htim1.Instance->CCR3 = (uint16_t)(512.0f + foc_vars.inverterVoltage[2]);
     }
+    */
   }
 
   // Here we set all the PWMoutputs to LOW, without triggering the timerBRK,
