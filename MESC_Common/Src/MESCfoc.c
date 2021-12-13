@@ -179,10 +179,10 @@ void fastLoop() {
         BLDCCommuteHall();
       }
       if (MotorControlType == MOTOR_CONTROL_TYPE_FOC) {
-        //hallAngleEstimator();
+        hallAngleEstimator();
         angleObserver();
         MESCFOC();
-         fluxIntegrator();
+         //fluxIntegrator();
       }
       break;
 
