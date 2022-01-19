@@ -47,7 +47,8 @@ void hw_init()
     g_hw_setup.RVBT = 82000;
     g_hw_setup.OpGain = 16;  // Can this be inferred from the HAL declaration?
     g_hw_setup.VBGain = (3.3f / 4096.0f) * (g_hw_setup.RVBB + g_hw_setup.RVBT) / g_hw_setup.RVBB;
-    g_hw_setup.Igain = 3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain * g_hw_setup.RIphPU / (g_hw_setup.RIphPU + g_hw_setup.RIphSR));
+    g_hw_setup.Igain =
+        3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain * SHUNT_POLARITY * g_hw_setup.RIphPU / (g_hw_setup.RIphPU + g_hw_setup.RIphSR));
     g_hw_setup.RawCurrLim = g_hw_setup.Imax * g_hw_setup.Rshunt * g_hw_setup.OpGain * (4096 / 3.3) + 2048;
     if (g_hw_setup.RawCurrLim > 4000)
     {
@@ -109,10 +110,9 @@ void setAWDVals()
     AWD_setpoints |= AWD_bottom_set_point;
     AWD_setpoints |= (AWD_top_set_point << 16);
     hadc3.Instance->TR1 = AWD_setpoints;
-    //Over Voltage
-    hadc1.Instance->TR2 = (g_hw_setup.RawVoltLim<<12);//AWD2 is an oddity since it only uses the top 8 bits
-    hadc1.Instance->AWD2CR = 0x2;//Set channel 0 as the guarded channel
-
+    // Over Voltage
+    hadc1.Instance->TR2 = (g_hw_setup.RawVoltLim << 12);  // AWD2 is an oddity since it only uses the top 8 bits
+    hadc1.Instance->AWD2CR = 0x2;                         // Set channel 0 as the guarded channel
 }
 
 void getRawADC(void)

@@ -46,6 +46,8 @@ float sqrt_two_on_3 = 0.816497;
 float sqrt3_2 = 1.22474;
 float sqrt2 = 1.41421;
 float sqrt1_2 = 0.707107;
+float sqrt3_on_2 = 0.866025;
+float two_on_sqrt3 = 1.73205;
 int adc_conv_end;
 uint8_t b_write_flash = 0;
 uint8_t b_read_flash = 0;
@@ -182,7 +184,7 @@ void fastLoop() {
         hallAngleEstimator();
         angleObserver();
         MESCFOC();
-         //fluxIntegrator();
+        // fluxIntegrator();
       }
       break;
 
@@ -330,8 +332,9 @@ void VICheck() {  // Check currents, voltages are within panic limits
   void ADCConversion() {
     getRawADC();
 #ifdef STM32F405xx
-    VICheck();//The f303 now uses the analog watchdog to process the over limits
-    //The f405 currently does not...
+    VICheck();  // The f303 now uses the analog watchdog to process the over
+                // limits
+                // The f405 currently does not...
 #endif
 
     // Here we take the raw ADC values, offset, cast to (float) and use the
@@ -398,20 +401,42 @@ void VICheck() {  // Check currents, voltages are within panic limits
         */
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //Version of Clark transform that avoids low duty cycle ADC measurements - use only 2 phases
+//        if(htim1.Instance->CCR2>900){
+//        	//Clark using phase U and W
+//        	foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][0];
+//        	foc_vars.Iab[1] = -sqrt1_2*measurement_buffers.ConvertedADC[0][0]-sqrt2*measurement_buffers.ConvertedADC[2][0];
+//        }
+//        else if(htim1.Instance->CCR3>900){
+//        //Clark using phase U and V
+//    //I think this is wrong!!! Bonus - sign on Ibeta
+//        	foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][0];
+//        	foc_vars.Iab[1] = sqrt2*measurement_buffers.ConvertedADC[1][0]-sqrt1_2*measurement_buffers.ConvertedADC[0][0];
+//        }
+//        else{
+//        	//Clark using phase V and W (hardware V1 has best ADC readings on channels V and W - U is plagued by the DCDC converter)
+//        	foc_vars.Iab[0] = -sqrt3_2*measurement_buffers.ConvertedADC[1][0]-sqrt3_2*measurement_buffers.ConvertedADC[2][0];
+//        	foc_vars.Iab[1] = sqrt1_2*measurement_buffers.ConvertedADC[1][0]-sqrt1_2*measurement_buffers.ConvertedADC[2][0];
+//        }
+//Power Variant transform
         if(htim1.Instance->CCR2>900){
         	//Clark using phase U and W
-        	foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][0];
-        	foc_vars.Iab[1] = -sqrt1_2*measurement_buffers.ConvertedADC[0][0]-sqrt2*measurement_buffers.ConvertedADC[2][0];
-        }
+        	foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
+        	foc_vars.Iab[1] = -one_on_sqrt3*measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] - two_on_sqrt3*measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+        	}
         else if(htim1.Instance->CCR3>900){
         //Clark using phase U and V
-        	foc_vars.Iab[0] = sqrt3_2*measurement_buffers.ConvertedADC[0][0];
-        	foc_vars.Iab[1] = sqrt2*measurement_buffers.ConvertedADC[1][0]-sqrt1_2*measurement_buffers.ConvertedADC[0][0];
+        	foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
+        	foc_vars.Iab[1] = two_on_sqrt3*measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] + one_on_sqrt3*two_on_sqrt3*measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
+        	}
+        else if(htim1.Instance->CCR1>900){
+        	//Clark using phase V and W (hardware V1 has best ADC readings on channels V and W - U is plagued by the DCDC converter)
+        	foc_vars.Iab[0] = -measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO]-measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+        	foc_vars.Iab[1] = one_on_sqrt3*measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO]-one_on_sqrt3*measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
         }
         else{
-        	//Clark using phase V and W (hardware V1 has best ADC readings on channels V and W - U is plagued by the DCDC converter)
-        	foc_vars.Iab[0] = -sqrt3_2*measurement_buffers.ConvertedADC[1][0]-sqrt3_2*measurement_buffers.ConvertedADC[2][0];
-        	foc_vars.Iab[1] = sqrt1_2*measurement_buffers.ConvertedADC[1][0]-sqrt1_2*measurement_buffers.ConvertedADC[2][0];
+        	//Do the full transform
+        	foc_vars.Iab[0] = 0.66666*measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO]-0.33333*measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] - 0.33333*measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+        	foc_vars.Iab[1] = sqrt3_on_2*measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] - sqrt3_on_2*measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
         }
 
         // Park
@@ -679,8 +704,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // Here we are going to do a PID loop to control the dq currents, converting
     // Idq into Vdq Calculate the errors
     static float Idq_err[2];
-    Idq_err[0] = foc_vars.Idq[0] - foc_vars.Idq_req[0];
-    Idq_err[1] = foc_vars.Idq[1] - foc_vars.Idq_req[1];
+    Idq_err[0] = foc_vars.Idq_req[0] - foc_vars.Idq[0];
+    Idq_err[1] = foc_vars.Idq_req[1] - foc_vars.Idq[1];
 
     // Integral error
     static float Idq_int_err[2];
@@ -696,7 +721,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       // Bounding
       // clang-format off
         static float integral_d_limit = 150.0f;
-        static float integral_q_limit = 650.0f;
+        static float integral_q_limit = 512.0f;
 
         if (Idq_int_err[0] > integral_d_limit){Idq_int_err[0] = integral_d_limit;}
         if (Idq_int_err[0] < -integral_d_limit){Idq_int_err[0] = -integral_d_limit;}
@@ -716,16 +741,17 @@ void VICheck() {  // Check currents, voltages are within panic limits
       // in reducing overall voltage magnitude, since the relation
       // Vout=(Vd^2+Vq^2)^0.5 results in Vd having a small effect. Vd is
       // primarily used to drive the resistive part of the field; there is no
-      // BEMF pushing against Vd and so it does not scale with RPM.
+      // BEMF pushing against Vd and so it does not scale with RPM (except for
+      // cross coupling).
       static float V_d_limit = 150.0f;
-      static float V_q_limit = 650.0f;
+      static float V_q_limit = 512.0f;
 
       if (foc_vars.Vdq[0] > V_d_limit) (foc_vars.Vdq[0] = V_d_limit);
       if (foc_vars.Vdq[0] < -V_d_limit) (foc_vars.Vdq[0] = -V_d_limit);
       if (foc_vars.Vdq[1] > V_q_limit) (foc_vars.Vdq[1] = V_q_limit);
       if (foc_vars.Vdq[1] < -V_q_limit) (foc_vars.Vdq[1] = -V_q_limit);
-      foc_vars.Vdq_smoothed[1] =
-          (999 * foc_vars.Vdq_smoothed[1] + foc_vars.Vdq[1]) * 0.001;
+      // foc_vars.Vdq_smoothed[1] = (999 * foc_vars.Vdq_smoothed[1] +
+      // foc_vars.Vdq[1]) * 0.001;
       i = FOC_PERIODS;
       // Field weakening? - The below works pretty nicely, but needs turning
       // into an implementation where it is switchable by the user. Not useable
@@ -757,104 +783,130 @@ void VICheck() {  // Check currents, voltages are within panic limits
     foc_vars.Vab[1] = foc_vars.sincosangle[0] * foc_vars.Vdq[0] +
                       foc_vars.sincosangle[1] * foc_vars.Vdq[1];
     foc_vars.Vab[2] = 0;
-    // Inverse Clark transform - power invariant
-    foc_vars.inverterVoltage[0] = 0;
-    foc_vars.inverterVoltage[1] = -foc_vars.Vab[0] * one_on_sqrt6;
-    foc_vars.inverterVoltage[2] =
-        foc_vars.inverterVoltage[1] - one_on_sqrt2 * foc_vars.Vab[1];
-    foc_vars.inverterVoltage[1] =
-        foc_vars.inverterVoltage[1] + one_on_sqrt2 * foc_vars.Vab[1];
-    foc_vars.inverterVoltage[0] = sqrt_two_on_3 * foc_vars.Vab[0];
+    // clang-format off
 
-    writePWM();
+    // Inverse Clark transform - power invariant
+    //foc_vars.inverterVoltage[0] = 0;
+//    foc_vars.inverterVoltage[1] = -foc_vars.Vab[0] * one_on_sqrt6;
+//    foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[1] - one_on_sqrt2 * foc_vars.Vab[1];
+//    foc_vars.inverterVoltage[1] = foc_vars.inverterVoltage[1] + one_on_sqrt2 * foc_vars.Vab[1];
+//    foc_vars.inverterVoltage[0] = sqrt_two_on_3 * foc_vars.Vab[0];
+
+    // Inverse Clark transform - power variant
+    	foc_vars.inverterVoltage[0] = foc_vars.Vab[0];
+        foc_vars.inverterVoltage[1] = -0.5*foc_vars.inverterVoltage[0];
+        foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[1] - sqrt3_on_2 * foc_vars.Vab[1];
+        foc_vars.inverterVoltage[1] = foc_vars.inverterVoltage[1] + sqrt3_on_2 * foc_vars.Vab[1];
+    writePWM();  // clang-format on
   }
 
+  static float mid_value = 0;
+
   void writePWM() {
+    ////////////////////////////////////////////////////////
+    // SVPM implementation
+    // Try to do this as a "midpoint clamp" where rather than finding the
+    // lowest, we find the highest and lowest and subtract the middle
+    //    float top_value = foc_vars.inverterVoltage[0];
+    //    float bottom_value = top_value;
+    //
+    //    if (foc_vars.inverterVoltage[1] > top_value) {
+    //      top_value = foc_vars.inverterVoltage[1];
+    //    }
+    //    if (foc_vars.inverterVoltage[2] > top_value) {
+    //      top_value = foc_vars.inverterVoltage[2];
+    //    }
+    //    if (foc_vars.inverterVoltage[1] < bottom_value) {
+    //      bottom_value = foc_vars.inverterVoltage[1];
+    //    }
+    //    if (foc_vars.inverterVoltage[2] < bottom_value) {
+    //      bottom_value = foc_vars.inverterVoltage[2];
+    //    }
+    //
+    //    mid_value = 512.0f - 0.5 * (top_value + bottom_value);
 
-      ////////////////////////////////////////////////////////
-      // SVPM implementation
-      //Try to do this as a "midpoint clamp" where rather than finding the lowest, we find
-      //the highest and lowest and subtract the middle
-      float mid_value=0;
-      if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[1]){
-    	  if(foc_vars.inverterVoltage[2] < foc_vars.inverterVoltage[0]){
-    		//C low B high
-    		  mid_value = 512.0f + 0.5*(foc_vars.inverterVoltage[2] + foc_vars.inverterVoltage[1]);
-    	  }
-    	  else{
-    		  if(foc_vars.inverterVoltage[2] > foc_vars.inverterVoltage[1]){
-    			//A low C high
-        		  mid_value = 512.0f + 0.5*(foc_vars.inverterVoltage[0] + foc_vars.inverterVoltage[2]);
-    		  }
-    		  else{
-    			  //A low B high
-        		  mid_value = 512.0f + 0.5*(foc_vars.inverterVoltage[0] + foc_vars.inverterVoltage[1]);
-    		  }
-    	  }
-      }
-      else{
-    	  if(foc_vars.inverterVoltage[2] < foc_vars.inverterVoltage[1]){
-    		  //C low A high
-    		  mid_value = 512.0f + 0.5*(foc_vars.inverterVoltage[2] + foc_vars.inverterVoltage[0]);
-    	  }
-    	  else if(foc_vars.inverterVoltage[2] > foc_vars.inverterVoltage[0]){
-    		  //B low C high
-    		  mid_value = 512.0f + 0.5*(foc_vars.inverterVoltage[1] + foc_vars.inverterVoltage[2]);
-    	  }
-    	  else {
-    		  //B low A high
-    		  mid_value = 512.0f + 0.5*(foc_vars.inverterVoltage[1] + foc_vars.inverterVoltage[0]);
-    	  }
-      }
-
-      ////////////////////////////////////////////////////////
-      // Actually write the value to the timer registers
-      htim1.Instance->CCR1 = (uint16_t)(foc_vars.inverterVoltage[0]+mid_value);
-      htim1.Instance->CCR2 = (uint16_t)(foc_vars.inverterVoltage[1]+mid_value);
-      htim1.Instance->CCR3 = (uint16_t)(foc_vars.inverterVoltage[2]+mid_value);
-/*
-	  ///////////////////////////////////////////////
-    if ((foc_vars.Vdq[1] > 300) | (foc_vars.Vdq[1] < -300)) {
-      // Bottom Clamp implementation. Implemented initially because I thought this avoids
-      // all nasty behaviour in the event of underflowing the timer CCRs; if
-      // negative values fed to timers, they will saturate positive, which will
-      // result in a near instant overcurrent event.
-
-      float minimumValue = 0;
-
-      if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[1]) {
-        if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[2]) {
-          minimumValue = foc_vars.inverterVoltage[0];
-        } else {
-          minimumValue = foc_vars.inverterVoltage[2];
-        }
-      } else if (foc_vars.inverterVoltage[1] < foc_vars.inverterVoltage[2]) {
-        minimumValue = foc_vars.inverterVoltage[1];
+    if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[1]) {
+      if (foc_vars.inverterVoltage[2] < foc_vars.inverterVoltage[0]) {
+        // C low B high
+        mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[2] +
+                                    foc_vars.inverterVoltage[1]);
       } else {
-        minimumValue = foc_vars.inverterVoltage[2];
+        if (foc_vars.inverterVoltage[2] > foc_vars.inverterVoltage[1]) {
+          // A low C high
+          mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[0] +
+                                      foc_vars.inverterVoltage[2]);
+        } else {
+          // A low B high
+          mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[0] +
+                                      foc_vars.inverterVoltage[1]);
+        }
       }
-
-      foc_vars.inverterVoltage[0] -= minimumValue;
-      foc_vars.inverterVoltage[1] -= minimumValue;
-      foc_vars.inverterVoltage[2] -= minimumValue;
-
-
-      ////////////////////////////////////////////////////////
-      // Actually write the value to the timer registers
-      htim1.Instance->CCR1 = (uint16_t)(foc_vars.inverterVoltage[0]);
-      htim1.Instance->CCR2 = (uint16_t)(foc_vars.inverterVoltage[1]);
-      htim1.Instance->CCR3 = (uint16_t)(foc_vars.inverterVoltage[2]);
+    } else {
+      if (foc_vars.inverterVoltage[2] < foc_vars.inverterVoltage[1]) {
+        // C low A high
+        mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[2] +
+                                    foc_vars.inverterVoltage[0]);
+      } else if (foc_vars.inverterVoltage[2] > foc_vars.inverterVoltage[0]) {
+        // B low C high
+        mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[1] +
+                                    foc_vars.inverterVoltage[2]);
+      } else {
+        // B low A high
+        mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[1] +
+                                    foc_vars.inverterVoltage[0]);
+      }
     }
 
-    ///////////////////////////////////////////////
+    ////////////////////////////////////////////////////////
+    // Actually write the value to the timer registers
+    htim1.Instance->CCR1 = (uint16_t)(foc_vars.inverterVoltage[0] + mid_value);
+    htim1.Instance->CCR2 = (uint16_t)(foc_vars.inverterVoltage[1] + mid_value);
+    htim1.Instance->CCR3 = (uint16_t)(foc_vars.inverterVoltage[2] + mid_value);
+    /*
+              ///////////////////////////////////////////////
+        if ((foc_vars.Vdq[1] > 300) | (foc_vars.Vdq[1] < -300)) {
+          // Bottom Clamp implementation. Implemented initially because I
+       thought this avoids
+          // all nasty behaviour in the event of underflowing the timer CCRs; if
+          // negative values fed to timers, they will saturate positive, which
+       will
+          // result in a near instant overcurrent event.
 
-    else {
-      // Sinusoidal implementation
-      htim1.Instance->CCR1 = (uint16_t)(512.0f + foc_vars.inverterVoltage[0]);
-      htim1.Instance->CCR2 = (uint16_t)(512.0f + foc_vars.inverterVoltage[1]);
-      htim1.Instance->CCR3 = (uint16_t)(512.0f + foc_vars.inverterVoltage[2]);
-    }
-    */
+          float minimumValue = 0;
+
+          if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[1]) {
+            if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[2]) {
+              minimumValue = foc_vars.inverterVoltage[0];
+            } else {
+              minimumValue = foc_vars.inverterVoltage[2];
+            }
+          } else if (foc_vars.inverterVoltage[1] < foc_vars.inverterVoltage[2])
+       { minimumValue = foc_vars.inverterVoltage[1]; } else { minimumValue =
+       foc_vars.inverterVoltage[2];
+          }
+
+          foc_vars.inverterVoltage[0] -= minimumValue;
+          foc_vars.inverterVoltage[1] -= minimumValue;
+          foc_vars.inverterVoltage[2] -= minimumValue;
+
+
+          ////////////////////////////////////////////////////////
+          // Actually write the value to the timer registers
+          htim1.Instance->CCR1 = (uint16_t)(foc_vars.inverterVoltage[0]);
+          htim1.Instance->CCR2 = (uint16_t)(foc_vars.inverterVoltage[1]);
+          htim1.Instance->CCR3 = (uint16_t)(foc_vars.inverterVoltage[2]);
+        }
+
+        ///////////////////////////////////////////////
+
+        else {
+          // Sinusoidal implementation
+          htim1.Instance->CCR1 = (uint16_t)(512.0f +
+       foc_vars.inverterVoltage[0]); htim1.Instance->CCR2 = (uint16_t)(512.0f +
+       foc_vars.inverterVoltage[1]); htim1.Instance->CCR3 = (uint16_t)(512.0f +
+       foc_vars.inverterVoltage[2]);
+        }
+        */
   }
 
   // Here we set all the PWMoutputs to LOW, without triggering the timerBRK,
@@ -1252,7 +1304,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
         2.0f * (float)htim1.Instance->ARR / (float)HAL_RCC_GetHCLKFreq();
 
     foc_vars.pwm_frequency =
-        (float)HAL_RCC_GetHCLKFreq() / (2 * (float)htim1.Instance->ARR);
+        (float)HAL_RCC_GetHCLKFreq() /
+        (2 * (float)htim1.Instance->ARR * ((float)htim1.Instance->PSC + 1));
 
     foc_vars.Iq_pgain = foc_vars.pwm_frequency * motor.Lphase *
                         ((float)htim1.Instance->ARR * 0.5) /
@@ -1304,18 +1357,18 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
     // If the event was CC1...
     if (fCC1 != RESET) {
-      if (measurement_buffers.RawADC[1][3] > 700) {
+      if (measurement_buffers.RawADC[1][3] > 1200) {
         foc_vars.Idq_req[1] =
             foc_vars.Idq_req[1] +
-            (((float)(measurement_buffers.RawADC[1][3] - 700)) * 0.06f);
+            (((float)(measurement_buffers.RawADC[1][3] - 1200)) * 0.02f);
       } else {
       }
     }
     // If the event was UPDATE ...
     else if (fUPD != RESET) {
-      if (measurement_buffers.RawADC[1][3] > 700) {
+      if (measurement_buffers.RawADC[1][3] > 1200) {
         foc_vars.Idq_req[1] =
-            (((float)(measurement_buffers.RawADC[1][3] - 700)) * 0.06f);
+            (((float)(measurement_buffers.RawADC[1][3] - 1200)) * 0.02f);
       } else {
         foc_vars.Idq_req[1] = 0.0f;
       }

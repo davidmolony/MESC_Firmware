@@ -30,6 +30,11 @@
 #define FOC_NUM_ADC (4)
 #define FOC_PERIODS (1)
 
+#define ADCIU (0)
+#define ADCIV (1)
+#define ADCIW (2)
+#define I_CONV_NO (0)
+
 // fixme: I think this type of stuff is causing confusion later on especially in
 // the code that strives for maintainability. What does an alias give you?
 typedef uint16_t foc_angle_t;

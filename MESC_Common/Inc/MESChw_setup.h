@@ -28,6 +28,7 @@
 //:
 //#define HW_SETUP_IGAIN ((HW_SETUP_RSHUNT*...)/(...))
 // _OR
+#define SHUNT_POLARITY -1.0
 
 typedef float
     hardware_vars_t;  // Let's have all the hardware and everything in float for

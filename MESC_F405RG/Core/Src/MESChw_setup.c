@@ -39,7 +39,7 @@ void motor_init() {
 void hw_init() {
   g_hw_setup.Imax =
       24.0;  // Imax is the current at which we are either no longer able to
-              // read it, or hardware "don't ever exceed to avoid breakage"
+             // read it, or hardware "don't ever exceed to avoid breakage"
   g_hw_setup.Vmax = 30.0;  // Headroom beyond which likely to get avalanche of
                            // MOSFETs or DCDC converter
   g_hw_setup.Vmin = 10;  // This implies that the PSU has crapped out or a wire
@@ -50,8 +50,7 @@ void hw_init() {
   g_hw_setup.OpGain = 10;   //
   g_hw_setup.VBGain =
       (3.3f / 4096.0f) * (g_hw_setup.RVBB + g_hw_setup.RVBT) / g_hw_setup.RVBB;
-  g_hw_setup.Igain =
-      3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain);  // TODO
+  g_hw_setup.Igain = 3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain * SHUNT_POLARITY);  // TODO
   g_hw_setup.RawCurrLim =
       g_hw_setup.Imax * g_hw_setup.Rshunt * g_hw_setup.OpGain * (4096 / 3.3) +
       2048;
