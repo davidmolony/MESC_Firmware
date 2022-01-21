@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,32 +29,70 @@
 
 const SPEED_PROFILE_SIGNATURE = 'MSPE';
 
+const SPEED_PROFILE_SIZE = 44;
+
 // SPEEDProfile
 function dump_SPEEDProfile( profile )
 {
+    console.log( "dump_SPEEDProfile" );
     var hex = '';
 
-    hex = hex + dump_c_float( profile.motor.Imax );
-    hex = hex + dump_c_float( profile.motor.Vmax );
-    hex = hex + dump_c_float( profile.motor.Pmax );
-    hex = hex + dump_c_uint32_t( profile.motor.RPMmax );
-    hex = hex + dump_c_uint8_t( profile.motor.pole_pairs );
-    hex = hex + dump_c_uint8_t( profile.motor.direction );
-    hex = hex + dump_c_uint8_t( profile.motor.allow_regen );
+    hex = hex + dump_c_float( profile.motor_Imax );
+    hex = hex + dump_c_float( profile.motor_Vmax );
+    hex = hex + dump_c_float( profile.motor_Pmax );
+    hex = hex + dump_c_uint32_t( profile.motor_RPMmax );
+    hex = hex + dump_c_uint8_t( profile.motor_pole_pairs );
+    hex = hex + dump_c_uint8_t( profile.motor_direction );
+    hex = hex + dump_c_uint8_t( profile.motor_allow_regen );
     hex = hex + dump_c_uint8_t( 0 );
 
-    hex = hex + dump_c_uint8_t( profile.sensor.type );
+    hex = hex + dump_c_uint8_t( profile.sensor_type );
     for ( let h = 0; h < 6; h++ )
     {
-        hex = hex + dump_c_uint8_t( profile.sensor.hall_states[h] );
+        hex = hex + dump_c_uint8_t( profile.sensor_hall_states[h] );
     }
     hex = hex + dump_c_uint8_t( 0 );
 
-    hex = hex + dump_c_uint32_t( profile.gear_ratio.motor );
-    hex = hex + dump_c_uint32_t( profile.gear_ratio.wheel );
+    hex = hex + dump_c_uint32_t( profile.gear_ratio_motor );
+    hex = hex + dump_c_uint32_t( profile.gear_ratio_wheel );
 
-    hex = hex + dump_c_float( profile.wheel.diameter );
-    hex = hex + dump_c_float( profile.wheel.conversion );
+    hex = hex + dump_c_float( profile.wheel_diameter );
+    hex = hex + dump_c_float( profile.wheel_conversion );
 
     return hex;
 }
+
+function SPEEDProfile()
+{
+    this.motor_Imax = undefined;
+    this.motor_Vmax = undefined;
+    this.motor_Pmax = undefined;
+    this.motor_RPMmax = undefined;
+    this.motor_pole_pairs = undefined;
+    this.motor_direction = undefined;
+    this.motor_allow_regen = undefined;
+
+    this.sensor_type = undefined;
+    this.sensor_hall_states = new Array(6);
+    for ( let h = 0; h < 6; h++ )
+    {
+        this.sensor_hall_states[h] = undefined;
+    }
+
+    this.gear_ratio_motor = undefined;
+    this.gear_ratio_wheel = undefined;
+
+    this.wheel_diameter = undefined;
+    this.wheel_conversion = undefined;
+}
+
+SPEEDProfile.prototype.size = function()
+{
+    return SPEED_PROFILE_SIZE;
+}
+
+SPEEDProfile.prototype.dump = function()
+{
+    return dump_SPEEDProfile( this );
+}
+

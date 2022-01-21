@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -34,33 +34,72 @@ const BAT_DISPLAY_PERCENT = 0;
 const BAT_DISPLAY_AMPHOUR = 1;
 //end
 
+const BAT_PROFILE_SIZE = 56;
+
 // BATProfile
-function dump_BATProfile()
+function dump_BATProfile( profile )
 {
+    console.log( "dump_BATProfile" );
     var hex = '';
 
-    hex = hex + dump_c_float( profile.cell.Imax );
-    hex = hex + dump_c_float( profile.cell.Vmax );
-    hex = hex + dump_c_float( profile.cell.Cmax );
+    hex = hex + dump_c_float( profile.cell_Imax );
+    hex = hex + dump_c_float( profile.cell_Vmax );
+    hex = hex + dump_c_float( profile.cell_Cmax );
 
-    hex = hex + dump_c_float( profile.cell.Imid );
-    hex = hex + dump_c_float( profile.cell.Cmid );
+    hex = hex + dump_c_float( profile.cell_Vmid );
+    hex = hex + dump_c_float( profile.cell_Cmid );
 
-    hex = hex + dump_c_float( profile.cell.Vlow );
-    hex = hex + dump_c_float( profile.cell.Clow );
+    hex = hex + dump_c_float( profile.cell_Vlow );
+    hex = hex + dump_c_float( profile.cell_Clow );
 
-    hex = hex + dump_c_float( profile.cell.Vmin );
+    hex = hex + dump_c_float( profile.cell_Vmin );
 
-    hex = hex + dump_c_float( profile.battery.Imax );
-    hex = hex + dump_c_float( profile.battery.Pmax );
+    hex = hex + dump_c_float( profile.battery_Imax );
+    hex = hex + dump_c_float( profile.battery_Pmax );
 
-    hex = hex + dump_c_float( profile.battery.ESR );
+    hex = hex + dump_c_float( profile.battery_ESR );
 
-    hex = hex + dump_c_uint8_t( profile.battery.parallel );
-    hex = hex + dump_c_uint8_t( profile.battery.series   );
+    hex = hex + dump_c_uint8_t( profile.battery_parallel );
+    hex = hex + dump_c_uint8_t( profile.battery_series   );
 
-    hex = hex + dump_c_int( profile.display );
+    hex = hex + dump_c_uint8_t( profile.display );
     hex = hex + dump_c_uint8_t( profile.allow_regen );
 
     return hex;
+}
+
+function BATProfile()
+{
+    this.cell_Imax = undefined;
+    this.cell_Vmax = undefined;
+    this.cell_Cmax = undefined;
+
+    this.cell_Vmid = undefined;
+    this.cell_Cmid = undefined;
+
+    this.cell_Vlow = undefined;
+    this.cell_Clow = undefined;
+
+    this.cell_Vmin = undefined;
+
+    this.battery_Imax = undefined;
+    this.battery_Pmax = undefined;
+
+    this.battery_ESR = undefined;
+
+    this.battery_parallel = undefined;
+    this.battery_series = undefined;
+
+    this.display = undefined;
+    this.allow_regen = undefined;
+}
+
+BATProfile.prototype.size = function()
+{
+    return BAT_PROFILE_SIZE;
+}
+
+BATProfile.prototype.dump = function()
+{
+    return dump_BATProfile( this );
 }

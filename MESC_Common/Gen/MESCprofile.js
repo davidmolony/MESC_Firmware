@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -57,6 +57,8 @@ const PROFILE_ENTRY_SIGNATURE = 'MPEH';
 
 const PROFILE_ENTRY_MAX_NAME_LENGTH = 12;
 
+const PROFILE_ENTRY_SIZE = 32;
+
 const ENTRIES_PER_MAP_ENTRY = (PROFILE_MAX_ENTRIES / PROFILE_ENTRY_BITS);
 
 // ProfileHeader
@@ -67,17 +69,30 @@ function ProfileHeader()
 
     this._entry    = new Array( PROFILE_MAX_ENTRIES * ENTRIES_PER_MAP_ENTRY );
     this.entry_map = new Array( PROFILE_MAX_ENTRIES );
+
+    for ( let e = 0, i = 0; e < PROFILE_MAX_ENTRIES; e++ )
+    {
+        var v = 0;
+
+        for ( let me = 0; me < ENTRIES_PER_MAP_ENTRY; me++, i++ )
+        {
+            this._entry[i] = new ProfileEntry( this, i, 'NULL' );
+            v = (v << 2) | PROFILE_ENTRY_FREE;
+        }
+
+        this.entry_map[e] = v;
+    }
 }
 
 ProfileHeader.prototype.addEntry = function(index,signature)
 {
-    var entry_map_index  = index / ENTRIES_PER_MAP_ENTRY;
-    var entry_map_offset = index % ENTRIES_PER_MAP_ENTRY;
+    var entry_map_index  = Math.floor(index / ENTRIES_PER_MAP_ENTRY);
+    var entry_map_offset =            index % ENTRIES_PER_MAP_ENTRY;
 
     this.entry_map[entry_map_index] = (this.entry_map[entry_map_index] & ~(PROFILE_ENTRY_MASK << (entry_map_offset * PROFILE_ENTRY_BITS)))
                                     |                                     (PROFILE_ENTRY_USED << (entry_map_offset * PROFILE_ENTRY_BITS));
 
-    this._entry[index] = new ProfileEntry(this,index,signature);
+    this._entry[index] = new ProfileEntry( this, index, signature );
     return this.getEntry(index);
 };
 
@@ -86,39 +101,73 @@ ProfileHeader.prototype.getEntry = function(index)
     return this._entry[index];
 }
 
+ProfileHeader.prototype.remEntry = function(index)
+{
+    var entry_map_index  = Math.floor(index / ENTRIES_PER_MAP_ENTRY);
+    var entry_map_offset =            index % ENTRIES_PER_MAP_ENTRY;
+
+    this.entry_map[entry_map_index] = (this.entry_map[entry_map_index] & ~(PROFILE_ENTRY_MASK << (entry_map_offset * PROFILE_ENTRY_BITS)))
+                                    |                                     (PROFILE_ENTRY_FREE << (entry_map_offset * PROFILE_ENTRY_BITS));
+
+    return this._entry[index] = new ProfileEntry( this, index, 'NULL' );
+}
+
 ProfileHeader.prototype.dump_image = function()
 {
     var hex = '';
+    var offset = 0;
+
+    for ( let e = 0, i = 0; e < PROFILE_MAX_ENTRIES; e++ )
+    {
+        for ( let me = 0; me < ENTRIES_PER_MAP_ENTRY; me++, i++ )
+        {
+            var pe = (this.entry_map[e] >> (2 * me)) & 3;
+
+            switch (pe) {
+                case PROFILE_ENTRY_FREE:
+                    // Nothing
+                    hex = hex + dump_c_char( '', PROFILE_ENTRY_SIZE );
+                    break;
+                case PROFILE_ENTRY_DATA:
+                case PROFILE_ENTRY_LOCK:
+                case PROFILE_ENTRY_USED:
+                    this._entry[i]._data_length = this._entry[i]._profile.size();
+                    this._entry[i]._data_offset = offset;
+
+                    offset = offset + this._entry[i]._data_length;
+
+                    console.log( "dump_ProfileEntry[" + i.toString() + "]" );
+                    hex = hex + dump_ProfileEntry( this._entry[i] );
+                    break;
+            }
+        }
+    }
+
+    for ( let e = 0, i = 0; e < PROFILE_MAX_ENTRIES; e++ )
+    {
+        for ( let me = 0; me < ENTRIES_PER_MAP_ENTRY; me++, i++ )
+        {
+            var pe = (this.entry_map[e] >> (2 * me)) & 3;
+
+            switch (pe) {
+                case PROFILE_ENTRY_FREE:
+                    // Nothing
+                    break;
+                case PROFILE_ENTRY_DATA:
+                case PROFILE_ENTRY_LOCK:
+                case PROFILE_ENTRY_USED:
+                    hex = hex + this._entry[i]._profile.dump();
+                    break;
+            }
+        }
+    }
 
     return hex;
 };
 
-ProfileHeader.prototype.checksum = function()
-{
-    var fnv = fnv1a_init();
-
-    // TODO fnv1a_process( fnv, byte )
-
-    return fnv;
-};
-
-ProfileHeader.prototype.image_length = function()
-{
-    // TODO
-    return 0;
-};
-
-ProfileHeader.prototype.image_checksum = function()
-{
-    var fnv = fnv1a_init();
-
-    // TODO fnv1a_process( fnv, byte )
-
-    return fnv;
-};
-
 function dump_ProfileHeader( header )
 {
+    console.log( "dump_ProfileHeader" );
     var hex = '';
 
     hex = hex + dump_c_char( PROFILE_SIGNATURE, 4 );
@@ -128,19 +177,29 @@ function dump_ProfileHeader( header )
     hex = hex + dump_c_uint8_t( PROFILE_VERSION_MINOR );
     hex = hex + dump_c_uint8_t( PROFILE_HEADER_SIZE   );
 
-    hex = hex + dump_c_uint32_t( header.checksum() );
+    var offsetof_checksum = hex.length;
+    hex = hex + dump_c_char( PROFILE_SIGNATURE, 4 ); // checksum
+    var endof_checksum = hex.length;
 
     for ( let e = 0; e < PROFILE_MAX_ENTRIES; e++ )
     {
         hex = hex + dump_c_uint8_t( header.entry_map[e] );
     }
 
-    hex = hex + dump_c_uint32_t( header.image_length()   );
-    hex = hex + dump_c_uint32_t( header.image_checksum() );
+    var image_hex = header.dump_image();
+    var image_length = image_hex.length / NYBBLES_PER_BYTE;
+    var image_checksum = fnv1a_process_hex( image_hex );
+
+    hex = hex + dump_c_uint32_t( image_length   );
+    hex = hex + dump_c_uint32_t( image_checksum );
 
     hex = hex + dump_MESCFingerprint();
 
-    hex = hex + header.dump_image();
+    var checksum = fnv1a_process_hex( hex );
+
+    hex = hex.substring(0,offsetof_checksum) + dump_c_uint32_t(checksum) + hex.substring(endof_checksum);
+
+    hex = hex + image_hex;
 
     return hex;
 }
@@ -150,17 +209,17 @@ function ProfileEntry( header, index, signature )
     this._header = header;
     this._index = index;
 
-    this._name = '';
+    this._name = undefined;
 
     this._data_signature = signature;
 
-    this._data_length = 0;
-    this._data_offset= 0;
+    this._data_length = undefined;
+    this._data_offset = undefined;
 }
 
 ProfileEntry.prototype.setName = function( name )
 {
-
+    this._name = name;
 }
 
 // ProfileEntry
@@ -172,14 +231,14 @@ function dump_ProfileEntry( entry )
 
     hex = hex + dump_c_uint8_t( 0 );
     hex = hex + dump_c_uint8_t( PROFILE_ENTRY_SIZE );
-    hex = hex + dump_c_uint8_t( entry.name.length );
-    hex = hex + dump_c_char( entry.name, PROFILE_ENTRY_MAX_NAME_LENGTH );
+    hex = hex + dump_c_uint8_t( entry._name.length );
+    hex = hex + dump_c_char( entry._name, PROFILE_ENTRY_MAX_NAME_LENGTH );
     hex = hex + dump_c_uint8_t( 0 );
 
-    hex = hex + dump_c_uint32_t( entry.data_signature );
+    hex = hex + dump_c_uint32_t( entry._data_signature );
 
-    hex = hex + dump_c_uint32_t( entry.data_length );
-    hex = hex + dump_c_uint32_t( entry.data_offset );
+    hex = hex + dump_c_uint32_t( entry._data_length );
+    hex = hex + dump_c_uint32_t( entry._data_offset );
 
     return hex;
 }

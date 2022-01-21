@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -41,14 +41,17 @@ const TEMP_SCHEMA_R_F_ON_R_T = 0;
 const TEMP_SCHEMA_R_T_ON_R_F = 1;
 //end
 
+const TEMP_PROFILE_SIZE = 56;
+
 // TEMPProfile
 function dump_TEMPProfile( profile )
 {
+    console.log( "dump_TEMPProfile" );
     var hex = '';
 
     hex = hex + dump_c_float( profile.V );
     hex = hex + dump_c_float( profile.R_F );
-
+    // TODO adc
     hex = hex + dump_c_uint32_t( profile.adc_range );
 
     hex = hex + dump_c_int( profile.method );
@@ -57,32 +60,79 @@ function dump_TEMPProfile( profile )
     switch (profile.method)
     {
         case TEMP_METHOD_CURVE_APPROX:
-            hex = hex + dump_c_float( profile.parameters.approx.A   );
-            hex = hex + dump_c_float( profile.parameters.approx.B   );
+            hex = hex + dump_c_float( profile.parameters_approx_A   );
+            hex = hex + dump_c_float( profile.parameters_approx_B   );
             hex = hex + dump_c_char( '', 4 );
 
             hex = hex + dump_c_char( '', 4 );
             hex = hex + dump_c_char( '', 4 );
 
-            hex = hex + dump_c_float( profile.parameters.approx.Tlo );
+            hex = hex + dump_c_float( profile.parameters_approx_Tlo );
             hex = hex + dump_c_char( '', 4 );
             break;
         case TEMP_METHOD_STEINHART_HART_ABC:
         case TEMP_METHOD_STEINHART_HART_BETA_R:
-            hex = hex + dump_c_float( profile.parameters.SH.A    );
-            hex = hex + dump_c_float( profile.parameters.SH.B    );
-            hex = hex + dump_c_float( profile.parameters.SH.C    );
+            hex = hex + dump_c_float( profile.parameters_SH_A    );
+            hex = hex + dump_c_float( profile.parameters_SH_B    );
+            hex = hex + dump_c_float( profile.parameters_SH_C    );
 
-            hex = hex + dump_c_float( profile.parameters.SH.Beta );
-            hex = hex + dump_c_float( profile.parameters.SH.r    );
+            hex = hex + dump_c_float( profile.parameters_SH_Beta );
+            hex = hex + dump_c_float( profile.parameters_SH_r    );
 
-            hex = hex + dump_c_float( profile.parameters.SH.T0   );
-            hex = hex + dump_c_float( profile.parameters.SH.R0   );
+            hex = hex + dump_c_float( profile.parameters_SH_T0   );
+            hex = hex + dump_c_float( profile.parameters_SH_R0   );
 
-            hex = hex + dump_c_float( profile.limit.Tmin );
-            hex = hex + dump_c_float( profile.limit.Tmax );
+            hex = hex + dump_c_float( profile.limit_Tmin );
+            hex = hex + dump_c_float( profile.limit_Tmax );
             break;
     }
 
     return hex;
+}
+
+function TEMPProfile()
+{
+    this.V = undefined;
+    this.R_F = undefined;
+    // TODO adc
+    this.adc_range = undefined;
+
+    this.method = undefined;
+    this.schema = undefined;
+    // TEMP_METHOD_CURVE_APPROX
+    this.parameters_approx_A = undefined;
+    this.parameters_approx_B = undefined;
+
+    this.parameters_approx_Tlo = undefined;
+    // TEMP_METHOD_STEINHART_HART_ABC
+    // TEMP_METHOD_STEINHART_HART_BETA_R
+    this.parameters_SH_A = undefined;
+    this.parameters_SH_B = undefined;
+    this.parameters_SH_C = undefined;
+
+    this.parameters_SH_Beta = undefined;
+    this.parameters_SH_r = undefined;
+
+    this.parameters_SH_T0 = undefined;
+    this.parameters_SH_R0 = undefined;
+
+    this.limit_Tmin = undefined;
+    this.limit_Tmax = undefined;
+}
+
+TEMPProfile.prototype.size = function()
+{
+    return TEMP_PROFILE_SIZE;
+}
+
+TEMPProfile.prototype.dump = function()
+{
+    return dump_TEMPProfile( this );
+}
+
+function TEMP_derive_SteinhartHart_ABC_from_Beta( profile )
+{
+    profile.parameters_SH_C = 0.0; // C is always zero when using Beta
+    profile.parameters_SH_B = (1.0 / profile.parameters_SH_Beta);
+    profile.parameters_SH_A = (profile.parameters_SH_T0 - (profile.parameters_SH_B * Math.log( profile.parameters_SH_R0 )));
 }

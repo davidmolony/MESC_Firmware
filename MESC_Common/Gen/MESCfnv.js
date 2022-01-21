@@ -45,5 +45,14 @@ function fnv1a_init()
 
 function fnv1a_process( fnv, byte )
 {
-    return ((fnv ^ byte) * FNV1A_PRIME_32);     // FNV public domain
+    return (((fnv & 0xFFFFFFFF) ^ (byte & 0xFF)) * FNV1A_PRIME_32) & 0xFFFFFFFF;     // FNV public domain
+}
+
+function fnv1a_process_hex( hex )
+{
+    var fnv = fnv1a_init();
+    for ( var i = 0; i < hex.length; i = i + 2 ) {
+        fnv = fnv1a_process( fnv, parseInt( hex.substring(i,i+2), 16 ) );
+    }
+    return fnv;
 }

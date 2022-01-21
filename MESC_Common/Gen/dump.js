@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,8 +27,24 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+var dump_log = 0;
+
+function isString(o) {
+    return typeof o == "string" || (typeof o == "object" && o.constructor === String);
+}
+
+function int_from_str(value,bytes) {
+    var val = 0;
+    for ( var b = bytes; b > 0; ) {
+        b--;
+        val = (val << BITS_PER_BYTE) | value.charCodeAt(b);
+    }
+    return val;
+}
+
 function dump_hex( value, bytes )
 {
+    dump_log++;
     var hex = value.toString(16).toUpperCase().replace('-','');
 
     while (hex.length < (NYBBLES_PER_BYTE * bytes))
@@ -36,11 +52,37 @@ function dump_hex( value, bytes )
         hex = "0" + hex;
     }
 
-    return hex;
+    var tmp = '';
+
+    for ( var i = hex.length; i > 0; )
+    {
+        i = i - 2;
+        tmp = tmp + hex.substring( i, i+2 );
+    }
+    if (dump_log == 1) {
+        console.log( "dump_hex(value=" + value.toString() + "[" + value.toString(16).toUpperCase() + "],bytes=" + bytes.toString() + ") -> " + tmp );
+    }
+    dump_log--;
+    return tmp;
+}
+
+function dump_base64( value, bytes )
+{
+    const BASE64_ENC = 'ABCDEFGHIJLKMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    const BITS_PER_SYMB = 6;
+    var val = value;
+    var hex = '';
+
+    while (hex.length < (((BITS_PER_BYTE * bytes) + (BITS_PER_SYMB - 1)) / BITS_PER_SYMB))
+    {
+        hex = hex + BASE64_ENC.charAt( val & 0x3F );
+        val = val >> 6;
+    }
 }
 
 function dump_c_char( value, array_size = 1, pad_null = true )
 {
+    dump_log++;
     var hex = '';
     let i = 0;
 
@@ -56,17 +98,31 @@ function dump_c_char( value, array_size = 1, pad_null = true )
             hex = hex + dump_c_uint8_t( 0 );
         }
     }
-
+    if (dump_log == 1) {
+        console.log( "dump_c_char(value='" + value + "',array_size=" + array_size.toString() + ",pad_null=" + (pad_null ? "true" : "false" ) + ")" );
+    }
+    dump_log--;
     return hex;
 }
 
 function dump_c_int( value )
 {
-    return dump_hex( (value & 0xFFFFFFFF), 4 );
+    dump_log++;
+    var tmp = value;
+    if (isString(value)) {
+        tmp = int_from_str(value,4);
+    }
+    if (dump_log == 1) {
+        console.log( "dump_c_int(value=" + value.toString() + "[" + tmp.toString(16).toUpperCase() + "])" );
+    }
+    var hex = dump_hex( (tmp & 0xFFFFFFFF), 4 );
+    dump_log--;
+    return hex;
 }
 
 function dump_c_float( value )
 {
+    dump_log++;
 /*
 REFERENCE
 
@@ -75,37 +131,72 @@ Nina Scholz 2017-11-08
 https://stackoverflow.com/a/47187116
 Accessed 2021-12-12
 */
-    const getHex = i => ('00' + i.toString(16)).slice(-2);
+    const getHex = i => ('00' + i.toString(16).toUpperCase()).slice(-2);
 
     var view = new DataView(new ArrayBuffer(4)), result;
 
-    view.setFloat32(0, value);
+    view.setFloat32(0, value, true/*little-endian*/);
 
     result = Array
         .apply(null, { length: 4 })
         .map((_, i) => getHex(view.getUint8(i)))
         .join('');
-
+    if (dump_log == 1) {
+        console.log( "dump_c_float(value='" + value.toString() + "[" + result + "])" );
+    }
+    dump_log--;
     return result;
 }
 
 function dump_c_uint8_t( value )
 {
-    return dump_hex( (value & 0xFF), 1);
+    dump_log++;
+    var tmp = value;
+    if (isString(value)) {
+        tmp = int_from_str(value,1);
+    }
+    var hex = dump_hex( (tmp & 0xFF), 1);
+    if (dump_log == 1) {
+        console.log( "dump_c_uint8_t(value=" + value.toString() + "[" + hex + "])" );
+    }
+    dump_log--;
+    return hex;
 }
 
 function dump_c_uint16_t( value )
 {
-    return dump_hex( (value & 0xFFFF), 2);
+    dump_log++;
+    var tmp = value;
+    if (isString(value)) {
+        tmp = int_from_str(value,2);
+    }
+    var hex = dump_hex( (tmp & 0xFFFF), 2);
+    if (dump_log == 1) {
+        console.log( "dump_c_uint16_t(value=" + value.toString() + "[" + hex + "])" );
+    }
+    dump_log--;
+    return hex
 }
 
 function dump_c_uint32_t( value )
 {
-    return dump_hex( (value & 0xFFFFFFFF), 4 );
+    dump_log++;
+    var tmp = value;
+    if (isString(value)) {
+        tmp = int_from_str(value,4);
+    }
+    var hex = dump_hex( (tmp & 0xFFFFFFFF), 4 );
+    if (dump_log == 1) {
+        console.log( "dump_c_uint32_t(value=" + value.toString() + "[" + hex + "])" );
+    }
+    dump_log--;
+    return hex;
 }
 
 function dump_MESCFingerprint()
 {
+    console.log( "dump_MESCFingerprint" );
+
     var hex = '';
 /*
     // YYYYMMDDhhmmss
