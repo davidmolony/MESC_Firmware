@@ -24,7 +24,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "MESCfoc.h"
-
+#include <math.h>
 #include "MESCBLDC.h"
 #include "MESChw_setup.h"
 #include "MESCmotor_state.h"
@@ -184,6 +184,7 @@ void fastLoop() {
         hallAngleEstimator();
         angleObserver();
         MESCFOC();
+        flux_observer();
         // fluxIntegrator();
       }
       break;
@@ -498,19 +499,60 @@ void VICheck() {  // Check currents, voltages are within panic limits
       if (hall_error < -32000) {
         hall_error = hall_error + 65536;
       }
-      if (foc_vars.Vdq[0] > 50) {
-        foc_vars.hall_table[last_hall_state - 1][0] =
-            foc_vars.hall_table[last_hall_state - 1][0] + 2;
-        foc_vars.hall_table[current_hall_state - 1][0] =
-            foc_vars.hall_table[current_hall_state - 1][0] - 2;
-      }
-      if (foc_vars.Vdq[0] < 50) {
-        foc_vars.hall_table[last_hall_state - 1][0] =
-            foc_vars.hall_table[last_hall_state - 1][0] - 2;
-        foc_vars.hall_table[current_hall_state - 1][0] =
-            foc_vars.hall_table[current_hall_state - 1][0] + 2;
-      }
     }
+  }
+static float BEMFa = 0.00001;
+static float BEMFb = 0.00001;
+static float Ia_last = 0;
+static float Ib_last = 0;
+static uint16_t angle = 0;
+static uint16_t angle_error = 0;
+
+  void flux_observer(){
+	  //This function we are going ot integrate Va-Ri and clamp it positively and negatively
+	  //the angle is then the arctangent of the integrals shifted 180 degrees
+BEMFa = BEMFa + foc_vars.Vab[0] - motor.Rphase*foc_vars.Iab[0] - motor.Lphase*(foc_vars.Iab[0]-Ia_last)*foc_vars.pwm_frequency;
+BEMFb = BEMFb + foc_vars.Vab[1] - motor.Rphase*foc_vars.Iab[1] - motor.Lphase*(foc_vars.Iab[1]-Ib_last)*foc_vars.pwm_frequency;
+
+if(BEMFa>motor.motor_flux){BEMFa = motor.motor_flux;}
+if(BEMFa<-motor.motor_flux){BEMFa = -motor.motor_flux;}
+if(BEMFb>motor.motor_flux){BEMFb = motor.motor_flux;}
+if(BEMFb<-motor.motor_flux){BEMFb = -motor.motor_flux;}
+
+angle  = (uint16_t)(32768.0f + 10430.0f * fast_atan2(BEMFb,BEMFa))-32768;
+angle_error = angle-foc_vars.FOCAngle;
+  }
+float min(float lhs, float rhs){
+return (lhs<rhs)?lhs:rhs;
+}
+float max(float lhs, float rhs){
+	return (lhs>rhs)?lhs:rhs;
+}
+  	// based on https://math.stackexchange.com/a/1105038/81278
+  	//Via Odrive project https://github.com/odriverobotics/ODrive/blob/master/Firmware/MotorControl/utils.cpp
+	//This function is MIT licenced, copyright Oskar Weigl/Odrive Robotics
+	//The origin for Odrive atan2 is public domain. Thanks to Odrive for making it easy to borrow.
+float fast_atan2(float y, float x) {
+      // a := min (|x|, |y|) / max (|x|, |y|)
+      float abs_y = fabs(y);
+      float abs_x = fabs(x);
+      // inject FLT_MIN in denominator to avoid division by zero
+      float a = min(abs_x, abs_y) / (max(abs_x, abs_y));
+      // s := a * a
+      float s = a * a;
+      // r := ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a
+      float r = ((-0.0464964749f * s + 0.15931422f) * s - 0.327622764f) * s * a + a;
+      // if |y| > |x| then r := 1.57079637 - r
+      if (abs_y > abs_x)
+          r = 1.57079637f - r;
+      // if x < 0 then r := 3.14159274 - r
+      if (x < 0.0f)
+          r = 3.14159274f - r;
+      // if y < 0 then r := -r
+      if (y < 0.0f)
+          r = -r;
+
+      return r;
   }
 
   static float last_anglestep;
@@ -603,28 +645,28 @@ void VICheck() {  // Check currents, voltages are within panic limits
     }
     // Run the counter
     ticks_since_last_observer_change = ticks_since_last_observer_change + 1;
-    if (ticks_since_last_observer_change <= 2.0 * last_observer_period) {
-      // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(dir*angle_step +
-      // one_on_last_hall_period * (-0.9 * hall_error)); Does not work... Why?
-
-      if (dir >
-          0) {  // Apply a gain to the error as well as the feed forward
-                // from the last hall period. Gain of 0.9-1.1 seems to work
-                // well when using corrected hall positions and spacings
-        foc_vars.FOCAngle =
-            foc_vars.FOCAngle +
-            (uint16_t)(angle_step - one_on_last_observer_period * hall_error);
-        // one_on_last_observer_period * (-0.2 * hall_error));
-      } else if (dir < 0) {
-        // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(-angle_step +
-        // one_on_last_hall_period * (-0.9 * hall_error)); Also does not work,
-        // Why??
-        foc_vars.FOCAngle =
-            foc_vars.FOCAngle -
-            (uint16_t)(angle_step +
-                       one_on_last_observer_period * (0.2 * hall_error));
-      }
-    }
+//    if (ticks_since_last_observer_change <= 2.0 * last_observer_period) {
+//      // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(dir*angle_step +
+//      // one_on_last_hall_period * (-0.9 * hall_error)); Does not work... Why?
+//
+//      if (dir >
+//          0) {  // Apply a gain to the error as well as the feed forward
+//                // from the last hall period. Gain of 0.9-1.1 seems to work
+//                // well when using corrected hall positions and spacings
+//        foc_vars.FOCAngle =
+//            foc_vars.FOCAngle +
+//            (uint16_t)(angle_step - one_on_last_observer_period * hall_error);
+//        // one_on_last_observer_period * (-0.2 * hall_error));
+//      } else if (dir < 0) {
+//        // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(-angle_step +
+//        // one_on_last_hall_period * (-0.9 * hall_error)); Also does not work,
+//        // Why??
+//        foc_vars.FOCAngle =
+//            foc_vars.FOCAngle -
+//            (uint16_t)(angle_step +
+//                       one_on_last_observer_period * (0.2 * hall_error));
+//      }
+//    }
     if (ticks_since_last_observer_change > 3000.0f) {
       ticks_since_last_observer_change = 1501.0f;
       last_observer_period = 500.0f;  //(ticks_since_last_hall_change);
@@ -632,6 +674,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
           1.0f / last_observer_period;  // / ticks_since_last_hall_change;
       foc_vars.FOCAngle = current_hall_angle;
     }
+    foc_vars.FOCAngle = angle; ////MASSIVE HACK THAT NEEDS REMOVING TO GET THE OBSERVER IN
+
   }
   uint16_t flux_blanking;
   float BEMF_integral_check[2];
@@ -963,12 +1007,12 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
       if (PWMcycles < 5000)  // Resistance lower measurement point
       {
-        if (measurement_buffers.ConvertedADC[1][0] <
-            3.0f) {  // Here we set the PWM duty automatically for this
+        if (measurement_buffers.ConvertedADC[1][0] >
+            -3.0f) {  // Here we set the PWM duty automatically for this
                      // conversion to ensure a current between 3A and 10A
           testPWM1 = testPWM1 + 1;
         }
-        if (measurement_buffers.ConvertedADC[1][0] > 10.0f) {
+        if (measurement_buffers.ConvertedADC[1][0] < -10.0f) {
           testPWM1 = testPWM1 - 1;
         }
 
@@ -983,12 +1027,12 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
       else if (PWMcycles < 10000)  // Resistance higher measurement point
       {
-        if (measurement_buffers.ConvertedADC[1][0] <
-            10.0f) {  // Here we set the PWM to get a current between 10A and
+        if (measurement_buffers.ConvertedADC[1][0] >
+            -10.0f) {  // Here we set the PWM to get a current between 10A and
                       // 20A
           testPWM2 = testPWM2 + 1;
         }
-        if (measurement_buffers.ConvertedADC[1][0] > 20.0f) {
+        if (measurement_buffers.ConvertedADC[1][0] < -20.0f) {
           testPWM2 = testPWM2 - 1;
         }
 
@@ -1086,7 +1130,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
         motor.Rphase = (((float)(testPWM2 - testPWM1)) / (2.0f * 1024.0f) *
                         measurement_buffers.ConvertedADC[0][1]) /
-                       (currAcc2 - currAcc1);
+                       (-(currAcc2 - currAcc1));
         motor.Lphase =
             ((currAcc3 + currAcc4) * motor.Rphase *
              (2.0f * 2048.0f / 72000000.0f) / ((currAcc4 - currAcc3)));
@@ -1131,7 +1175,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       foc_vars.Idq_req[0] = 10;
       foc_vars.Idq_req[1] = 0;
 
-      foc_vars.FOCAngle = 32768;
+      foc_vars.FOCAngle = 0;
       a = a - 1;
     } else {
       foc_vars.Idq_req[0] = 10;
@@ -1360,7 +1404,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       if (measurement_buffers.RawADC[1][3] > 1200) {
         foc_vars.Idq_req[1] =
             foc_vars.Idq_req[1] +
-            (((float)(measurement_buffers.RawADC[1][3] - 1200)) * 0.02f);
+            (((float)(measurement_buffers.RawADC[1][3] - 1200)) * -0.02f);
       } else {
       }
     }
@@ -1368,7 +1412,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     else if (fUPD != RESET) {
       if (measurement_buffers.RawADC[1][3] > 1200) {
         foc_vars.Idq_req[1] =
-            (((float)(measurement_buffers.RawADC[1][3] - 1200)) * 0.02f);
+            (((float)(measurement_buffers.RawADC[1][3] - 1200)) * -0.02f);
       } else {
         foc_vars.Idq_req[1] = 0.0f;
       }

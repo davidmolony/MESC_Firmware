@@ -77,6 +77,7 @@ typedef struct {
                            // resistance is called each PWM cycle, be deprecated
                            // by accumulating the measurements until it reaches
                            // 0, at which point the resistance is accepted
+  float motor_flux;
 } motor_s;
 
 motor_s motor;

@@ -137,6 +137,8 @@ void hallAngleEstimator();  // Going to attempt to make a similar hall angle
                             // estimator that rolls the hall state into the main
                             // function, and calls a vector table to find the
                             // angle from hall offsets.
+void flux_observer();
+float fast_atan2(float y, float x);
 void angleObserver();
 void fluxIntegrator();
 void OLGenerateAngle();  // For open loop FOC startup, just use this to generate
