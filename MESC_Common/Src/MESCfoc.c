@@ -24,7 +24,9 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "MESCfoc.h"
+
 #include <math.h>
+
 #include "MESCBLDC.h"
 #include "MESChw_setup.h"
 #include "MESCmotor_state.h"
@@ -350,6 +352,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       initcycles = initcycles + 1;
       if (initcycles == 1000) {
         calculateGains();
+        calculateVoltageGain();
 
         for (uint32_t i = 0; i < 3; i++) {
           measurement_buffers.ADCOffset[i] /= 1000;
@@ -501,58 +504,65 @@ void VICheck() {  // Check currents, voltages are within panic limits
       }
     }
   }
-static float BEMFa = 0.00001;
-static float BEMFb = 0.00001;
-static float Ia_last = 0;
-static float Ib_last = 0;
-static uint16_t angle = 0;
-static uint16_t angle_error = 0;
+  static float BEMFa = 0.00001;
+  static float BEMFb = 0.00001;
+  static float Ia_last = 0;
+  static float Ib_last = 0;
+  static uint16_t angle = 0;
+  static uint16_t angle_error = 0;
 
-  void flux_observer(){
-	  //This function we are going ot integrate Va-Ri and clamp it positively and negatively
-	  //the angle is then the arctangent of the integrals shifted 180 degrees
-BEMFa = BEMFa + foc_vars.Vab[0] - motor.Rphase*foc_vars.Iab[0] - motor.Lphase*(foc_vars.Iab[0]-Ia_last)*foc_vars.pwm_frequency;
-BEMFb = BEMFb + foc_vars.Vab[1] - motor.Rphase*foc_vars.Iab[1] - motor.Lphase*(foc_vars.Iab[1]-Ib_last)*foc_vars.pwm_frequency;
+  void flux_observer() {
+    // This function we are going ot integrate Va-Ri and clamp it positively and
+    // negatively the angle is then the arctangent of the integrals shifted 180
+    // degrees
+    BEMFa = BEMFa + foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0] -
+            motor.Lphase * (foc_vars.Iab[0] - Ia_last) * foc_vars.pwm_frequency;
+    BEMFb = BEMFb + foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1] -
+            motor.Lphase * (foc_vars.Iab[1] - Ib_last) * foc_vars.pwm_frequency;
 
-if(BEMFa>motor.motor_flux){BEMFa = motor.motor_flux;}
-if(BEMFa<-motor.motor_flux){BEMFa = -motor.motor_flux;}
-if(BEMFb>motor.motor_flux){BEMFb = motor.motor_flux;}
-if(BEMFb<-motor.motor_flux){BEMFb = -motor.motor_flux;}
+    if (BEMFa > motor.motor_flux) {
+      BEMFa = motor.motor_flux;
+    }
+    if (BEMFa < -motor.motor_flux) {
+      BEMFa = -motor.motor_flux;
+    }
+    if (BEMFb > motor.motor_flux) {
+      BEMFb = motor.motor_flux;
+    }
+    if (BEMFb < -motor.motor_flux) {
+      BEMFb = -motor.motor_flux;
+    }
 
-angle  = (uint16_t)(32768.0f + 10430.0f * fast_atan2(BEMFb,BEMFa))-32768;
-angle_error = angle-foc_vars.FOCAngle;
+    angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(BEMFb, BEMFa)) - 32768;
+    angle_error = angle - foc_vars.FOCAngle;
   }
-float min(float lhs, float rhs){
-return (lhs<rhs)?lhs:rhs;
-}
-float max(float lhs, float rhs){
-	return (lhs>rhs)?lhs:rhs;
-}
-  	// based on https://math.stackexchange.com/a/1105038/81278
-  	//Via Odrive project https://github.com/odriverobotics/ODrive/blob/master/Firmware/MotorControl/utils.cpp
-	//This function is MIT licenced, copyright Oskar Weigl/Odrive Robotics
-	//The origin for Odrive atan2 is public domain. Thanks to Odrive for making it easy to borrow.
-float fast_atan2(float y, float x) {
-      // a := min (|x|, |y|) / max (|x|, |y|)
-      float abs_y = fabs(y);
-      float abs_x = fabs(x);
-      // inject FLT_MIN in denominator to avoid division by zero
-      float a = min(abs_x, abs_y) / (max(abs_x, abs_y));
-      // s := a * a
-      float s = a * a;
-      // r := ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a
-      float r = ((-0.0464964749f * s + 0.15931422f) * s - 0.327622764f) * s * a + a;
-      // if |y| > |x| then r := 1.57079637 - r
-      if (abs_y > abs_x)
-          r = 1.57079637f - r;
-      // if x < 0 then r := 3.14159274 - r
-      if (x < 0.0f)
-          r = 3.14159274f - r;
-      // if y < 0 then r := -r
-      if (y < 0.0f)
-          r = -r;
+  float min(float lhs, float rhs) { return (lhs < rhs) ? lhs : rhs; }
+  float max(float lhs, float rhs) { return (lhs > rhs) ? lhs : rhs; }
+  // based on https://math.stackexchange.com/a/1105038/81278
+  // Via Odrive project
+  // https://github.com/odriverobotics/ODrive/blob/master/Firmware/MotorControl/utils.cpp
+  // This function is MIT licenced, copyright Oskar Weigl/Odrive Robotics
+  // The origin for Odrive atan2 is public domain. Thanks to Odrive for making
+  // it easy to borrow.
+  float fast_atan2(float y, float x) {
+    // a := min (|x|, |y|) / max (|x|, |y|)
+    float abs_y = fabs(y);
+    float abs_x = fabs(x);
+    // inject FLT_MIN in denominator to avoid division by zero
+    float a = min(abs_x, abs_y) / (max(abs_x, abs_y));
+    // s := a * a
+    float s = a * a;
+    // r := ((-0.0464964749 * s + 0.15931422) * s - 0.327622764) * s * a + a
+    float r =
+        ((-0.0464964749f * s + 0.15931422f) * s - 0.327622764f) * s * a + a;
+    // if |y| > |x| then r := 1.57079637 - r
+    if (abs_y > abs_x) r = 1.57079637f - r;
+    // if x < 0 then r := 3.14159274 - r
+    if (x < 0.0f) r = 3.14159274f - r;
+    // if y < 0 then r := -r
+    if (y < 0.0f) r = -r;
 
-      return r;
+    return r;
   }
 
   static float last_anglestep;
@@ -645,28 +655,34 @@ float fast_atan2(float y, float x) {
     }
     // Run the counter
     ticks_since_last_observer_change = ticks_since_last_observer_change + 1;
-//    if (ticks_since_last_observer_change <= 2.0 * last_observer_period) {
-//      // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(dir*angle_step +
-//      // one_on_last_hall_period * (-0.9 * hall_error)); Does not work... Why?
-//
-//      if (dir >
-//          0) {  // Apply a gain to the error as well as the feed forward
-//                // from the last hall period. Gain of 0.9-1.1 seems to work
-//                // well when using corrected hall positions and spacings
-//        foc_vars.FOCAngle =
-//            foc_vars.FOCAngle +
-//            (uint16_t)(angle_step - one_on_last_observer_period * hall_error);
-//        // one_on_last_observer_period * (-0.2 * hall_error));
-//      } else if (dir < 0) {
-//        // foc_vars.HallAngle = foc_vars.HallAngle + (uint16_t)(-angle_step +
-//        // one_on_last_hall_period * (-0.9 * hall_error)); Also does not work,
-//        // Why??
-//        foc_vars.FOCAngle =
-//            foc_vars.FOCAngle -
-//            (uint16_t)(angle_step +
-//                       one_on_last_observer_period * (0.2 * hall_error));
-//      }
-//    }
+    //    if (ticks_since_last_observer_change <= 2.0 * last_observer_period) {
+    //      // foc_vars.HallAngle = foc_vars.HallAngle +
+    //      (uint16_t)(dir*angle_step +
+    //      // one_on_last_hall_period * (-0.9 * hall_error)); Does not work...
+    //      Why?
+    //
+    //      if (dir >
+    //          0) {  // Apply a gain to the error as well as the feed forward
+    //                // from the last hall period. Gain of 0.9-1.1 seems to
+    //                work
+    //                // well when using corrected hall positions and spacings
+    //        foc_vars.FOCAngle =
+    //            foc_vars.FOCAngle +
+    //            (uint16_t)(angle_step - one_on_last_observer_period *
+    //            hall_error);
+    //        // one_on_last_observer_period * (-0.2 * hall_error));
+    //      } else if (dir < 0) {
+    //        // foc_vars.HallAngle = foc_vars.HallAngle +
+    //        (uint16_t)(-angle_step +
+    //        // one_on_last_hall_period * (-0.9 * hall_error)); Also does not
+    //        work,
+    //        // Why??
+    //        foc_vars.FOCAngle =
+    //            foc_vars.FOCAngle -
+    //            (uint16_t)(angle_step +
+    //                       one_on_last_observer_period * (0.2 * hall_error));
+    //      }
+    //    }
     if (ticks_since_last_observer_change > 3000.0f) {
       ticks_since_last_observer_change = 1501.0f;
       last_observer_period = 500.0f;  //(ticks_since_last_hall_change);
@@ -674,8 +690,8 @@ float fast_atan2(float y, float x) {
           1.0f / last_observer_period;  // / ticks_since_last_hall_change;
       foc_vars.FOCAngle = current_hall_angle;
     }
-    foc_vars.FOCAngle = angle; ////MASSIVE HACK THAT NEEDS REMOVING TO GET THE OBSERVER IN
-
+    foc_vars.FOCAngle =
+        angle;  ////MASSIVE HACK THAT NEEDS REMOVING TO GET THE OBSERVER IN
   }
   uint16_t flux_blanking;
   float BEMF_integral_check[2];
@@ -1009,7 +1025,7 @@ float fast_atan2(float y, float x) {
       {
         if (measurement_buffers.ConvertedADC[1][0] >
             -3.0f) {  // Here we set the PWM duty automatically for this
-                     // conversion to ensure a current between 3A and 10A
+                      // conversion to ensure a current between 3A and 10A
           testPWM1 = testPWM1 + 1;
         }
         if (measurement_buffers.ConvertedADC[1][0] < -10.0f) {
@@ -1029,7 +1045,7 @@ float fast_atan2(float y, float x) {
       {
         if (measurement_buffers.ConvertedADC[1][0] >
             -10.0f) {  // Here we set the PWM to get a current between 10A and
-                      // 20A
+                       // 20A
           testPWM2 = testPWM2 + 1;
         }
         if (measurement_buffers.ConvertedADC[1][0] < -20.0f) {
@@ -1362,6 +1378,23 @@ float fast_atan2(float y, float x) {
     foc_vars.Id_igain = foc_vars.Iq_igain;
     foc_vars.Vdqres_to_Vdq =
         0.333f * measurement_buffers.ConvertedADC[0][1] / 677.0f;
+    foc_vars.field_weakening_curr_max =
+        0;  // test number, to be stored in user settings
+  }
+
+  void calculateVoltageGain() {
+    // We need a number to convert between Va Vb and raw PWM register values
+    // This number should be the bus voltage divided by the ARR register
+    foc_vars.Vab_to_PWM =
+        measurement_buffers.ConvertedADC[0][1] / htim1.Instance->ARR;
+    // We also need a number to set the maximum voltage that can be effectively
+    // used by the SVPWM This is equal to
+    // 0.5*Vbus*MAX_MODULATION*SVPWM_MULTIPLIER*Vd_MAX_PROPORTION
+    foc_vars.Vd_max = 0.5 * measurement_buffers.ConvertedADC[0][1] *
+                      MAX_MODULATION * SVPWM_MULTIPLIER * Vd_MAX_PROPORTION;
+    foc_vars.Vq_max = 0.5 * measurement_buffers.ConvertedADC[0][1] *
+                      MAX_MODULATION * SVPWM_MULTIPLIER * Vq_MAX_PROPORTION;
+    foc_vars.field_weakening_threshold = foc_vars.Vq_max * 0.8;
   }
 
   void doublePulseTest() {
@@ -1392,12 +1425,20 @@ float fast_atan2(float y, float x) {
   }
 
   void slowLoop(TIM_HandleTypeDef * htim) {
+    // The slow loop runs at either 20Hz or at the PWM input frequency.
+    // In this loop, we will fetch the throttle values, and run functions that
+    // are critical, but do not need to be executed very often e.g. adjustment
+    // for battery voltage change
+
     uint32_t fCC1 = __HAL_TIM_GET_FLAG(htim, TIM_FLAG_CC1) &
                     __HAL_TIM_GET_IT_SOURCE(htim, TIM_IT_CC1);
     uint32_t fUPD = __HAL_TIM_GET_FLAG(htim, TIM_FLAG_UPDATE) &
                     __HAL_TIM_GET_IT_SOURCE(htim, TIM_IT_UPDATE);
 
     HAL_TIM_IRQHandler(htim);
+
+    // Adjust the SVPWM gains to account for the change in battery voltage etc
+    calculateVoltageGain();
 
     // If the event was CC1...
     if (fCC1 != RESET) {
@@ -1416,6 +1457,17 @@ float fast_atan2(float y, float x) {
       } else {
         foc_vars.Idq_req[1] = 0.0f;
       }
+    }
+
+    // Run field weakening (and maybe MTPA later)
+    if (fabs(foc_vars.Vdq[1]) > foc_vars.field_weakening_threshold) {
+      foc_vars.Idq_req[0] =
+          foc_vars.field_weakening_curr_max *
+          (foc_vars.field_weakening_threshold - fabs(foc_vars.Vdq[1]));
+      foc_vars.field_weakening_flag = 1;
+    } else {
+      foc_vars.Idq_req[0] = 0;
+      foc_vars.field_weakening_flag = 0;
     }
 
     // For anything else...

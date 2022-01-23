@@ -34,6 +34,12 @@
 #define ADCIV (1)
 #define ADCIW (2)
 #define I_CONV_NO (0)
+#define MAX_MODULATION 0.95
+#define SVPWM_MULTIPLIER \
+  1.1547  // 1/cos30 which comes from the maximum between two 120 degree apart
+          // sin waves being at the
+#define Vd_MAX_PROPORTION 0.2
+#define Vq_MAX_PROPORTION 0.8
 
 // fixme: I think this type of stuff is causing confusion later on especially in
 // the code that strives for maintainability. What does an alias give you?
@@ -86,6 +92,13 @@ typedef struct {
   float Iq_pgain;
   float Iq_igain;
   float Vdqres_to_Vdq;
+  float Vab_to_PWM;
+  float Vd_max;
+  float Vq_max;
+  // Field weakenning
+  float field_weakening_curr_max;
+  float field_weakening_threshold;
+  int field_weakening_flag;
 
   float VBEMFintegral[2];
   uint16_t state[4];  // current state, last state, angle change occurred
@@ -176,6 +189,7 @@ void phW_Break();
 void phW_Enable();
 
 void calculateGains();
+void calculateVoltageGain();
 
 void doublePulseTest();
 
