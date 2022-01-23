@@ -874,55 +874,56 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // SVPM implementation
     // Try to do this as a "midpoint clamp" where rather than finding the
     // lowest, we find the highest and lowest and subtract the middle
-    //    float top_value = foc_vars.inverterVoltage[0];
-    //    float bottom_value = top_value;
-    //
-    //    if (foc_vars.inverterVoltage[1] > top_value) {
-    //      top_value = foc_vars.inverterVoltage[1];
-    //    }
-    //    if (foc_vars.inverterVoltage[2] > top_value) {
-    //      top_value = foc_vars.inverterVoltage[2];
-    //    }
-    //    if (foc_vars.inverterVoltage[1] < bottom_value) {
-    //      bottom_value = foc_vars.inverterVoltage[1];
-    //    }
-    //    if (foc_vars.inverterVoltage[2] < bottom_value) {
-    //      bottom_value = foc_vars.inverterVoltage[2];
-    //    }
-    //
-    //    mid_value = 512.0f - 0.5 * (top_value + bottom_value);
+        float top_value = foc_vars.inverterVoltage[0];
+        float bottom_value = top_value;
 
-    if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[1]) {
-      if (foc_vars.inverterVoltage[2] < foc_vars.inverterVoltage[0]) {
-        // C low B high
-        mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[2] +
-                                    foc_vars.inverterVoltage[1]);
-      } else {
-        if (foc_vars.inverterVoltage[2] > foc_vars.inverterVoltage[1]) {
-          // A low C high
-          mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[0] +
-                                      foc_vars.inverterVoltage[2]);
-        } else {
-          // A low B high
-          mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[0] +
-                                      foc_vars.inverterVoltage[1]);
+        if (foc_vars.inverterVoltage[1] > top_value) {
+          top_value = foc_vars.inverterVoltage[1];
         }
-      }
-    } else {
-      if (foc_vars.inverterVoltage[2] < foc_vars.inverterVoltage[1]) {
-        // C low A high
-        mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[2] +
-                                    foc_vars.inverterVoltage[0]);
-      } else if (foc_vars.inverterVoltage[2] > foc_vars.inverterVoltage[0]) {
-        // B low C high
-        mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[1] +
-                                    foc_vars.inverterVoltage[2]);
-      } else {
-        // B low A high
-        mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[1] +
-                                    foc_vars.inverterVoltage[0]);
-      }
-    }
+        if (foc_vars.inverterVoltage[2] > top_value) {
+          top_value = foc_vars.inverterVoltage[2];
+        }
+        if (foc_vars.inverterVoltage[1] < bottom_value) {
+          bottom_value = foc_vars.inverterVoltage[1];
+        }
+        if (foc_vars.inverterVoltage[2] < bottom_value) {
+          bottom_value = foc_vars.inverterVoltage[2];
+        }
+
+        mid_value = 512.0f - 0.5 * (top_value + bottom_value);
+
+        //Slightly faster but less readable implementation
+//    if (foc_vars.inverterVoltage[0] < foc_vars.inverterVoltage[1]) {
+//      if (foc_vars.inverterVoltage[2] < foc_vars.inverterVoltage[0]) {
+//        // C low B high
+//        mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[2] +
+//                                    foc_vars.inverterVoltage[1]);
+//      } else {
+//        if (foc_vars.inverterVoltage[2] > foc_vars.inverterVoltage[1]) {
+//          // A low C high
+//          mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[0] +
+//                                      foc_vars.inverterVoltage[2]);
+//        } else {
+//          // A low B high
+//          mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[0] +
+//                                      foc_vars.inverterVoltage[1]);
+//        }
+//      }
+//    } else {
+//      if (foc_vars.inverterVoltage[2] < foc_vars.inverterVoltage[1]) {
+//        // C low A high
+//        mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[2] +
+//                                    foc_vars.inverterVoltage[0]);
+//      } else if (foc_vars.inverterVoltage[2] > foc_vars.inverterVoltage[0]) {
+//        // B low C high
+//        mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[1] +
+//                                    foc_vars.inverterVoltage[2]);
+//      } else {
+//        // B low A high
+//        mid_value = 512.0f - 0.5 * (foc_vars.inverterVoltage[1] +
+//                                    foc_vars.inverterVoltage[0]);
+//      }
+//    }
 
     ////////////////////////////////////////////////////////
     // Actually write the value to the timer registers
@@ -936,11 +937,10 @@ void VICheck() {  // Check currents, voltages are within panic limits
               ///////////////////////////////////////////////
         if ((foc_vars.Vdq[1] > 300) | (foc_vars.Vdq[1] < -300)) {
           // Bottom Clamp implementation. Implemented initially because I
-       thought this avoids
+       	  //thought this avoids
           // all nasty behaviour in the event of underflowing the timer CCRs; if
           // negative values fed to timers, they will saturate positive, which
-       will
-          // result in a near instant overcurrent event.
+       	  //will result in a near instant overcurrent event.
 
           float minimumValue = 0;
 

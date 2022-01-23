@@ -130,8 +130,11 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   HAL_Delay(1000);
-motor.motor_flux = 650;
-  MotorState = MOTOR_STATE_MEASURING;  // NOTe fastloop transitions to RUN
+
+motor.motor_flux = 464;
+//650 is the right number for a motor with 7PP and 50kV
+//Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
+MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
 #if 0                                  // INIT FLASH
   while (MotorState == MOTOR_STATE_MEASURING) {
     __NOP();
