@@ -38,8 +38,8 @@
 #define SVPWM_MULTIPLIER \
   1.1547  // 1/cos30 which comes from the maximum between two 120 degree apart
           // sin waves being at the
-#define Vd_MAX_PROPORTION 0.2
-#define Vq_MAX_PROPORTION 0.8
+#define Vd_MAX_PROPORTION 0.3
+#define Vq_MAX_PROPORTION 0.95
 
 // fixme: I think this type of stuff is causing confusion later on especially in
 // the code that strives for maintainability. What does an alias give you?

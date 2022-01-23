@@ -130,7 +130,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   HAL_Delay(1000);
-motor.motor_flux = 24000;
+motor.motor_flux = 650;
   MotorState = MOTOR_STATE_MEASURING;  // NOTe fastloop transitions to RUN
 #if 0                                  // INIT FLASH
   while (MotorState == MOTOR_STATE_MEASURING) {

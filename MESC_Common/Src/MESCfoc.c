@@ -512,13 +512,16 @@ void VICheck() {  // Check currents, voltages are within panic limits
   static uint16_t angle_error = 0;
 
   void flux_observer() {
-    // This function we are going ot integrate Va-Ri and clamp it positively and
+    // This function we are going to integrate Va-Ri and clamp it positively and
     // negatively the angle is then the arctangent of the integrals shifted 180
     // degrees
     BEMFa = BEMFa + foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0] -
             motor.Lphase * (foc_vars.Iab[0] - Ia_last) * foc_vars.pwm_frequency;
     BEMFb = BEMFb + foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1] -
             motor.Lphase * (foc_vars.Iab[1] - Ib_last) * foc_vars.pwm_frequency;
+    Ia_last = foc_vars.Iab[0];
+    Ib_last = foc_vars.Iab[1];
+
 
     if (BEMFa > motor.motor_flux) {
       BEMFa = motor.motor_flux;
@@ -783,10 +786,10 @@ void VICheck() {  // Check currents, voltages are within panic limits
         static float integral_d_limit = 150.0f;
         static float integral_q_limit = 512.0f;
 
-        if (Idq_int_err[0] > integral_d_limit){Idq_int_err[0] = integral_d_limit;}
-        if (Idq_int_err[0] < -integral_d_limit){Idq_int_err[0] = -integral_d_limit;}
-        if (Idq_int_err[1] > integral_q_limit){Idq_int_err[1] = integral_q_limit;}
-        if (Idq_int_err[1] < -integral_q_limit){Idq_int_err[1] = -integral_q_limit;}
+        if (Idq_int_err[0] > foc_vars.Vd_max){Idq_int_err[0] = foc_vars.Vd_max;}
+        if (Idq_int_err[0] < -foc_vars.Vd_max){Idq_int_err[0] = -foc_vars.Vd_max;}
+        if (Idq_int_err[1] > foc_vars.Vq_max){Idq_int_err[1] = foc_vars.Vq_max;}
+        if (Idq_int_err[1] < -foc_vars.Vq_max){Idq_int_err[1] = -foc_vars.Vq_max;}
       // clang-format on
       // Apply the PID, and potentially smooth the output for noise - sudden
       // changes in VDVQ may be undesirable for some motors. Integral error is
@@ -803,13 +806,17 @@ void VICheck() {  // Check currents, voltages are within panic limits
       // primarily used to drive the resistive part of the field; there is no
       // BEMF pushing against Vd and so it does not scale with RPM (except for
       // cross coupling).
-      static float V_d_limit = 150.0f;
-      static float V_q_limit = 512.0f;
+      //      static float V_d_limit = 150.0f;
+      //      static float V_q_limit = 512.0f;
 
-      if (foc_vars.Vdq[0] > V_d_limit) (foc_vars.Vdq[0] = V_d_limit);
-      if (foc_vars.Vdq[0] < -V_d_limit) (foc_vars.Vdq[0] = -V_d_limit);
-      if (foc_vars.Vdq[1] > V_q_limit) (foc_vars.Vdq[1] = V_q_limit);
-      if (foc_vars.Vdq[1] < -V_q_limit) (foc_vars.Vdq[1] = -V_q_limit);
+      if (foc_vars.Vdq[0] > foc_vars.Vd_max)
+        (foc_vars.Vdq[0] = foc_vars.Vd_max);
+      if (foc_vars.Vdq[0] < -foc_vars.Vd_max)
+        (foc_vars.Vdq[0] = -foc_vars.Vd_max);
+      if (foc_vars.Vdq[1] > foc_vars.Vq_max)
+        (foc_vars.Vdq[1] = foc_vars.Vq_max);
+      if (foc_vars.Vdq[1] < -foc_vars.Vq_max)
+        (foc_vars.Vdq[1] = -foc_vars.Vq_max);
       // foc_vars.Vdq_smoothed[1] = (999 * foc_vars.Vdq_smoothed[1] +
       // foc_vars.Vdq[1]) * 0.001;
       i = FOC_PERIODS;
@@ -919,9 +926,12 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
     ////////////////////////////////////////////////////////
     // Actually write the value to the timer registers
-    htim1.Instance->CCR1 = (uint16_t)(foc_vars.inverterVoltage[0] + mid_value);
-    htim1.Instance->CCR2 = (uint16_t)(foc_vars.inverterVoltage[1] + mid_value);
-    htim1.Instance->CCR3 = (uint16_t)(foc_vars.inverterVoltage[2] + mid_value);
+    htim1.Instance->CCR1 = (uint16_t)(
+        foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[0] + mid_value);
+    htim1.Instance->CCR2 = (uint16_t)(
+        foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[1] + mid_value);
+    htim1.Instance->CCR3 = (uint16_t)(
+        foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[2] + mid_value);
     /*
               ///////////////////////////////////////////////
         if ((foc_vars.Vdq[1] > 300) | (foc_vars.Vdq[1] < -300)) {
@@ -1367,12 +1377,13 @@ void VICheck() {  // Check currents, voltages are within panic limits
         (float)HAL_RCC_GetHCLKFreq() /
         (2 * (float)htim1.Instance->ARR * ((float)htim1.Instance->PSC + 1));
 
-    foc_vars.Iq_pgain = foc_vars.pwm_frequency * motor.Lphase *
-                        ((float)htim1.Instance->ARR * 0.5) /
-                        (2 * measurement_buffers.ConvertedADC[0][1]);
+    foc_vars.Iq_pgain = foc_vars.pwm_frequency * motor.Lphase * 0.5;  // *
+    //                        ((float)htim1.Instance->ARR * 0.5) /
+    //                        (2 * measurement_buffers.ConvertedADC[0][1]);
 
-    foc_vars.Iq_igain = 0.10f * motor.Rphase * (htim1.Instance->ARR * 0.5) /
-                        (2 * measurement_buffers.ConvertedADC[0][1]);
+    foc_vars.Iq_igain =
+        0.10f * motor.Rphase * 0.5;  // * (htim1.Instance->ARR * 0.5) /
+    //                       (2 * measurement_buffers.ConvertedADC[0][1]);
 
     foc_vars.Id_pgain = foc_vars.Iq_pgain;
     foc_vars.Id_igain = foc_vars.Iq_igain;
@@ -1386,7 +1397,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // We need a number to convert between Va Vb and raw PWM register values
     // This number should be the bus voltage divided by the ARR register
     foc_vars.Vab_to_PWM =
-        measurement_buffers.ConvertedADC[0][1] / htim1.Instance->ARR;
+        htim1.Instance->ARR / measurement_buffers.ConvertedADC[0][1];
     // We also need a number to set the maximum voltage that can be effectively
     // used by the SVPWM This is equal to
     // 0.5*Vbus*MAX_MODULATION*SVPWM_MULTIPLIER*Vd_MAX_PROPORTION
