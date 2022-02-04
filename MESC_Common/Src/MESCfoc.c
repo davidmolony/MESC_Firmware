@@ -686,7 +686,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     //                       one_on_last_observer_period * (0.2 * hall_error));
     //      }
     //    }
-    if (ticks_since_last_observer_change > 3000.0f) {
+    if (ticks_since_last_observer_change > 30000.0f) {
       ticks_since_last_observer_change = 1501.0f;
       last_observer_period = 500.0f;  //(ticks_since_last_hall_change);
       one_on_last_observer_period =
