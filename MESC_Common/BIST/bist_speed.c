@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -84,7 +84,7 @@ void bist_speed( void )
 
         float const S = speed_get();
 
-        fprintf( stdout, "%5" PRIu32 " rpm => %4.1f uph\n", rpm, S );
+        fprintf( stdout, "    %5" PRIu32 " rpm => %4.1f uph\n", rpm, S );
     }
 
     // Sweep speed range
@@ -95,7 +95,7 @@ void bist_speed( void )
     for ( float v = 5.0f; v < 50.0f; v = v + 5.0f )
     {
         dt = (drev * rev_speed) / v;
-        fprintf( stdout, "Speed %4.1f uph is %4.2f seconds per motor revolution (%5.0f rpm)\n", v, dt, (CONST_SECONDS_PER_MINUTE_F / dt) );
+        fprintf( stdout, "    %4.1f uph is %4.2f seconds per motor revolution (%5.0f rpm)\n", v, dt, (CONST_SECONDS_PER_MINUTE_F / dt) );
     }
 
     // Sweep rotation rate
@@ -118,7 +118,7 @@ void bist_speed( void )
 
         float const S = speed_get();
 
-        fprintf( stdout, "%4.2f seconds per motor revolution (%5.0f rpm) => %4.1f uph\n", dt, (CONST_SECONDS_PER_MINUTE_F / dt), S );
+        fprintf( stdout, "    %4.2f seconds per motor revolution (%5.0f rpm) => %4.1f uph\n", dt, (CONST_SECONDS_PER_MINUTE_F / dt), S );
 
         if (f == -1)
         {

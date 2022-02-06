@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -153,11 +153,12 @@ static ProfileStatus profile_header_validate( ProfileHeader * const header )
 
     uint32_t hash = fnv1a_init();
     uint32_t const offset = offsetof(ProfileHeader,checksum);
-    uint32_t const sig = PROFILE_SIGNATURE;
+    uint32_t const sig    = PROFILE_SIGNATURE;
+    uint32_t const end    = offsetof(ProfileHeader,entry_map);
 
     hash = fnv1a_process_data( hash, header, offset );
     hash = fnv1a_process_data( hash, &sig, sizeof(sig) );
-    hash = fnv1a_process_data( hash, &header->entry_map[0], (PROFILE_HEADER_SIZE - offset) );
+    hash = fnv1a_process_data( hash, &header->entry_map[0], (PROFILE_HEADER_SIZE - end) );
 
     if (hash != header->checksum)
     {
@@ -166,7 +167,7 @@ static ProfileStatus profile_header_validate( ProfileHeader * const header )
 
     uint32_t const image_length = header->image_length;
 
-    if (image_length == 0)
+    if (image_length < (PROFILE_HEADER_ENTRIES * sizeof(ProfileEntry)))
     {
         return PROFILE_STATUS_ERROR_IMAGE_LENGTH;
     }
@@ -362,7 +363,7 @@ ProfileStatus profile_init( void )
 
     profile_status_header = profile_header_validate( &profile_stub.header );
 
-    if (profile_stub.header.signature != PROFILE_STATUS_SUCCESS)
+    if (profile_status_header != PROFILE_STATUS_SUCCESS)
     {
         profile_init_default();
         return PROFILE_STATUS_INIT_FALLBACK_DEFAULT;
@@ -387,6 +388,12 @@ ProfileStatus profile_init( void )
             }
 
             profile_status_entry = profile_entry_validate( &profile_stub.entry[i] );
+
+            if (profile_status_entry != PROFILE_STATUS_SUCCESS)
+            {
+                profile_init_default();
+                return PROFILE_STATUS_INIT_FALLBACK_DEFAULT;
+            }
         }
 
         address = address + sizeof(ProfileEntry);
@@ -411,6 +418,11 @@ ProfileStatus profile_alloc_entry(
     uint32_t fld = 0;
 
     uint32_t const name_length = (uint32_t)strlen( name );
+
+    profile_status_storage = PROFILE_STATUS_UNKNOWN;
+    profile_status_header  = PROFILE_STATUS_UNKNOWN;
+    profile_status_entry   = PROFILE_STATUS_UNKNOWN;
+    profile_status_other   = PROFILE_STATUS_UNKNOWN;
 
     if (name_length > PROFILE_ENTRY_MAX_NAME_LENGTH)
     {
@@ -464,6 +476,11 @@ ProfileStatus profile_get_entry(
     ProfileStatus ret = PROFILE_STATUS_ERROR_NAME;
     uint32_t blk = 0;
     uint32_t fld = 0;
+
+    profile_status_storage = PROFILE_STATUS_UNKNOWN;
+    profile_status_header  = PROFILE_STATUS_UNKNOWN;
+    profile_status_entry   = PROFILE_STATUS_UNKNOWN;
+    profile_status_other   = PROFILE_STATUS_UNKNOWN;
 
     for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
     {
@@ -539,14 +556,12 @@ ProfileStatus profile_get_entry(
     return ret;
 }
 
-ProfileStatus profile_scan_entry(
-    uint32_t * const index, uint32_t const signature,
-    void * const buffer, uint32_t * const length,
-    char const ** const name )
+ProfileStatus profile_read_entry(
+    uint32_t * const index, ProfileEntry const ** const entry )
 {
     ProfileStatus ret = PROFILE_STATUS_FAILURE_SCAN;
-    uint32_t blk = 0;
-    uint32_t fld = 0;
+    uint32_t blk = (*index >> 2);
+    uint32_t fld = (*index &  3) * PROFILE_ENTRY_BITS;
 
     for ( uint32_t i = *index; i < PROFILE_HEADER_ENTRIES; ++i )
     {
@@ -565,7 +580,78 @@ ProfileStatus profile_scan_entry(
             continue;
         }
 
-        if  (profile_stub.entry[i].signature == signature)
+        if (profile_stub.entry[i].signature != PROFILE_ENTRY_SIGNATURE)
+        {
+            continue;
+        }
+
+        if (profile_stub.entry[i].size != PROFILE_ENTRY_SIZE)
+        {
+            continue;
+        }
+
+        if (profile_stub.entry[i].name_length < PROFILE_ENTRY_MAX_NAME_LENGTH)
+        {
+            continue;
+        }
+
+        // TODO check checksum
+
+        ret = PROFILE_STATUS_SUCCESS;
+        *index = i;
+        *entry = &profile_stub.entry[i];
+        break;
+    }
+
+    *index = PROFILE_HEADER_ENTRIES;
+    *entry = NULL;
+    return ret;
+}
+
+ProfileStatus profile_scan_entry(
+    uint32_t * const index, uint32_t const signature,
+    void * const buffer, uint32_t * const length,
+    char const ** const name )
+{
+    ProfileStatus ret = PROFILE_STATUS_FAILURE_SCAN;
+    uint32_t blk = (*index >> 2);
+    uint32_t fld = (*index &  3) * PROFILE_ENTRY_BITS;
+
+    for ( uint32_t i = *index; i < PROFILE_HEADER_ENTRIES; ++i )
+    {
+        ProfileEntryMap const map = (ProfileEntryMap)((profile_stub.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
+
+        fld = fld + PROFILE_ENTRY_BITS;
+
+        if (fld == BITS_PER_BYTE)
+        {
+            fld = 0;
+            blk++;
+        }
+
+        if ((map & PROFILE_ENTRY_R) != PROFILE_ENTRY_R)
+        {
+            continue;
+        }
+
+        if (profile_stub.entry[i].signature != PROFILE_ENTRY_SIGNATURE)
+        {
+            continue;
+        }
+
+        if (profile_stub.entry[i].size != PROFILE_ENTRY_SIZE)
+        {
+            continue;
+        }
+
+        if (profile_stub.entry[i].name_length < PROFILE_ENTRY_MAX_NAME_LENGTH)
+        {
+            continue;
+        }
+
+        // TODO check checksum
+
+        if  (profile_stub.entry[i].data_signature == signature)
         {
             ret = PROFILE_STATUS_SUCCESS;
             *index = i;
@@ -601,7 +687,10 @@ ProfileStatus profile_put_entry(
     char const * name, uint32_t const signature,
     void * const buffer, uint32_t * const length )
 {
-    profile_status_entry = profile_get_entry( name, signature, buffer, length );
+    profile_status_storage = PROFILE_STATUS_UNKNOWN;
+    profile_status_header  = PROFILE_STATUS_UNKNOWN;
+    profile_status_entry   = profile_get_entry( name, signature, buffer, length );
+    profile_status_other   = PROFILE_STATUS_UNKNOWN;
 
     if (profile_status_entry != PROFILE_STATUS_SUCCESS)
     {
@@ -634,26 +723,22 @@ ProfileStatus profile_del_entry(
 
 ProfileStatus profile_commit( void )
 {
+    profile_status_header  = PROFILE_STATUS_UNKNOWN;
+    profile_status_entry   = PROFILE_STATUS_UNKNOWN;
+    profile_status_other   = PROFILE_STATUS_UNKNOWN;
+
     if (profile_modified == 0)
     {
         profile_status_storage = PROFILE_STATUS_COMMIT_SUCCESS_NOOP;
         return PROFILE_STATUS_SUCCESS;
     }
 
-    uint32_t address = 0;
+    uint32_t address = sizeof(profile_stub.header);
 
-    // Write stub
-    profile_status_storage = profile_storage_write( &profile_stub, address, sizeof(profile_stub) );
-
-    address = address + sizeof(profile_stub);
-
-    if (profile_status_storage != PROFILE_STATUS_SUCCESS)
-    {
-        return PROFILE_STATUS_ERROR_STORAGE_WRITE;
-    }
-    // TODO copy out uncaptured entries before resequencing
     uint32_t blk = 0;
     uint32_t fld = 0;
+    uint32_t offset = sizeof(ProfileHeader) + (sizeof(ProfileEntry) * PROFILE_HEADER_ENTRIES);
+    uint32_t checksum = fnv1a_init();
 
     // Write entries
     for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
@@ -668,20 +753,40 @@ ProfileStatus profile_commit( void )
             blk++;
         }
 
-        if (map == PROFILE_ENTRY_FREE)
+        if (map != PROFILE_ENTRY_FREE)
         {
-            continue;
-        }
+            profile_stub.entry[i].data_offset = offset;
+            profile_stub.entry[i].data_length = *(profile_entry[i].length); // Must be aligned 4
 
-        profile_status_storage = profile_storage_write( &profile_stub.entry[i], address, sizeof(profile_stub.entry[i]) );
+            profile_status_storage = profile_storage_write( &profile_stub.entry[i], address, sizeof(profile_stub.entry[i]) );
+            checksum = fnv1a_process_data( checksum, &profile_stub.entry[i], sizeof(profile_stub.entry[i]) );
+
+            offset = offset + profile_stub.entry[i].data_length;
+
+            switch (profile_status_storage)
+            {
+                case PROFILE_STATUS_SUCCESS:
+                case PROFILE_STATUS_COMMIT_SUCCESS:
+                case PROFILE_STATUS_COMMIT_SUCCESS_NOOP:
+                    break;
+                default:
+                    return PROFILE_STATUS_ERROR_STORAGE_WRITE;
+            }
+        }
+        else
+        {
+            checksum = fnv1a_process_zero( checksum, sizeof(profile_stub.entry[i]) );
+        }
 
         address = address + sizeof(profile_stub.entry[i]);
-
-        if (profile_status_storage != PROFILE_STATUS_SUCCESS)
-        {
-            return PROFILE_STATUS_ERROR_STORAGE_WRITE;
-        }
     }
+
+    profile_stub.header.image_length = offset - sizeof(profile_stub.header);
+
+    address = sizeof(profile_stub); // Should already be the case
+
+    blk = 0;
+    fld = 0;
 
     // Write Entry data
     for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
@@ -701,15 +806,43 @@ ProfileStatus profile_commit( void )
             continue;
         }
 
-        profile_status_storage = profile_storage_write( profile_entry[i].buffer, address, *profile_entry[i].length );
+        profile_status_storage = profile_storage_write( profile_entry[i].buffer, profile_stub.entry[i].data_offset, profile_stub.entry[i].data_length );
+        checksum = fnv1a_process_data( checksum, profile_entry[i].buffer, profile_stub.entry[i].data_length );
 
-        address = address + *profile_entry[i].length;
-        address = (address + 0xF) & ~0xF;
-
-        if (profile_status_storage != PROFILE_STATUS_SUCCESS)
+        switch (profile_status_storage)
         {
-            return PROFILE_STATUS_ERROR_STORAGE_WRITE;
+            case PROFILE_STATUS_SUCCESS:
+            case PROFILE_STATUS_COMMIT_SUCCESS:
+            case PROFILE_STATUS_COMMIT_SUCCESS_NOOP:
+                break;
+            default:
+                return PROFILE_STATUS_ERROR_STORAGE_WRITE;
         }
+
+        address = address + profile_stub.entry[i].data_length;
+    }
+
+    address  = 0;
+
+    // Patch header
+    profile_stub.header.checksum       = PROFILE_SIGNATURE;
+    profile_stub.header.image_checksum = checksum;
+
+    checksum = fnv1a_init();
+    checksum = fnv1a_process_data( checksum, &profile_stub.header, sizeof(profile_stub.header) );
+    profile_stub.header.checksum = checksum;
+
+    // Write header
+    profile_status_storage = profile_storage_write( &profile_stub.header, address, sizeof(profile_stub.header) );
+
+    switch (profile_status_storage)
+    {
+        case PROFILE_STATUS_SUCCESS:
+        case PROFILE_STATUS_COMMIT_SUCCESS:
+        case PROFILE_STATUS_COMMIT_SUCCESS_NOOP:
+            break;
+        default:
+            return PROFILE_STATUS_ERROR_STORAGE_WRITE;
     }
 
     profile_modified = 0;

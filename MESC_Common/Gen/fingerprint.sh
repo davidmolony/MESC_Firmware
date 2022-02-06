@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2021 cod3b453
+# Copyright 2021-2022 cod3b453
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -30,9 +30,9 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 OUTFIL=${SCRIPT_DIR}/../Inc/fingerprint.h
 
-cat << 'HEAD' > ${OUTFIL}
+cat << HEAD > ${OUTFIL}
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-$(date "+%Y") cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -108,9 +108,9 @@ typedef struct MESCFingerprint MESCFingerprint;
 #endif
 FOOT
 
-cat << 'HEADJS' > ${SCRIPT_DIR}/fingerprint.js
+cat << HEADJS > ${SCRIPT_DIR}/fingerprint.js
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-$(date "+%Y") cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:

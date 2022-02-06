@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -84,10 +84,10 @@ void bist_bat( void )
             switch (bp.display)
             {
                 case BAT_DISPLAY_PERCENT:
-                    fprintf( stdout, "%3.2f V => %3.0f %%\n", V, C );
+                    fprintf( stdout, "    %3.2f V => %3.0f %%\n", V, C );
                     break;
                 case BAT_DISPLAY_AMPHOUR:
-                    fprintf( stdout, "%3.2f V => %5.1f Ah\n", V, C );
+                    fprintf( stdout, "    %3.2f V => %5.1f Ah\n", V, C );
                     break;
             }
         }
@@ -99,7 +99,7 @@ void bist_bat( void )
                 {
                     float const V = bat_get_level_voltage( L );
 
-                    fprintf( stdout, "%3.0f %% => %5.2f V\n", L, V );
+                    fprintf( stdout, "    %3.0f %% => %5.2f V\n", L, V );
                 }
                 break;
             case BAT_DISPLAY_AMPHOUR:
@@ -107,7 +107,7 @@ void bist_bat( void )
                 {
                     float const V = bat_get_level_voltage( C );
 
-                    fprintf( stdout, "%5.1f Ah => %5.2f V\n", C, V );
+                    fprintf( stdout, "    %5.1f Ah => %5.2f V\n", C, V );
                 }
                 break;
         }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -150,30 +150,6 @@ static float temp_calculate_R_T( float const Vout )
 }
 
 /*
-Approximation
-
-x(t) = t + T_lo
-y(t) = ln(R) = A * x(t) + B
-
-ln(R) - B
---------- = x(t)
-     A
-
-    ln(R) - B
-T = --------- - T_lo
-        A
-*/
-
-static float temp_calculate_approximation( float const R_T )
-{
-// TODO ERROR temp_profile == NULL
-    float const ln_R_T = logf( R_T );
-    float const T = ((ln_R_T - temp_profile->parameters.approx.B) / temp_profile->parameters.approx.A) + temp_profile->parameters.approx.Tlo;
-
-    return T;
-}
-
-/*
 Steinhart & Hart A/B/C method
 */
 
@@ -251,17 +227,6 @@ float temp_read( uint32_t const adc_raw )
 
     switch (temp_profile->method)
     {
-        case TEMP_METHOD_CURVE_APPROX:
-        {
-            T = temp_calculate_approximation( R_T );
-            break;
-        }
-        case TEMP_METHOD_STEINHART_HART_ABC:
-        {
-            float const K = temp_calculate_SteinhartHart_ABC( R_T );
-            T = CVT_KELVIN_TO_CELSIUS_F( K );
-            break;
-        }
         case TEMP_METHOD_STEINHART_HART_BETA_R:
         {
             float const K = temp_calculate_SteinhartHart_Beta_r( R_T );
@@ -285,27 +250,6 @@ uint32_t temp_get_adc( float const T )
 
     switch (temp_profile->method)
     {
-        case TEMP_METHOD_CURVE_APPROX:
-        {
-            R_T = expf( ((T - temp_profile->parameters.approx.Tlo) * temp_profile->parameters.approx.A) + temp_profile->parameters.approx.B );
-            break;
-        }
-        case TEMP_METHOD_STEINHART_HART_ABC:
-        {
-            float const K = CVT_CELSIUS_TO_KELVIN_F(T);
-
-            float const x = ((1.0f / temp_profile->parameters.SH.C) * (temp_profile->parameters.SH.A - (1.0f / K)));
-            float const Br3C = (temp_profile->parameters.SH.C / (3.0f * temp_profile->parameters.SH.C));
-            float const y = sqrtf( powf( Br3C, 3.0f ) + (x * x / 4.0f) );
-
-            float const p = (1.0f / 3.0f);
-            float const xr2 = (x / 2.0f);
-            float const y_m_xr2_p = powf( (y - xr2), p );
-            float const y_p_xr2_p = powf( (y + xr2), p );
-
-            R_T = expf( y_m_xr2_p - y_p_xr2_p );
-            break;
-        }
         case TEMP_METHOD_STEINHART_HART_BETA_R:
         {
             float const K = CVT_CELSIUS_TO_KELVIN_F( T );

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2021 cod3b453
+# Copyright 2021-2022 cod3b453
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -29,4 +29,4 @@
 
 ENVCC=${CC:-gcc}
 echo "INFO: Using ${ENVCC}"
-${ENVCC} -Wall -Wextra -pedantic -std=c11 -g -ggdb3 -O0 -I../Inc/ -I../Gen -I./virt/ ../Src/MESCbat.c ../Src/MESCcli.c ../Src/MESCfnv.c ../Src/MESCprofile.c ../Src/MESCspeed.c ../Src/MESCtemp.c ../Src/MESCui.c ../Gen/ntc.c bist*.c virt*.c -lm -o bist
+${ENVCC} -Wall -Wextra -pedantic -std=c11 -g -ggdb3 -O0 -I../Inc/ -I../Gen -I./virt/ ../Src/MESCbat.c ../Src/MESCcli.c ../Src/MESCfnv.c ../Src/MESCprofile.c ../Src/MESCspeed.c ../Src/MESCtemp.c ../Src/MESCui.c ../Gen/ntc.c bist*.c gen_profile.c virt*.c -lm -o bist

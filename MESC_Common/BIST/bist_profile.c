@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -38,6 +38,55 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
+
+extern char   const gen_profile[];
+extern size_t const gen_profile_size;
+
+static uint8_t parseHexNybble( char const c )
+{
+    if  (
+            ('0' <= c)
+        &&  (c <= '9')
+        )
+    {
+        return (uint8_t)(c - '0');
+    }
+
+    if  (
+            ('A' <= c)
+        &&  (c <= 'F')
+        )
+    {
+        return (uint8_t)(c - 'A' + 10);
+    }
+}
+
+static ProfileStatus rom_flash_read(  void       * data, uint32_t const address, uint32_t const length )
+{
+    if  (
+            ( address           < gen_profile_size)
+        &&  ((address + length) < gen_profile_size)
+        )
+    {
+        for (uint32_t i = 0, offset = address; i < length; i++, offset++ )
+        {
+            ((uint8_t *)data)[offset] = (parseHexNybble(gen_profile[(2 * offset) + 0]) << BITS_PER_NYBBLE)
+                                      |  parseHexNybble(gen_profile[(2 * offset) + 1]);
+        }
+        return PROFILE_STATUS_SUCCESS;
+    }
+
+    return PROFILE_STATUS_ERROR_STORAGE_READ;
+}
+
+static ProfileStatus rom_flash_write( void const * data, uint32_t const address, uint32_t const length )
+{
+    return PROFILE_STATUS_ERROR_STORAGE_WRITE;
+    (void)data;
+    (void)address;
+    (void)length;
+}
 
 extern void          virt_flash_configure( uint8_t const use_mem_not_fs, uint8_t const read_zero_on_error );
 extern void          virt_flash_apply_corruption( void );
@@ -214,11 +263,12 @@ void bist_profile( void )
 
     ret = profile_init();
     profile_get_last( &s, &h, &e, & o );
-    fprintf( stdout, "INFO: Load\n"
+    fprintf( stdout, "INFO: Load %d %s\n"
                      "    S:%d %s\n"
                      "    H:%d %s\n"
                      "    E:%d %s\n"
                      "    O:%d %s\n",
+        ret, getProfileStatusName(ret),
         s, getProfileStatusName(s),
         h, getProfileStatusName(h),
         e, getProfileStatusName(e),
@@ -226,11 +276,12 @@ void bist_profile( void )
 
     ret = profile_commit();
     profile_get_last( &s, &h, &e, & o );
-    fprintf( stdout, "INFO: Store (no update)\n"
+    fprintf( stdout, "INFO: Store (no update) %d %s\n"
                      "    S:%d %s\n"
                      "    H:%d %s\n"
                      "    E:%d %s\n"
                      "    O:%d %s\n",
+        ret, getProfileStatusName(ret),
         s, getProfileStatusName(s),
         h, getProfileStatusName(h),
         e, getProfileStatusName(e),
@@ -240,11 +291,12 @@ void bist_profile( void )
 
     ret = profile_commit();
     profile_get_last( &s, &h, &e, & o );
-    fprintf( stdout, "INFO: Store (update)\n"
+    fprintf( stdout, "INFO: Store (update) %d %s\n"
                      "    S:%d %s\n"
                      "    H:%d %s\n"
                      "    E:%d %s\n"
                      "    O:%d %s\n",
+        ret, getProfileStatusName(ret),
         s, getProfileStatusName(s),
         h, getProfileStatusName(h),
         e, getProfileStatusName(e),
@@ -263,44 +315,26 @@ void bist_profile( void )
         switch (ret)
         {
             case PROFILE_STATUS_INIT_SUCCESS_DEFAULT:
-                fprintf( stdout, "INFO: PROFILE_STATUS_INIT_SUCCESS_DEFAULT\n"
-                                 "    S:%d %s\n"
-                                 "    H:%d %s\n"
-                                 "    E:%d %s\n"
-                                 "    O:%d %s\n",
-                    s, getProfileStatusName(s),
-                    h, getProfileStatusName(h),
-                    e, getProfileStatusName(e),
-                    o, getProfileStatusName(o) );
-                break;
             case PROFILE_STATUS_INIT_SUCCESS_LOADED:
-                fprintf( stdout, "INFO: PROFILE_STATUS_INIT_SUCCESS_LOADED\n"
-                                 "    S:%d %s\n"
-                                 "    H:%d %s\n"
-                                 "    E:%d %s\n"
-                                 "    O:%d %s\n",
-                    s, getProfileStatusName(s),
-                    h, getProfileStatusName(h),
-                    e, getProfileStatusName(e),
-                    o, getProfileStatusName(o) );
-                break;
             case PROFILE_STATUS_INIT_FALLBACK_DEFAULT:
-                fprintf( stdout, "INFO: PROFILE_STATUS_INIT_FALLBACK_DEFAULT\n"
+                fprintf( stdout, "INFO: %d %s\n"
                                  "    S:%d %s\n"
                                  "    H:%d %s\n"
                                  "    E:%d %s\n"
                                  "    O:%d %s\n",
+                    ret, getProfileStatusName(ret),
                     s, getProfileStatusName(s),
                     h, getProfileStatusName(h),
                     e, getProfileStatusName(e),
                     o, getProfileStatusName(o) );
                 break;
             default:
-                fprintf( stdout, "ERROR:\n"
+                fprintf( stdout, "ERROR: %d %s\n"
                                  "    S:%d %s\n"
                                  "    H:%d %s\n"
                                  "    E:%d %s\n"
                                  "    O:%d %s\n",
+                    ret, getProfileStatusName(ret),
                     s, getProfileStatusName(s),
                     h, getProfileStatusName(h),
                     e, getProfileStatusName(e),
@@ -332,6 +366,18 @@ void bist_profile( void )
         fprintf( stdout, "INFO: Adding Battery entry\n" );
 
         ret = profile_put_entry( "MESC_BAT", BAT_PROFILE_SIGNATURE, &bp, &bp_size );
+
+        profile_get_last( &s, &h, &e, & o );
+        fprintf( stdout, "INFO: %d %s\n"
+                         "    S:%d %s\n"
+                         "    H:%d %s\n"
+                         "    E:%d %s\n"
+                         "    O:%d %s\n",
+            ret, getProfileStatusName(ret),
+            s, getProfileStatusName(s),
+            h, getProfileStatusName(h),
+            e, getProfileStatusName(e),
+            o, getProfileStatusName(o) );
     }
 
     if (profile_get_entry( "MESC_SPEED", SPEED_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
@@ -348,6 +394,18 @@ void bist_profile( void )
         fprintf( stdout, "INFO: Adding Speed entry\n" );
 
         ret = profile_put_entry( "MESC_SPEED", SPEED_PROFILE_SIGNATURE, &sp, &sp_size );
+
+        profile_get_last( &s, &h, &e, & o );
+        fprintf( stdout, "INFO: %d %s\n"
+                         "    S:%d %s\n"
+                         "    H:%d %s\n"
+                         "    E:%d %s\n"
+                         "    O:%d %s\n",
+            ret, getProfileStatusName(ret),
+            s, getProfileStatusName(s),
+            h, getProfileStatusName(h),
+            e, getProfileStatusName(e),
+            o, getProfileStatusName(o) );
     }
 
     if (profile_get_entry( "MESC_TEMP", TEMP_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
@@ -364,6 +422,18 @@ void bist_profile( void )
         fprintf( stdout, "INFO: Adding Temperature entry\n" );
 
         ret = profile_put_entry( "MESC_TEMP", TEMP_PROFILE_SIGNATURE, &tp, &tp_size );
+
+        profile_get_last( &s, &h, &e, & o );
+        fprintf( stdout, "INFO: %d %s\n"
+                         "    S:%d %s\n"
+                         "    H:%d %s\n"
+                         "    E:%d %s\n"
+                         "    O:%d %s\n",
+            ret, getProfileStatusName(ret),
+            s, getProfileStatusName(s),
+            h, getProfileStatusName(h),
+            e, getProfileStatusName(e),
+            o, getProfileStatusName(o) );
     }
 
     if (profile_get_entry( "MESC_UI", UI_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
@@ -380,11 +450,114 @@ void bist_profile( void )
         fprintf( stdout, "INFO: Adding UI entry\n" );
 
         ret = profile_put_entry( "MESC_UI", UI_PROFILE_SIGNATURE, &up, &up_size );
+
+        profile_get_last( &s, &h, &e, & o );
+        fprintf( stdout, "INFO: %d %s\n"
+                         "    S:%d %s\n"
+                         "    H:%d %s\n"
+                         "    E:%d %s\n"
+                         "    O:%d %s\n",
+            ret, getProfileStatusName(ret),
+            s, getProfileStatusName(s),
+            h, getProfileStatusName(h),
+            e, getProfileStatusName(e),
+            o, getProfileStatusName(o) );
     }
+
+    fprintf( stdout, "INFO: Commit image\n" );
+
+    ret = profile_commit(); // DEBUG
+
+    profile_get_last( &s, &h, &e, & o );
+        fprintf( stdout, "INFO: %d %s\n"
+                         "    S:%d %s\n"
+                         "    H:%d %s\n"
+                         "    E:%d %s\n"
+                         "    O:%d %s\n",
+            ret, getProfileStatusName(ret),
+            s, getProfileStatusName(s),
+            h, getProfileStatusName(h),
+            e, getProfileStatusName(e),
+            o, getProfileStatusName(o) );
+
+    fprintf( stdout, "INFO: Read-back image\n" );
+__asm__ volatile("int3");
+    ret = profile_init();
+
+    profile_get_last( &s, &h, &e, & o );
+        fprintf( stdout, "INFO: %d %s\n"
+                         "    S:%d %s\n"
+                         "    H:%d %s\n"
+                         "    E:%d %s\n"
+                         "    O:%d %s\n",
+            ret, getProfileStatusName(ret),
+            s, getProfileStatusName(s),
+            h, getProfileStatusName(h),
+            e, getProfileStatusName(e),
+            o, getProfileStatusName(o) );
 
     virt_flash_reset();
 
     virt_flash_free();
+
+    fprintf( stdout, "INFO: Profile image\n" );
+
+    profile_configure_storage_io( rom_flash_read, rom_flash_write );
+
+    ret = profile_init(); // DEBUG
+
+    profile_get_last( &s, &h, &e, & o );
+    fprintf( stdout, "INFO: Init\n"
+                     "    S:%d %s\n"
+                     "    H:%d %s\n"
+                     "    E:%d %s\n"
+                     "    O:%d %s\n",
+        s, getProfileStatusName(s),
+        h, getProfileStatusName(h),
+        e, getProfileStatusName(e),
+        o, getProfileStatusName(o) );
+
+    if (ret == PROFILE_STATUS_SUCCESS)
+    {
+        fprintf( stdout, "INFO: Scanning image\n" );
+
+        uint32_t index = 0;
+        ProfileEntry const * entry = NULL;
+
+        do
+        {
+            ret = profile_read_entry( &index, &entry ); // DEBUG
+
+            fprintf( stdout, "INFO: %d %s\n"
+                             "    S:%d %s\n"
+                             "    H:%d %s\n"
+                             "    E:%d %s\n"
+                             "    O:%d %s\n",
+                ret, getProfileStatusName(ret),
+                s, getProfileStatusName(s),
+                h, getProfileStatusName(h),
+                e, getProfileStatusName(e),
+                o, getProfileStatusName(o) );
+
+            if  (
+                    (ret == PROFILE_STATUS_SUCCESS)
+                &&  (entry != NULL)
+                )
+            {
+                fprintf( stdout, "ENTRY[%" PRIu32 "]\n"
+                                 "              Name %s\n"
+                                 "    Data Signature %" PRIu32 "\n",
+                                 index,
+                                 entry->name,
+                                 entry->data_signature );
+            }
+        }
+        while (ret != PROFILE_STATUS_SUCCESS);
+    }
+    else
+    {
+        fprintf( stdout, "INFO: No entries found\n" );
+    }
 
     fprintf( stdout, "Finished Profile BIST\n" );
 }

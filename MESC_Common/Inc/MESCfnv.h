@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -49,5 +49,7 @@ uint32_t fnv1a_init( void );
 uint32_t fnv1a_process( uint32_t const fnv, uint8_t const byte );
 
 uint32_t fnv1a_process_data( uint32_t const fnv, void const * ptr, uint32_t const len );
+
+uint32_t fnv1a_process_zero( uint32_t const fnv, uint32_t const len );
 
 #endif

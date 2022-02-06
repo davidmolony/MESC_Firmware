@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -189,13 +189,9 @@ void bist_temp( void )
 
     tp.adc_range = 4096;
 
-    tp.method = TEMP_METHOD_CURVE_APPROX;
+    tp.method = TEMP_METHOD_STEINHART_HART_BETA_R;
     tp.schema = TEMP_SCHEMA_R_F_ON_R_T;  // 303 design
 
-    // From util_ntc
-    tp.parameters.approx.A   = - 0.036523f;
-    tp.parameters.approx.B   =  11.061409f;
-    tp.parameters.approx.Tlo = -23.000000f;
     // From util_ntc
     tp.parameters.SH.A = 0.000674f;
     tp.parameters.SH.B = 0.000291f;
@@ -248,17 +244,17 @@ void bist_temp( void )
         float const R_T = ntc_get_R_T_from_adc( &tp, adc );
         float const T = ntc_get_T_from_R_T( R_T );
 
-        fprintf( stdout, "ADC: %03" PRIX32 " => %5.1f 'C\n", adc, T );
+        fprintf( stdout, "    ADC: %03" PRIX32 " => %5.1f 'C\n", adc, T );
     }
 
-    for ( float T = 0.0f; T <= 100.0f; T = T + 5.0f)
+    for ( float T = 0.0f; T <= 100.0f; T = T + 5.0f )
     {
         uint32_t const adc = ntc_get_adc_from_T( &tp, T );
 
-        fprintf( stdout, "%5.1f 'C => ADC: %03" PRIX32 "\n", T, adc );
+        fprintf( stdout, "    %5.1f 'C => ADC: %03" PRIX32 "\n", T, adc );
     }
 
-    for ( TEMPMethod m = TEMP_METHOD_CURVE_APPROX; (m <= TEMP_METHOD_STEINHART_HART_BETA_R); ++m )
+    for ( TEMPMethod m = TEMP_METHOD_STEINHART_HART_BETA_R; (m <= TEMP_METHOD_STEINHART_HART_BETA_R); ++m )
     {
         fprintf( stdout, "Method %d\n", m );
 
@@ -270,14 +266,14 @@ void bist_temp( void )
         {
             float const T = temp_read( adc );
 
-            fprintf( stdout, "ADC: %03" PRIX32 " => %5.1f 'C\n", adc, T );
+            fprintf( stdout, "    ADC: %03" PRIX32 " => %5.1f 'C\n", adc, T );
         }
 
-        for ( float T = 0.0f; T <= 100.0f; T = T + 5.0f)
+        for ( float T = 0.0f; T <= 100.0f; T = T + 5.0f )
         {
             uint32_t const adc = temp_get_adc( T );
 
-            fprintf( stdout, "%5.1f 'C => ADC %03" PRIX32 "\n", T, adc );
+            fprintf( stdout, "    %5.1f 'C => ADC %03" PRIX32 "\n", T, adc );
         }
     }
 
@@ -292,17 +288,17 @@ void bist_temp( void )
         float const R_T = ntc_get_R_T_from_adc( &tp, adc );
         float const T = ntc_get_T_from_R_T( R_T );
 
-        fprintf( stdout, "ADC: %03" PRIX32 " => %5.1f 'C\n", adc, T );
+        fprintf( stdout, "    ADC: %03" PRIX32 " => %5.1f 'C\n", adc, T );
     }
 
-    for ( float T = 0.0f; T <= 100.0f; T = T + 5.0f)
+    for ( float T = 0.0f; T <= 100.0f; T = T + 5.0f )
     {
         uint32_t const adc = ntc_get_adc_from_T( &tp, T );
 
-        fprintf( stdout, "%5.1f 'C => ADC: %03" PRIX32 "\n", T, adc );
+        fprintf( stdout, "    %5.1f 'C => ADC: %03" PRIX32 "\n", T, adc );
     }
 
-    for ( TEMPMethod m = TEMP_METHOD_CURVE_APPROX; (m <= TEMP_METHOD_STEINHART_HART_BETA_R); ++m )
+    for ( TEMPMethod m = TEMP_METHOD_STEINHART_HART_BETA_R; (m <= TEMP_METHOD_STEINHART_HART_BETA_R); ++m )
     {
         fprintf( stdout, "Method %d\n", m );
 
@@ -314,14 +310,14 @@ void bist_temp( void )
         {
             float const T = temp_read( adc );
 
-            fprintf( stdout, "ADC: %03" PRIX32 " => %5.1f 'C\n", adc, T );
+            fprintf( stdout, "    ADC: %03" PRIX32 " => %5.1f 'C\n", adc, T );
         }
 
-        for ( float T = 0.0f; T <= 100.0f; T = T + 5.0f)
+        for ( float T = 0.0f; T <= 100.0f; T = T + 5.0f )
         {
             uint32_t const adc = temp_get_adc( T );
 
-            fprintf( stdout, "%5.1f 'C => ADC %03" PRIX32 "\n", T, adc );
+            fprintf( stdout, "    %5.1f 'C => ADC %03" PRIX32 "\n", T, adc );
         }
     }
 

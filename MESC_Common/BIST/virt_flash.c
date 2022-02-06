@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -75,7 +75,7 @@ void virt_flash_corrupt( char const * name, uint32_t const offset, uint32_t cons
     }
     else
     {
-        fprintf( stdout, "INFO: Corrupting %s offset %" PRIu32 " size %" PRIu32 "\n", name, offset, length );
+        fprintf( stdout, "INFO: Corrupting %s at offset %" PRIu32 " size %" PRIu32 "\n", name, offset, length );
     }
 
     corrupt_offset = offset;
@@ -95,7 +95,7 @@ ProfileStatus virt_flash_read( void * data, uint32_t const address, uint32_t con
 
     if (f != NULL)
     {
-        fseek( f, address, SEEK_SET );
+        fseek( f, address, SEEK_SET );// TODO
 
         size_t const len = fread( data, 1, length, f );
 
@@ -113,7 +113,7 @@ ProfileStatus virt_flash_read( void * data, uint32_t const address, uint32_t con
 
     if (use_mem_not_fs != 0)
     {
-        memcpy( data, mem, length );
+        memcpy( &((uint8_t *)data)[address], mem, length );// TODO
 
         virt_flash_apply_corruption();
 
@@ -126,7 +126,7 @@ ProfileStatus virt_flash_read( void * data, uint32_t const address, uint32_t con
     }
     else
     {
-        memset( data, 0, length );
+        memset( &((uint8_t *)data)[address], 0, length );// TODO
 
         virt_flash_apply_corruption();
 
@@ -147,7 +147,7 @@ ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint3
 
     if (f != NULL)
     {
-        fseek( f, address, SEEK_SET );
+        fseek( f, address, SEEK_SET ); // TODO
 
         size_t const len = fwrite( data, 1, length, f );
 
@@ -163,7 +163,7 @@ ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint3
 
     if (use_mem_not_fs != 0)
     {
-        memcpy( mem, data, length );
+        memcpy( &mem[address], data, length );// TODO
 
         return PROFILE_STATUS_COMMIT_SUCCESS;
     }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -88,4 +88,16 @@ uint32_t fnv1a_init( void )
 uint32_t fnv1a_process( uint32_t const fnv, uint8_t const byte )
 {
     return ((fnv ^ byte) * FNV1A_PRIME_32);     // FNV public domain
+}
+
+uint32_t fnv1a_process_zero( uint32_t const fnv, uint32_t const len )
+{
+    uint32_t fnv_ = fnv;
+
+    for ( uint32_t i = 0; i < len; ++i )
+    {
+        fnv_ = fnv1a_process( fnv_, 0 );
+    }
+
+    return fnv_;
 }

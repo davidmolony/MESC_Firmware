@@ -9,3 +9,4 @@ Release/
 /**/Gen/MESCsin_lut.c
 /**/Gen/util_ntc
 /**/Gen/util_sinlut
+/**/vgcore.*

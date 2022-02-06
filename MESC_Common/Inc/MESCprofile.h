@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -192,6 +192,9 @@ ProfileStatus profile_alloc_entry(
 ProfileStatus profile_get_entry(
     char const * name, uint32_t const signature,
     void * const buffer, uint32_t * const length );
+
+ProfileStatus profile_read_entry(
+    uint32_t * const index, ProfileEntry const ** const entry );
 
 ProfileStatus profile_scan_entry(
     uint32_t * const index, uint32_t const signature,

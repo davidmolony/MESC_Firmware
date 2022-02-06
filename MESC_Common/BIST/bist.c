@@ -391,8 +391,16 @@ static int virt_flash( int argc, char * argv[] )
 
 int main( int argc, char * argv[] )
 {
+    int const en   = (argc > 1) ? 0 : 1;
+    int en_bat     = en;
+    int en_cli     = en;
+    int en_profile = en;
+    int en_speed   = en;
+    int en_temp    = en;
+
     for ( int a = 1; a < argc; ++a )
     {
+
         if (strcmp( argv[a], "--cli:i" ) == 0)
         {
             i_cli();
@@ -408,13 +416,57 @@ int main( int argc, char * argv[] )
         {
             return virt_flash( argc, argv );
         }
+
+        if (strcmp( argv[a], "+bat" ) == 0)
+        {
+            en_bat = 1;
+        }
+
+        if (strcmp( argv[a], "+cli" ) == 0)
+        {
+            en_cli = 1;
+        }
+
+        if (strcmp( argv[a], "+profile" ) == 0)
+        {
+            en_profile = 1;
+        }
+
+        if (strcmp( argv[a], "+speed" ) == 0)
+        {
+            en_speed = 1;
+        }
+
+        if (strcmp( argv[a], "+temp" ) == 0)
+        {
+            en_temp = 1;
+        }
     }
 
-    bist_bat();
-    bist_cli();
-    bist_profile();
-    bist_speed();
-    bist_temp();
+    if (en_bat)
+    {
+        bist_bat();
+    }
+
+    if (en_cli)
+    {
+        bist_cli();
+    }
+
+    if (en_profile)
+    {
+        bist_profile();
+    }
+
+    if (en_speed)
+    {
+        bist_speed();
+    }
+
+    if (en_temp)
+    {
+        bist_temp();
+    }
 
     return EXIT_SUCCESS;
 (void)argc;
