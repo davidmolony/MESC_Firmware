@@ -97,6 +97,13 @@ SQRT(6)
 #define CONST_1_R_SQRT_6_F                  (0.40824829046f)
 
 /*
+1
+-
+3
+*/
+#define CONST_1_R_3_F                       (0.33333333333f)
+
+/*
 Temperature
 */
 
@@ -123,7 +130,8 @@ Time
 Trigonometric
 */
 
-#define CONST_PI_F (3.14159274f)
+#define CONST_PI_F   (3.14159274f)
+#define CONST_2_PI_F (6.28318531f)
 
 /*
 CONVERSIONS
@@ -138,6 +146,5 @@ Temperature
 
 #define CVT_CELSIUS_TO_KELVIN_U(C)  (CONST_ZERO_CELSIUS_TO_ABSOLUTE_U + (C))
 #define CVT_CELSIUS_TO_KELVIN_F(C)  (CONST_ZERO_CELSIUS_TO_ABSOLUTE_F + (C))
-
 
 #endif

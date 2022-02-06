@@ -22,6 +22,9 @@
  *      Author: David Molony
  */
 
+#ifndef MESC_FOC_H
+#define MESC_FOC_H
+
 #include "stm32fxxx_hal.h"
 
 #define FOC_SECTORS_PER_REVOLUTION (6)
@@ -30,7 +33,7 @@
 #define FOC_NUM_ADC                (4)
 #define FOC_PERIODS                (1)
 
-enum ADCChannels
+enum MESCADC
 {
     ADCIU,
     ADCIV,
@@ -200,3 +203,5 @@ void calculateVoltageGain();
 void doublePulseTest();
 
 void slowLoop(TIM_HandleTypeDef *htim);
+
+#endif

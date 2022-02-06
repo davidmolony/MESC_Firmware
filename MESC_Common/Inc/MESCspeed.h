@@ -34,6 +34,8 @@
 
 #define SPEED_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','S','P','E')
 
+#define NUM_HALL_STATES (UINT32_C(6))
+
 struct SPEEDProfile
 {
     struct
@@ -51,7 +53,7 @@ struct SPEEDProfile
     struct
     {
     uint8_t     type;
-    uint8_t     hall_states[6];
+    uint8_t     hall_states[NUM_HALL_STATES];
     uint8_t     _;
     }           sensor;
 

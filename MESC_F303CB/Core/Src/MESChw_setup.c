@@ -86,7 +86,7 @@ void setAWDVals()
     }
 
     uint32_t AWD_bottom_set_point = measurement_buffers.ADCOffset[0] - (g_hw_setup.RawCurrLim - 2048);
-    if (AWD_bottom_set_point<96 | AWD_bottom_set_point> measurement_buffers.ADCOffset[0])
+    if (AWD_bottom_set_point<96 || AWD_bottom_set_point> measurement_buffers.ADCOffset[0])
     {
         AWD_bottom_set_point = 96;
     }
@@ -103,7 +103,7 @@ void setAWDVals()
     }
 
     AWD_bottom_set_point = measurement_buffers.ADCOffset[1] - (g_hw_setup.RawCurrLim - 2048);
-    if (AWD_bottom_set_point<96 | AWD_bottom_set_point> measurement_buffers.ADCOffset[1])
+    if (AWD_bottom_set_point<96 || AWD_bottom_set_point> measurement_buffers.ADCOffset[1])
     {
         AWD_bottom_set_point = 96;
     }
@@ -120,7 +120,7 @@ void setAWDVals()
     }
 
     AWD_bottom_set_point = measurement_buffers.ADCOffset[2] - (g_hw_setup.RawCurrLim - 2048);
-    if (AWD_bottom_set_point<96 | AWD_bottom_set_point> measurement_buffers.ADCOffset[2])
+    if (AWD_bottom_set_point<96 || AWD_bottom_set_point> measurement_buffers.ADCOffset[2])
     {
         AWD_bottom_set_point = 96;
     }
