@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2021 cod3b453
+# Copyright 2021-2022 cod3b453
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -34,11 +34,11 @@ cd build
 for cfg in Debug Release
 do
     mkdir -p ${cfg}
-    pushd ${cfg} > dev/null
+    pushd ${cfg} > /dev/null
     cmake -DCMAKE_BUILD_TYPE=${cfg} -G"Unix Makefiles" ../..
     #cmake -DCMAKE_BUILD_TYPE=${cfg} -G"CodeBlocks - Unix Makefiles" ../..
     #cmake -DCMAKE_BUILD_TYPE=${cfg} -G"CodeLite - Unix Makefiles" ../..
     #cmake -DCMAKE_BUILD_TYPE=${cfg} -G"Eclipse CDT4 - Unix Makefiles" ../..
     #cmake -DCMAKE_BUILD_TYPE=${cfg} -G"KDevelop3 - Unix Makefiles" ../..
-    popd > dev/null
+    popd > /dev/null
 done

@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,5 +27,5 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-var TIMESTAMP = '202107171805'
-var GITHASH = '53995ba835d8298aef8bff2ba1929e56d54b9037'
+var TIMESTAMP = '202202061446'
+var GITHASH = '837addf0dd130ad367d05c7b0593d19bc5f8904f'

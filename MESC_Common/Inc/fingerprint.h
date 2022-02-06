@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,13 +32,13 @@
 
 #include "string_op.h"
 
-#define MESC_TIMESTAMP_YEAR   MAKE_UINT32_STRING('2','0','2','1')
-#define MESC_TIMESTAMP_MONTH  MAKE_UINT16_STRING('0','7')
-#define MESC_TIMESTAMP_DAY    MAKE_UINT16_STRING('1','7')
-#define MESC_TIMESTAMP_HOUR   MAKE_UINT16_STRING('1','8')
-#define MESC_TIMESTAMP_MINUTE MAKE_UINT16_STRING('0','5')
+#define MESC_TIMESTAMP_YEAR   MAKE_UINT32_STRING('2','0','2','2')
+#define MESC_TIMESTAMP_MONTH  MAKE_UINT16_STRING('0','2')
+#define MESC_TIMESTAMP_DAY    MAKE_UINT16_STRING('0','6')
+#define MESC_TIMESTAMP_HOUR   MAKE_UINT16_STRING('1','4')
+#define MESC_TIMESTAMP_MINUTE MAKE_UINT16_STRING('4','6')
 #define MESC_GITHASH_WORDS (160 / 32)
-#define MESC_GITHASH {UINT32_C(0xd54b9037),UINT32_C(0xa1929e56),UINT32_C(0xef8bff2b),UINT32_C(0x35d8298a),UINT32_C(0x53995ba8)}
+#define MESC_GITHASH {UINT32_C(0xc5f8904f),UINT32_C(0x0593d19b),UINT32_C(0x67d05c7b),UINT32_C(0xdd130ad3),UINT32_C(0x837addf0)}
 
 struct MESCFingerprint
 {

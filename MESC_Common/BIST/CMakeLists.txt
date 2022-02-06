@@ -1,4 +1,4 @@
-# Copyright 2021 cod3b453
+# Copyright 2021-2022 cod3b453
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -32,7 +32,7 @@ IF(MSVC)
     SET( CMAKE_C_FLAGS         "/W4 /MP" )
     SET( CMAKE_C_FLAGS_DEBUG   "/Od /GS /ZI /RTC1" )
     SET( CMAKE_C_FLAGS_RELEASE "/O2 /GF" )
-    
+
     ADD_DEFINITIONS( /D_CRT_SECURE_NO_WARNINGS )
 ELSE()
     SET( CMAKE_C_FLAGS         "-Wall -Wextra -pedantic -std=c11" )
@@ -79,6 +79,7 @@ SET( ${PROJECT_NAME}_src
     ${CMAKE_CURRENT_LIST_DIR}/bist_profile.c
     ${CMAKE_CURRENT_LIST_DIR}/bist_speed.c
     ${CMAKE_CURRENT_LIST_DIR}/bist_temp.c
+    ${CMAKE_CURRENT_LIST_DIR}/gen_profile.c
     ${CMAKE_CURRENT_LIST_DIR}/virt_flash.c
     ${CMAKE_CURRENT_LIST_DIR}/virt_uart.c
 )

@@ -60,6 +60,8 @@ static uint8_t parseHexNybble( char const c )
     {
         return (uint8_t)(c - 'A' + 10);
     }
+
+    return 0;
 }
 
 static ProfileStatus rom_flash_read(  void       * data, uint32_t const address, uint32_t const length )
