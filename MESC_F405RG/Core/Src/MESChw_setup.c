@@ -71,4 +71,14 @@ void getRawADC(void) {
   measurement_buffers.RawADC[1][0] = hadc2.Instance->JDR1;  // V Current
   measurement_buffers.RawADC[2][0] = hadc3.Instance->JDR1;  // W Current
   measurement_buffers.RawADC[1][3] = hadc1.Instance->JDR3;  // Throttle
+
+  measurement_buffers.RawADC[0][2] = hadc1.Instance->JDR2;//PhaseU Voltage
+  measurement_buffers.RawADC[1][1] = hadc2.Instance->JDR3;//PhaseV Voltage
+  measurement_buffers.RawADC[1][2] = hadc3.Instance->JDR3;//PhaseW Voltage
+}
+
+void getRawADCVph(void){
+
+
+
 }

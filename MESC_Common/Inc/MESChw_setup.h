@@ -93,3 +93,4 @@ void hw_init(void);  // Fills the parameters of the hardware struct, simplifies
 
 void setAWDVals();
 void getRawADC(void);
+void getRawADCVph(void);

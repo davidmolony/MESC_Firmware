@@ -95,6 +95,8 @@ typedef struct {
   float Vab_to_PWM;
   float Vd_max;
   float Vq_max;
+  float Vdint_max;
+  float Vqint_max;
   // Field weakenning
   float field_weakening_curr_max;
   float field_weakening_threshold;
@@ -104,6 +106,8 @@ typedef struct {
   uint16_t state[4];  // current state, last state, angle change occurred
   uint16_t hall_update;
   uint16_t BEMF_update;
+  uint16_t IRQentry;
+  uint16_t IRQexit;
 
 } MESCfoc_s;
 
@@ -194,3 +198,4 @@ void calculateVoltageGain();
 void doublePulseTest();
 
 void slowLoop(TIM_HandleTypeDef *htim);
+void MESCTrack();
