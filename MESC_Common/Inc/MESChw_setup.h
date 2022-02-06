@@ -28,6 +28,7 @@
 //:
 //#define HW_SETUP_IGAIN ((HW_SETUP_RSHUNT*...)/(...))
 // _OR
+#define SHUNT_POLARITY -1.0
 
 typedef float
     hardware_vars_t;  // Let's have all the hardware and everything in float for
@@ -74,6 +75,7 @@ typedef struct {
                            // resistance is called each PWM cycle, be deprecated
                            // by accumulating the measurements until it reaches
                            // 0, at which point the resistance is accepted
+  float motor_flux;
 } motor_s;
 
 motor_s motor;  // TODO PROFILE
@@ -101,6 +103,8 @@ Function prototypes
 void motor_init(void);  // Fills the parameters of the motor struct
 void hw_init(void);  // Fills the parameters of the hardware struct, simplifies
                      // some into useful overall gain values
+
+void setAWDVals();
 void getRawADC(void);
 /*
 #define getHallState(...)

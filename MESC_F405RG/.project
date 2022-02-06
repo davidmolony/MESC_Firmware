@@ -36,10 +36,5 @@
 			<type>2</type>
 			<locationURI>PARENT-1-PROJECT_LOC/MESC_Common</locationURI>
 		</link>
-		<link>
-			<name>Src</name>
-			<type>2</type>
-			<locationURI>PARENT-1-PROJECT_LOC/MESC_Common/Src</locationURI>
-		</link>
 	</linkedResources>
 </projectDescription>

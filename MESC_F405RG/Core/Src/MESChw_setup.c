@@ -42,20 +42,19 @@ void motor_init() {
 
 void hw_init() {
   g_hw_setup.Imax =
-      120.0;  // Imax is the current at which we are either no longer able to
-              // read it, or hardware "don't ever exceed to avoid breakage"
-  g_hw_setup.Vmax = 55.0;  // Headroom beyond which likely to get avalanche of
+      60.0;  // Imax is the current at which we are either no longer able to
+             // read it, or hardware "don't ever exceed to avoid breakage"
+  g_hw_setup.Vmax = 45.0;  // Headroom beyond which likely to get avalanche of
                            // MOSFETs or DCDC converter
   g_hw_setup.Vmin = 10;  // This implies that the PSU has crapped out or a wire
                          // has fallen out, and suddenly there will be no power.
   g_hw_setup.Rshunt = 0.00033;
   g_hw_setup.RVBB = 1500;   //
   g_hw_setup.RVBT = 82000;  //
-  g_hw_setup.OpGain = 10;   // Can this be inferred from the HAL declaration?
+  g_hw_setup.OpGain = 10;   //
   g_hw_setup.VBGain =
       (3.3f / 4096.0f) * (g_hw_setup.RVBB + g_hw_setup.RVBT) / g_hw_setup.RVBB;
-  g_hw_setup.Igain =
-      3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain);  // TODO
+  g_hw_setup.Igain = 3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain * SHUNT_POLARITY);  // TODO
   g_hw_setup.RawCurrLim =
       g_hw_setup.Imax * g_hw_setup.Rshunt * g_hw_setup.OpGain * (4096 / 3.3) +
       2048;
@@ -133,32 +132,32 @@ ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
     {
         return PROFILE_STATUS_ERROR_DATA_LENGTH;
     }
-    
+
     uint32_t const base  = getFlashBaseAddress();
-    
+
     uint32_t const saddr = base + address;
     uint32_t const eaddr = saddr + length - 1;
-    
+
     uint32_t const ssector = getFlashSectorIndex( saddr );
     uint32_t const esector = getFlashSectorIndex( eaddr );
-    
+
     // Limit erasure to a single sector
     if (ssector != esector)
     {
         return PROFILE_STATUS_ERROR_DATA_LENGTH;
     }
-    
+
     FLASH_EraseInitTypeDef sector_erase;
-    
+
     sector_erase.TypeErase = FLASH_TYPEERASE_SECTORS;
     sector_erase.Banks     = FLASH_BANK_1; // (ignored)
     sector_erase.Sector    = ssector;
     sector_erase.NbSectors = (esector - ssector + 1);
-    
+
     uint32_t result = 0;
-    
+
     HAL_FLASHEx_Erase( &sector_erase, &result );
-    
+
     switch (result)
     {
         case HAL_OK:
@@ -200,4 +199,6 @@ void mesc_init_3( void )
     HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_4 );
 
     htim1.Instance->CCR4 = 1022;
+
+    __HAL_TIM_ENABLE_IT(&htim1, TIM_IT_UPDATE);
 }

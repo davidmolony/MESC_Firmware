@@ -227,6 +227,10 @@ int main(void)
     // MotorState = MOTOR_STATE_HALL_RUN;
     MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
+    motor.motor_flux = 350;
+    // 650 is the right number for a motor with 7PP and 50kV
+    // Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
+
     // BLDCVars.BLDCduty = 70;
     HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
     {
@@ -436,10 +440,10 @@ static void MX_ADC1_Init(void)
      */
     AnalogWDGConfig.WatchdogNumber = ADC_ANALOGWATCHDOG_1;
     AnalogWDGConfig.WatchdogMode = ADC_ANALOGWATCHDOG_SINGLE_REG;
-    AnalogWDGConfig.HighThreshold = 0;
-    AnalogWDGConfig.LowThreshold = 0;
-    AnalogWDGConfig.Channel = ADC_CHANNEL_1;
-    AnalogWDGConfig.ITMode = DISABLE;
+    AnalogWDGConfig.HighThreshold = 4000;
+    AnalogWDGConfig.LowThreshold = 96;
+    AnalogWDGConfig.Channel = ADC_CHANNEL_3;
+    AnalogWDGConfig.ITMode = ENABLE;
     if (HAL_ADC_AnalogWDGConfig(&hadc1, &AnalogWDGConfig) != HAL_OK)
     {
         Error_Handler();
@@ -489,6 +493,7 @@ static void MX_ADC2_Init(void)
 
     /* USER CODE END ADC2_Init 0 */
 
+    ADC_AnalogWDGConfTypeDef AnalogWDGConfig = {0};
     ADC_ChannelConfTypeDef sConfig = {0};
 
     /* USER CODE BEGIN ADC2_Init 1 */
@@ -511,6 +516,18 @@ static void MX_ADC2_Init(void)
     hadc2.Init.LowPowerAutoWait = DISABLE;
     hadc2.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
     if (HAL_ADC_Init(&hadc2) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    /** Configure Analog WatchDog 1
+     */
+    AnalogWDGConfig.WatchdogNumber = ADC_ANALOGWATCHDOG_1;
+    AnalogWDGConfig.WatchdogMode = ADC_ANALOGWATCHDOG_SINGLE_REG;
+    AnalogWDGConfig.HighThreshold = 4000;
+    AnalogWDGConfig.LowThreshold = 96;
+    AnalogWDGConfig.Channel = ADC_CHANNEL_3;
+    AnalogWDGConfig.ITMode = ENABLE;
+    if (HAL_ADC_AnalogWDGConfig(&hadc2, &AnalogWDGConfig) != HAL_OK)
     {
         Error_Handler();
     }
@@ -569,6 +586,7 @@ static void MX_ADC3_Init(void)
     /* USER CODE END ADC3_Init 0 */
 
     ADC_MultiModeTypeDef multimode = {0};
+    ADC_AnalogWDGConfTypeDef AnalogWDGConfig = {0};
     ADC_ChannelConfTypeDef sConfig = {0};
 
     /* USER CODE BEGIN ADC3_Init 1 */
@@ -598,6 +616,18 @@ static void MX_ADC3_Init(void)
      */
     multimode.Mode = ADC_MODE_INDEPENDENT;
     if (HAL_ADCEx_MultiModeConfigChannel(&hadc3, &multimode) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    /** Configure Analog WatchDog 1
+     */
+    AnalogWDGConfig.WatchdogNumber = ADC_ANALOGWATCHDOG_1;
+    AnalogWDGConfig.WatchdogMode = ADC_ANALOGWATCHDOG_SINGLE_REG;
+    AnalogWDGConfig.HighThreshold = 4000;
+    AnalogWDGConfig.LowThreshold = 96;
+    AnalogWDGConfig.Channel = ADC_CHANNEL_1;
+    AnalogWDGConfig.ITMode = ENABLE;
+    if (HAL_ADC_AnalogWDGConfig(&hadc3, &AnalogWDGConfig) != HAL_OK)
     {
         Error_Handler();
     }

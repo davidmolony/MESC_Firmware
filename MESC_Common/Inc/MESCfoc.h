@@ -30,6 +30,20 @@
 #define FOC_NUM_ADC                (4)
 #define FOC_PERIODS                (1)
 
+enum ADCChannels
+{
+    ADCIU,
+    ADCIV,
+    ADCIW,
+};
+
+#define MAX_MODULATION 0.95
+#define SVPWM_MULTIPLIER \
+  1.1547  // 1/cos30 which comes from the maximum between two 120 degree apart
+          // sin waves being at the
+#define Vd_MAX_PROPORTION 0.3
+#define Vq_MAX_PROPORTION 0.95
+
 enum FOCChannels
 {
     FOC_CHANNEL_PHASE_I,
@@ -84,6 +98,13 @@ typedef struct {
   float Iq_pgain;
   float Iq_igain;
   float Vdqres_to_Vdq;
+  float Vab_to_PWM;
+  float Vd_max;
+  float Vq_max;
+  // Field weakenning
+  float field_weakening_curr_max;
+  float field_weakening_threshold;
+  int field_weakening_flag;
 
   float VBEMFintegral[2];
   uint16_t state[4];  // current state, last state, angle change occurred
@@ -135,6 +156,8 @@ void hallAngleEstimator();  // Going to attempt to make a similar hall angle
                             // estimator that rolls the hall state into the main
                             // function, and calls a vector table to find the
                             // angle from hall offsets.
+void flux_observer();
+float fast_atan2(float y, float x);
 void angleObserver();
 void fluxIntegrator();
 void OLGenerateAngle();  // For open loop FOC startup, just use this to generate
@@ -172,6 +195,7 @@ void phW_Break();
 void phW_Enable();
 
 void calculateGains();
+void calculateVoltageGain();
 
 void doublePulseTest();
 
