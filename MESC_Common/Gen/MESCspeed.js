@@ -59,6 +59,8 @@ function dump_SPEEDProfile( profile )
     hex = hex + dump_c_float( profile.wheel_diameter );
     hex = hex + dump_c_float( profile.wheel_conversion );
 
+    console.assert( hex.length == (NYBBLES_PER_BYTE * SPEED_PROFILE_SIZE) );
+
     return hex;
 }
 

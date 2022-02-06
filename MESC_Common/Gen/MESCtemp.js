@@ -30,10 +30,7 @@
 const TEMP_PROFILE_SIGNATURE = 'MTPE';
 
 // TEMPMethod
-const TEMP_METHOD_CURVE_APPROX          = 0;
-
-const TEMP_METHOD_STEINHART_HART_ABC    = 1;
-const TEMP_METHOD_STEINHART_HART_BETA_R = 2;
+const TEMP_METHOD_STEINHART_HART_BETA_R = 0;
 //end
 
 // TEMPSchema
@@ -59,18 +56,6 @@ function dump_TEMPProfile( profile )
 
     switch (profile.method)
     {
-        case TEMP_METHOD_CURVE_APPROX:
-            hex = hex + dump_c_float( profile.parameters_approx_A   );
-            hex = hex + dump_c_float( profile.parameters_approx_B   );
-            hex = hex + dump_c_char( '', 4 );
-
-            hex = hex + dump_c_char( '', 4 );
-            hex = hex + dump_c_char( '', 4 );
-
-            hex = hex + dump_c_float( profile.parameters_approx_Tlo );
-            hex = hex + dump_c_char( '', 4 );
-            break;
-        case TEMP_METHOD_STEINHART_HART_ABC:
         case TEMP_METHOD_STEINHART_HART_BETA_R:
             hex = hex + dump_c_float( profile.parameters_SH_A    );
             hex = hex + dump_c_float( profile.parameters_SH_B    );
@@ -87,6 +72,8 @@ function dump_TEMPProfile( profile )
             break;
     }
 
+    console.assert( hex.length == (NYBBLES_PER_BYTE * TEMP_PROFILE_SIZE) );
+
     return hex;
 }
 
@@ -99,12 +86,6 @@ function TEMPProfile()
 
     this.method = undefined;
     this.schema = undefined;
-    // TEMP_METHOD_CURVE_APPROX
-    this.parameters_approx_A = undefined;
-    this.parameters_approx_B = undefined;
-
-    this.parameters_approx_Tlo = undefined;
-    // TEMP_METHOD_STEINHART_HART_ABC
     // TEMP_METHOD_STEINHART_HART_BETA_R
     this.parameters_SH_A = undefined;
     this.parameters_SH_B = undefined;

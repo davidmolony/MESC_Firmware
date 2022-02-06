@@ -148,7 +148,7 @@ static float temp_calculate_R_T( float const Vout )
         }
     }
 }
-
+#if 0 // STEINHART_HART_ABC
 /*
 Steinhart & Hart A/B/C method
 */
@@ -193,18 +193,18 @@ static float temp_calculate_SteinhartHart_ABC( float const R_T )
 
     return T;
 }
-
+#endif
 /*
 Steinhart & Hart Beta/r method
 */
-
+#if 0 // STEINHART_HART_ABC
 static void temp_derive_SteinhartHart_ABC_from_Beta( TEMPProfile * const profile )
 {
     profile->parameters.SH.C = 0.0f; // C is always zero when using Beta
     profile->parameters.SH.B = (1.0f / profile->parameters.SH.Beta);
     profile->parameters.SH.A = (profile->parameters.SH.T0 - (profile->parameters.SH.B * logf( profile->parameters.SH.R0 )));
 }
-
+#endif
 static float temp_calculate_SteinhartHart_Beta_r( float const R_T )
 {
 // TODO ERROR temp_profile == NULL
@@ -214,7 +214,7 @@ static float temp_calculate_SteinhartHart_Beta_r( float const R_T )
 /*
 API
 */
-//#include <stdio.h>//debug
+
 float temp_read( uint32_t const adc_raw )
 {
 // TODO ERROR temp_profile == NULL
@@ -222,7 +222,6 @@ float temp_read( uint32_t const adc_raw )
     float const Vout = ((temp_profile->V * adc) / (float)temp_profile->adc_range);
     float const R_T = temp_calculate_R_T( Vout );
 
-//fprintf( stderr, "R_T %.0f Ohm\n", R_T );//debug
     float T;
 
     switch (temp_profile->method)

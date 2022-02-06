@@ -119,6 +119,8 @@ typedef struct ProfileEntry ProfileEntry;
 
 static_assert( ((PROFILE_ENTRY_SIZE % 16) == 0), "PROFILE_ENTRY_SIZE must be 16-byte aligned" );
 
+#define PROFILE_ENTRY_MIN_OFFSET PROFILE_HEADER_SIZE
+
 enum ProfileStatus
 {
     PROFILE_STATUS_UNKNOWN,                 // Result unknown

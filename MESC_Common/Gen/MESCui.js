@@ -46,6 +46,7 @@ function dump_UIProfile_THROTTLE( profile ) {
     hex = hex + dump_c_uint32_t( profile.throttle_adc_min  );
     hex = hex + dump_c_uint32_t( profile.throttle_adc_max  );
     hex = hex + dump_c_int(      profile.throttle_response );
+    hex = hex + dump_c_char( 0, 4 )
     return hex;
 }
 
@@ -55,6 +56,7 @@ function dump_UIProfile_BRAKE( profile ) {
     hex = hex + dump_c_uint32_t( profile.brake_adc_min  );
     hex = hex + dump_c_uint32_t( profile.brake_adc_max  );
     hex = hex + dump_c_int(      profile.brake_response );
+    hex = hex + dump_c_char( 0, 4 )
     return hex;
 }
 
@@ -64,6 +66,7 @@ function dump_UIProfile_BUTTON( profile ) {
     hex = hex + dump_c_uint32_t( profile.button_interface  );
     hex = hex + dump_c_uint32_t( profile.button_address    );
     hex = hex + dump_c_uint32_t( profile.button_identifier );
+    hex = hex + dump_c_char( 0, 4 )
     return hex;
 }
 
@@ -100,6 +103,8 @@ function dump_UIProfile( profile ) {
         case UI_PROFILE_INDICATOR: hex = hex + dump_UIProfile_INDICATOR( profile ); break;
         case UI_PROFILE_SCREEN   : hex = hex + dump_UIProfile_SCREEN(    profile ); break;
     }
+
+    console.assert( hex.length == (NYBBLES_PER_BYTE * UI_PROFILE_SIZE) );
 
     return hex;
 }

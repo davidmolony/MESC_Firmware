@@ -113,7 +113,7 @@ ProfileStatus virt_flash_read( void * data, uint32_t const address, uint32_t con
 
     if (use_mem_not_fs != 0)
     {
-        memcpy( &((uint8_t *)data)[address], mem, length );// TODO
+        memcpy( data, &mem[address], length );
 
         virt_flash_apply_corruption();
 
@@ -126,7 +126,7 @@ ProfileStatus virt_flash_read( void * data, uint32_t const address, uint32_t con
     }
     else
     {
-        memset( &((uint8_t *)data)[address], 0, length );// TODO
+        memset( data, 0, length );
 
         virt_flash_apply_corruption();
 

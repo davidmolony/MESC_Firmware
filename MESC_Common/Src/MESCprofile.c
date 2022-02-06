@@ -171,15 +171,12 @@ static ProfileStatus profile_header_validate( ProfileHeader * const header )
     {
         return PROFILE_STATUS_ERROR_IMAGE_LENGTH;
     }
+/*
+NOTE
 
-    void const * image = &((uint8_t const *)header)[PROFILE_HEADER_SIZE];
-    uint32_t const image_hash = fnv1a_data( image, image_length );
-
-    if (image_hash != header->image_checksum)
-    {
-        return PROFILE_STATUS_ERROR_IMAGE_CHECKSUM;
-    }
-
+Defer image checksum check to caller, as entries and payload may not have been
+loaded yet.
+*/
     return PROFILE_STATUS_SUCCESS;
 }
 
@@ -205,13 +202,17 @@ static ProfileStatus profile_entry_validate( ProfileEntry * const entry )
         return PROFILE_STATUS_ERROR_DATA_SIGNATURE;
     }
 
-    if  (
-            (entry->data_length == 0)
-        ||  ((entry->data_offset & 3) != 0) // align 4
-        ||  (entry->data_offset < PROFILE_HEADER_SIZE)
-        )
+    if (entry->data_length == 0)
     {
         return PROFILE_STATUS_ERROR_DATA_LENGTH;
+    }
+
+    if  (
+            ((entry->data_offset & 3) != 0) // align 4
+        ||  (entry->data_offset < PROFILE_ENTRY_MIN_OFFSET) // Must follow header
+        )
+    {
+        return PROFILE_STATUS_ERROR_DATA_OFFSET;
     }
 
     if  (
@@ -342,6 +343,8 @@ static void profile_cli_info( void )
     }
 }
 
+static uint8_t profile_buffer[4096]; // TODO HACK
+
 ProfileStatus profile_init( void )
 {
     uint32_t address = 0;
@@ -371,12 +374,13 @@ ProfileStatus profile_init( void )
 
     uint32_t blk = 0;
     uint32_t fld = 0;
+    uint32_t image_checksum = fnv1a_init();
 
     for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
     {
         ProfileEntryMap const map = (ProfileEntryMap)((profile_stub.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
 
-        if ((map &PROFILE_ENTRY_R) == PROFILE_ENTRY_R)
+        if ((map & PROFILE_ENTRY_R) == PROFILE_ENTRY_R)
         {
             profile_status_storage = profile_storage_read( &profile_stub.entry[i], address, sizeof(profile_stub.entry[i]) );
 
@@ -394,6 +398,17 @@ ProfileStatus profile_init( void )
                 profile_init_default();
                 return PROFILE_STATUS_INIT_FALLBACK_DEFAULT;
             }
+
+            image_checksum = fnv1a_process_data( image_checksum, &profile_stub.entry[i], sizeof(profile_stub.entry[i]) );
+
+            profile_entry[i].buffer = &profile_buffer[profile_stub.entry[i].data_offset];
+            profile_entry[i].length = &profile_stub.entry[i].data_length;
+        }
+        else
+        {
+            image_checksum = fnv1a_process_zero( image_checksum, sizeof(profile_stub.entry[i]) );
+
+            profile_entry[i].buffer = NULL;
         }
 
         address = address + sizeof(ProfileEntry);
@@ -405,6 +420,30 @@ ProfileStatus profile_init( void )
             fld = 0;
             blk++;
         }
+    }
+
+    for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
+    {
+        if (profile_entry[i].buffer != NULL)
+        {
+            profile_status_storage = profile_storage_read( profile_entry[i].buffer, profile_stub.entry[i].data_offset, profile_stub.entry[i].data_length );
+
+            if (profile_status_storage != PROFILE_STATUS_SUCCESS)
+            {
+                profile_status_other = PROFILE_STATUS_ERROR_ENTRY(i);
+                profile_init_default();
+                return PROFILE_STATUS_INIT_FALLBACK_DEFAULT;
+            }
+
+            image_checksum = fnv1a_process_data( image_checksum, profile_entry[i].buffer, *(profile_entry[i].length) );
+        }
+    }
+
+    if (image_checksum != profile_stub.header.image_checksum)
+    {
+        profile_status_header = PROFILE_STATUS_ERROR_IMAGE_CHECKSUM;
+        profile_init_default();
+        return PROFILE_STATUS_INIT_FALLBACK_DEFAULT;
     }
 
     return PROFILE_STATUS_INIT_SUCCESS_LOADED;
@@ -560,8 +599,13 @@ ProfileStatus profile_read_entry(
     uint32_t * const index, ProfileEntry const ** const entry )
 {
     ProfileStatus ret = PROFILE_STATUS_FAILURE_SCAN;
-    uint32_t blk = (*index >> 2);
-    uint32_t fld = (*index &  3) * PROFILE_ENTRY_BITS;
+    uint32_t blk = (*index >> PROFILE_ENTRY_BITS);
+    uint32_t fld = (*index &  PROFILE_ENTRY_MASK) * PROFILE_ENTRY_BITS;
+
+    profile_status_storage = PROFILE_STATUS_UNKNOWN;
+    profile_status_header  = PROFILE_STATUS_UNKNOWN;
+    profile_status_entry   = PROFILE_STATUS_UNKNOWN;
+    profile_status_other   = PROFILE_STATUS_UNKNOWN;
 
     for ( uint32_t i = *index; i < PROFILE_HEADER_ENTRIES; ++i )
     {
@@ -590,17 +634,15 @@ ProfileStatus profile_read_entry(
             continue;
         }
 
-        if (profile_stub.entry[i].name_length < PROFILE_ENTRY_MAX_NAME_LENGTH)
+        if (profile_stub.entry[i].name_length > PROFILE_ENTRY_MAX_NAME_LENGTH)
         {
             continue;
         }
 
-        // TODO check checksum
-
         ret = PROFILE_STATUS_SUCCESS;
         *index = i;
         *entry = &profile_stub.entry[i];
-        break;
+        return ret;
     }
 
     *index = PROFILE_HEADER_ENTRIES;
@@ -614,8 +656,8 @@ ProfileStatus profile_scan_entry(
     char const ** const name )
 {
     ProfileStatus ret = PROFILE_STATUS_FAILURE_SCAN;
-    uint32_t blk = (*index >> 2);
-    uint32_t fld = (*index &  3) * PROFILE_ENTRY_BITS;
+    uint32_t blk = (*index >> PROFILE_ENTRY_BITS);
+    uint32_t fld = (*index &  PROFILE_ENTRY_MASK) * PROFILE_ENTRY_BITS;
 
     for ( uint32_t i = *index; i < PROFILE_HEADER_ENTRIES; ++i )
     {

@@ -34,36 +34,41 @@ const BAT_DISPLAY_PERCENT = 0;
 const BAT_DISPLAY_AMPHOUR = 1;
 //end
 
-const BAT_PROFILE_SIZE = 56;
+const BAT_PROFILE_SIZE = 0x34;
 
 // BATProfile
 function dump_BATProfile( profile )
 {
     console.log( "dump_BATProfile" );
     var hex = '';
-
+// 00
     hex = hex + dump_c_float( profile.cell_Imax );
     hex = hex + dump_c_float( profile.cell_Vmax );
     hex = hex + dump_c_float( profile.cell_Cmax );
-
+// 0C
     hex = hex + dump_c_float( profile.cell_Vmid );
     hex = hex + dump_c_float( profile.cell_Cmid );
-
+// 14
     hex = hex + dump_c_float( profile.cell_Vlow );
     hex = hex + dump_c_float( profile.cell_Clow );
-
+// 1C
     hex = hex + dump_c_float( profile.cell_Vmin );
-
+// 20
     hex = hex + dump_c_float( profile.battery_Imax );
     hex = hex + dump_c_float( profile.battery_Pmax );
-
+// 28
     hex = hex + dump_c_float( profile.battery_ESR );
-
+// 2C
     hex = hex + dump_c_uint8_t( profile.battery_parallel );
     hex = hex + dump_c_uint8_t( profile.battery_series   );
+    hex = hex + dump_c_uint8_t( profile.battery_allow_regen );
+// 2F
+    hex = hex + dump_c_uint8_t( 0 );
+// 30
+    hex = hex + dump_c_int( profile.display );
+// 34
 
-    hex = hex + dump_c_uint8_t( profile.display );
-    hex = hex + dump_c_uint8_t( profile.allow_regen );
+    console.assert( hex.length == (NYBBLES_PER_BYTE * BAT_PROFILE_SIZE) );
 
     return hex;
 }
@@ -89,9 +94,9 @@ function BATProfile()
 
     this.battery_parallel = undefined;
     this.battery_series = undefined;
+    this.battery_allow_regen = undefined;
 
     this.display = undefined;
-    this.allow_regen = undefined;
 }
 
 BATProfile.prototype.size = function()

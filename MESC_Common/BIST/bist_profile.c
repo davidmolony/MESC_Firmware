@@ -67,14 +67,14 @@ static uint8_t parseHexNybble( char const c )
 static ProfileStatus rom_flash_read(  void       * data, uint32_t const address, uint32_t const length )
 {
     if  (
-            ( address           < gen_profile_size)
-        &&  ((address + length) < gen_profile_size)
+            ( address           <  gen_profile_size)
+        &&  ((address + length) <= gen_profile_size)
         )
     {
         for (uint32_t i = 0, offset = address; i < length; i++, offset++ )
         {
-            ((uint8_t *)data)[offset] = (parseHexNybble(gen_profile[(2 * offset) + 0]) << BITS_PER_NYBBLE)
-                                      |  parseHexNybble(gen_profile[(2 * offset) + 1]);
+            ((uint8_t *)data)[i] = (parseHexNybble(gen_profile[(2 * offset) + 0]) << BITS_PER_NYBBLE)
+                                 |  parseHexNybble(gen_profile[(2 * offset) + 1]);
         }
         return PROFILE_STATUS_SUCCESS;
     }
@@ -208,38 +208,109 @@ typedef struct DemoEntry DemoEntry;
 static DemoEntry demo_entry;
 static uint32_t demo_entry_size = sizeof(demo_entry);
 
-#define CORRUPTION_ENTRY(T,m) { (uint32_t)offsetof(T,m), (uint32_t)sizeof(((T *)NULL)->m), #T "." #m }
+#define CORRUPTION_ENTRY(T,m,s,h,e,o) { (uint32_t)offsetof(T,m), (uint32_t)sizeof(((T *)NULL)->m), #T "." #m, s,h,e,o }
 
 static struct
 {
-    uint32_t offset;
-    uint32_t length;
-    char const * name;
+    uint32_t        offset;
+    uint32_t        length;
+    char const *    name;
+    struct
+    {
+    ProfileStatus   storage;
+    ProfileStatus   header;
+    ProfileStatus   entry;
+    ProfileStatus   other;
+    }   expres;
 }   const corruptions[] =
 {
     // ProfileHeader
-    CORRUPTION_ENTRY( ProfileHeader, signature ),
+    CORRUPTION_ENTRY( ProfileHeader, signature             , { PROFILE_STATUS_SUCCESS,                  // There should be no storage errors
+                                                               PROFILE_STATUS_ERROR_HEADER_SIGNATURE,   // The header signature should fail
+                                                               PROFILE_STATUS_UNKNOWN,                  // There should be no entry errors (this is the header)
+                                                               PROFILE_STATUS_INIT_SUCCESS_DEFAULT } ), // The failure should revert to the default profile
 
-    CORRUPTION_ENTRY( ProfileHeader, _zero_signature ),
-    CORRUPTION_ENTRY( ProfileHeader, version_major ),
-    CORRUPTION_ENTRY( ProfileHeader, version_minor ),
-    CORRUPTION_ENTRY( ProfileHeader, size ),
+    CORRUPTION_ENTRY( ProfileHeader, _zero_signature       , { PROFILE_STATUS_SUCCESS,                  // There should be no storage errors
+                                                               PROFILE_STATUS_ERROR_HEADER_ZEROS,       // The header zeros should fail
+                                                               PROFILE_STATUS_UNKNOWN,                  // There should be no entry errors (this is the header)
+                                                               PROFILE_STATUS_INIT_SUCCESS_DEFAULT } ), // The failure should revert to the default profile
 
-    CORRUPTION_ENTRY( ProfileHeader, checksum ),
+    CORRUPTION_ENTRY( ProfileHeader, version_major         , { PROFILE_STATUS_SUCCESS,                  // There should be no storage errors
+                                                               PROFILE_STATUS_ERROR_HEADER_VERSION,     // The header version should fail
+                                                               PROFILE_STATUS_UNKNOWN,                  // There should be no entry errors (this is the header)
+                                                               PROFILE_STATUS_INIT_SUCCESS_DEFAULT } ), // The failure should revert to the default profile
+    CORRUPTION_ENTRY( ProfileHeader, version_minor         , { PROFILE_STATUS_SUCCESS,                  // There should be no storage errors
+                                                               PROFILE_STATUS_ERROR_HEADER_VERSION,     // The header version should fail
+                                                               PROFILE_STATUS_UNKNOWN,                  // There should be no entry errors (this is the header)
+                                                               PROFILE_STATUS_INIT_SUCCESS_DEFAULT } ), // The failure should revert to the default profile
+    CORRUPTION_ENTRY( ProfileHeader, size                  , { PROFILE_STATUS_SUCCESS,                  // There should be no storage errors
+                                                               PROFILE_STATUS_ERROR_HEADER_SIZE,        // The header size should fail
+                                                               PROFILE_STATUS_UNKNOWN,                  // There should be no entry errors (this is the header)
+                                                               PROFILE_STATUS_INIT_SUCCESS_DEFAULT } ), // The failure should revert to the default profile
+
+    CORRUPTION_ENTRY( ProfileHeader, checksum              , { PROFILE_STATUS_SUCCESS,                  // There should be no storage errors
+                                                               PROFILE_STATUS_ERROR_HEADER_CHECKSUM,    // The header checksum should fail
+                                                               PROFILE_STATUS_UNKNOWN,                  // There should be no entry errors (this is the header)
+                                                               PROFILE_STATUS_INIT_SUCCESS_DEFAULT } ), // The failure should revert to the default profile
 
     // Skip ProfileHeader entry_map
 
-    CORRUPTION_ENTRY( ProfileHeader, image_length ),
-    CORRUPTION_ENTRY( ProfileHeader, image_checksum ),
+    CORRUPTION_ENTRY( ProfileHeader, image_length          , { PROFILE_STATUS_SUCCESS,                  // There should be no storage errors
+                                                               PROFILE_STATUS_ERROR_HEADER_CHECKSUM,    // The header checksum should fail (there is no failure condition for image length)
+                                                               PROFILE_STATUS_UNKNOWN,                  // There should be no entry errors (this is the header)
+                                                               PROFILE_STATUS_INIT_SUCCESS_DEFAULT } ), // The failure should revert to the default profile
+    CORRUPTION_ENTRY( ProfileHeader, image_checksum        , { PROFILE_STATUS_SUCCESS,                  // There should be no storage errors
+                                                               PROFILE_STATUS_ERROR_HEADER_CHECKSUM,    // The header checksum should fail (there is no failure condition for image checksum)
+                                                               PROFILE_STATUS_UNKNOWN,                  // There should be no entry errors (this is the header)
+                                                               PROFILE_STATUS_INIT_SUCCESS_DEFAULT } ), // The failure should revert to the default profile
 
-    CORRUPTION_ENTRY( ProfileHeader, fingerprint.day ),
-    CORRUPTION_ENTRY( ProfileHeader, fingerprint._zero ),
-
-    CORRUPTION_ENTRY( ProfileHeader, fingerprint.githash[2] ),
+    CORRUPTION_ENTRY( ProfileHeader, fingerprint.day       , { PROFILE_STATUS_SUCCESS,                  // There should be no storage errors
+                                                               PROFILE_STATUS_ERROR_HEADER_CHECKSUM,    // The header checksum should fail (there is no failure condition for fingerprint)
+                                                               PROFILE_STATUS_UNKNOWN,                  // There should be no entry errors (this is the header)
+                                                               PROFILE_STATUS_INIT_SUCCESS_DEFAULT } ), // The failure should revert to the default profile
+    CORRUPTION_ENTRY( ProfileHeader, fingerprint._zero     , { PROFILE_STATUS_SUCCESS,                  // There should be no storage errors
+                                                               PROFILE_STATUS_ERROR_HEADER_ZEROS   ,    // The header zeros should fail
+                                                               PROFILE_STATUS_UNKNOWN,                  // There should be no entry errors (this is the header)
+                                                               PROFILE_STATUS_INIT_SUCCESS_DEFAULT } ), // The failure should revert to the default profile
+    CORRUPTION_ENTRY( ProfileHeader, fingerprint.githash[2], { PROFILE_STATUS_SUCCESS,                  // There should be no storage errors
+                                                               PROFILE_STATUS_ERROR_HEADER_CHECKSUM,    // The header checksum should fail (there is no failure condition for fingerprint)
+                                                               PROFILE_STATUS_UNKNOWN,                  // There should be no entry errors (this is the header)
+                                                               PROFILE_STATUS_INIT_SUCCESS_DEFAULT } ), // The failure should revert to the default profile
 
     // End
-    { 0, 0, NULL },
+    { 0, 0, NULL,                                            { PROFILE_STATUS_SUCCESS,                  // There should be no storage errors
+                                                               PROFILE_STATUS_SUCCESS,                  // The header should be valid
+                                                               PROFILE_STATUS_SUCCESS,                  // The entries should be valid
+                                                               PROFILE_STATUS_UNKNOWN              } }, // No other information required
 };
+
+static void profile_check_last(
+    ProfileStatus const storage,
+    ProfileStatus const header,
+    ProfileStatus const entry,
+    ProfileStatus const other
+) {
+    ProfileStatus s;
+    ProfileStatus h;
+    ProfileStatus e;
+    ProfileStatus o;
+
+    profile_get_last( &s, &h, &e, & o );
+
+    if  (
+            ( s == storage )
+        &&  ( h == header  )
+        &&  ( e == entry   )
+        &&  ( o == other   )
+        )
+    {
+        fprintf( stdout, "PASS\n" );
+    }
+    else
+    {
+        fprintf( stdout, "FAIL\n" );
+    }
+}
 
 void bist_profile( void )
 {
@@ -276,6 +347,12 @@ void bist_profile( void )
         e, getProfileStatusName(e),
         o, getProfileStatusName(o) );
 
+    profile_check_last(
+        PROFILE_STATUS_SUCCESS,
+        PROFILE_STATUS_ERROR_HEADER_SIGNATURE,
+        PROFILE_STATUS_UNKNOWN,
+        PROFILE_STATUS_INIT_SUCCESS_DEFAULT );
+
     ret = profile_commit();
     profile_get_last( &s, &h, &e, & o );
     fprintf( stdout, "INFO: Store (no update) %d %s\n"
@@ -288,6 +365,12 @@ void bist_profile( void )
         h, getProfileStatusName(h),
         e, getProfileStatusName(e),
         o, getProfileStatusName(o)  );
+
+    profile_check_last(
+        PROFILE_STATUS_COMMIT_SUCCESS_NOOP,
+        PROFILE_STATUS_UNKNOWN,
+        PROFILE_STATUS_UNKNOWN,
+        PROFILE_STATUS_UNKNOWN );
 
     profile_put_entry( "demo_entry", 0x12345678, &demo_entry, &demo_entry_size );
 
@@ -303,6 +386,12 @@ void bist_profile( void )
         h, getProfileStatusName(h),
         e, getProfileStatusName(e),
         o, getProfileStatusName(o) );
+
+    profile_check_last(
+        PROFILE_STATUS_COMMIT_SUCCESS,
+        PROFILE_STATUS_UNKNOWN,
+        PROFILE_STATUS_UNKNOWN,
+        PROFILE_STATUS_UNKNOWN );
 
     fprintf( stdout, "INFO: Performing corruption sweep\n" );
 
@@ -344,6 +433,12 @@ void bist_profile( void )
                 break;
         }
 
+        profile_check_last(
+            corruptions[i].expres.storage,
+            corruptions[i].expres.header,
+            corruptions[i].expres.entry,
+            corruptions[i].expres.other );
+
         virt_flash_revoke_corruption();
     }
 
@@ -380,6 +475,12 @@ void bist_profile( void )
             h, getProfileStatusName(h),
             e, getProfileStatusName(e),
             o, getProfileStatusName(o) );
+
+        profile_check_last(
+            PROFILE_STATUS_UNKNOWN,                 // No storage operation should be performed
+            PROFILE_STATUS_UNKNOWN,                 // No header operation should be performed
+            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC,     // A new entry should be allocated
+            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC );   // A new entry should be allocated
     }
 
     if (profile_get_entry( "MESC_SPEED", SPEED_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
@@ -408,6 +509,12 @@ void bist_profile( void )
             h, getProfileStatusName(h),
             e, getProfileStatusName(e),
             o, getProfileStatusName(o) );
+
+        profile_check_last(
+            PROFILE_STATUS_UNKNOWN,                 // No storage operation should be performed
+            PROFILE_STATUS_UNKNOWN,                 // No header operation should be performed
+            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC,     // A new entry should be allocated
+            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC );   // A new entry should be allocated
     }
 
     if (profile_get_entry( "MESC_TEMP", TEMP_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
@@ -436,6 +543,12 @@ void bist_profile( void )
             h, getProfileStatusName(h),
             e, getProfileStatusName(e),
             o, getProfileStatusName(o) );
+
+        profile_check_last(
+            PROFILE_STATUS_UNKNOWN,                 // No storage operation should be performed
+            PROFILE_STATUS_UNKNOWN,                 // No header operation should be performed
+            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC,     // A new entry should be allocated
+            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC );   // A new entry should be allocated
     }
 
     if (profile_get_entry( "MESC_UI", UI_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
@@ -464,6 +577,12 @@ void bist_profile( void )
             h, getProfileStatusName(h),
             e, getProfileStatusName(e),
             o, getProfileStatusName(o) );
+
+        profile_check_last(
+            PROFILE_STATUS_UNKNOWN,                 // No storage operation should be performed
+            PROFILE_STATUS_UNKNOWN,                 // No header operation should be performed
+            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC,     // A new entry should be allocated
+            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC );   // A new entry should be allocated
     }
 
     fprintf( stdout, "INFO: Commit image\n" );
@@ -482,8 +601,14 @@ void bist_profile( void )
             e, getProfileStatusName(e),
             o, getProfileStatusName(o) );
 
+    profile_check_last(
+        PROFILE_STATUS_COMMIT_SUCCESS,  // Storage should be successful
+        PROFILE_STATUS_UNKNOWN,         // No header operation should be performed
+        PROFILE_STATUS_UNKNOWN,         // No entry operation should be performed
+        PROFILE_STATUS_UNKNOWN );       // No other operation should be performed
+
     fprintf( stdout, "INFO: Read-back image\n" );
-__asm__ volatile("int3");
+
     ret = profile_init();
 
     profile_get_last( &s, &h, &e, & o );
@@ -498,6 +623,12 @@ __asm__ volatile("int3");
             e, getProfileStatusName(e),
             o, getProfileStatusName(o) );
 
+    profile_check_last(
+        PROFILE_STATUS_SUCCESS,     // Storage should be successful
+        PROFILE_STATUS_SUCCESS,     // Header should be valid
+        PROFILE_STATUS_SUCCESS,     // Entries should be valid
+        PROFILE_STATUS_UNKNOWN );   // No other operation should be performed
+
     virt_flash_reset();
 
     virt_flash_free();
@@ -506,7 +637,7 @@ __asm__ volatile("int3");
 
     profile_configure_storage_io( rom_flash_read, rom_flash_write );
 
-    ret = profile_init(); // DEBUG
+    ret = profile_init();
 
     profile_get_last( &s, &h, &e, & o );
     fprintf( stdout, "INFO: Init\n"
@@ -519,7 +650,13 @@ __asm__ volatile("int3");
         e, getProfileStatusName(e),
         o, getProfileStatusName(o) );
 
-    if (ret == PROFILE_STATUS_SUCCESS)
+    profile_check_last(
+        PROFILE_STATUS_SUCCESS,     // Storage should be successful
+        PROFILE_STATUS_SUCCESS,     // Header should be valid
+        PROFILE_STATUS_SUCCESS,     // Entries should be valid
+        PROFILE_STATUS_UNKNOWN );   // No other operation should be performed
+
+    if (ret == PROFILE_STATUS_INIT_SUCCESS_LOADED)
     {
         fprintf( stdout, "INFO: Scanning image\n" );
 
@@ -528,8 +665,9 @@ __asm__ volatile("int3");
 
         do
         {
-            ret = profile_read_entry( &index, &entry ); // DEBUG
+            ret = profile_read_entry( &index, &entry );
 
+            profile_get_last( &s, &h, &e, & o );
             fprintf( stdout, "INFO: %d %s\n"
                              "    S:%d %s\n"
                              "    H:%d %s\n"
@@ -541,6 +679,12 @@ __asm__ volatile("int3");
                 e, getProfileStatusName(e),
                 o, getProfileStatusName(o) );
 
+            profile_check_last(
+                PROFILE_STATUS_UNKNOWN,     // No storage operation should be performed
+                PROFILE_STATUS_UNKNOWN,     // No header operation should be performed
+                PROFILE_STATUS_UNKNOWN,     // No entry operation should be performed
+                PROFILE_STATUS_UNKNOWN );   // No other operation should be performed
+
             if  (
                     (ret == PROFILE_STATUS_SUCCESS)
                 &&  (entry != NULL)
@@ -548,13 +692,23 @@ __asm__ volatile("int3");
             {
                 fprintf( stdout, "ENTRY[%" PRIu32 "]\n"
                                  "              Name %s\n"
-                                 "    Data Signature %" PRIu32 "\n",
+                                 "    Data Signature %" PRIX32 "\n",
                                  index,
                                  entry->name,
                                  entry->data_signature );
             }
+
+            ++index;
         }
-        while (ret != PROFILE_STATUS_SUCCESS);
+        while (ret == PROFILE_STATUS_SUCCESS);
+
+        fprintf( stdout, "INFO: Scanning finished\n" );
+
+        profile_check_last(
+            PROFILE_STATUS_UNKNOWN,     // No storage operation should be performed
+            PROFILE_STATUS_UNKNOWN,     // No header operation should be performed
+            PROFILE_STATUS_UNKNOWN,     // No entry operation should be performed
+            PROFILE_STATUS_UNKNOWN );   // No other operation should be performed
     }
     else
     {

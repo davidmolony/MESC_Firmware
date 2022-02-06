@@ -45,14 +45,26 @@ function fnv1a_init()
 
 function fnv1a_process( fnv, byte )
 {
-    return (((fnv & 0xFFFFFFFF) ^ (byte & 0xFF)) * FNV1A_PRIME_32) & 0xFFFFFFFF;     // FNV public domain
+    var fnv_ = fnv ^ (byte & 0xFF);                 // FNV public domain
+/*
+DANGER
+
+Must use >>> 0 to force unsigned
+*/
+    fnv_ = Math.imul( fnv_, FNV1A_PRIME_32 ) >>> 0; // FNV public domain
+    fnV_ = (fnv_ & 0xFFFFFFFF);                     // FNV public domain
+
+    return fnv_;
 }
 
 function fnv1a_process_hex( hex )
 {
     var fnv = fnv1a_init();
+    console.log( 'fnv1a_process_hex ' + fnv.toString(16) );
     for ( var i = 0; i < hex.length; i = i + 2 ) {
-        fnv = fnv1a_process( fnv, parseInt( hex.substring(i,i+2), 16 ) );
+        var byte = parseInt( hex.substring(i,i+2), 16 );
+        fnv = fnv1a_process( fnv, byte );
+        console.log( 'fnv1a_process_hex[' + (i / 2).toString() + '] ' + byte.toString(16).toUpperCase() + ' ' + fnv.toString(16).toUpperCase() );
     }
     return fnv;
 }

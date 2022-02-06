@@ -45,7 +45,12 @@ function int_from_str(value,bytes) {
 function dump_hex( value, bytes )
 {
     dump_log++;
-    var hex = value.toString(16).toUpperCase().replace('-','');
+/*
+DANGER
+
+Must use >>> 0 to force unsigned
+*/
+    var hex = (value >>> 0).toString(16).toUpperCase().replace('-','');
 
     while (hex.length < (NYBBLES_PER_BYTE * bytes))
     {

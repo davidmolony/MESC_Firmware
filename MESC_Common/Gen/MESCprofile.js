@@ -77,7 +77,7 @@ function ProfileHeader()
         for ( let me = 0; me < ENTRIES_PER_MAP_ENTRY; me++, i++ )
         {
             this._entry[i] = new ProfileEntry( this, i, 'NULL' );
-            v = (v << 2) | PROFILE_ENTRY_FREE;
+            v = (v << PROFILE_ENTRY_BITS) | PROFILE_ENTRY_FREE;
         }
 
         this.entry_map[e] = v;
@@ -115,13 +115,13 @@ ProfileHeader.prototype.remEntry = function(index)
 ProfileHeader.prototype.dump_image = function()
 {
     var hex = '';
-    var offset = 0;
+    var offset = PROFILE_HEADER_SIZE + (PROFILE_HEADER_ENTRIES * PROFILE_ENTRY_SIZE);
 
     for ( let e = 0, i = 0; e < PROFILE_MAX_ENTRIES; e++ )
     {
         for ( let me = 0; me < ENTRIES_PER_MAP_ENTRY; me++, i++ )
         {
-            var pe = (this.entry_map[e] >> (2 * me)) & 3;
+            var pe = (this.entry_map[e] >> (PROFILE_ENTRY_BITS * me)) & PROFILE_ENTRY_MASK;
 
             switch (pe) {
                 case PROFILE_ENTRY_FREE:
@@ -147,7 +147,7 @@ ProfileHeader.prototype.dump_image = function()
     {
         for ( let me = 0; me < ENTRIES_PER_MAP_ENTRY; me++, i++ )
         {
-            var pe = (this.entry_map[e] >> (2 * me)) & 3;
+            var pe = (this.entry_map[e] >> (PROFILE_ENTRY_BITS * me)) & PROFILE_ENTRY_MASK;
 
             switch (pe) {
                 case PROFILE_ENTRY_FREE:
@@ -187,17 +187,27 @@ function dump_ProfileHeader( header )
     }
 
     var image_hex = header.dump_image();
+
     var image_length = image_hex.length / NYBBLES_PER_BYTE;
     var image_checksum = fnv1a_process_hex( image_hex );
+
+    console.log( "image_length   " + image_length.toString() );
+    console.log( "image_checksum " + image_checksum.toString(16).toUpperCase() );
 
     hex = hex + dump_c_uint32_t( image_length   );
     hex = hex + dump_c_uint32_t( image_checksum );
 
     hex = hex + dump_MESCFingerprint();
 
+    console.assert( hex.length == (NYBBLES_PER_BYTE * PROFILE_HEADER_SIZE) );
+
     var checksum = fnv1a_process_hex( hex );
 
+    console.log( "PATCH " + hex );
+
     hex = hex.substring(0,offsetof_checksum) + dump_c_uint32_t(checksum) + hex.substring(endof_checksum);
+
+    console.log( "PATCH " + hex );
 
     hex = hex + image_hex;
 
@@ -239,6 +249,8 @@ function dump_ProfileEntry( entry )
 
     hex = hex + dump_c_uint32_t( entry._data_length );
     hex = hex + dump_c_uint32_t( entry._data_offset );
+
+    console.assert( hex.length == (NYBBLES_PER_BYTE * PROFILE_ENTRY_SIZE) );
 
     return hex;
 }

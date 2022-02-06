@@ -516,9 +516,9 @@ function plotBattery(obj) {
 
     entry._profile.battery_parallel = parseInt(obj_p.value);
     entry._profile.battery_series = parseInt(obj_s.value);
+    entry._profile.battery_allow_regen = (obj_regen.checked ? 1 : 0);
 
     entry._profile.display = parseInt(obj_disp.value);
-    entry._profile.allow_regen = (obj_regen.checked ? 1 : 0);
 }
 
 function makeBattery(eN) {
@@ -586,8 +586,6 @@ function makeBattery(eN) {
     inp = makeLabelledNumber( o, 'bat-s', 'Series', 20, function() { plotBattery(this) }, '' );
     inp.min = 1;
 
-    inp = makeOptions( o, 'bat-disp', 'Display', 0, ['Percent (%)','Amp-Hour (Ah)'] );
-
     lbl = document.createElement('label');
     lbl.innerHTML = 'Regeneration';
     lbl.setAttribute( 'for', 'e-' + entry_index + '-bat-regen' );
@@ -596,6 +594,13 @@ function makeBattery(eN) {
     inp.id = 'e-' + entry_index + '-bat-regen';
     inp.type = 'checkbox';
     o.appendChild( inp );
+
+    // Meter
+    h3 = document.createElement('h3');
+    h3.innerHTML = 'Meter';
+    o.appendChild( h3 );
+
+    inp = makeOptions( o, 'bat-disp', 'Display', 0, ['Percent (%)','Amp-Hour (Ah)'] );
 
     eN.appendChild( o );
 
@@ -903,13 +908,6 @@ function plotTemperature(obj) {
     entry._profile.schema = schema;
 
     switch (entry._profile.method) {
-        case TEMP_METHOD_CURVE_APPROX:
-            entry._profile.parameters_approx_A = undefined;
-            entry._profile.parameters_approx_B = undefined;
-
-            entry._profile.parameters_approx_Tlo = undefined;
-            break;
-        case TEMP_METHOD_STEINHART_HART_ABC:
         case TEMP_METHOD_STEINHART_HART_BETA_R:
             entry._profile.parameters_SH_A = undefined;
             entry._profile.parameters_SH_B = undefined;
