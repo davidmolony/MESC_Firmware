@@ -221,6 +221,7 @@ void fastLoop() {
       if ((current_hall_state == 7)) {
         // no hall sensors detected, all GPIO pulled high
         MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
+        MotorState = MOTOR_STATE_RUN;
       } else if (current_hall_state == 0) {
         MotorState = MOTOR_STATE_ERROR;
         MotorError = MOTOR_ERROR_HALL0;

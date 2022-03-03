@@ -24,6 +24,8 @@
 /* USER CODE BEGIN Includes */
 #include "MESCmotor_state.h"
 #include "flash_wrapper.h"
+#include "MESC_Comms.h"
+extern char UART_rx_buffer[2];
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -131,8 +133,13 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   HAL_Delay(1000);
 
-motor.motor_flux = 464;
+motor.motor_flux = 30; //Propdrive 2826 1200kV
+//motor.motor_flux = 464; //Red 70kV McMaster 8080 motor
+//motor.motor_flux = 650; //Alien 8080 50kV motor
+
 //650 is the right number for a motor with 7PP and 50kV
+
+HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
 //Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
 MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
 #if 0                                  // INIT FLASH
@@ -152,6 +159,8 @@ MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
       __HAL_TIM_MOE_ENABLE(&htim1);
       b_write_flash = 0;
     }
+
+    //HAL_UART_Transmit(&huart3, "hello World", 12, 10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
