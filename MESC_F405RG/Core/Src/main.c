@@ -133,7 +133,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   HAL_Delay(1000);
 
-motor.motor_flux = 30; //Propdrive 2826 1200kV
+
+motor.motor_flux = 32; //Propdrive 2826 1200kV
 //motor.motor_flux = 464; //Red 70kV McMaster 8080 motor
 //motor.motor_flux = 650; //Alien 8080 50kV motor
 

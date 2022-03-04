@@ -57,7 +57,7 @@ typedef enum {
    proportional to throttle demand (+/- can either be +/- current, or invert
    90degree angle, depending on inverter algorithm
    */
-  // MOTOR_STATE_SENSORLESS_RUN = 8,
+  MOTOR_STATE_GET_KV = 8,
   /*
    */
   MOTOR_STATE_TEST = 9,

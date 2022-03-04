@@ -53,7 +53,8 @@ float two_on_sqrt3 = 1.73205;
 int adc_conv_end;
 uint8_t b_write_flash = 0;
 uint8_t b_read_flash = 0;
-
+static float BEMFa = 0.00001;
+static float BEMFb = 0.00001;
 void MESCInit() {
 #ifdef STM32F303xC
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
@@ -80,6 +81,9 @@ void MESCInit() {
   // value. Initiialise the hall sensor offsets
   foc_vars.hall_forwards_adjust = 5460;
   foc_vars.hall_backwards_adjust = 5460;
+
+  BEMFa = 0;
+  BEMFb = 0;
 
   measurement_buffers.ADCOffset[0] = 0;
   measurement_buffers.ADCOffset[1] = 0;
@@ -191,9 +195,9 @@ void fastLoop() {
 
     case MOTOR_STATE_TRACKING:
       // Track using BEMF from phase sensors
-    	  generateBreak();
-    	  MESCTrack();
-    	  flux_observer();
+      generateBreak();
+      MESCTrack();
+      flux_observer();
       break;
 
     case MOTOR_STATE_OPEN_LOOP_STARTUP:
@@ -221,7 +225,7 @@ void fastLoop() {
       if ((current_hall_state == 7)) {
         // no hall sensors detected, all GPIO pulled high
         MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
-        MotorState = MOTOR_STATE_RUN;
+        MotorState = MOTOR_STATE_GET_KV;
       } else if (current_hall_state == 0) {
         MotorState = MOTOR_STATE_ERROR;
         MotorError = MOTOR_ERROR_HALL0;
@@ -236,6 +240,7 @@ void fastLoop() {
       break;
 
     case MOTOR_STATE_MEASURING:
+
       if (b_read_flash) {
         MotorState = MOTOR_STATE_RUN;
         b_read_flash = 0;
@@ -261,6 +266,11 @@ void fastLoop() {
         // measureInductance();
         break;
       }
+
+      break;
+
+    case MOTOR_STATE_GET_KV:
+      getkV();
 
       break;
 
@@ -482,8 +492,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       }
     }
   }
-  static float BEMFa = 0.00001;
-  static float BEMFb = 0.00001;
+
   static float Ia_last = 0;
   static float Ib_last = 0;
   static uint16_t angle = 0;
@@ -592,31 +601,32 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // Run the counter
     ticks_since_last_observer_change = ticks_since_last_observer_change + 1;
 
-        if (ticks_since_last_observer_change <= 2.0 * last_observer_period) {
-     /*      foc_vars.FOCAngle = foc_vars.FOCAngle + (uint16_t)(dir*angle_step +
-        		   one_on_last_observer_period * (-0.9 * hall_error)); //Does not work...
-          //Why?
-*/
-          if (dir > 0) {  // Apply a gain to the error as well as the feed forward
-                    // from the last hall period. Gain of 0.9-1.1 seems to work
-                    // well when using corrected hall positions and spacings
-            foc_vars.FOCAngle =
-                foc_vars.FOCAngle +
-                (uint16_t)(angle_step - one_on_last_observer_period *
-                hall_error);
-            // one_on_last_observer_period * (-0.2 * hall_error));
-          } else if (dir < 0) {
-             foc_vars.FOCAngle = foc_vars.FOCAngle +
-            (uint16_t)(-angle_step + one_on_last_observer_period * (-0.9 * hall_error));
-             //Also does not work,
-            // Why??
-            foc_vars.FOCAngle =
-                foc_vars.FOCAngle -
-                (uint16_t)(angle_step +
-                           one_on_last_observer_period * (0.2 * hall_error));
-          }
-
-        }
+    if (ticks_since_last_observer_change <= 2.0 * last_observer_period) {
+      /*      foc_vars.FOCAngle = foc_vars.FOCAngle + (uint16_t)(dir*angle_step
+         + one_on_last_observer_period * (-0.9 * hall_error)); //Does not
+         work...
+           //Why?
+ */
+      if (dir > 0) {  // Apply a gain to the error as well as the feed forward
+        // from the last hall period. Gain of 0.9-1.1 seems to work
+        // well when using corrected hall positions and spacings
+        foc_vars.FOCAngle =
+            foc_vars.FOCAngle +
+            (uint16_t)(angle_step - one_on_last_observer_period * hall_error);
+        // one_on_last_observer_period * (-0.2 * hall_error));
+      } else if (dir < 0) {
+        foc_vars.FOCAngle =
+            foc_vars.FOCAngle +
+            (uint16_t)(-angle_step +
+                       one_on_last_observer_period * (-0.9 * hall_error));
+        // Also does not work,
+        // Why??
+        foc_vars.FOCAngle =
+            foc_vars.FOCAngle -
+            (uint16_t)(angle_step +
+                       one_on_last_observer_period * (0.2 * hall_error));
+      }
+    }
     if (ticks_since_last_observer_change > 1500.0f) {
       ticks_since_last_observer_change = 1500.0f;
       last_observer_period = 1500.0f;  //(ticks_since_last_hall_change);
@@ -627,6 +637,9 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
 
   void OLGenerateAngle() {
+    foc_vars.openloop_step = 300;
+
+    foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.openloop_step;
     // ToDo
   }
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -955,8 +968,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
       foc_vars.FOCAngle = 0;
       a = a - 1;
-    }
-    else {
+    } else {
       foc_vars.Idq_req[0] = 10;
       foc_vars.Idq_req[1] = 0;
       static int dir = 1;
@@ -1050,6 +1062,55 @@ void VICheck() {  // Check currents, voltages are within panic limits
      * using L=Vdt/dI=IRdt/dI ToDo Actually do this... ToDo Determination of the
      * direct and quadrature inductances for MTPA in future?
      */
+  }
+  static float acc_da = 0.0f;
+  static float acc_db = 0.0f;
+  static uint16_t acc_num = 0;
+  static float da;
+  static float db;
+
+
+  void getkV() {
+    foc_vars.Idq_req[0] = 7;  // 10A for the openloop spin
+    foc_vars.Idq_req[1] = 0;  // 10A for the openloop spin
+
+    OLGenerateAngle();
+
+    MESCFOC();
+
+    da = foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0] -
+         motor.Lphase * (foc_vars.Iab[0] - Ia_last) * foc_vars.pwm_frequency;
+    db = foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1] -
+         motor.Lphase * (foc_vars.Iab[1] - Ib_last) * foc_vars.pwm_frequency;
+    if(foc_vars.FOCAngle>32468 && foc_vars.FOCAngle<65035){
+    		acc_da += da;
+    		acc_db += db;
+    }
+    else if (foc_vars.FOCAngle>32468 && foc_vars.FOCAngle<(65035+foc_vars.openloop_step)){
+    	BEMFa = sqrtf((acc_da*acc_da+acc_db*acc_db));
+    	acc_da = 0;
+    	acc_db = 0;
+
+    }
+//    acc_num++;
+//
+//    if (acc_num == (65536/300)) {
+//      acc_da /= (65536.0f/300.0f);
+//      acc_db /= (65536.0f/300.0f);
+//
+//      acc_num = 1;
+//    }
+//
+//    BEMFa += da - (acc_da / acc_num);
+//    BEMFb += db - (acc_db / acc_num);
+//
+//    acc_da += da;
+//    acc_db += db;
+
+    Ia_last = foc_vars.Iab[0];
+    Ib_last = foc_vars.Iab[1];
+
+    // MotorState = MOTOR_STATE_RUN;
   }
 
   // Temporary buffer which is used to turn on/off phase PWMs
@@ -1158,9 +1219,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
     foc_vars.Vq_max = 0.5 * measurement_buffers.ConvertedADC[0][1] *
                       MAX_MODULATION * SVPWM_MULTIPLIER * Vq_MAX_PROPORTION;
 
-    foc_vars.Vdint_max = foc_vars.Vd_max*0.9;
-    foc_vars.Vqint_max = foc_vars.Vq_max*0.9;
-
+    foc_vars.Vdint_max = foc_vars.Vd_max * 0.9;
+    foc_vars.Vqint_max = foc_vars.Vq_max * 0.9;
 
     foc_vars.field_weakening_threshold = foc_vars.Vq_max * 0.8;
   }
@@ -1255,22 +1315,25 @@ void VICheck() {  // Check currents, voltages are within panic limits
           (fabs(foc_vars.Vdq_smoothed[1]) * foc_vars.Vdqres_to_Vdq);
     }
   }
-  void MESCTrack(){
-//here we are going to do the clark and park transform of the voltages to get the VaVb and VdVq
-//These can be handed later to the observers and used to set the integral terms
+  void MESCTrack() {
+    // here we are going to do the clark and park transform of the voltages to
+    // get the VaVb and VdVq These can be handed later to the observers and used
+    // to set the integral terms
 
-	  //Clark transform
-	foc_vars.Vab[0] = 0.666*(measurement_buffers.ConvertedADC[0][2]
-							-0.5*((measurement_buffers.ConvertedADC[1][1]-0.3) +
-									(measurement_buffers.ConvertedADC[1][2])));
-	foc_vars.Vab[1] = 0.666*(sqrt3_on_2*((measurement_buffers.ConvertedADC[1][1])
-								-(measurement_buffers.ConvertedADC[1][2]+0.6)));
+    // Clark transform
+    foc_vars.Vab[0] =
+        0.666 * (measurement_buffers.ConvertedADC[0][2] -
+                 0.5 * ((measurement_buffers.ConvertedADC[1][1] - 0.3) +
+                        (measurement_buffers.ConvertedADC[1][2])));
+    foc_vars.Vab[1] =
+        0.666 * (sqrt3_on_2 * ((measurement_buffers.ConvertedADC[1][1]) -
+                               (measurement_buffers.ConvertedADC[1][2] + 0.6)));
 
     foc_vars.sincosangle[0] = sinwave[foc_vars.FOCAngle >> 8];
     foc_vars.sincosangle[1] = sinwave[(foc_vars.FOCAngle >> 8) + 64];
 
-	//Park transform
-;
+    // Park transform
+    ;
 
     foc_vars.Vdq[0] = foc_vars.sincosangle[1] * foc_vars.Vab[0] +
                       foc_vars.sincosangle[0] * foc_vars.Vab[1];
