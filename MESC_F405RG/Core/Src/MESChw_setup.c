@@ -38,7 +38,7 @@ void motor_init() {
 
 void hw_init() {
   g_hw_setup.Imax =
-      60.0;  // Imax is the current at which we are either no longer able to
+      90.0;  // Imax is the current at which we are either no longer able to
              // read it, or hardware "don't ever exceed to avoid breakage"
   g_hw_setup.Vmax = 45.0;  // Headroom beyond which likely to get avalanche of
                            // MOSFETs or DCDC converter

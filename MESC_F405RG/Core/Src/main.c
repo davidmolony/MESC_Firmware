@@ -134,9 +134,9 @@ int main(void)
   HAL_Delay(1000);
 
 
-motor.motor_flux = 32; //Propdrive 2826 1200kV
+//motor.motor_flux = 32; //Propdrive 2826 1200kV
 //motor.motor_flux = 464; //Red 70kV McMaster 8080 motor
-//motor.motor_flux = 650; //Alien 8080 50kV motor
+motor.motor_flux = 575; //Alien 8080 50kV motor
 
 //650 is the right number for a motor with 7PP and 50kV
 

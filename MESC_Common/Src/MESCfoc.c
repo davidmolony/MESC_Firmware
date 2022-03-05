@@ -637,7 +637,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
 
   void OLGenerateAngle() {
-    foc_vars.openloop_step = 300;
+    foc_vars.openloop_step = 50;
 
     foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.openloop_step;
     // ToDo
@@ -1069,43 +1069,66 @@ void VICheck() {  // Check currents, voltages are within panic limits
   static float da;
   static float db;
 
-
   void getkV() {
     foc_vars.Idq_req[0] = 7;  // 10A for the openloop spin
     foc_vars.Idq_req[1] = 0;  // 10A for the openloop spin
 
     OLGenerateAngle();
+    static int count = 0;
+    static float BEMFaccumulator = 0;
+    static int cycles = 0;
+    if (cycles < 65000) {
+      // ramp openloop
+    } else if (cycles < 128000) {
+      count++;
+      BEMFaccumulator += BEMFa;
+    } else {
+      // generateBreak();
 
+      MotorState = MOTOR_STATE_RUN;
+      motor.motor_flux = BEMFaccumulator / (2 * count);
+      if (motor.motor_flux > 5 && motor.motor_flux < 5000) {
+        MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
+      } else {
+        MotorState = MOTOR_STATE_ERROR;
+        generateBreak();
+      }
+    }
     MESCFOC();
+    cycles++;
+    // Here we are going to integrate the back EMF and find the constant in
+    // openloop Theory is that the integral over a half wave represents the flux
+    // linkage. Have to account for the lead/lag, so we take the euclidian normal
+    // of Va and Vb, which results in a value 2x higher than we want, since
+    // integration should always have a +C term
 
     da = foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0] -
          motor.Lphase * (foc_vars.Iab[0] - Ia_last) * foc_vars.pwm_frequency;
     db = foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1] -
          motor.Lphase * (foc_vars.Iab[1] - Ib_last) * foc_vars.pwm_frequency;
-    if(foc_vars.FOCAngle>32468 && foc_vars.FOCAngle<65035){
-    		acc_da += da;
-    		acc_db += db;
+    if (foc_vars.FOCAngle > 32468 && foc_vars.FOCAngle < 65035) {
+      acc_da += da;
+      acc_db += db;
+    } else if (foc_vars.FOCAngle > 32468 &&
+               foc_vars.FOCAngle < (65035 + foc_vars.openloop_step)) {
+      BEMFa = sqrtf((acc_da * acc_da + acc_db * acc_db));
+      acc_da = 0;
+      acc_db = 0;
     }
-    else if (foc_vars.FOCAngle>32468 && foc_vars.FOCAngle<(65035+foc_vars.openloop_step)){
-    	BEMFa = sqrtf((acc_da*acc_da+acc_db*acc_db));
-    	acc_da = 0;
-    	acc_db = 0;
-
-    }
-//    acc_num++;
-//
-//    if (acc_num == (65536/300)) {
-//      acc_da /= (65536.0f/300.0f);
-//      acc_db /= (65536.0f/300.0f);
-//
-//      acc_num = 1;
-//    }
-//
-//    BEMFa += da - (acc_da / acc_num);
-//    BEMFb += db - (acc_db / acc_num);
-//
-//    acc_da += da;
-//    acc_db += db;
+    //    acc_num++;
+    //
+    //    if (acc_num == (65536/300)) {
+    //      acc_da /= (65536.0f/300.0f);
+    //      acc_db /= (65536.0f/300.0f);
+    //
+    //      acc_num = 1;
+    //    }
+    //
+    //    BEMFa += da - (acc_da / acc_num);
+    //    BEMFb += db - (acc_db / acc_num);
+    //
+    //    acc_da += da;
+    //    acc_db += db;
 
     Ia_last = foc_vars.Iab[0];
     Ib_last = foc_vars.Iab[1];
