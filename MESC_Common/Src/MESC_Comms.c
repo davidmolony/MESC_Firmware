@@ -55,7 +55,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
   if (UART_rx_buffer[0] == 0x68) {  // h - Say hi
     HAL_UART_Transmit_DMA(&huart3, (uint8_t *)"hi", 2);
-  } else if (UART_rx_buffer[0] == 0x71) {  // q - increase quadrature current
+  }
+
+  else if (UART_rx_buffer[0] == 0x71) {  // q - increase quadrature current
     foc_vars.Idq_req[1] = foc_vars.Idq_req[1] + 5.0;
     if ((foc_vars.Idq_req[1] < 1.0) && (foc_vars.Idq_req[1] > -1.0)) {
       foc_vars.Idq_req[1] = 0;
@@ -63,7 +65,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     length = sprintf((char *)message_buffer, "Ir%.1f %.1f\r",
                      foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
     HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-  } else if (UART_rx_buffer[0] == 0x61) {  // a - decrease quadrature current
+  }
+
+  else if (UART_rx_buffer[0] == 0x61) {  // a - decrease quadrature current
     foc_vars.Idq_req[1] = foc_vars.Idq_req[1] - 5.0;
     if ((foc_vars.Idq_req[1] < 1.0) && (foc_vars.Idq_req[1] > -1.0)) {
       foc_vars.Idq_req[1] = 0;
@@ -71,7 +75,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     length = sprintf((char *)message_buffer, "Ir%.1f %.1f\r",
                      foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
     HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-  } else if (UART_rx_buffer[0] ==
+  }
+
+  else if (UART_rx_buffer[0] ==
              0x64) {  // d - increase direct (field) current
     foc_vars.Idq_req[0] = foc_vars.Idq_req[0] + 5.0;
     if ((foc_vars.Idq_req[0] < 1.0) && (foc_vars.Idq_req[0] > -1.0)) {
@@ -80,7 +86,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     length = sprintf((char *)message_buffer, "Ir%.1f %.1f\r",
                      foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
     HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-  } else if (UART_rx_buffer[0] ==
+  }
+
+  else if (UART_rx_buffer[0] ==
              0x63) {  // c - decrease direct (field) current
     foc_vars.Idq_req[0] = foc_vars.Idq_req[0] - 5.0;
     if ((foc_vars.Idq_req[0] < 1.0) && (foc_vars.Idq_req[0] > -1.0)) {
@@ -89,16 +97,22 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     length = sprintf((char *)message_buffer, "Ir%.1f %.1f\r",
                      foc_vars.Idq_req[0], foc_vars.Idq_req[1]);
     HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-  } else if (UART_rx_buffer[0] == 0x72) {  // r - Reset the controller
+  }
+
+  else if (UART_rx_buffer[0] == 0x72) {  // r - Reset the controller
     HAL_UART_Transmit_DMA(&huart3, "reset!", 6);
     // HAL_Delay(10);
     __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(&htim1);
     HAL_NVIC_SystemReset();
-  } else if (UART_rx_buffer[0] == 0x76) {  // v - Get the bus voltage
+  }
+
+  else if (UART_rx_buffer[0] == 0x76) {  // v - Get the bus voltage
     length = sprintf((char *)message_buffer, "Vbus%.2f\r",
                      measurement_buffers.ConvertedADC[0][1]);
     HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-  } else if (UART_rx_buffer[0] == 0x6D) {  // m - Get the parameters (L R)
+  }
+
+  else if (UART_rx_buffer[0] == 0x6D) {  // m - Get the parameters (L R)
     motor.Lphase = 0;
     motor.Rphase = 0;
     MotorState = MOTOR_STATE_MEASURING;
@@ -107,7 +121,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     length = sprintf((char *)message_buffer, "Vbus%.2f\r",
                      measurement_buffers.ConvertedADC[0][1]);
     HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-  } else if (UART_rx_buffer[0] ==
+  }
+
+  else if (UART_rx_buffer[0] ==
              0x70) {  // p - Get the parameters (hall table)
 
     MotorState = MOTOR_STATE_DETECTING;
@@ -116,19 +132,25 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     length = sprintf((char *)message_buffer, "Vbus%.2f\r",
                      measurement_buffers.ConvertedADC[0][1]);
     HAL_UART_Transmit_DMA(&huart3, message_buffer, length);
-  } else if (UART_rx_buffer[0] == 0x66) {  // f - increase hall table by 100
+  }
+
+  else if (UART_rx_buffer[0] == 0x66) {  // f - increase hall table by 100
     for (int i = 0; i < 6; i++) {
       foc_vars.hall_table[i][2] = foc_vars.hall_table[i][2] + 100;
     }
-  } else if (UART_rx_buffer[0] == 0x67) {  // g - decrease hall table by 100
+  }
+
+  else if (UART_rx_buffer[0] == 0x67) {  // g - decrease hall table by 100
     for (int i = 0; i < 6; i++) {
       foc_vars.hall_table[i][2] = foc_vars.hall_table[i][2] - 100;
     }
+
   } else if (UART_rx_buffer[0] ==
              0x74) {  // t - put it into double pulse test mode
     MotorState = MOTOR_STATE_TEST;
     phV_Enable();
     phW_Enable();
+
   } else if (UART_rx_buffer[0] == 0x79) {  // y - get test result
     MotorState = MOTOR_STATE_IDLE;
 
