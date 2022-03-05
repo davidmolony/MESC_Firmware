@@ -87,7 +87,7 @@ static float ntc_get_R_T_from_adc( TEMPProfile const * const tp, uint32_t const 
         default:
         {
             // error
-            return 0.0;
+            return 0.0f;
         }
     }
 }
@@ -148,7 +148,7 @@ static uint32_t ntc_get_adc_from_T( TEMPProfile const * tp, float const T )
 
             float const adc_range_ = (float)(tp->adc_range - 1);
 
-            float adc_ = 0.0;
+            float adc_ = 0.0f;
 
             switch (tp->schema)
             {

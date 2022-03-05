@@ -30,6 +30,7 @@
 #include "MESCprofile.h"
 
 #include <inttypes.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,12 +38,12 @@
 static void       * read_buffer  = NULL;
 static void const * write_buffer = NULL;
 
-static uint8_t use_mem_not_fs     = 1;
-static uint8_t read_zero_on_error = 0;
+static bool use_mem_not_fs     = true;
+static bool read_zero_on_error = false;
 
 static uint8_t * mem = NULL;
 
-void virt_flash_configure( uint8_t const use_mem_not_fs_, uint8_t const read_zero_on_error_ )
+void virt_flash_configure( bool const use_mem_not_fs_, bool const read_zero_on_error_ )
 {
     use_mem_not_fs     = use_mem_not_fs_;
     read_zero_on_error = read_zero_on_error_;
@@ -88,14 +89,19 @@ ProfileStatus virt_flash_read( void * data, uint32_t const address, uint32_t con
 
     FILE * f = NULL;
 
-    if (use_mem_not_fs == 0)
+    if (use_mem_not_fs == false)
     {
         f = fopen( "FLASH", "rb" );
     }
 
     if (f != NULL)
     {
-        fseek( f, address, SEEK_SET );// TODO
+        int const ret = fseek( f, address, SEEK_SET );
+
+        if (ret != 0)
+        {
+            return PROFILE_STATUS_ERROR_DATA_OFFSET;
+        }
 
         size_t const len = fread( data, 1, length, f );
 
@@ -111,7 +117,7 @@ ProfileStatus virt_flash_read( void * data, uint32_t const address, uint32_t con
         return PROFILE_STATUS_SUCCESS;
     }
 
-    if (use_mem_not_fs != 0)
+    if (use_mem_not_fs)
     {
         memcpy( data, &mem[address], length );
 
@@ -120,7 +126,7 @@ ProfileStatus virt_flash_read( void * data, uint32_t const address, uint32_t con
         return PROFILE_STATUS_SUCCESS;
     }
 
-    if (read_zero_on_error == 0)
+    if (read_zero_on_error == false)
     {
         return PROFILE_STATUS_ERROR_STORAGE_READ;
     }
@@ -140,14 +146,19 @@ ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint3
 
     FILE * f = NULL;
 
-    if (use_mem_not_fs == 0)
+    if (use_mem_not_fs == false)
     {
         f = fopen( "FLASH", "r+" );
     }
 
     if (f != NULL)
     {
-        fseek( f, address, SEEK_SET ); // TODO
+        int const ret = fseek( f, address, SEEK_SET );
+
+        if (ret != 0)
+        {
+            return PROFILE_STATUS_ERROR_DATA_OFFSET;
+        }
 
         size_t const len = fwrite( data, 1, length, f );
 
@@ -161,9 +172,9 @@ ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint3
         return PROFILE_STATUS_COMMIT_SUCCESS;
     }
 
-    if (use_mem_not_fs != 0)
+    if (use_mem_not_fs)
     {
-        memcpy( &mem[address], data, length );// TODO
+        memcpy( &mem[address], data, length );
 
         return PROFILE_STATUS_COMMIT_SUCCESS;
     }
@@ -173,7 +184,7 @@ ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint3
 
 void virt_flash_reset( void )
 {
-    if (use_mem_not_fs == 0)
+    if (use_mem_not_fs == false)
     {
         remove( "FLASH" );
     }
@@ -181,7 +192,7 @@ void virt_flash_reset( void )
 
 void virt_flash_init( void )
 {
-    mem = calloc( 4096/*TODO*/, 1 );
+    mem = calloc( PROFILE_MAX_SIZE, 1 );
 }
 
 void virt_flash_free( void )

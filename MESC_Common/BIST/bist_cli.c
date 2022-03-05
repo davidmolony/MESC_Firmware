@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,6 +32,7 @@
 
 #include <assert.h>
 #include <inttypes.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -76,16 +77,16 @@ static void reset( void )
     fprintf( stdout, ">>> RESET <<<\n" );
 }
 
-extern void          virt_flash_configure(uint8_t const use_mem_not_fs, uint8_t const read_zero_on_error);
-extern void          virt_flash_apply_corruption(void);
-extern void          virt_flash_corrupt(char const* name, uint32_t const offset, uint32_t const length);
-extern ProfileStatus virt_flash_read(void* data, uint32_t const address, uint32_t const length);
-extern ProfileStatus virt_flash_write(void const* data, uint32_t const address, uint32_t const length);
-extern void          virt_flash_reset(void);
-extern void          virt_flash_init(void);
-extern void          virt_flash_free(void);
+extern void          virt_flash_configure( bool const use_mem_not_fs, bool const read_zero_on_error );
+extern void          virt_flash_apply_corruption( void );
+extern void          virt_flash_corrupt( char const * name, uint32_t const offset, uint32_t const length );
+extern ProfileStatus virt_flash_read(  void       * data, uint32_t const address, uint32_t const length );
+extern ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint32_t const length );
+extern void          virt_flash_reset( void );
+extern void          virt_flash_init( void );
+extern void          virt_flash_free( void );
 
-extern int virt_uart_write( void * handle, void * data, uint16_t size );
+extern MESC_STM_ALIAS(int,HAL_StatusTypeDef) virt_uart_write( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size );
 
 void bist_cli( void )
 {
@@ -93,7 +94,7 @@ void bist_cli( void )
 
     virt_flash_init();
 
-    virt_flash_configure( 1, 1 );
+    virt_flash_configure( true, true );
 
     profile_configure_storage_io( virt_flash_read, virt_flash_write );
 
@@ -133,11 +134,11 @@ void bist_cli( void )
     fprintf( stdout, "Finished CLI BIST\n" );
 }
 
-static int running = 1;
+static bool running = true;
 
 static void i_cli_quit( void )
 {
-    running = 0;
+    running = false;
 }
 
 void i_cli( void )
@@ -161,7 +162,7 @@ void i_cli( void )
 
         if (ch == EOF)
         {
-            running = 0;
+            running = false;
         }
         else
         {

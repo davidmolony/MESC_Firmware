@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,6 +32,10 @@
 
 #include <stdint.h>
 
+#include "MESC_INTERNAL.h"
+#include "MESC_STM.h"
+#include "MESCprofile.h"
+
 /*
 Command             Description
 R <NAME>            Read variable <NAME>
@@ -52,7 +56,7 @@ enum CLIVariableType
 typedef enum CLIVariableType CLIVariableType;
 
 void cli_configure_storage_io(
-    int  (* const write )( void const * buffer, uint32_t const address, uint32_t const length )
+    ProfileStatus (* const write )( void const * buffer, uint32_t const address, uint32_t const length )
     );
 
 void cli_register_variable_ro(
@@ -75,10 +79,10 @@ void cli_register_function(
     void (* const fn)( void ) );
 
 void cli_register_io(
-    void * handle,
-    int (* const write)( void * handle, void * data, uint16_t size ) ); // NOTE: This prototype is deliberately punned to match HAL_UART_Transmit_DMA
+    MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle,
+    MESC_STM_ALIAS(int,HAL_StatusTypeDef) (* const write)( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size ) ); // NOTE: This prototype is deliberately punned to match HAL_UART_Transmit_DMA
 
-int/*CLIState*/ cli_process( char const c );
+MESC_INTERNAL_ALIAS(int,CLIState) cli_process( char const c );
 
 void cli_reply( char const * p, ... );
 

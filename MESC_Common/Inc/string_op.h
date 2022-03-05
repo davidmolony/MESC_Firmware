@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -30,16 +30,16 @@
 #ifndef MESC_STRING_OP_H
 #define MESC_STRING_OP_H
 
-#include <stddef.h>
+#include "bit_op.h"
 
 #define MAKE_UINT16_STRING(a,b) \
-       (((uint16_t)(a) <<  0) \
-    |   ((uint16_t)(b) <<  8))
+       (((uint16_t)(a) <<  BYTE_SHIFT(0)) \
+    |   ((uint16_t)(b) <<  BYTE_SHIFT(1)))
 
 #define MAKE_UINT32_STRING(a,b,c,d) \
-       (((uint32_t)(a) <<  0) \
-    |   ((uint32_t)(b) <<  8) \
-    |   ((uint32_t)(c) << 16) \
-    |   ((uint32_t)(d) << 24))
+       (((uint32_t)(a) << BYTE_SHIFT(0))  \
+    |   ((uint32_t)(b) << BYTE_SHIFT(1))  \
+    |   ((uint32_t)(c) << BYTE_SHIFT(2))  \
+    |   ((uint32_t)(d) << BYTE_SHIFT(3)))
 
 #endif

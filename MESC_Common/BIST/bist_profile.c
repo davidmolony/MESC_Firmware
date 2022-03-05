@@ -36,6 +36,7 @@
 
 #include <assert.h>
 #include <inttypes.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -90,7 +91,7 @@ static ProfileStatus rom_flash_write( void const * data, uint32_t const address,
     (void)length;
 }
 
-extern void          virt_flash_configure( uint8_t const use_mem_not_fs, uint8_t const read_zero_on_error );
+extern void          virt_flash_configure( bool const use_mem_not_fs, bool const read_zero_on_error );
 extern void          virt_flash_apply_corruption( void );
 extern void          virt_flash_corrupt( char const * name, uint32_t const offset, uint32_t const length );
 extern ProfileStatus virt_flash_read(  void       * data, uint32_t const address, uint32_t const length );
@@ -328,7 +329,7 @@ void bist_profile( void )
     demo_entry.y = 3;
     demo_entry.z = 2;
 
-    virt_flash_configure( 1, 1 );
+    virt_flash_configure( true, true );
 
     profile_configure_storage_io( virt_flash_read, virt_flash_write );
 
@@ -441,8 +442,6 @@ void bist_profile( void )
 
         virt_flash_revoke_corruption();
     }
-
-    // TODO
 
     fprintf( stdout, "INFO: Scanning entries\n" );
 
@@ -587,7 +586,7 @@ void bist_profile( void )
 
     fprintf( stdout, "INFO: Commit image\n" );
 
-    ret = profile_commit(); // DEBUG
+    ret = profile_commit();
 
     profile_get_last( &s, &h, &e, & o );
         fprintf( stdout, "INFO: %d %s\n"

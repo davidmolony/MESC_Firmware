@@ -11,8 +11,6 @@
 #include "stm32f3xx_hal.h"
 
 // TODO move all the 303 specific defines (STM32F303xC) into this from:
-// flash_driver.c
-// flash_wrapper.c
 // MESCfoc.c
 // MESC_Comms.c
 

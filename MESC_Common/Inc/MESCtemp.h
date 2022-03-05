@@ -30,6 +30,7 @@
 #ifndef MESC_TEMP_H
 #define MESC_TEMP_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define TEMP_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','T','P','E')
@@ -90,6 +91,6 @@ float temp_read( uint32_t const adc_raw );
 
 uint32_t temp_get_adc( float const T );
 
-int temp_check( uint32_t const adc_raw );
+bool temp_check( uint32_t const adc_raw );
 
 #endif

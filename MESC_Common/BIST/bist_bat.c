@@ -40,11 +40,7 @@ void bist_bat( void )
     bp.cell.Imax = 30.0f; // A
     bp.cell.Vmax =  4.2f; // V
     bp.cell.Cmax =  4.2f; // Ah
-#if BAT_VTOP
-    bp.cell.Vtop = 4.05f; // V
-    bp.cell.Ctop[0] = 4.0f; // Ah
-    bp.cell.Ctop[1] = 3.5f; // Ah
-#endif
+
     bp.cell.Vmid = 3.4f; // V
     bp.cell.Cmid = 0.7f; // Ah
 

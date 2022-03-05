@@ -74,7 +74,6 @@ uint32_t fnv1a_str( char const * ptr )
     for ( char const * p = ptr; (*p != '\0'); ++p )
     {
         hash = fnv1a_process( hash, *p );
-//fprintf( stderr, "HASH %08" PRIX32 "\n", hash );//debug
     }
 
     return hash;

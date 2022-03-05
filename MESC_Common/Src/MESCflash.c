@@ -9,7 +9,7 @@
 
 #include "stm32fxxx_hal.h"
 
-/*static*/ ProfileStatus readFlash( void        * const buffer, uint32_t const address, uint32_t const length ) // TODO static
+static ProfileStatus readFlash( void        * const buffer, uint32_t const address, uint32_t const length )
 {
     uint32_t const * src = (uint32_t const *)(getFlashBaseAddress() + address);
     uint32_t       * dst = (uint32_t       *)buffer;
@@ -22,7 +22,7 @@
     return PROFILE_STATUS_SUCCESS;
 }
 
-/*static*/ ProfileStatus writeFlash( void const * const buffer, uint32_t const address, uint32_t const length ) // TODO static
+static ProfileStatus writeFlash( void const * const buffer, uint32_t const address, uint32_t const length )
 {
     uint32_t         addr  = getFlashBaseAddress() + address;
     uint32_t const * src   = (uint32_t const *)buffer;

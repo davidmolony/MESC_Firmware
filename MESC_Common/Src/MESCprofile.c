@@ -35,6 +35,7 @@
 #include "bit_op.h"
 
 #include <inttypes.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -52,7 +53,7 @@ static struct
     uint32_t const * length;
 }   profile_entry[PROFILE_HEADER_ENTRIES];
 
-static uint8_t profile_modified = 0;
+static bool profile_modified = false;
 
 static ProfileStatus profile_status_storage = PROFILE_STATUS_UNKNOWN;
 static ProfileStatus profile_status_header  = PROFILE_STATUS_UNKNOWN;
@@ -261,7 +262,7 @@ void profile_configure_storage_io(
         profile_storage_write = write;
     }
 
-    cli_configure_storage_io( (int(*)(void const *, uint32_t const, uint32_t const ))write );
+    cli_configure_storage_io( write );
 }
 
 static void profile_cli_info( void )
@@ -343,7 +344,7 @@ static void profile_cli_info( void )
     }
 }
 
-static uint8_t profile_buffer[4096]; // TODO HACK
+static uint8_t profile_buffer[PROFILE_MAX_SIZE];
 
 ProfileStatus profile_init( void )
 {
@@ -559,7 +560,7 @@ ProfileStatus profile_get_entry(
                         profile_entry[i].buffer = NULL;
                         profile_entry[i].length = NULL;
 
-                        profile_modified = 1;
+                        profile_modified = true;
 
                         ret = PROFILE_STATUS_SUCCESS_ENTRY_FREE;
                     }
@@ -691,8 +692,6 @@ ProfileStatus profile_scan_entry(
             continue;
         }
 
-        // TODO check checksum
-
         if  (profile_stub.entry[i].data_signature == signature)
         {
             ret = PROFILE_STATUS_SUCCESS;
@@ -752,7 +751,7 @@ ProfileStatus profile_put_entry(
             return PROFILE_STATUS_UNKNOWN;
     }
 
-    profile_modified = 1;
+    profile_modified = true;
 
     return PROFILE_STATUS_SUCCESS;
 }
@@ -769,7 +768,7 @@ ProfileStatus profile_commit( void )
     profile_status_entry   = PROFILE_STATUS_UNKNOWN;
     profile_status_other   = PROFILE_STATUS_UNKNOWN;
 
-    if (profile_modified == 0)
+    if (profile_modified == false)
     {
         profile_status_storage = PROFILE_STATUS_COMMIT_SUCCESS_NOOP;
         return PROFILE_STATUS_SUCCESS;
@@ -887,7 +886,7 @@ ProfileStatus profile_commit( void )
             return PROFILE_STATUS_ERROR_STORAGE_WRITE;
     }
 
-    profile_modified = 0;
+    profile_modified = false;
 
     return PROFILE_STATUS_SUCCESS;
 }

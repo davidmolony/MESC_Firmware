@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,6 +27,7 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,7 +50,7 @@ extern void bist_temp( void );
 #include "MESCtemp.h"
 #include "MESCui.h"
 
-extern void          virt_flash_configure( uint8_t const use_mem_not_fs, uint8_t const read_zero_on_error );
+extern void          virt_flash_configure( bool const use_mem_not_fs, bool const read_zero_on_error );
 extern ProfileStatus virt_flash_read(  void       * data, uint32_t const address, uint32_t const length );
 extern ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint32_t const length );
 extern void          virt_flash_init( void );
@@ -58,7 +59,7 @@ extern void          virt_flash_free( void );
 static void flash_register_profile_io( void )
 {
     virt_flash_init();
-    virt_flash_configure( 1, 1 );
+    virt_flash_configure( true, true );
 
     profile_configure_storage_io( virt_flash_read, virt_flash_write );
 }
@@ -116,10 +117,10 @@ static void cmd_flash_new( void )
 
     virt_flash_this_header->checksum        = PROFILE_SIGNATURE;
 
-    uint8_t const v = (PROFILE_ENTRY_FREE << 6)
-                    | (PROFILE_ENTRY_FREE << 4)
-                    | (PROFILE_ENTRY_FREE << 2)
-                    | (PROFILE_ENTRY_FREE << 0);
+    uint8_t const v = (PROFILE_ENTRY_FREE << PROFILE_ENTRY_SUBINDEX(3))
+                    | (PROFILE_ENTRY_FREE << PROFILE_ENTRY_SUBINDEX(2))
+                    | (PROFILE_ENTRY_FREE << PROFILE_ENTRY_SUBINDEX(1))
+                    | (PROFILE_ENTRY_FREE << PROFILE_ENTRY_SUBINDEX(0));
 
     memset( virt_flash_this_header->entry_map, v, PROFILE_MAX_ENTRIES );
 
@@ -154,9 +155,9 @@ static void cmd_flash_reload( void )
     {
         fprintf( stdout, "Reloading profile...\n" );
 
-        virt_flash_this = malloc( 4096 );
+        virt_flash_this = malloc( PROFILE_MAX_SIZE );
         assert( virt_flash_this );
-        memcpy( virt_flash_this, virt_flash_load, 4096 );
+        memcpy( virt_flash_this, virt_flash_load, PROFILE_MAX_SIZE );
 
         virt_flash_this_header = (ProfileHeader *)virt_flash_this;
         ProfileEntry * s = (ProfileEntry *)(&virt_flash_this[sizeof(ProfileHeader)]);
@@ -182,7 +183,7 @@ static void cmd_flash_save( void )
         virt_flash_last_entry[e] = virt_flash_this_entry[e];
     }
 
-    virt_flash_this = calloc( 4096, 1 );
+    virt_flash_this = calloc( PROFILE_MAX_SIZE, 1 );
     assert( virt_flash_this );
 
     virt_flash_this_header = (ProfileHeader *)virt_flash_this;
@@ -317,14 +318,14 @@ static int virt_flash( int argc, char * argv[] )
 
     if (virt_flash_load)
     {
-        virt_flash_this = malloc( 4096 );
+        virt_flash_this = malloc( PROFILE_MAX_SIZE );
         assert( virt_flash_this );
         
-        memcpy( virt_flash_this, virt_flash_load, 4096 );
+        memcpy( virt_flash_this, virt_flash_load, PROFILE_MAX_SIZE );
     }
     else
     {
-        virt_flash_this = calloc( 4096, 1 );
+        virt_flash_this = calloc( PROFILE_MAX_SIZE, 1 );
         assert( virt_flash_this );
     }
 
@@ -338,7 +339,7 @@ static int virt_flash( int argc, char * argv[] )
 
     fprintf( stdout, "Virtual FLASH editor\n" );
 
-    int running = 1;
+    bool running = true;
 
     while (running)
     {
@@ -391,12 +392,12 @@ static int virt_flash( int argc, char * argv[] )
 
 int main( int argc, char * argv[] )
 {
-    int const en   = (argc > 1) ? 0 : 1;
-    int en_bat     = en;
-    int en_cli     = en;
-    int en_profile = en;
-    int en_speed   = en;
-    int en_temp    = en;
+    bool const en   = (argc > 1) ? false : true;
+    bool en_bat     = en;
+    bool en_cli     = en;
+    bool en_profile = en;
+    bool en_speed   = en;
+    bool en_temp    = en;
 
     for ( int a = 1; a < argc; ++a )
     {
@@ -419,27 +420,27 @@ int main( int argc, char * argv[] )
 
         if (strcmp( argv[a], "+bat" ) == 0)
         {
-            en_bat = 1;
+            en_bat = true;
         }
 
         if (strcmp( argv[a], "+cli" ) == 0)
         {
-            en_cli = 1;
+            en_cli = true;
         }
 
         if (strcmp( argv[a], "+profile" ) == 0)
         {
-            en_profile = 1;
+            en_profile = true;
         }
 
         if (strcmp( argv[a], "+speed" ) == 0)
         {
-            en_speed = 1;
+            en_speed = true;
         }
 
         if (strcmp( argv[a], "+temp" ) == 0)
         {
-            en_temp = 1;
+            en_temp = true;
         }
     }
 

@@ -38,6 +38,7 @@
 
 #include <math.h>
 #include <stddef.h>
+#include <stdint.h>
 
 static TEMPProfile const * temp_profile = NULL;
 
@@ -122,7 +123,11 @@ TEMP_SCHEMA_R_T_ON_R_F
 
 static float temp_calculate_R_T( float const Vout )
 {
-// TODO ERROR temp_profile == NULL
+    if (temp_profile == NULL)
+    {
+        return 0.0f;
+    }
+
     switch (temp_profile->schema)
     {
         case TEMP_SCHEMA_R_F_ON_R_T:
@@ -144,7 +149,7 @@ static float temp_calculate_R_T( float const Vout )
         default:
         {
             // error
-            return 0.0;
+            return 0.0f;
         }
     }
 }
@@ -183,7 +188,7 @@ static void temp_derive_SteinhartHart_Beta_r_from_ABC( TEMPProfile * profile )
 
 static float temp_calculate_SteinhartHart_ABC( float const R_T )
 {
-// TODO ERROR temp_profile == NULL
+    assert(temp_profile != NULL);
     float const ln_R_T   = logf( R_T );
     float const ln_R_T_3 = (ln_R_T * ln_R_T * ln_R_T);
 
@@ -207,7 +212,7 @@ static void temp_derive_SteinhartHart_ABC_from_Beta( TEMPProfile * const profile
 #endif
 static float temp_calculate_SteinhartHart_Beta_r( float const R_T )
 {
-// TODO ERROR temp_profile == NULL
+    assert(temp_profile != NULL);
     return temp_profile->parameters.SH.Beta / logf( R_T / temp_profile->parameters.SH.r );
 }
 
@@ -217,7 +222,11 @@ API
 
 float temp_read( uint32_t const adc_raw )
 {
-// TODO ERROR temp_profile == NULL
+    if (temp_profile == NULL)
+    {
+        return 999.9f;
+    }
+
     float const adc  = (float)adc_raw;
     float const Vout = ((temp_profile->V * adc) / (float)temp_profile->adc_range);
     float const R_T = temp_calculate_R_T( Vout );
@@ -244,7 +253,11 @@ float temp_read( uint32_t const adc_raw )
 
 uint32_t temp_get_adc( float const T )
 {
-// TODO ERROR temp_profile == NULL
+    if (temp_profile == NULL)
+    {
+        return 0;
+    }
+
     float R_T;
 
     switch (temp_profile->method)
@@ -291,9 +304,13 @@ uint32_t temp_get_adc( float const T )
     return adc_raw;
 }
 
-int temp_check( uint32_t const adc_raw )
+bool temp_check( uint32_t const adc_raw )
 {
-// TODO ERROR temp_profile == NULL
+    if (temp_profile == NULL)
+    {
+        return false;
+    }
+
     float const T = temp_read( adc_raw );
 
     if  (
@@ -301,8 +318,8 @@ int temp_check( uint32_t const adc_raw )
         ||  (temp_profile->limit.Tmax <= T)
         )
     {
-        return 0;
+        return false;
     }
 
-    return 1;
+    return true;
 }

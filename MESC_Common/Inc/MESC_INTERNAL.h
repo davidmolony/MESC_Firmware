@@ -1,5 +1,5 @@
 /*
-* Copyright 2021-2022 cod3b453
+* Copyright 2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,13 +27,15 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-/*
-Profile defaults
-*/
+#ifndef MESC_INTERNAL_H
+#define MESC_INTERNAL_H
 
-/* Temperature parameters */
-#define MESC_PROFILE_TEMP_R_F     4700.0f                   // R_F 4k7
-#define MESC_PROFILE_TEMP_SCHEMA  TEMP_SCHEMA_R_F_ON_R_T
-#define MESC_PROFILE_TEMP_SH_BETA 3437.864258f
-#define MESC_PROFILE_TEMP_SH_R    0.098243f
-#define MESC_PROFILE_TEMP_SH_R0   10000.0f                  // R_T 10k [@ 25'C]
+/*
+NOTE
+
+To avoid exposing internal definitions to the global namespace the actual
+internal type (internal) is hidden and substituted for the public type (mesc)
+*/
+#define MESC_INTERNAL_ALIAS(mesc,internal) mesc
+
+#endif

@@ -65,6 +65,8 @@ cat << HEAD > ${OUTFIL}
 
 #include "string_op.h"
 
+#include <stdint.h>
+
 HEAD
 
 TIMESTAMP=$(date "+%Y%m%d%H%M")

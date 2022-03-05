@@ -31,6 +31,7 @@
 #define MESC_PROFILE_H
 
 #include <assert.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "bit_op.h"
@@ -56,7 +57,7 @@ struct ProfileHeader
 
     uint32_t    checksum;           // Checksum of header (excluding this field; treat as PROFILE_SIGNATURE)
 
-    uint8_t     entry_map[PROFILE_MAX_ENTRIES]; // ProfileEntry map (2 bits ProfileEntryMap per entry)
+    uint8_t     entry_map[PROFILE_MAX_ENTRIES]; // ProfileEntry map (PROFILE_ENTRY_BITS bits ProfileEntryMap per entry)
 
     uint32_t    image_length;       // Length of image (after this header) in bytes
     uint32_t    image_checksum;     // Checksum of image
@@ -88,6 +89,7 @@ typedef enum ProfileEntryMap ProfileEntryMap;
 
 #define PROFILE_ENTRY_BITS (2)
 #define PROFILE_ENTRY_MASK BIT_MASK_32( PROFILE_ENTRY_BITS )
+#define PROFILE_ENTRY_SUBINDEX(e) ((e) * PROFILE_ENTRY_BITS)
 
 static_assert( ((BITS_PER_BYTE % PROFILE_ENTRY_BITS) == 0), "PROFILE_ENTRY_BITS must fit into a byte" );
 
@@ -174,6 +176,11 @@ enum ProfileStatus
 typedef enum ProfileStatus ProfileStatus;
 
 #define PROFILE_STATUS_ERROR_ENTRY(e) ((ProfileStatus)(PROFILE_STATUS_ERROR_ENTRY_0 + (e)))
+
+#define PROFILE_MIN_SIZE (PROFILE_HEADER_SIZE + (PROFILE_HEADER_ENTRIES * PROFILE_ENTRY_SIZE))
+#define PROFILE_MAX_SIZE UINT32_C(4096)
+
+static_assert( ((PROFILE_MAX_SIZE % 2048/*FLASH_BLOCK_SIZE*/) == 0), "PROFILE_MAX_SIZE must be flash block aligned" );
 
 void profile_configure_storage_io(
     ProfileStatus (* const read)(  void       * buffer, uint32_t const address, uint32_t const length ),

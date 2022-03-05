@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,6 +27,8 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "MESC_STM.h"
+
 #include "MESCcli.h"
 #include "MESCfnv.h"
 #include "MESCprofile.h"
@@ -38,7 +40,9 @@
 #include <limits.h>
 #include <math.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -68,19 +72,19 @@ typedef enum CLIState CLIState;
 static CLIState cli_state;
 static uint8_t cli_cmd;
 
-static uint8_t cli_hash_valid = 0;
+static bool cli_hash_valid = false;
 static uint32_t cli_hash = 0;
 
 // Flash functions
-static int  cli_flash_write_noop( void const * buffer, uint32_t const address, uint32_t const length )
+static ProfileStatus cli_flash_write_noop( void const * buffer, uint32_t const address, uint32_t const length )
 {
     (void)buffer;
     (void)address;
     (void)length;
-    return 0;
+    return PROFILE_STATUS_UNKNOWN;
 }
 
-static int/*ProfileStatus*/ (* cli_flash_write)( void const * buffer, uint32_t const address, uint32_t const length ) = &cli_flash_write_noop;
+static ProfileStatus (* cli_flash_write)( void const * buffer, uint32_t const address, uint32_t const length ) = &cli_flash_write_noop;
 
 // Expected values
 static uint32_t cli_flash_exp_len = 0;
@@ -89,7 +93,7 @@ static uint32_t cli_flash_exp_chk = 0;
 static uint32_t cli_flash_cur_off = 0;
 static uint32_t cli_flash_cur_chk = 0;
 
-static uint8_t cli_flash_buffer[2048];
+static uint8_t cli_flash_buffer[PROFILE_MAX_SIZE];
 
 enum CLIAccess
 {
@@ -106,9 +110,27 @@ enum CLIAccess
 
 typedef enum CLIAccess CLIAccess;
 
+enum CLIVarState
+{
+    CLI_VAR_STATE_IDLE       = 0,
+    // int
+    CLI_VAR_STATE_INT        = 1,
+    // uint
+    CLI_VAR_STATE_UINT       = 1,
+    // hex
+    // ...
+    // float
+    CLI_VAR_STATE_FLOAT_SIGN = 1,
+    CLI_VAR_STATE_FLOAT_INT  = 2,
+    CLI_VAR_STATE_FLOAT_FRAC = 3,
+    // ...
+};
+
+typedef enum CLIVarState CLIVarState;
+
 struct CLIVar
 {
-    uint32_t        state; // TODO enum
+    CLIVarState     state;
     union
     {
     int32_t         i;
@@ -142,31 +164,31 @@ static CLIEntry cli_lut[MAX_CLI_LUT_ENTRIES];
 static uint32_t cli_lut_entries = 0;
 static CLIEntry * cli_lut_entry = NULL;
 
-static int cli_io_write_noop( void * handle, void * data, uint16_t size )
+static MESC_STM_ALIAS(int,UART_HandleTypeDef) cli_io_write_noop( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size )
 {
     (void)handle;
     (void)data;
     (void)size;
 
-    return 0;
+    return HAL_OK;
 }
 
-static void * cli_io_handle = NULL;
-static int (* cli_io_write)( void *, void *, uint16_t ) = cli_io_write_noop;
-
+static MESC_STM_ALIAS(void,UART_HandleTypeDef) * cli_io_handle = NULL;
+static MESC_STM_ALIAS(int,HAL_StatusTypeDef) (* cli_io_write)( MESC_STM_ALIAS(void,UART_HandleTypeDef) *, MESC_STM_ALIAS(void,uint8_t) *, uint16_t ) = cli_io_write_noop;
+ 
 static void cli_idle( void )
 {
     cli_state = CLI_STATE_IDLE;
-    cli_hash_valid = 0;
+    cli_hash_valid = false;
     cli_hash = 0;
-    cli_var.state = 0;
+    cli_var.state = CLI_VAR_STATE_IDLE;
     cli_var.var.u = 0;
 }
 
 static void cli_abort( void )
 {
     cli_state = CLI_STATE_ABORT;
-    cli_hash_valid = 0;
+    cli_hash_valid = false;
     cli_hash = 0;
 }
 
@@ -389,23 +411,23 @@ static void cli_process_read_xint( void )
 
 static void cli_process_write_int( char const c )
 {
-    if ((cli_var.state == 0) && (c == '-'))
+    if ((cli_var.state == CLI_VAR_STATE_IDLE) && (c == '-'))
     {
         cli_var.var.i = INT32_C(-1);
-        cli_var.state = 1;
+        cli_var.state = CLI_VAR_STATE_INT;
     }
 
     if (('0' <= c) && (c <= '9'))
     {
-        if (cli_var.state == 0)
+        if (cli_var.state == CLI_VAR_STATE_IDLE)
         {
             cli_var.var.i = INT32_C(0);
         }
         cli_var.var.i *= INT32_C(10);
         cli_var.var.i += (c - '0');
-        cli_var.state = 1;
+        cli_var.state = CLI_VAR_STATE_INT;
     }
-    else if (cli_var.state == 0)
+    else if (cli_var.state == CLI_VAR_STATE_IDLE)
     {
         cli_abort();
     }
@@ -415,13 +437,13 @@ static void cli_process_write_uint( char const c )
 {
     if (('0' <= c) && (c <= '9'))
     {
-        if (cli_var.state == 0)
+        if (cli_var.state == CLI_VAR_STATE_IDLE)
         {
             cli_var.var.u = UINT32_C(0);
         }
         cli_var.var.u *= UINT32_C(10);
         cli_var.var.u += (c - '0');
-        cli_var.state = 1;
+        cli_var.state = CLI_VAR_STATE_UINT;
     }
     else
     {
@@ -483,8 +505,8 @@ static void cli_process_write_float( char const c )
 {
     switch (cli_var.state)
     {
-        case 0:
-            cli_var.state = 1;
+        case CLI_VAR_STATE_IDLE:
+            cli_var.state = CLI_VAR_STATE_FLOAT_SIGN;
             switch (c)
             {
                 case '-':
@@ -497,7 +519,7 @@ static void cli_process_write_float( char const c )
                     if (('0' <= c) && (c <= '9'))
                     {
                         cli_var.var.f = ((float)(c - '0'));
-                        cli_var.state = 2;
+                        cli_var.state = CLI_VAR_STATE_FLOAT_INT;
                     }
                     else
                     {
@@ -506,8 +528,8 @@ static void cli_process_write_float( char const c )
                     break;
             }
             break;
-        case 1:
-            cli_var.state = 2;
+        case CLI_VAR_STATE_FLOAT_SIGN:
+            cli_var.state = CLI_VAR_STATE_FLOAT_INT;
             if (('0' <= c) && (c <= '9'))
             {
                 cli_var.var.f *= ((float)(c - '0'));
@@ -517,7 +539,7 @@ static void cli_process_write_float( char const c )
                 cli_abort();
             }
             break;
-        case 2:
+        case CLI_VAR_STATE_FLOAT_INT:
             if (('0' <= c) && (c <= '9'))
             {
                 float const sgn = (cli_var.var.f < 0.0f) ? -1.0f : 1.0f;
@@ -526,18 +548,19 @@ static void cli_process_write_float( char const c )
             }
             else if (c == '.')
             {
-                cli_var.state = 3;
+                cli_var.state = CLI_VAR_STATE_FLOAT_FRAC;
             }
             else
             {
                 cli_abort();
             }
             break;
+        case CLI_VAR_STATE_FLOAT_FRAC:
         default:
             if (('0' <= c) && (c <= '9'))
             {
                 float const sgn = (cli_var.var.f < 0.0f) ? -1.0f : 1.0f;
-                cli_var.var.f += (sgn * ((float)(c - '0'))) / (float)pow( 10.0f, (float)(cli_var.state - 2)  );
+                cli_var.var.f += (sgn * ((float)(c - '0'))) / (float)pow( 10.0f, (float)(cli_var.state - CLI_VAR_STATE_FLOAT_INT)  );
                 cli_var.state++;
             }
             else
@@ -549,7 +572,7 @@ static void cli_process_write_float( char const c )
 }
 
 void cli_configure_storage_io(
-    int  (* const write)( void const * buffer, uint32_t const address, uint32_t const length )
+    ProfileStatus (* const write)( void const * buffer, uint32_t const address, uint32_t const length )
     )
 {
     if (write != NULL)
@@ -630,8 +653,8 @@ void cli_register_function(
 }
 
 void cli_register_io(
-    void * handle,
-    int (* const write)( void * handle, void * data, uint16_t size ) )
+    MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle,
+    MESC_STM_ALIAS(int,HAL_StatusTypeDef) (* const write)( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size ) )
 {
     cli_io_handle = handle;
     cli_io_write = write;
@@ -731,7 +754,7 @@ static void cli_process_variable( const char c )
 
                     if  (c == '\n')
                     {
-                        if (cli_hash_valid != 0)
+                        if (cli_hash_valid)
                         {
                             cli_execute();
                         }
@@ -746,7 +769,7 @@ static void cli_process_variable( const char c )
                     cli_process_write_value = cli_process_write_type( cli_lut_entry->type );
 
                     cli_state = CLI_STATE_VALUE;
-                    cli_hash_valid = 0;
+                    cli_hash_valid = false;
                     cli_hash = 0;
 
                     break;
@@ -756,7 +779,7 @@ static void cli_process_variable( const char c )
                     cli_process_read_value = cli_process_read_type( cli_lut_entry->type );
 
                     cli_state = CLI_STATE_VALUE;
-                    cli_hash_valid = 0;
+                    cli_hash_valid = false;
                     cli_hash = 0;
 
                     break;
@@ -767,7 +790,7 @@ static void cli_process_variable( const char c )
             break;
         }
         default:
-            if (cli_hash_valid != 0)
+            if (cli_hash_valid)
             {
                 if  (
                         (('0' <= c ) && (c <= '9'))
@@ -792,7 +815,7 @@ static void cli_process_variable( const char c )
                 {
                     cli_hash = fnv1a_init();
                     cli_hash = fnv1a_process( cli_hash, c );
-                    cli_hash_valid = 1;
+                    cli_hash_valid = true;
                 }
                 else if (c == '\n')
                 {
@@ -818,7 +841,7 @@ static uint32_t byte_swap(uint32_t const value)
         )   ;
 }
 
-int cli_process( char const c )
+MESC_INTERNAL_ALIAS(int,CLIState) cli_process( char const c )
 {
     if (c == '\n')
     {
@@ -915,7 +938,7 @@ int cli_process( char const c )
             {
                 cli_flash_exp_len = cli_var.var.u;
 
-                cli_var.state = 0;
+                cli_var.state = CLI_VAR_STATE_IDLE;
                 cli_var.var.u = 0;
 
                 cli_state = CLI_STATE_PARAM_2;
@@ -930,7 +953,7 @@ int cli_process( char const c )
             {
                 cli_flash_exp_chk = cli_var.var.u;
 
-                cli_var.state = 0;
+                cli_var.state = CLI_VAR_STATE_IDLE;
                 cli_var.var.u = 0;
 
                 if ((cli_flash_exp_len % sizeof(cli_var.var.u)) == 0)
@@ -959,7 +982,7 @@ int cli_process( char const c )
                 *((uint32_t *)(&cli_flash_buffer[cli_flash_cur_off])) = cli_var.var.u;
                 cli_flash_cur_off = cli_flash_cur_off + sizeof(cli_var.var.u);
 
-                cli_var.state = 0;
+                cli_var.state = CLI_VAR_STATE_IDLE;
                 cli_var.var.u = 0;
             }
 
