@@ -18,7 +18,7 @@
  * motor.Rphase - 1 value
  */
 
-#define STORAGE_SIZE 26
+#define STORAGE_SIZE 27
 uint32_t data_array[STORAGE_SIZE];
 
 flash_status_t getStatus() {
@@ -63,6 +63,8 @@ uint32_t readData() {
   motor.Rphase = *(hardware_vars_t *)(p_data);
   p_data++;
   motor.Lphase = *(hardware_vars_t *)(p_data);
+  p_data++;
+  motor.motor_flux = *(float *)(p_data);
   //    p_data++;	//this last increment is not necessary, but if more
   //    variables are added, then uncomment it and follow the same pattern.
   return (storage_slots);
@@ -86,6 +88,8 @@ uint32_t writeData() {
   *p_data = *(uint32_t *)(&motor.Rphase);
   p_data++;
   *p_data = *(uint32_t *)(&motor.Lphase);
+  p_data++;
+  *p_data = *(uint32_t *)(&motor.motor_flux);
   //    p_data++;	//this last increment is not necessary, but if more
   //    variables are added, then uncomment it and follow the same pattern.
   storage_slots = writeFlash(data_array, STORAGE_SIZE);

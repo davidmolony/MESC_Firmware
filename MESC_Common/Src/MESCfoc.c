@@ -398,20 +398,29 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // Here we select the phases that have the lowest duty cycle to us, since
     // they should have the best current measurements
     if (htim1.Instance->CCR2 > 900) {
-      // Clark using phase U and W
+//    measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] =
+//    			- measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
+//				measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+    // Clark using phase U and W
       foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
       foc_vars.Iab[1] =
           -one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
           two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
     } else if (htim1.Instance->CCR3 > 900) {
-      // Clark using phase U and V
+//        measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO] =
+//        			- measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
+//    				measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO];
+    	// Clark using phase U and V
       foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
       foc_vars.Iab[1] =
           two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] +
           one_on_sqrt3 * two_on_sqrt3 *
               measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
     } else if (htim1.Instance->CCR1 > 900) {
-      // Clark using phase V and W (hardware V1 has best ADC readings on
+//        measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] =
+//        			- measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
+//    				measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+    	// Clark using phase V and W (hardware V1 has best ADC readings on
       // channels V and W - U is plagued by the DCDC converter)
       foc_vars.Iab[0] = -measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
                         measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
@@ -739,13 +748,16 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
   static float mid_value = 0;
 
+  float top_value;
+  float bottom_value;
+
   void writePWM() {
     ////////////////////////////////////////////////////////
     // SVPM implementation
     // Try to do this as a "midpoint clamp" where rather than finding the
     // lowest, we find the highest and lowest and subtract the middle
-    float top_value = foc_vars.inverterVoltage[0];
-    float bottom_value = top_value;
+ top_value = foc_vars.inverterVoltage[0];
+ bottom_value = top_value;
 
     if (foc_vars.inverterVoltage[1] > top_value) {
       top_value = foc_vars.inverterVoltage[1];
@@ -760,7 +772,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       bottom_value = foc_vars.inverterVoltage[2];
     }
 
-    mid_value = 512.0f - 0.5 * (top_value + bottom_value);
+    mid_value = 512.0f - 0.5 * foc_vars.Vab_to_PWM * (top_value + bottom_value);
 
     ////////////////////////////////////////////////////////
     // Actually write the value to the timer registers
@@ -1217,8 +1229,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
     //                        ((float)htim1.Instance->ARR * 0.5) /
     //                        (2 * measurement_buffers.ConvertedADC[0][1]);
 
-    foc_vars.Iq_igain =
-        0.10f * motor.Rphase * 0.5;  // * (htim1.Instance->ARR * 0.5) /
+    foc_vars.Iq_igain = 0.10f * motor.Rphase * 0.5;
+    // * (htim1.Instance->ARR * 0.5) /
     //                       (2 * measurement_buffers.ConvertedADC[0][1]);
 
     foc_vars.Id_pgain = foc_vars.Iq_pgain;
