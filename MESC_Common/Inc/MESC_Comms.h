@@ -24,10 +24,10 @@
 
 #include "stm32fxxx_hal.h"
 
-typedef struct {
-  uint16_t Delta;
-  uint16_t Length;
-} MESC_RCPWMin_t;
+//typedef struct {
+//  uint16_t Delta;
+//  uint16_t Length;
+//} MESC_RCPWMin_t;
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim);

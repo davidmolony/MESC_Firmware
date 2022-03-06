@@ -24,6 +24,8 @@
 /* USER CODE BEGIN Includes */
 #include "MESCmotor_state.h"
 #include "flash_wrapper.h"
+#include "MESC_Comms.h"
+extern char UART_rx_buffer[2];
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,6 +51,7 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
 
@@ -57,6 +60,7 @@ UART_HandleTypeDef huart3;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_ADC3_Init(void);
@@ -101,6 +105,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_ADC3_Init();
@@ -131,8 +136,14 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   HAL_Delay(1000);
 
-motor.motor_flux = 464;
+
+//motor.motor_flux = 32; //Propdrive 2826 1200kV
+//motor.motor_flux = 464; //Red 70kV McMaster 8080 motor
+motor.motor_flux = 575; //Alien 8080 50kV motor
+
 //650 is the right number for a motor with 7PP and 50kV
+
+HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
 //Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
 MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
 #if 0                                  // INIT FLASH
@@ -152,6 +163,8 @@ MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
       __HAL_TIM_MOE_ENABLE(&htim1);
       b_write_flash = 0;
     }
+
+    //HAL_UART_Transmit(&huart3, "hello World", 12, 10);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -631,6 +644,22 @@ static void MX_USART3_UART_Init(void)
   /* USER CODE BEGIN USART3_Init 2 */
 
   /* USER CODE END USART3_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
 
 }
 

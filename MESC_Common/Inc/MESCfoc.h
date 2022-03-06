@@ -55,7 +55,7 @@ typedef struct {
   foc_angle_t AngleStep;  // At startup, step angle is zero, zero speed. This is
                           // the angle by which the inverter increments each PWM
                           // cycle under open loop
-
+  foc_angle_t openloop_step;//The angle to increment by for openloop
   foc_angle_t FOCAngle;  // Angle generated in the hall sensor estimator
 
   float sincosangle[2];  // This variable carries the current sin and cosine of
@@ -95,6 +95,8 @@ typedef struct {
   float Vab_to_PWM;
   float Vd_max;
   float Vq_max;
+  float Vdint_max;
+  float Vqint_max;
   // Field weakenning
   float field_weakening_curr_max;
   float field_weakening_threshold;
@@ -104,6 +106,8 @@ typedef struct {
   uint16_t state[4];  // current state, last state, angle change occurred
   uint16_t hall_update;
   uint16_t BEMF_update;
+  uint16_t IRQentry;
+  uint16_t IRQexit;
 
 } MESCfoc_s;
 
@@ -179,6 +183,8 @@ int isMotorRunning();  // return motor state if state is one of the running
                        // the same, then it's stationary.
 void measureResistance();
 void measureInductance();
+void getkV();
+
 void getHallTable();
 void phU_Break();   // Turn all phase U FETs off, Tristate the ouput - For BLDC
                     // mode mainly, but also used for measuring
@@ -194,3 +200,4 @@ void calculateVoltageGain();
 void doublePulseTest();
 
 void slowLoop(TIM_HandleTypeDef *htim);
+void MESCTrack();

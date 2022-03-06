@@ -38,7 +38,7 @@ void motor_init() {
 
 void hw_init() {
   g_hw_setup.Imax =
-      60.0;  // Imax is the current at which we are either no longer able to
+      100.0;  // Imax is the current at which we are either no longer able to
              // read it, or hardware "don't ever exceed to avoid breakage"
   g_hw_setup.Vmax = 45.0;  // Headroom beyond which likely to get avalanche of
                            // MOSFETs or DCDC converter
@@ -71,4 +71,14 @@ void getRawADC(void) {
   measurement_buffers.RawADC[1][0] = hadc2.Instance->JDR1;  // V Current
   measurement_buffers.RawADC[2][0] = hadc3.Instance->JDR1;  // W Current
   measurement_buffers.RawADC[1][3] = hadc1.Instance->JDR3;  // Throttle
+
+  measurement_buffers.RawADC[0][2] = hadc1.Instance->JDR2;//PhaseU Voltage
+  measurement_buffers.RawADC[1][1] = hadc2.Instance->JDR3;//PhaseV Voltage
+  measurement_buffers.RawADC[1][2] = hadc3.Instance->JDR3;//PhaseW Voltage
+}
+
+void getRawADCVph(void){
+
+
+
 }
