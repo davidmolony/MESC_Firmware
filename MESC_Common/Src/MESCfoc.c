@@ -397,7 +397,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // Power Variant Clark transform
     // Here we select the phases that have the lowest duty cycle to us, since
     // they should have the best current measurements
-    if (htim1.Instance->CCR2 > 900) {
+    if (htim1.Instance->CCR2 > foc_vars.ADC_duty_threshold) {
 //    measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] =
 //    			- measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
 //				measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
@@ -406,7 +406,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       foc_vars.Iab[1] =
           -one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
           two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
-    } else if (htim1.Instance->CCR3 > 900) {
+    } else if (htim1.Instance->CCR3 > foc_vars.ADC_duty_threshold) {
 //        measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO] =
 //        			- measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
 //    				measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO];
@@ -416,7 +416,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
           two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] +
           one_on_sqrt3 * two_on_sqrt3 *
               measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
-    } else if (htim1.Instance->CCR1 > 900) {
+    } else if (htim1.Instance->CCR1 > foc_vars.ADC_duty_threshold) {
 //        measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] =
 //        			- measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
 //    				measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
@@ -772,7 +772,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       bottom_value = foc_vars.inverterVoltage[2];
     }
 
-    mid_value = 512.0f - 0.5 * foc_vars.Vab_to_PWM * (top_value + bottom_value);
+    mid_value = foc_vars.PWMmid - 0.5 * foc_vars.Vab_to_PWM * (top_value + bottom_value);
 
     ////////////////////////////////////////////////////////
     // Actually write the value to the timer registers
@@ -1224,6 +1224,9 @@ void VICheck() {  // Check currents, voltages are within panic limits
     foc_vars.pwm_frequency =
         (float)HAL_RCC_GetHCLKFreq() /
         (2 * (float)htim1.Instance->ARR * ((float)htim1.Instance->PSC + 1));
+
+    foc_vars.PWMmid = htim1.Instance->ARR * 0.5;
+    foc_vars.ADC_duty_threshold = htim1.Instance->ARR * 0.85;
 
     foc_vars.Iq_pgain = foc_vars.pwm_frequency * motor.Lphase * 0.5;  // *
     //                        ((float)htim1.Instance->ARR * 0.5) /
