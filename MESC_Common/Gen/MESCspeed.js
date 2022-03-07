@@ -43,15 +43,20 @@ function dump_SPEEDProfile( profile )
     hex = hex + dump_c_uint32_t( profile.motor_RPMmax );
     hex = hex + dump_c_uint8_t( profile.motor_pole_pairs );
     hex = hex + dump_c_uint8_t( profile.motor_direction );
-    hex = hex + dump_c_uint8_t( profile.motor_allow_regen );
     hex = hex + dump_c_uint8_t( 0 );
+    hex = hex + dump_c_uint8_t( 0 );
+    hex = hex + dump_c_float( profile.motor_Z_D );
+    hex = hex + dump_c_float( profile.motor_Z_Q );
+    hex = hex + dump_c_float( profile.motor_R );
+    hex = hex + dump_c_float( profile.motor_flux_linkage );
 
-    hex = hex + dump_c_uint8_t( profile.sensor_type );
+    hex = hex + dump_c_uint16_t( profile.sensor_encoder_offset );
+    hex = hex + dump_c_uint16_t( 0 );
     for ( let h = 0; h < 6; h++ )
     {
-        hex = hex + dump_c_uint8_t( profile.sensor_hall_states[h] );
+        hex = hex + dump_c_uint16_t( profile.sensor_hall_states[h].min );
+        hex = hex + dump_c_uint16_t( profile.sensor_hall_states[h].max );
     }
-    hex = hex + dump_c_uint8_t( 0 );
 
     hex = hex + dump_c_uint32_t( profile.gear_ratio_motor );
     hex = hex + dump_c_uint32_t( profile.gear_ratio_wheel );
@@ -64,6 +69,12 @@ function dump_SPEEDProfile( profile )
     return hex;
 }
 
+function HallEntry()
+{
+    this.min = undefined;
+    this.max = undefined;
+}
+
 function SPEEDProfile()
 {
     this.motor_Imax = undefined;
@@ -72,13 +83,16 @@ function SPEEDProfile()
     this.motor_RPMmax = undefined;
     this.motor_pole_pairs = undefined;
     this.motor_direction = undefined;
-    this.motor_allow_regen = undefined;
+    this.motor_Z_D = undefined;
+    this.motor_Z_Q = undefined;
+    this.motor_R = undefined;
+    this.motor_flux_linkage = undefined;
 
-    this.sensor_type = undefined;
+    this.sensor_encoder_offset = undefined;
     this.sensor_hall_states = new Array(6);
     for ( let h = 0; h < 6; h++ )
     {
-        this.sensor_hall_states[h] = undefined;
+        this.sensor_hall_states[h] = new HallEntry();
     }
 
     this.gear_ratio_motor = undefined;
@@ -97,4 +111,3 @@ SPEEDProfile.prototype.dump = function()
 {
     return dump_SPEEDProfile( this );
 }
-

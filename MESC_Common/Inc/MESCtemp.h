@@ -50,11 +50,20 @@ enum TEMPSchema
 
 typedef enum TEMPSchema TEMPSchema;
 
+enum TEMPReading
+{
+    TEMP_READING_BOARD,
+    TEMP_READING_MOTOR,
+};
+
+typedef enum TEMPReading TEMPReading;
+
 struct TEMPProfile
 {
+    TEMPReading reading;
     float       V;
     float       R_F;
-// TODO adc
+
     uint32_t    adc_range;
 
     TEMPMethod  method;

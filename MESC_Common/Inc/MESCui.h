@@ -76,6 +76,10 @@ struct UIProfile
     uint32_t        adc_min;
     uint32_t        adc_max;
     UIResponse      response;
+    uint32_t        adc_trig;
+    float           Imax;
+    uint32_t        rcpwm_t_min;
+    uint32_t        rcpwm_t_max;
     }               throttle;
 
     struct
@@ -83,6 +87,9 @@ struct UIProfile
     uint32_t        adc_min;
     uint32_t        adc_max;
     UIResponse      response;
+    uint32_t        adc_trig;
+    float           Imax;
+    uint32_t        _[2];
     }               brake;
 
     struct
@@ -90,6 +97,7 @@ struct UIProfile
     uint32_t        interface;
     uint32_t        address;
     uint32_t        identifier;
+    uint32_t        _[4];
     }               button;
 
     // Outputs
@@ -99,6 +107,7 @@ struct UIProfile
     uint32_t        address;
     uint32_t        identifier;
     UIActivation    activation;
+    uint32_t        _[3];
     }               indicator;
 
     struct
@@ -107,6 +116,7 @@ struct UIProfile
     uint32_t        address;
     uint32_t        width;
     uint32_t        height;
+    uint32_t        _[3];
     }               screen;
 
     }               desc;

@@ -36,6 +36,14 @@
 
 #define NUM_HALL_STATES (UINT32_C(6))
 
+struct HallEntry
+{
+    uint16_t min;
+    uint16_t max;
+};
+
+typedef struct HallEntry HallEntry;
+
 struct SPEEDProfile
 {
     struct
@@ -46,15 +54,18 @@ struct SPEEDProfile
     uint32_t    RPMmax;
     uint8_t     pole_pairs;
     uint8_t     direction;
-    uint8_t     allow_regen;
-    uint8_t     _;
+    uint8_t     _[2];
+    float       Z_D;
+    float       Z_Q;
+    float       R;
+    float       flux_linkage;
     }           motor;
 
     struct
     {
-    uint8_t     type;
-    uint8_t     hall_states[NUM_HALL_STATES];
-    uint8_t     _;
+    uint16_t    encoder_offset;
+    uint16_t    _;
+    HallEntry   hall_states[NUM_HALL_STATES];
     }           sensor;
 
     struct

@@ -61,7 +61,7 @@ function dump_BATProfile( profile )
 // 2C
     hex = hex + dump_c_uint8_t( profile.battery_parallel );
     hex = hex + dump_c_uint8_t( profile.battery_series   );
-    hex = hex + dump_c_uint8_t( profile.battery_allow_regen );
+    hex = hex + dump_c_uint8_t( 0 );
 // 2F
     hex = hex + dump_c_uint8_t( 0 );
 // 30

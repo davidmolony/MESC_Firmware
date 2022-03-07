@@ -95,8 +95,7 @@ struct BATProfile
 
     uint8_t     parallel;
     uint8_t     series;
-    uint8_t     allow_regen;
-    uint8_t     _;
+    uint8_t     _[2];
     }           battery;
 
     BATDisplay  display;

@@ -45,21 +45,33 @@ void bist_speed( void )
 
     SPEEDProfile sp;
 
-    sp.motor.Imax =  40.0f;
-    sp.motor.Vmax = 100.0f;
-    sp.motor.Pmax = 250.0f;
+    sp.motor.Imax         =  40.0f;
+    sp.motor.Vmax         = 100.0f;
+    sp.motor.Pmax         = 250.0f;
 
-    sp.motor.RPMmax = 1000;
+    sp.motor.RPMmax       = 1000;
 
-    sp.motor.pole_pairs  = 6;
-    sp.motor.direction   = 0;
-    sp.motor.allow_regen = 0;
+    sp.motor.pole_pairs   = 6;
+    sp.motor.direction    = 0;
 
-    sp.gear_ratio.motor  = 1;
-    sp.gear_ratio.wheel  = 1;
+    sp.motor.Z_D          = 0.0;
+    sp.motor.Z_Q          = 0.0;
+    sp.motor.R            = 0.0;
+    sp.motor.flux_linkage = 0.0;
 
-    sp.wheel.diameter = 26.0f; // Inches
-    sp.wheel.conversion = CONST_INCHES_PER_MILE_F;
+    sp.sensor.encoder_offset = 0;
+
+    for ( uint32_t h = 0; h < NUM_HALL_STATES; h++ )
+    {
+        sp.sensor.hall_states[h].min = 0;
+        sp.sensor.hall_states[h].max = 0;
+    }
+
+    sp.gear_ratio.motor   = 1;
+    sp.gear_ratio.wheel   = 1;
+
+    sp.wheel.diameter     = 26.0f; // Inches
+    sp.wheel.conversion   = CONST_INCHES_PER_MILE_F;
 
     speed_init( &sp );
 

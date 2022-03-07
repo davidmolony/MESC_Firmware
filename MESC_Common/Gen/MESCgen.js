@@ -516,7 +516,6 @@ function plotBattery(obj) {
 
     entry._profile.battery_parallel = parseInt(obj_p.value);
     entry._profile.battery_series = parseInt(obj_s.value);
-    entry._profile.battery_allow_regen = (obj_regen.checked ? 1 : 0);
 
     entry._profile.display = parseInt(obj_disp.value);
 }
@@ -586,15 +585,6 @@ function makeBattery(eN) {
     inp = makeLabelledNumber( o, 'bat-s', 'Series', 20, function() { plotBattery(this) }, '' );
     inp.min = 1;
 
-    lbl = document.createElement('label');
-    lbl.innerHTML = 'Regeneration';
-    lbl.setAttribute( 'for', 'e-' + entry_index + '-bat-regen' );
-    o.appendChild( lbl );
-    inp = document.createElement('input');
-    inp.id = 'e-' + entry_index + '-bat-regen';
-    inp.type = 'checkbox';
-    o.appendChild( inp );
-
     // Meter
     h3 = document.createElement('h3');
     h3.innerHTML = 'Meter';
@@ -619,10 +609,16 @@ function plotSpeed(obj) {
     var obj_rpmmax = window.document.getElementById('e-' + entry_index + '-spd-rpmmax');
     var obj_pp = window.document.getElementById('e-' + entry_index + '-spd-pp');
     var obj_dir = window.document.getElementById('e-' + entry_index + '-spd-dir');
-    var obj_regen = window.document.getElementById('e-' + entry_index + '-spd-regen');
-    var obj_hall = new Array(6);
+    var obj_z_d = window.document.getElementById('e-' + entry_index + '-spd-ind-d');
+    var obj_z_q = window.document.getElementById('e-' + entry_index + '-spd-ind-q');
+    var obj_r = window.document.getElementById('e-' + entry_index + '-spd-res');
+    var obj_fl = window.document.getElementById('e-' + entry_index + '-spd-flxlnk');
+    var obj_eo = window.document.getElementById('e-' + entry_index + '-spd-enc-off');
+    var obj_hall_min = new Array(6);
+    var obj_hall_max = new Array(6);
     for (var h = 0; h < 6; h++ ) {
-    obj_hall[h] = window.document.getElementById('e-' + entry_index + '-spd-hall' + h);
+    obj_hall_min[h] = window.document.getElementById('e-' + entry_index + '-spd-hall-min' + h);
+    obj_hall_max[h] = window.document.getElementById('e-' + entry_index + '-spd-hall-max' + h);
     }
     var obj_gm = window.document.getElementById('e-' + entry_index + '-spd-gm');
     var obj_gw = window.document.getElementById('e-' + entry_index + '-spd-gw');
@@ -639,13 +635,19 @@ function plotSpeed(obj) {
     entry._profile.motor_RPMmax = parseInt(obj_rpmmax.value);
     entry._profile.motor_pole_pairs = parseInt(obj_pp.value);
     entry._profile.motor_direction = (obj_dir.checked ? 1 : 0);
-    entry._profile.motor_allow_regen = (obj_regen.checked ? 1 : 0);
-    entry._profile.sensor_type = /*undefined*/0;
+    entry._profile.motor_Z_D = parseFloat(obj_z_d.value);
+    entry._profile.motor_Z_Q = parseFloat(obj_z_q.value);
+    entry._profile.motor_R = parseFloat(obj_r.value);
+    entry._profile.motor_flux_linkage = parseFloat(obj_fl.value);
+
+    entry._profile.sensor_encoder_offset = parseFloat(obj_eo.value);
     for ( var h = 0; h < 6; h++ ) {
-    entry._profile.sensor_hall_states[h] = parseInt(obj_hall[h].value);
+    entry._profile.sensor_hall_states[h].min = parseInt(obj_hall_min[h].value);
+    entry._profile.sensor_hall_states[h].max = parseInt(obj_hall_max[h].value);
     }
     entry._profile.gear_ratio_motor = parseInt(obj_gm.value);
     entry._profile.gear_ratio_wheel = parseInt(obj_gw.value);
+
     entry._profile.wheel_diameter = parseFloat(obj_d.value);
     entry._profile.wheel_conversion = parseFloat(obj_disp.value);
 }
@@ -678,6 +680,18 @@ function makeSpeed(eN) {
     inp = makeLabelledNumber( o, 'spd-pp', 'Pole Pairs', 6, function() { plotSpeed(this) }, '' );
     inp.min = 4;
 
+    inp = makeLabelledNumber( o, 'spd-ind-d', 'Inductance D', 0.0, function() { plotSpeed(this) }, '' );
+    inp.min = 0;
+
+    inp = makeLabelledNumber( o, 'spd-ind-q', 'Inductance Q', 0.0, function() { plotSpeed(this) }, '' );
+    inp.min = 0;
+
+    inp = makeLabelledNumber( o, 'spd-res', 'Resistance', 0.0, function() { plotSpeed(this) }, '&Omega;' );
+    inp.min = 0;
+
+    inp = makeLabelledNumber( o, 'spd-flxlnk', 'Flux Linkage', 1000.0, function() { plotSpeed(this) }, 'Wb' );
+    inp.min = 0;
+
     lbl = document.createElement('label');
     lbl.innerHTML = 'Direction';
     lbl.setAttribute( 'for', 'e-' + entry_index + '-spd-dir' );
@@ -703,7 +717,8 @@ function makeSpeed(eN) {
     h3.innerHTML = 'Sensor';
     o.appendChild( h3 );
 
-    // type
+    inp = makeLabelledNumber( o, 'spd-enc-off', 'Encoder Offset', 100, function() { plotSpeed(this) }, '' );
+    inp.min = 0;
 
     for ( i = 0; i < 6; i++ ) {
         lbl = document.createElement('label');
@@ -715,10 +730,23 @@ function makeSpeed(eN) {
 
         inp = document.createElement('input');
 
-        inp.id = 'e-' + entry_index + '-spd-hall' + i;
+        inp.id = 'e-' + entry_index + '-spd-hall-min' + i;
         inp.type = 'number';
         inp.min = 0;
         inp.value = (0 + ((65535 / 7) * i)).toFixed(0);
+        inp.max = 65535;
+        inp.step = 1;
+
+        o.appendChild( inp );
+
+        inp.addEventListener( 'change', function() { plotSpeed(this) }, false );
+
+        inp = document.createElement('input');
+
+        inp.id = 'e-' + entry_index + '-spd-hall-max' + i;
+        inp.type = 'number';
+        inp.min = 0;
+        inp.value = (0 + ((65535 / 7) * (i + 1)) - 1).toFixed(0);
         inp.max = 65535;
         inp.step = 1;
 
@@ -763,14 +791,14 @@ function plotTemperature(obj) {
     var obj_name  = window.document.getElementById('e-' + entry_index + '-name');
     var obj_ctx   = obj_graph.getContext('2d');
 
+    var obj_rd   = window.document.getElementById('e-' + entry_index + '-temp-rd');
     var obj_v    = window.document.getElementById('e-' + entry_index + '-temp-v');
     var obj_rf   = window.document.getElementById('e-' + entry_index + '-temp-rf');
-    // TODO adc
+    
     var obj_adcr = window.document.getElementById('e-' + entry_index + '-temp-adcrng');
-    // TODO method
+    
     var obj_sch  = window.document.getElementById('e-' + entry_index + '-temp-schema');
-    // TODO A/B/Tlo
-    // TODO A/B/C
+    
     var obj_beta = window.document.getElementById('e-' + entry_index + '-temp-beta');
     var obj_r    = window.document.getElementById('e-' + entry_index + '-temp-r');
 
@@ -780,14 +808,15 @@ function plotTemperature(obj) {
     var obj_min  = window.document.getElementById('e-' + entry_index + '-temp-min');
     var obj_max  = window.document.getElementById('e-' + entry_index + '-temp-max');
 
+    var rd        = parseInt(obj_rd.value);
+
     var V         = parseFloat(obj_v.value);
     var R_F       = parseFloat(obj_rf.value);
-    // TODO adc
+    
     var adc_range = parseInt(  obj_adcr.value);
-    // TODO method
+    
     var schema    = parseInt(  obj_sch.value);
-    // TODO A/B/Tlo
-    // TODO A/B/C
+    
     var beta      = parseFloat(obj_beta.value);
     var r         = parseFloat(obj_r.value);
 
@@ -899,12 +928,13 @@ function plotTemperature(obj) {
 
     var entry = header.getEntry( entry_index );
 
+    entry._profile.reading = rd;
     entry._profile.V = V;
     entry._profile.R_F = R_F;
-    // TODO adc
+    
     entry._profile.adc_range = adc_range;
 
-    entry._profile.method = /*undefined*/TEMP_METHOD_STEINHART_HART_BETA_R/*TEMP_METHOD_STEINHART_HART_ABC*/;
+    entry._profile.method = TEMP_METHOD_STEINHART_HART_BETA_R;
     entry._profile.schema = schema;
 
     switch (entry._profile.method) {
@@ -946,6 +976,8 @@ function makeTemperature(eN) {
     h3.innerHTML = 'Sensor';
     o.appendChild( h3 );
 
+    inp = makeOptions( o, 'temp-rd', 'Reading', 0, ['Board','Motor'], function() { plotTemperature(this) } );
+
     inp = makeLabelledNumber( o, 'temp-v', 'V', 3.3, function() { plotTemperature(this) }, 'V' );
     inp.min = 1.0;
     inp.step = 0.1;
@@ -959,10 +991,9 @@ function makeTemperature(eN) {
     inp.max = 4;
 
     inp = makeLabelledNumber( o, 'temp-adcrng', 'ADC Range', 4096, function() { plotTemperature(this) }, '' );
-    // TODO method
+    
     inp = makeOptions( o, 'temp-schema', 'Schematic', 0, ['R_F on R_T','R_T on R_F'], function() { plotTemperature(this) } );
-    // TODO A/B/Tlo
-    // TODO A/B/C
+
     inp = makeLabelledNumber( o, 'temp-beta', 'Beta', 3438, function() { plotTemperature(this) }, '&Omega;' );
     inp.min = 1;
 
@@ -999,14 +1030,22 @@ function plotThrottle(obj) {
     var obj_adc_min  = window.document.getElementById('e-' + entry_index + '-thr-adc-min');
     var obj_adc_max  = window.document.getElementById('e-' + entry_index + '-thr-adc-max');
     var obj_resp = window.document.getElementById('e-' + entry_index + '-thr-rsp');
+    var obj_adc_trig  = window.document.getElementById('e-' + entry_index + '-thr-adc-trig');
+    var obj_imax  = window.document.getElementById('e-' + entry_index + '-thr-imax');
+    var obj_rcpwm_t_min  = window.document.getElementById('e-' + entry_index + '-thr-rcpwm-t-min');
+    var obj_rcpwm_t_max  = window.document.getElementById('e-' + entry_index + '-thr-rcpwm-t-max');
 
     updateName( obj_name );
 
     var entry = header.getEntry( entry_index );
 
-    entry._profile.throttle_adc_min  = parseInt(obj_adc_min.value);
-    entry._profile.throttle_adc_max  = parseInt(obj_adc_max.value);
-    entry._profile.throttle_response = parseInt(obj_resp.value);
+    entry._profile.throttle_adc_min      = parseInt(obj_adc_min.value);
+    entry._profile.throttle_adc_max      = parseInt(obj_adc_max.value);
+    entry._profile.throttle_response     = parseInt(obj_resp.value);
+    entry._profile.throttle_adc_trig     = parseInt(obj_adc_trig.value);
+    entry._profile.throttle_imax         = parseFloat(obj_imax.value);
+    entry._profile.throttle_rcpwm_t_min  = parseInt(obj_rcpwm_t_min.value);
+    entry._profile.throttle_rcpwm_t_max  = parseInt(obj_rcpwm_t_max.value);
 }
 
 function makeThrottle(eN) {
@@ -1022,7 +1061,13 @@ function makeThrottle(eN) {
     h3.innerHTML = 'Sensor';
     o.appendChild( h3 );
 
-    inp = makeOptions( o, 'thr-if', 'Interface', 0, ['?','??'], function() { plotThrottle(this) } );
+    inp = makeOptions( o, 'thr-if', 'Interface', 0, ['RCPWM','UART'], function() { plotThrottle(this) } );
+
+    inp = makeLabelledNumber( o, 'thr-rcpwm-t-min', 'RCPWM t min', 1000, function() { plotThrottle(this) }, '' );
+    inp.min = 0;
+
+    inp = makeLabelledNumber( o, 'thr-rcpwm-t-max', 'RCPWM t max', 2000, function() { plotThrottle(this) }, '' );
+    inp.min = 0;
 
     inp = makeLabelledNumber( o, 'thr-adc-min', 'ADC min', 100, function() { plotThrottle(this) }, '' );
     inp.min = 0;
@@ -1031,6 +1076,12 @@ function makeThrottle(eN) {
     inp.min = 0;
 
     inp = makeOptions( o, 'thr-rsp', 'Response', 0, ['Linear','Logarithmic'], function() { plotThrottle(this) } );
+
+    inp = makeLabelledNumber( o, 'thr-adc-trig', 'ADC trigger', 300, function() { plotThrottle(this) }, '' );
+    inp.min = 0;
+
+    inp = makeLabelledNumber( o, 'thr-imax', 'Imax', 20.0, function() { plotThrottle(this) }, '' );
+    inp.min = 0;
 
     eN.appendChild( o );
 
@@ -1046,6 +1097,8 @@ function plotBrake(obj) {
     var obj_adc_min  = window.document.getElementById('e-' + entry_index + '-brk-adc-min');
     var obj_adc_max  = window.document.getElementById('e-' + entry_index + '-brk-adc-max');
     var obj_resp = window.document.getElementById('e-' + entry_index + '-brk-rsp');
+    var obj_adc_trig  = window.document.getElementById('e-' + entry_index + '-brk-adc-trig');
+    var obj_imax  = window.document.getElementById('e-' + entry_index + '-brk-imax');
 
     updateName( obj_name );
 
@@ -1054,6 +1107,8 @@ function plotBrake(obj) {
     entry._profile.brake_adc_min  = parseInt(obj_adc_min.value);
     entry._profile.brake_adc_max  = parseInt(obj_adc_max.value);
     entry._profile.brake_response = parseInt(obj_resp.value);
+    entry._profile.brake_adc_trig = parseInt(obj_adc_trig.value);
+    entry._profile.brake_imax     = parseInt(obj_imax.value);
 }
 
 function makeBrake(eN) {
@@ -1077,6 +1132,11 @@ function makeBrake(eN) {
 
     inp = makeOptions( o, 'brk-rsp', 'Response', 0, ['Linear','Logarithmic'], function() { plotBrake(this) } );
 
+    inp = makeLabelledNumber( o, 'brk-adc-trig', 'ADC max', 2047, function() { plotBrake(this) }, '' );
+    inp.min = 0;
+
+    inp = makeLabelledNumber( o, 'brk-imax', 'Imax', 10.0, function() { plotBrake(this) }, '' );
+    inp.min = 0;
 
     eN.appendChild( o );
 

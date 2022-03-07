@@ -38,7 +38,7 @@ const TEMP_SCHEMA_R_F_ON_R_T = 0;
 const TEMP_SCHEMA_R_T_ON_R_F = 1;
 //end
 
-const TEMP_PROFILE_SIZE = 56;
+const TEMP_PROFILE_SIZE = 60;
 
 // TEMPProfile
 function dump_TEMPProfile( profile )
@@ -46,9 +46,10 @@ function dump_TEMPProfile( profile )
     console.log( "dump_TEMPProfile" );
     var hex = '';
 
+    hex = hex + dump_c_int( profile.reading );
     hex = hex + dump_c_float( profile.V );
     hex = hex + dump_c_float( profile.R_F );
-    // TODO adc
+    
     hex = hex + dump_c_uint32_t( profile.adc_range );
 
     hex = hex + dump_c_int( profile.method );
@@ -79,14 +80,15 @@ function dump_TEMPProfile( profile )
 
 function TEMPProfile()
 {
+    this.reading = undefined;
     this.V = undefined;
     this.R_F = undefined;
-    // TODO adc
+    
     this.adc_range = undefined;
 
     this.method = undefined;
     this.schema = undefined;
-    // TEMP_METHOD_STEINHART_HART_BETA_R
+    
     this.parameters_SH_A = undefined;
     this.parameters_SH_B = undefined;
     this.parameters_SH_C = undefined;

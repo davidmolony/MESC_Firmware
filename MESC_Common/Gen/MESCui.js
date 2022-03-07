@@ -38,15 +38,18 @@ const UI_PROFILE_INDICATOR = 3;
 const UI_PROFILE_SCREEN    = 4;
 //end
 
-const UI_PROFILE_SIZE = 20;
+const UI_PROFILE_SIZE = 32;
 
 function dump_UIProfile_THROTTLE( profile ) {
     console.log( "dump_UIProfile_THROTTLE" );
     var hex = '';
-    hex = hex + dump_c_uint32_t( profile.throttle_adc_min  );
-    hex = hex + dump_c_uint32_t( profile.throttle_adc_max  );
-    hex = hex + dump_c_int(      profile.throttle_response );
-    hex = hex + dump_c_char( 0, 4 )
+    hex = hex + dump_c_uint32_t( profile.throttle_adc_min     );
+    hex = hex + dump_c_uint32_t( profile.throttle_adc_max     );
+    hex = hex + dump_c_int(      profile.throttle_response    );
+    hex = hex + dump_c_uint32_t( profile.throttle_adc_trig    );
+    hex = hex + dump_c_float(    profile.throttle_imax        );
+    hex = hex + dump_c_uint32_t( profile.throttle_rcpwm_t_min );
+    hex = hex + dump_c_uint32_t( profile.throttle_rcpwm_t_max );
     return hex;
 }
 
@@ -56,7 +59,10 @@ function dump_UIProfile_BRAKE( profile ) {
     hex = hex + dump_c_uint32_t( profile.brake_adc_min  );
     hex = hex + dump_c_uint32_t( profile.brake_adc_max  );
     hex = hex + dump_c_int(      profile.brake_response );
-    hex = hex + dump_c_char( 0, 4 )
+    hex = hex + dump_c_uint32_t( profile.brake_adc_trig );
+    hex = hex + dump_c_float(    profile.brake_imax     );
+    hex = hex + dump_c_char( 0, 4 );
+    hex = hex + dump_c_char( 0, 4 );
     return hex;
 }
 
@@ -66,7 +72,10 @@ function dump_UIProfile_BUTTON( profile ) {
     hex = hex + dump_c_uint32_t( profile.button_interface  );
     hex = hex + dump_c_uint32_t( profile.button_address    );
     hex = hex + dump_c_uint32_t( profile.button_identifier );
-    hex = hex + dump_c_char( 0, 4 )
+    hex = hex + dump_c_char( 0, 4 );
+    hex = hex + dump_c_char( 0, 4 );
+    hex = hex + dump_c_char( 0, 4 );
+    hex = hex + dump_c_char( 0, 4 );
     return hex;
 }
 
@@ -77,6 +86,9 @@ function dump_UIProfile_INDICATOR( profile ) {
     hex = hex + dump_c_uint32_t( profile.indicator_address    );
     hex = hex + dump_c_uint32_t( profile.indicator_identifier );
     hex = hex + dump_c_int(      profile.indicator_activation );
+    hex = hex + dump_c_char( 0, 4 );
+    hex = hex + dump_c_char( 0, 4 );
+    hex = hex + dump_c_char( 0, 4 );
     return hex;
 }
 
@@ -87,6 +99,9 @@ function dump_UIProfile_SCREEN( profile ) {
     hex = hex + dump_c_uint32_t( profile.screen_address   );
     hex = hex + dump_c_uint32_t( profile.screen_width     );
     hex = hex + dump_c_uint32_t( profile.screen_height    );
+    hex = hex + dump_c_char( 0, 4 );
+    hex = hex + dump_c_char( 0, 4 );
+    hex = hex + dump_c_char( 0, 4 );
     return hex;
 }
 
@@ -116,10 +131,16 @@ function UIProfile( type )
     this.throttle_adc_min = undefined;
     this.throttle_adc_max = undefined;
     this.throttle_response = undefined;
+    this.throttle_adc_trig = undefined;
+    this.throttle_adc_imax = undefined;
+    this.throttle_rcpwm_t_min = undefined;
+    this.throttle_rcpwm_t_max = undefined;
 
     this.brake_adc_min = undefined;
     this.brake_adc_max = undefined;
     this.brake_response = undefined;
+    this.brake_adc_trig = undefined;
+    this.brake_imax = undefined;
 
     this.button_interface = undefined;
     this.button_address = undefined;
