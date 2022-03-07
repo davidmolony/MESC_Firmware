@@ -931,12 +931,12 @@ void VICheck() {  // Check currents, voltages are within panic limits
         phV_Break();
         phW_Break();
 
-        motor.Rphase = (((float)(testPWM2 - testPWM1)) / (2.0f * 1024.0f) *
+        motor.Rphase = (((float)(testPWM2 - testPWM1)) / (2.0f * htim1.Instance->ARR) *
                         measurement_buffers.ConvertedADC[0][1]) /
                        (-(currAcc2 - currAcc1));
         motor.Lphase =
             ((currAcc3 + currAcc4) * motor.Rphase *
-             (2.0f * 2048.0f / 72000000.0f) / ((currAcc4 - currAcc3)));
+             (2.0f * 2.0f* htim1.Instance->ARR / 72000000.0f) / ((currAcc4 - currAcc3)));
         motor.Lphase =
             motor.Lphase /
             2.0f;  // The above line calculates the phase to phase inductance,
