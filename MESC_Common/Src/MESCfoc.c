@@ -646,7 +646,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
 
   void OLGenerateAngle() {
-    foc_vars.openloop_step = 50;
+    foc_vars.openloop_step = 150;
 
     foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.openloop_step;
     // ToDo
