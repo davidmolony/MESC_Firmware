@@ -397,7 +397,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // Power Variant Clark transform
     // Here we select the phases that have the lowest duty cycle to us, since
     // they should have the best current measurements
-    if (htim1.Instance->CCR2 > 900) {
+    if (htim1.Instance->CCR2 > foc_vars.ADC_duty_threshold) {
 //    measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] =
 //    			- measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
 //				measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
@@ -406,7 +406,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       foc_vars.Iab[1] =
           -one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
           two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
-    } else if (htim1.Instance->CCR3 > 900) {
+    } else if (htim1.Instance->CCR3 > foc_vars.ADC_duty_threshold) {
 //        measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO] =
 //        			- measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
 //    				measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO];
@@ -416,7 +416,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
           two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] +
           one_on_sqrt3 * two_on_sqrt3 *
               measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
-    } else if (htim1.Instance->CCR1 > 900) {
+    } else if (htim1.Instance->CCR1 > foc_vars.ADC_duty_threshold) {
 //        measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] =
 //        			- measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
 //    				measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
@@ -508,7 +508,17 @@ void VICheck() {  // Check currents, voltages are within panic limits
   static uint16_t angle_error = 0;
 
   void flux_observer() {
-    // This function we are going to integrate Va-Ri and clamp it positively and
+    //LICENCE NOTE:
+	  //This function deviates slightly from the BSD 3 clause licence.
+	  //The work here is entirely original to the MESC FOC project, and not based on any appnotes, or borrowed from another project.
+	  //This work is free to use, as granted in BSD 3 clause, with the exception that this note must be included in
+	  //where this code is implemented/modified to use your variable names, structures containing variables
+	  //or other minor rearrangements in place of the original names I have chosen, and credit to David Molony
+	  //as the original author must be noted.
+
+	  //With thanks to C0d3b453 for generally keeping this compiling and Elwin for producing data comparing the output to a 16bit encoder.
+
+	// This function we are going to integrate Va-Ri and clamp it positively and
     // negatively the angle is then the arctangent of the integrals shifted 180
     // degrees
     BEMFa = BEMFa + foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0] -
@@ -536,7 +546,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     foc_vars.FOCAngle = angle;
   }
 
-  // based on https://math.stackexchange.com/a/1105038/81278
+  // fast_atan2 based on https://math.stackexchange.com/a/1105038/81278
   // Via Odrive project
   // https://github.com/odriverobotics/ODrive/blob/master/Firmware/MotorControl/utils.cpp
   // This function is MIT licenced, copyright Oskar Weigl/Odrive Robotics
@@ -646,7 +656,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
 
   void OLGenerateAngle() {
-    foc_vars.openloop_step = 50;
+    foc_vars.openloop_step = 150;
 
     foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.openloop_step;
     // ToDo
@@ -772,7 +782,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       bottom_value = foc_vars.inverterVoltage[2];
     }
 
-    mid_value = 512.0f - 0.5 * foc_vars.Vab_to_PWM * (top_value + bottom_value);
+    mid_value = foc_vars.PWMmid - 0.5 * foc_vars.Vab_to_PWM * (top_value + bottom_value);
 
     ////////////////////////////////////////////////////////
     // Actually write the value to the timer registers
@@ -931,12 +941,12 @@ void VICheck() {  // Check currents, voltages are within panic limits
         phV_Break();
         phW_Break();
 
-        motor.Rphase = (((float)(testPWM2 - testPWM1)) / (2.0f * 1024.0f) *
+        motor.Rphase = (((float)(testPWM2 - testPWM1)) / (2.0f * htim1.Instance->ARR) *
                         measurement_buffers.ConvertedADC[0][1]) /
                        (-(currAcc2 - currAcc1));
         motor.Lphase =
             ((currAcc3 + currAcc4) * motor.Rphase *
-             (2.0f * 2048.0f / 72000000.0f) / ((currAcc4 - currAcc3)));
+             (2.0f * 2.0f* htim1.Instance->ARR / 72000000.0f) / ((currAcc4 - currAcc3)));
         motor.Lphase =
             motor.Lphase /
             2.0f;  // The above line calculates the phase to phase inductance,
@@ -1224,6 +1234,9 @@ void VICheck() {  // Check currents, voltages are within panic limits
     foc_vars.pwm_frequency =
         (float)HAL_RCC_GetHCLKFreq() /
         (2 * (float)htim1.Instance->ARR * ((float)htim1.Instance->PSC + 1));
+
+    foc_vars.PWMmid = htim1.Instance->ARR * 0.5;
+    foc_vars.ADC_duty_threshold = htim1.Instance->ARR * 0.85;
 
     foc_vars.Iq_pgain = foc_vars.pwm_frequency * motor.Lphase * 0.5;  // *
     //                        ((float)htim1.Instance->ARR * 0.5) /

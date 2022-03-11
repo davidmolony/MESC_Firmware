@@ -181,6 +181,8 @@ int main(void)
     }
     // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
 
+    htim1.Instance->ARR = 1024; // PWM
+
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);
     __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);

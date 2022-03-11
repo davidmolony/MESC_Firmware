@@ -97,6 +97,8 @@ typedef struct {
   float Vq_max;
   float Vdint_max;
   float Vqint_max;
+  float PWMmid;
+  uint32_t ADC_duty_threshold;
   // Field weakenning
   float field_weakening_curr_max;
   float field_weakening_threshold;
