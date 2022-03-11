@@ -508,7 +508,17 @@ void VICheck() {  // Check currents, voltages are within panic limits
   static uint16_t angle_error = 0;
 
   void flux_observer() {
-    // This function we are going to integrate Va-Ri and clamp it positively and
+    //LICENCE NOTE:
+	  //This function deviates slightly from the BSD 3 clause licence.
+	  //The work here is entirely original to the MESC FOC project, and not based on any appnotes, or borrowed from another project.
+	  //This work is free to use, as granted in BSD 3 clause, with the exception that this note must be included in
+	  //where this code is implemented/modified to use your variable names, structures containing variables
+	  //or other minor rearrangements in place of the original names I have chosen, and credit to David Molony
+	  //as the original author must be noted.
+
+	  //With thanks to C0d3b453 for generally keeping this compiling and Elwin for producing data comparing the output to a 16bit encoder.
+
+	// This function we are going to integrate Va-Ri and clamp it positively and
     // negatively the angle is then the arctangent of the integrals shifted 180
     // degrees
     BEMFa = BEMFa + foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0] -
@@ -536,7 +546,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     foc_vars.FOCAngle = angle;
   }
 
-  // based on https://math.stackexchange.com/a/1105038/81278
+  // fast_atan2 based on https://math.stackexchange.com/a/1105038/81278
   // Via Odrive project
   // https://github.com/odriverobotics/ODrive/blob/master/Firmware/MotorControl/utils.cpp
   // This function is MIT licenced, copyright Oskar Weigl/Odrive Robotics
