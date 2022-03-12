@@ -270,6 +270,8 @@ void fastLoop() {
       break;
 
     case MOTOR_STATE_GET_KV:
+    	foc_vars.sincosangle[0] = sinwave[foc_vars.FOCAngle >> 8];
+   	    foc_vars.sincosangle[1] = sinwave[(foc_vars.FOCAngle >> 8) + 64];
       getkV();
 
       break;
@@ -540,10 +542,12 @@ void VICheck() {  // Check currents, voltages are within panic limits
     if (BEMFb < -motor.motor_flux) {
       BEMFb = -motor.motor_flux;
     }
-
-    angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(BEMFb, BEMFa)) - 32768;
-    angle_error = angle - foc_vars.FOCAngle;
-    foc_vars.FOCAngle = angle;
+    float divisor = 1/motor.motor_flux;//sqrtf(BEMFa*BEMFa+BEMFb*BEMFb);
+    foc_vars.sincosangle[0] = BEMFb*divisor;
+    foc_vars.sincosangle[1] = BEMFa*divisor;
+//    angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(BEMFb, BEMFa)) - 32768;
+//    angle_error = angle - foc_vars.FOCAngle;
+//    foc_vars.FOCAngle = angle;
   }
 
   // fast_atan2 based on https://math.stackexchange.com/a/1105038/81278
@@ -656,7 +660,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
 
   void OLGenerateAngle() {
-    foc_vars.openloop_step = 150;
+    foc_vars.openloop_step = 75;
 
     foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.openloop_step;
     // ToDo
@@ -737,8 +741,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // Now we update the sin and cos values, since when we do the inverse
     // transforms, we would like to use the most up to date versions(or even the
     // next predicted version...)
-    foc_vars.sincosangle[0] = sinwave[foc_vars.FOCAngle >> 8];
-    foc_vars.sincosangle[1] = sinwave[(foc_vars.FOCAngle >> 8) + 64];
+//    foc_vars.sincosangle[0] = sinwave[foc_vars.FOCAngle >> 8];
+//    foc_vars.sincosangle[1] = sinwave[(foc_vars.FOCAngle >> 8) + 64];
     // Inverse Park transform
     foc_vars.Vab[0] = foc_vars.sincosangle[1] * foc_vars.Vdq[0] -
                       foc_vars.sincosangle[0] * foc_vars.Vdq[1];
