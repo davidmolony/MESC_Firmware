@@ -53,8 +53,8 @@ float two_on_sqrt3 = 1.73205;
 int adc_conv_end;
 uint8_t b_write_flash = 0;
 uint8_t b_read_flash = 0;
-static float BEMFa = 0.00001;
-static float BEMFb = 0.00001;
+static float flux_linked_alpha = 0.00001;
+static float flux_linked_beta = 0.00001;
 void MESCInit() {
 #ifdef STM32F303xC
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
@@ -82,8 +82,8 @@ void MESCInit() {
   foc_vars.hall_forwards_adjust = 5460;
   foc_vars.hall_backwards_adjust = 5460;
 
-  BEMFa = 0;
-  BEMFb = 0;
+  flux_linked_alpha = 0.00001;
+  flux_linked_beta = -0.00001;
 
   measurement_buffers.ADCOffset[0] = 0;
   measurement_buffers.ADCOffset[1] = 0;
@@ -521,27 +521,27 @@ void VICheck() {  // Check currents, voltages are within panic limits
 	// This function we are going to integrate Va-Ri and clamp it positively and
     // negatively the angle is then the arctangent of the integrals shifted 180
     // degrees
-    BEMFa = BEMFa + foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0] -
+    flux_linked_alpha = flux_linked_alpha + foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0] -
             motor.Lphase * (foc_vars.Iab[0] - Ia_last) * foc_vars.pwm_frequency;
-    BEMFb = BEMFb + foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1] -
+    flux_linked_beta = flux_linked_beta + foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1] -
             motor.Lphase * (foc_vars.Iab[1] - Ib_last) * foc_vars.pwm_frequency;
     Ia_last = foc_vars.Iab[0];
     Ib_last = foc_vars.Iab[1];
 
-    if (BEMFa > motor.motor_flux) {
-      BEMFa = motor.motor_flux;
+    if (flux_linked_alpha > motor.motor_flux) {
+      flux_linked_alpha = motor.motor_flux;
     }
-    if (BEMFa < -motor.motor_flux) {
-      BEMFa = -motor.motor_flux;
+    if (flux_linked_alpha < -motor.motor_flux) {
+      flux_linked_alpha = -motor.motor_flux;
     }
-    if (BEMFb > motor.motor_flux) {
-      BEMFb = motor.motor_flux;
+    if (flux_linked_beta > motor.motor_flux) {
+      flux_linked_beta = motor.motor_flux;
     }
-    if (BEMFb < -motor.motor_flux) {
-      BEMFb = -motor.motor_flux;
+    if (flux_linked_beta < -motor.motor_flux) {
+      flux_linked_beta = -motor.motor_flux;
     }
 
-    angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(BEMFb, BEMFa)) - 32768;
+    angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta, flux_linked_alpha)) - 32768;
     angle_error = angle - foc_vars.FOCAngle;
     foc_vars.FOCAngle = angle;
   }
@@ -656,7 +656,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
 
   void OLGenerateAngle() {
-    foc_vars.openloop_step = 150;
+    foc_vars.openloop_step = 50;
 
     foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.openloop_step;
     // ToDo
@@ -849,11 +849,11 @@ void VICheck() {  // Check currents, voltages are within panic limits
       if (PWMcycles < 5000)  // Resistance lower measurement point
       {
         if (measurement_buffers.ConvertedADC[1][0] >
-            -3.0f) {  // Here we set the PWM duty automatically for this
+            -10.0f) {  // Here we set the PWM duty automatically for this
                       // conversion to ensure a current between 3A and 10A
           testPWM1 = testPWM1 + 1;
         }
-        if (measurement_buffers.ConvertedADC[1][0] < -10.0f) {
+        if (measurement_buffers.ConvertedADC[1][0] < -20.0f) {
           testPWM1 = testPWM1 - 1;
         }
 
@@ -869,11 +869,11 @@ void VICheck() {  // Check currents, voltages are within panic limits
       else if (PWMcycles < 10000)  // Resistance higher measurement point
       {
         if (measurement_buffers.ConvertedADC[1][0] >
-            -10.0f) {  // Here we set the PWM to get a current between 10A and
+            -20.0f) {  // Here we set the PWM to get a current between 10A and
                        // 20A
           testPWM2 = testPWM2 + 1;
         }
-        if (measurement_buffers.ConvertedADC[1][0] < -20.0f) {
+        if (measurement_buffers.ConvertedADC[1][0] < -30.0f) {
           testPWM2 = testPWM2 - 1;
         }
 
@@ -1092,7 +1092,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   static float db;
 
   void getkV() {
-    foc_vars.Idq_req[0] = 7;  // 10A for the openloop spin
+    foc_vars.Idq_req[0] = 15;  // 10A for the openloop spin
     foc_vars.Idq_req[1] = 0;  // 10A for the openloop spin
 
     OLGenerateAngle();
@@ -1103,7 +1103,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       // ramp openloop
     } else if (cycles < 128000) {
       count++;
-      BEMFaccumulator += BEMFa;
+      BEMFaccumulator += flux_linked_alpha;
     } else {
       // generateBreak();
 
@@ -1133,7 +1133,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       acc_db += db;
     } else if (foc_vars.FOCAngle > 32468 &&
                foc_vars.FOCAngle < (65035 + foc_vars.openloop_step)) {
-      BEMFa = sqrtf((acc_da * acc_da + acc_db * acc_db));
+      flux_linked_alpha = sqrtf((acc_da * acc_da + acc_db * acc_db));
       acc_da = 0;
       acc_db = 0;
     }
