@@ -734,25 +734,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     }
     i = i - 1;
 
-    // Now we update the sin and cos values, since when we do the inverse
-    // transforms, we would like to use the most up to date versions(or even the
-    // next predicted version...)
-    foc_vars.sincosangle[0] = sinwave[foc_vars.FOCAngle >> 8];
-    foc_vars.sincosangle[1] = sinwave[(foc_vars.FOCAngle >> 8) + 64];
-    // Inverse Park transform
-    foc_vars.Vab[0] = foc_vars.sincosangle[1] * foc_vars.Vdq[0] -
-                      foc_vars.sincosangle[0] * foc_vars.Vdq[1];
-    foc_vars.Vab[1] = foc_vars.sincosangle[0] * foc_vars.Vdq[0] +
-                      foc_vars.sincosangle[1] * foc_vars.Vdq[1];
-    foc_vars.Vab[2] = 0;
-    // clang-format off
 
-    // Inverse Clark transform - power variant
-	foc_vars.inverterVoltage[0] = foc_vars.Vab[0];
-	foc_vars.inverterVoltage[1] = -0.5*foc_vars.inverterVoltage[0];
-	foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[1] - sqrt3_on_2 * foc_vars.Vab[1];
-	foc_vars.inverterVoltage[1] = foc_vars.inverterVoltage[1] + sqrt3_on_2 * foc_vars.Vab[1];
-    // clang-format on
     writePWM();
   }
 
@@ -762,6 +744,27 @@ void VICheck() {  // Check currents, voltages are within panic limits
   float bottom_value;
 
   void writePWM() {
+
+	  // Now we update the sin and cos values, since when we do the inverse
+	      // transforms, we would like to use the most up to date versions(or even the
+	      // next predicted version...)
+	      foc_vars.sincosangle[0] = sinwave[foc_vars.FOCAngle >> 8];
+	      foc_vars.sincosangle[1] = sinwave[(foc_vars.FOCAngle >> 8) + 64];
+	      // Inverse Park transform
+	      foc_vars.Vab[0] = foc_vars.sincosangle[1] * foc_vars.Vdq[0] -
+	                        foc_vars.sincosangle[0] * foc_vars.Vdq[1];
+	      foc_vars.Vab[1] = foc_vars.sincosangle[0] * foc_vars.Vdq[0] +
+	                        foc_vars.sincosangle[1] * foc_vars.Vdq[1];
+	      foc_vars.Vab[2] = 0;
+	      // clang-format off
+
+	      // Inverse Clark transform - power variant
+	  	foc_vars.inverterVoltage[0] = foc_vars.Vab[0];
+	  	foc_vars.inverterVoltage[1] = -0.5*foc_vars.inverterVoltage[0];
+	  	foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[1] - sqrt3_on_2 * foc_vars.Vab[1];
+	  	foc_vars.inverterVoltage[1] = foc_vars.inverterVoltage[1] + sqrt3_on_2 * foc_vars.Vab[1];
+	      // clang-format on
+
     ////////////////////////////////////////////////////////
     // SVPM implementation
     // Try to do this as a "midpoint clamp" where rather than finding the
