@@ -542,7 +542,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     if (BEMFb < -motor.motor_flux) {
       BEMFb = -motor.motor_flux;
     }
-    float divisor = 1/motor.motor_flux;//sqrtf(BEMFa*BEMFa+BEMFb*BEMFb);
+    float divisor = 1/sqrtf(BEMFa*BEMFa+BEMFb*BEMFb);//motor.motor_flux;//
     foc_vars.sincosangle[0] = BEMFb*divisor;
     foc_vars.sincosangle[1] = BEMFa*divisor;
 //    angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(BEMFb, BEMFa)) - 32768;
@@ -660,7 +660,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
 
   void OLGenerateAngle() {
-    foc_vars.openloop_step = 75;
+    foc_vars.openloop_step = 50;
 
     foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.openloop_step;
     // ToDo
@@ -1096,7 +1096,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   static float db;
 
   void getkV() {
-    foc_vars.Idq_req[0] = 7;  // 10A for the openloop spin
+    foc_vars.Idq_req[0] = 15;  // 10A for the openloop spin
     foc_vars.Idq_req[1] = 0;  // 10A for the openloop spin
 
     OLGenerateAngle();
