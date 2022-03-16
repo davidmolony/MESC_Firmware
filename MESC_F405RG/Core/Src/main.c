@@ -54,7 +54,8 @@ UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
-
+static int countdown = 2000000;
+static int answer;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -127,6 +128,7 @@ int main(void)
   __HAL_TIM_SET_PRESCALER(&htim4, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
 
   MESCInit();
+  motor_init();
   // MESC_Init();
   MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
@@ -164,6 +166,15 @@ MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
       b_write_flash = 0;
     }
 
+
+//if(countdown >= 0){
+//countdown--;
+//answer = (countdown+1)/countdown;
+//}
+//if(countdown==0){
+//	// /*This makes it crash into the hardfault handler, intentionally :D*/
+//
+//}
     //HAL_UART_Transmit(&huart3, "hello World", 12, 10);
     /* USER CODE END WHILE */
 

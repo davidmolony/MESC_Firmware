@@ -246,14 +246,14 @@ void fastLoop() {
         b_read_flash = 0;
         break;
       } else {
-        motor_init();
+
       }
-      if (motor.Rphase == 0) {  // Every PWM cycle we enter this function until
+      if (motor.uncertainty == 1) {  // Every PWM cycle we enter this function until
                                 // the resistance measurement has converged at a
                                 // good value. Once the measurement is complete,
                                 // Rphase is set, and this is no longer called
         if (foc_vars.initing == 0) {
-          measureResistance();
+          measureResistance2();
         }
         break;
       } else if (motor.Lphase ==
@@ -810,6 +810,158 @@ void VICheck() {  // Check currents, voltages are within panic limits
     phW_Break();
   }
 
+  static float top_V;
+  static float bottom_V;
+  static float top_I;
+  static float bottom_I;
+  static float count_top;
+  static float count_bottom;
+  static float Vd_temp;
+  static float Vq_temp;
+  static float Vinjected = 2.0f;
+  static int high_low = 1;
+  static float top_I_L;
+  static float bottom_I_L;
+
+void measureResistance2(){
+static int PWM_cycles = 0;
+
+		if (PWM_cycles < 1) {
+		uint16_t half_ARR = htim1.Instance->ARR/2;
+	    htim1.Instance->CCR1 = half_ARR;
+        htim1.Instance->CCR2 = half_ARR;
+        htim1.Instance->CCR3 = half_ARR;
+        motor.Rphase = 0.001; //Initialise with a very low value 1mR
+        motor.Lphase = 0.000001;//Initialise with a very low value 1uH
+		calculateVoltageGain(); //Set initial gains to enable MESCFOC to run
+		calculateGains();
+		phU_Enable();
+		phV_Enable();
+		phW_Enable();
+		foc_vars.Idq_req[0] = 10.0f;
+		foc_vars.Idq_req[1] = 0.0f;
+		foc_vars.FOCAngle = 0;
+		MESCFOC();
+		count_top = 0;
+		count_bottom = 0;
+		}
+
+		else if (PWM_cycles < 35000) {//Align the rotor for 1 second
+			foc_vars.Idq_req[0] = 15.0f;
+			MESCFOC();
+		}
+
+		else if (PWM_cycles < 40000) {//Lower setpoint
+			foc_vars.Idq_req[0] = 15.0f;
+			MESCFOC();
+			bottom_V = bottom_V+foc_vars.Vdq[0];
+			bottom_I = bottom_I+foc_vars.Idq[0];
+			count_bottom++;
+		}
+
+		else if (PWM_cycles < 45000) {//Upper setpoint stabilisation
+			foc_vars.Idq_req[0] = 30.0f;
+			MESCFOC();
+		}
+
+		else if (PWM_cycles < 50000) {//Upper setpoint
+			foc_vars.Idq_req[0] = 30.0f;
+			MESCFOC();
+			top_V = top_V+foc_vars.Vdq[0];
+			top_I = top_I+foc_vars.Idq[0];
+			count_top++;
+		}
+		else if (PWM_cycles < 50001) {//Calculate R
+			motor.Rphase = (top_V-bottom_V)/(top_I-bottom_I);
+			motor.Rphase = motor.Rphase*0.666;
+			count_top = 0;
+			Vd_temp = foc_vars.Vdq[0]*0.02; //Store the voltage required for the high setpoint, to use as an offset for the inductance
+			Vq_temp = 0;
+			foc_vars.Vdq[1] = 0;
+		}
+
+		else if (PWM_cycles < 60001) {//Collect L variable
+//generateBreak();
+			static int a=2;
+			if(high_low==1){
+				if(a==0){
+					foc_vars.Vdq[0] = Vd_temp - Vinjected; //We offset the voltage to keep the rotor aligned
+					high_low = 0;
+					top_I_L = top_I_L+foc_vars.Idq[0];
+					count_top++;
+					a=2;
+				}
+			}
+
+			else if(high_low==0){
+				if(a==0){
+					foc_vars.Vdq[0] = Vd_temp + Vinjected;
+					high_low = 1;
+					bottom_I_L = bottom_I_L+foc_vars.Idq[0];
+					a=2;
+				}
+			}
+			a--;
+			writePWM();
+		}
+		else if(PWM_cycles < 60002){
+			generateBreak();
+			motor.Lphase = -Vinjected/((top_I_L-bottom_I_L)/count_top)/(0.5*foc_vars.pwm_frequency);
+			motor.Lphase = motor.Lphase*0.666;//modify to be phase rather than phase:2phases
+			top_I_L = 0;
+			bottom_I_L = 0;
+			count_top = 0;
+		}
+		else if(PWM_cycles < 60003){
+//phU_Enable();
+phV_Enable();
+phW_Enable();
+		}
+		else if (PWM_cycles < 70003) {//Collect Lq variable
+//			generateBreak();
+			static int b=2;
+			if(high_low==1){
+				if(b==0){
+					foc_vars.Vdq[0] = Vd_temp;  //We offset the voltage to keep the rotor aligned
+					foc_vars.Vdq[1] = -Vinjected;
+					high_low = 0;
+					top_I_L = top_I_L+foc_vars.Idq[1];
+					count_top++;
+					b=2;
+				}
+			}
+
+			else if(high_low==0){
+				if(b==0){
+					foc_vars.Vdq[0] = Vd_temp;
+					foc_vars.Vdq[1] = Vinjected;
+					high_low = 1;
+					bottom_I_L = bottom_I_L+foc_vars.Idq[1];
+					b=2;
+				}
+			}
+			b--;
+			writePWM();
+		}
+
+		else{
+			generateBreak();
+			motor.Lqphase = Vinjected/(((top_I_L-bottom_I_L)/count_top)*(0.5*foc_vars.pwm_frequency));
+			motor.Lqphase = motor.Lqphase*0.5;//modify to be phase rather than phase:2phases
+			MotorState = MOTOR_STATE_IDLE;
+			motor.uncertainty = 0;
+
+	        calculateGains();
+	        // MotorState = MOTOR_STATE_IDLE;  //
+	        MotorState = MOTOR_STATE_DETECTING;
+	        phU_Enable();
+	        phV_Enable();
+	        phW_Enable();
+		}
+	PWM_cycles++;
+}
+
+
   void measureResistance() {
     /*In this function, we are going to use an openloop  controller to
      * create a current, probably ~4A, through a pair of motor windings, keeping
@@ -1238,14 +1390,14 @@ void VICheck() {  // Check currents, voltages are within panic limits
         (float)HAL_RCC_GetHCLKFreq() /
         (2 * (float)htim1.Instance->ARR * ((float)htim1.Instance->PSC + 1));
 
-    foc_vars.PWMmid = htim1.Instance->ARR * 0.5;
-    foc_vars.ADC_duty_threshold = htim1.Instance->ARR * 0.85;
+    foc_vars.PWMmid = htim1.Instance->ARR * 0.5f;
+    foc_vars.ADC_duty_threshold = htim1.Instance->ARR * 0.85f;
 
-    foc_vars.Iq_pgain = foc_vars.pwm_frequency * motor.Lphase * 0.5;  // *
+    foc_vars.Iq_pgain = foc_vars.pwm_frequency * motor.Lphase * 0.25f;  // *
     //                        ((float)htim1.Instance->ARR * 0.5) /
     //                        (2 * measurement_buffers.ConvertedADC[0][1]);
 
-    foc_vars.Iq_igain = 0.10f * motor.Rphase * 0.5;
+    foc_vars.Iq_igain = 0.10f * motor.Rphase * 0.25f;
     // * (htim1.Instance->ARR * 0.5) /
     //                       (2 * measurement_buffers.ConvertedADC[0][1]);
 
@@ -1254,7 +1406,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     foc_vars.Vdqres_to_Vdq =
         0.333f * measurement_buffers.ConvertedADC[0][1] / 677.0f;
     foc_vars.field_weakening_curr_max =
-        0;  // test number, to be stored in user settings
+        0.0f;  // test number, to be stored in user settings
   }
 
   void calculateVoltageGain() {
@@ -1265,15 +1417,15 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // We also need a number to set the maximum voltage that can be effectively
     // used by the SVPWM This is equal to
     // 0.5*Vbus*MAX_MODULATION*SVPWM_MULTIPLIER*Vd_MAX_PROPORTION
-    foc_vars.Vd_max = 0.5 * measurement_buffers.ConvertedADC[0][1] *
+    foc_vars.Vd_max = 0.5f * measurement_buffers.ConvertedADC[0][1] *
                       MAX_MODULATION * SVPWM_MULTIPLIER * Vd_MAX_PROPORTION;
-    foc_vars.Vq_max = 0.5 * measurement_buffers.ConvertedADC[0][1] *
+    foc_vars.Vq_max = 0.5f * measurement_buffers.ConvertedADC[0][1] *
                       MAX_MODULATION * SVPWM_MULTIPLIER * Vq_MAX_PROPORTION;
 
-    foc_vars.Vdint_max = foc_vars.Vd_max * 0.9;
-    foc_vars.Vqint_max = foc_vars.Vq_max * 0.9;
+    foc_vars.Vdint_max = foc_vars.Vd_max * 0.9f;
+    foc_vars.Vqint_max = foc_vars.Vq_max * 0.9f;
 
-    foc_vars.field_weakening_threshold = foc_vars.Vq_max * 0.8;
+    foc_vars.field_weakening_threshold = foc_vars.Vq_max * 0.8f;
   }
 
   void doublePulseTest() {

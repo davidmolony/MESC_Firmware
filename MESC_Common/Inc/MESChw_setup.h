@@ -68,15 +68,12 @@ hw_setup_s g_hw_setup;
 // void hw_setup_init( hw_setp_s * hw_setup );
 
 typedef struct {
-  hardware_vars_t Rphase;  // unsigned int containing phase resistance in mOhms,
-                           // populated by DETECTING if not already known;
-  hardware_vars_t Lphase;  // unsigned int containing phase inductance in uH,
-                           // range from very very low inductance high kV strong
+  hardware_vars_t Rphase;  // float containing phase resistance in mOhms,
+                           // populated by MEASURING if not already known;
+  hardware_vars_t Lphase;  // float containing phase inductance in uH,
+  hardware_vars_t Lqphase;  // range from very very low inductance high kV strong
                            // magnet BLDC motors to low kV weak magnet ones;
-  uint8_t uncertainty;     // uncertainty should start at 255 an as the measure
-                           // resistance is called each PWM cycle, be deprecated
-                           // by accumulating the measurements until it reaches
-                           // 0, at which point the resistance is accepted
+      uint8_t uncertainty;
   float motor_flux;
 } motor_s;
 
