@@ -913,7 +913,7 @@ static int PWM_cycles = 0;
 			count_top = 0;
 		}
 		else if(PWM_cycles < 60003){
-//phU_Enable();
+phU_Enable();
 phV_Enable();
 phW_Enable();
 		}
