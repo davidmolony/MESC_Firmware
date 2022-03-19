@@ -668,13 +668,13 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // Here we are going to do a PID loop to control the dq currents, converting
     // Idq into Vdq Calculate the errors
     static float Idq_err[2];
-    Idq_err[0] = foc_vars.Idq_req[0] - foc_vars.Idq[0];
-    Idq_err[1] = foc_vars.Idq_req[1] - foc_vars.Idq[1];
+    Idq_err[0] = (foc_vars.Idq_req[0] - foc_vars.Idq[0])*foc_vars.Id_pgain;
+    Idq_err[1] = (foc_vars.Idq_req[1] - foc_vars.Idq[1])*foc_vars.Iq_pgain;
 
     // Integral error
     static float Idq_int_err[2];
-    Idq_int_err[0] = Idq_int_err[0] + foc_vars.Id_igain * Idq_err[0];
-    Idq_int_err[1] = Idq_int_err[1] + foc_vars.Iq_igain * Idq_err[1];
+    Idq_int_err[0] = Idq_int_err[0] + foc_vars.Id_igain * Idq_err[0] * foc_vars.pwm_period;
+    Idq_int_err[1] = Idq_int_err[1] + foc_vars.Iq_igain * Idq_err[1] * foc_vars.pwm_period;
     // Apply the integral gain at this stage to enable bounding it
 
     static int i = 0;
@@ -692,8 +692,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
       // changes in VDVQ may be undesirable for some motors. Integral error is
       // pre-bounded to avoid integral windup, proportional gain needs to have
       // effect even at max integral to stabilise and avoid trips
-      foc_vars.Vdq[0] = foc_vars.Id_pgain * Idq_err[0] + Idq_int_err[0];
-      foc_vars.Vdq[1] = foc_vars.Iq_pgain * Idq_err[1] + Idq_int_err[1];
+      foc_vars.Vdq[0] = Idq_err[0] + Idq_int_err[0];
+      foc_vars.Vdq[1] = Idq_err[1] + Idq_int_err[1];
 
       // Bounding final output
       // These limits are experimental, but result in close to 100% modulation.
@@ -1393,13 +1393,9 @@ phW_Enable();
     foc_vars.PWMmid = htim1.Instance->ARR * 0.5f;
     foc_vars.ADC_duty_threshold = htim1.Instance->ARR * 0.85f;
 
-    foc_vars.Iq_pgain = foc_vars.pwm_frequency * motor.Lphase * 0.25f;  // *
-    //                        ((float)htim1.Instance->ARR * 0.5) /
-    //                        (2 * measurement_buffers.ConvertedADC[0][1]);
+    foc_vars.Iq_pgain = 5000 * motor.Lphase;  // 5000rads-1, hardcoded for now, * motorL
 
-    foc_vars.Iq_igain = 0.10f * motor.Rphase * 0.25f;
-    // * (htim1.Instance->ARR * 0.5) /
-    //                       (2 * measurement_buffers.ConvertedADC[0][1]);
+    foc_vars.Iq_igain =  motor.Rphase/motor.Lphase; //Pole zero cancellation for series PI control
 
     foc_vars.Id_pgain = foc_vars.Iq_pgain;
     foc_vars.Id_igain = foc_vars.Iq_igain;
