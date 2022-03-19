@@ -135,7 +135,7 @@ typedef struct {
   float ConvertedADC[FOC_NUM_ADC]
                     [FOC_CONV_CHANNELS];  // We will fill this with currents
                                           // in A and voltages in Volts
-  uint32_t adc1, adc2, adc3, adc4;
+  uint32_t adc1, adc2, adc3, adc4, adc5;
 
 } foc_measurement_t;
 

@@ -329,6 +329,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
           measurement_buffers.adc2 = measurement_buffers.RawADC[1][0];
           measurement_buffers.adc3 = measurement_buffers.RawADC[2][0];
           measurement_buffers.adc4 = measurement_buffers.RawADC[0][1];
+          measurement_buffers.adc5 = measurement_buffers.RawADC[3][0];
 
           MotorState = MOTOR_STATE_ERROR;
           MotorError = MOTOR_ERROR_OVER_LIMIT;
@@ -1384,7 +1385,7 @@ phW_Enable();
 
   void calculateGains() {
     foc_vars.pwm_period =
-        2.0f * (float)htim1.Instance->ARR / (float)HAL_RCC_GetHCLKFreq();
+        2.0f * ((float)htim1.Instance->PSC + 1.0f) * (float)htim1.Instance->ARR / (float)HAL_RCC_GetHCLKFreq();
 
     foc_vars.pwm_frequency =
         (float)HAL_RCC_GetHCLKFreq() /
@@ -1393,12 +1394,12 @@ phW_Enable();
     foc_vars.PWMmid = htim1.Instance->ARR * 0.5f;
     foc_vars.ADC_duty_threshold = htim1.Instance->ARR * 0.85f;
 
-    foc_vars.Iq_pgain = 5000 * motor.Lphase;  // 5000rads-1, hardcoded for now, * motorL
+    foc_vars.Id_pgain = 10000.0f * motor.Lphase;  // 5000rads-1, hardcoded for now, * motorL
 
-    foc_vars.Iq_igain =  motor.Rphase/motor.Lphase; //Pole zero cancellation for series PI control
+    foc_vars.Id_igain =  motor.Rphase/motor.Lphase; //Pole zero cancellation for series PI control
 
-    foc_vars.Id_pgain = foc_vars.Iq_pgain;
-    foc_vars.Id_igain = foc_vars.Iq_igain;
+    foc_vars.Iq_pgain = foc_vars.Id_pgain;
+    foc_vars.Iq_igain = foc_vars.Id_igain;
     foc_vars.Vdqres_to_Vdq =
         0.333f * measurement_buffers.ConvertedADC[0][1] / 677.0f;
     foc_vars.field_weakening_curr_max =
