@@ -64,6 +64,7 @@ extern TIM_HandleTypeDef htim4;
 extern DMA_HandleTypeDef hdma_usart3_tx;
 extern UART_HandleTypeDef huart3;
 /* USER CODE BEGIN EV */
+extern TIM_HandleTypeDef htim7;
 
 /* USER CODE END EV */
 
@@ -225,30 +226,39 @@ void ADC_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC_IRQn 0 */
   // fastLoop();
+    __HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_JEOC));
+    __HAL_ADC_CLEAR_FLAG(&hadc2, (ADC_FLAG_JSTRT | ADC_FLAG_JEOC));
+    __HAL_ADC_CLEAR_FLAG(&hadc3, (ADC_FLAG_JSTRT | ADC_FLAG_JEOC));
 
   /* USER CODE END ADC_IRQn 0 */
-  HAL_ADC_IRQHandler(&hadc1);
-  HAL_ADC_IRQHandler(&hadc2);
-  HAL_ADC_IRQHandler(&hadc3);
   /* USER CODE BEGIN ADC_IRQn 1 */
-
   /* USER CODE END ADC_IRQn 1 */
 }
 
 /**
   * @brief This function handles TIM1 update interrupt and TIM10 global interrupt.
   */
+uint32_t directionstat;
+uint32_t directionstat2;
+
 void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
   if (htim1.Instance->CNT > 512) {
-    foc_vars.IRQentry = htim1.Instance->CNT;
+    foc_vars.IRQentry = htim7.Instance->CNT;
     fastLoop();
+    foc_vars.IRQexit = htim7.Instance->CNT - foc_vars.IRQentry;
+    directionstat = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
   }
-  foc_vars.IRQexit = htim1.Instance->CNT;
+  else{
+	    foc_vars.IRQentry = htim7.Instance->CNT;
+	  writePWM();
+	    foc_vars.IRQexit = htim7.Instance->CNT - foc_vars.IRQentry;
+  directionstat2 = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
+  }
+  __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
 
   /* USER CODE END TIM1_UP_TIM10_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim1);
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 1 */
 
   /* USER CODE END TIM1_UP_TIM10_IRQn 1 */
