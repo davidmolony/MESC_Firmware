@@ -40,7 +40,7 @@ void hw_init() {
   g_hw_setup.Imax =
       150.0;  // Imax is the current at which we are either no longer able to
              // read it, or hardware "don't ever exceed to avoid breakage"
-  g_hw_setup.Vmax = 75.0;  // Headroom beyond which likely to get avalanche of
+  g_hw_setup.Vmax = 85.0;  // Headroom beyond which likely to get avalanche of
                            // MOSFETs or DCDC converter
   g_hw_setup.Vmin = 10;  // This implies that the PSU has crapped out or a wire
                          // has fallen out, and suddenly there will be no power.
