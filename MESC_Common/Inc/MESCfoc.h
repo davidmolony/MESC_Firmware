@@ -110,7 +110,10 @@ typedef struct {
   uint16_t BEMF_update;
   uint16_t IRQentry;
   uint16_t IRQexit;
-
+  uint16_t inject;
+  uint16_t inject_high_low_now;
+  float Vd_injectionV;
+  float Vq_injectionV;
 } MESCfoc_s;
 
 MESCfoc_s foc_vars;
@@ -179,6 +182,8 @@ void writePWM();  // Offset the PWM to voltage centred (0Vduty is 50% PWM) or
 
 void generateBreak();  // Software break that does not stop the PWM timer but
                        // disables the outputs, sum of phU,V,W_Break();
+void generateEnable(); // Opposite of generateBreak
+
 int isMotorRunning();  // return motor state if state is one of the running
                        // states, if it's an idle, error or break state, disable
                        // all outputs and measure the phase voltages - if all

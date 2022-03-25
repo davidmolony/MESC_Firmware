@@ -384,7 +384,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     measurement_buffers.ConvertedADC[2][0] =
         (float)(measurement_buffers.RawADC[2][0] -
                 measurement_buffers.ADCOffset[2]) *
-        g_hw_setup.Igain;//*0.6f;Fudge to account for broken hardware
+        g_hw_setup.Igain;
     // Currents
     measurement_buffers.ConvertedADC[0][1] =
         (float)measurement_buffers.RawADC[0][1] * g_hw_setup.VBGain;  // Vbus
@@ -398,36 +398,29 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // Power Variant Clark transform
     // Here we select the phases that have the lowest duty cycle to us, since
     // they should have the best current measurements
-    if (htim1.Instance->CCR2 > foc_vars.ADC_duty_threshold) {
-//    measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] =
-//    			- measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
-//				measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
-    // Clark using phase U and W
-      foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
-      foc_vars.Iab[1] =
-          -one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
-          two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
-    } else if (htim1.Instance->CCR3 > foc_vars.ADC_duty_threshold) {
-//        measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO] =
-//        			- measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
-//    				measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO];
-    	// Clark using phase U and V
-      foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
-      foc_vars.Iab[1] =
-          two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] +
-          one_on_sqrt3 * two_on_sqrt3 *
-              measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
-    } else if (htim1.Instance->CCR1 > foc_vars.ADC_duty_threshold) {
-//        measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] =
-//        			- measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
-//    				measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
-    	// Clark using phase V and W (hardware V1 has best ADC readings on
-      // channels V and W - U is plagued by the DCDC converter)
+    if (htim1.Instance->CCR1 > foc_vars.ADC_duty_threshold) {
+    	// Clark using phase V and W
       foc_vars.Iab[0] = -measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
                         measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
       foc_vars.Iab[1] =
           one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
           one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+    } else if(htim1.Instance->CCR2 > foc_vars.ADC_duty_threshold) {
+        // Clark using phase U and W
+          foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
+          foc_vars.Iab[1] =
+              -one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
+              two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+    } else if(htim1.Instance->CCR3 > foc_vars.ADC_duty_threshold) {
+    	//        measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO] =
+    	//        			- measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
+    	//    				measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO];
+    	    	// Clark using phase U and V
+    	      foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
+    	      foc_vars.Iab[1] =
+    	          two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] +
+    	          one_on_sqrt3 * two_on_sqrt3 *
+    	              measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
     } else {
       // Do the full transform
       foc_vars.Iab[0] =
@@ -435,8 +428,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
           0.33333f * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
           0.33333f * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
       foc_vars.Iab[1] =
-          sqrt3_on_2 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
-          sqrt3_on_2 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+    	sqrt3_on_2 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
+		sqrt3_on_2 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
     }
 
     // Park
@@ -810,6 +803,11 @@ void VICheck() {  // Check currents, voltages are within panic limits
     phV_Break();
     phW_Break();
   }
+  void generateEnable() {
+    phU_Enable();
+    phV_Enable();
+    phW_Enable();
+  }
 
   static float top_V;
   static float bottom_V;
@@ -842,6 +840,9 @@ static int PWM_cycles = 0;
 		foc_vars.Idq_req[0] = 10.0f;
 		foc_vars.Idq_req[1] = 0.0f;
 		foc_vars.FOCAngle = 0;
+
+		foc_vars.inject = 0; //flag to not inject at SVPWM top
+
 		MESCFOC();
 		count_top = 0;
 		count_bottom = 0;
@@ -873,84 +874,71 @@ static int PWM_cycles = 0;
 			count_top++;
 		}
 		else if (PWM_cycles < 50001) {//Calculate R
+
+		generateBreak();
 			motor.Rphase = (top_V-bottom_V)/(top_I-bottom_I);
 			motor.Rphase = motor.Rphase*0.666f;
 			count_top = 0;
 			Vd_temp = foc_vars.Vdq[0]*0.1f; //Store the voltage required for the high setpoint, to use as an offset for the inductance
 			Vq_temp = 0;
 			foc_vars.Vdq[1] = 0;
+			generateEnable();
 		}
 
-		else if (PWM_cycles < 60001) {//Collect L variable
+		else if (PWM_cycles < 80001) {//Collect Ld variable
 //generateBreak();
-			static int a=2;
-			if(high_low==1){
-				if(a==0){
-					foc_vars.Vdq[0] = Vd_temp - Vinjected; //We offset the voltage to keep the rotor aligned
-					high_low = 0;
+			foc_vars.inject = 1; //flag to the SVPWM writer to inject at top
+			foc_vars.Vd_injectionV = 2.0f;
+			foc_vars.Vq_injectionV = 0.0f;
+			foc_vars.Vdq[0] = Vd_temp;
+			foc_vars.Vdq[1] = 0;
+
+			if(foc_vars.inject_high_low_now==1){
 					top_I_L = top_I_L+foc_vars.Idq[0];
 					count_top++;
-					a=2;
-				}
 			}
-
-			else if(high_low==0){
-				if(a==0){
-					foc_vars.Vdq[0] = Vd_temp + Vinjected;
-					high_low = 1;
-					bottom_I_L = bottom_I_L+foc_vars.Idq[0];
-					a=2;
-				}
+			else if(foc_vars.inject_high_low_now==0){
+				bottom_I_L = bottom_I_L+foc_vars.Idq[0];
 			}
-			a--;
-			writePWM();
 		}
-		else if(PWM_cycles < 60002){
+
+		else if(PWM_cycles < 80002){
 			generateBreak();
-			motor.Lphase = (Vinjected*foc_vars.pwm_period)/((top_I_L-bottom_I_L)/count_top);
+			motor.Lphase = (foc_vars.Vd_injectionV)/((top_I_L-bottom_I_L)/(count_top*foc_vars.pwm_period));
 			motor.Lphase = motor.Lphase*0.666f;//modify to be phase rather than phase:2phases
 			top_I_L = 0;
 			bottom_I_L = 0;
 			count_top = 0;
 		}
-		else if(PWM_cycles < 60003){
+		else if(PWM_cycles < 80003){
 phU_Enable();
 phV_Enable();
 phW_Enable();
 		}
-		else if (PWM_cycles < 70003) {//Collect Lq variable
+		else if (PWM_cycles < 100003) {//Collect Lq variable
 //			generateBreak();
-			static int b=2;
-			if(high_low==1){
-				if(b==0){
-					foc_vars.Vdq[0] = Vd_temp;  //We offset the voltage to keep the rotor aligned
-					foc_vars.Vdq[1] = -Vinjected;
-					high_low = 0;
+			foc_vars.Vd_injectionV = 0.0f;
+			foc_vars.Vq_injectionV = 2.0f;
+			foc_vars.inject = 1; //flag to the SVPWM writer to update at top
+			foc_vars.Vdq[0] = 0;//Vd_temp;
+			foc_vars.Vdq[1] = 0;
+
+			if(foc_vars.inject_high_low_now==1){
 					top_I_L = top_I_L+foc_vars.Idq[1];
 					count_top++;
-					b=2;
-				}
 			}
-
-			else if(high_low==0){
-				if(b==0){
-					foc_vars.Vdq[0] = Vd_temp;
-					foc_vars.Vdq[1] = Vinjected;
-					high_low = 1;
+			else if(foc_vars.inject_high_low_now==0){
 					bottom_I_L = bottom_I_L+foc_vars.Idq[1];
-					b=2;
-				}
 			}
-			b--;
-			writePWM();
 		}
 
 		else{
 			generateBreak();
-			motor.Lqphase = (Vinjected*2*foc_vars.pwm_period)/((top_I_L-bottom_I_L)/count_top);//Vinjected/(((top_I_L-bottom_I_L)/count_top)*(0.5*foc_vars.pwm_frequency));
+			motor.Lqphase = (foc_vars.Vq_injectionV)/((top_I_L-bottom_I_L)/(count_top*foc_vars.pwm_period));
 			motor.Lqphase = motor.Lqphase*0.5;//modify to be phase rather than phase:2phases
 			MotorState = MOTOR_STATE_IDLE;
 			motor.uncertainty = 0;
+			foc_vars.inject = 0; //flag to the SVPWM writer stop injecting at top
 
 	        calculateGains();
 	        // MotorState = MOTOR_STATE_IDLE;  //

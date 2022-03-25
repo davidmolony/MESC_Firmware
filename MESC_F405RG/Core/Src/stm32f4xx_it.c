@@ -252,6 +252,18 @@ void TIM1_UP_TIM10_IRQHandler(void)
   }
   else{
 	    foc_vars.IRQentry = htim7.Instance->CNT;
+	    if(foc_vars.inject){
+	    	if(foc_vars.inject_high_low_now == 0){
+	    		foc_vars.inject_high_low_now=1;
+	    		foc_vars.Vdq[0] = foc_vars.Vdq[0] + foc_vars.Vd_injectionV;
+	    		foc_vars.Vdq[1] = foc_vars.Vdq[1] + foc_vars.Vq_injectionV;
+	    	}
+	    	else if(foc_vars.inject_high_low_now==1){
+	    		foc_vars.inject_high_low_now=0;
+	    			    		foc_vars.Vdq[0] = foc_vars.Vdq[0]-foc_vars.Vd_injectionV;
+	    			    		foc_vars.Vdq[1] = foc_vars.Vdq[1]-foc_vars.Vq_injectionV;
+	    	}
+	    }
 	  writePWM();
 	    foc_vars.IRQexit = htim7.Instance->CNT - foc_vars.IRQentry;
   directionstat2 = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
