@@ -249,6 +249,7 @@ void TIM1_UP_TIM10_IRQHandler(void)
     fastLoop();
     foc_vars.IRQexit = htim7.Instance->CNT - foc_vars.IRQentry;
     directionstat = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
+    foc_vars.FLrun++;
   }
   else{
 	    foc_vars.IRQentry = htim7.Instance->CNT;
@@ -264,9 +265,11 @@ void TIM1_UP_TIM10_IRQHandler(void)
 	    			    		foc_vars.Vdq[1] = foc_vars.Vdq[1]-foc_vars.Vq_injectionV;
 	    	}
 	    }
+	    foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.angle_error;
 	  writePWM();
 	    foc_vars.IRQexit = htim7.Instance->CNT - foc_vars.IRQentry;
   directionstat2 = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
+  foc_vars.VFLrun++;
   }
   __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
 

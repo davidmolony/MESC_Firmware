@@ -122,6 +122,8 @@ int main(void)
     b_read_flash = 1;
     readData();
   }
+  b_read_flash = 0;
+
 HAL_TIM_Base_Start(&htim7); //tim7 is our general clock cycles counter to be used for e.g. timing the ISR length
 
   HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_1);

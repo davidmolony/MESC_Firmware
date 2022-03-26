@@ -108,12 +108,14 @@ typedef struct {
   uint16_t state[4];  // current state, last state, angle change occurred
   uint16_t hall_update;
   uint16_t BEMF_update;
-  uint16_t IRQentry;
-  uint16_t IRQexit;
+  uint32_t IRQentry;
+  uint32_t IRQexit;
   uint16_t inject;
   uint16_t inject_high_low_now;
   float Vd_injectionV;
   float Vq_injectionV;
+  uint32_t FLrun, VFLrun;
+  uint16_t angle_error;
 } MESCfoc_s;
 
 MESCfoc_s foc_vars;

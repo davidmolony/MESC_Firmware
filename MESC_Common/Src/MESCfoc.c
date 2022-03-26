@@ -34,8 +34,10 @@
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
+
 #ifdef STM32F303xC
 extern OPAMP_HandleTypeDef hopamp1, hopamp2, hopamp3;
+extern TIM_HandleTypeDef htim17;
 #endif
 extern ADC_HandleTypeDef hadc1, hadc2, hadc3, hadc4;
 #ifdef STM32F303xC
@@ -165,7 +167,9 @@ void MESCInit() {
 static int current_hall_state;
 
 void fastLoop() {
+
   current_hall_state = getHallState();
+
   // Call this directly from the ADC callback IRQ
   ADCConversion();  // First thing we ever want to do is convert the ADC values
                     // to real, useable numbers.
@@ -341,9 +345,10 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
 
   void ADCConversion() {
-    getRawADC();
 #ifdef STM32F405xx
-    VICheck();  // The f303 now uses the analog watchdog to process the over
+	    getRawADC();
+
+	  VICheck();  // The f303 now uses the analog watchdog to process the over
                 // limits
                 // The f405 currently does not...
 #endif
@@ -428,8 +433,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
           0.33333f * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
           0.33333f * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
       foc_vars.Iab[1] =
-    	sqrt3_on_2 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
-		sqrt3_on_2 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+    	one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
+		one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
     }
 
     // Park
@@ -536,7 +541,10 @@ void VICheck() {  // Check currents, voltages are within panic limits
     }
 
     angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta, flux_linked_alpha)) - 32768;
-    angle_error = angle - foc_vars.FOCAngle;
+    foc_vars.angle_error =20;// (angle - foc_vars.FOCAngle)>>1;
+//    if(abs(foc_vars.angle_error<2000)){
+//    	foc_vars.angle_error = 0;
+//    }
     foc_vars.FOCAngle = angle;
   }
 
@@ -749,12 +757,12 @@ void VICheck() {  // Check currents, voltages are within panic limits
 	                        foc_vars.sincosangle[0] * foc_vars.Vdq[1];
 	      foc_vars.Vab[1] = foc_vars.sincosangle[0] * foc_vars.Vdq[0] +
 	                        foc_vars.sincosangle[1] * foc_vars.Vdq[1];
-	      foc_vars.Vab[2] = 0;
+	      foc_vars.Vab[2] = 0.0f;
 	      // clang-format off
 
 	      // Inverse Clark transform - power variant
 	  	foc_vars.inverterVoltage[0] = foc_vars.Vab[0];
-	  	foc_vars.inverterVoltage[1] = -0.5*foc_vars.inverterVoltage[0];
+	  	foc_vars.inverterVoltage[1] = -0.5f*foc_vars.inverterVoltage[0];
 	  	foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[1] - sqrt3_on_2 * foc_vars.Vab[1];
 	  	foc_vars.inverterVoltage[1] = foc_vars.inverterVoltage[1] + sqrt3_on_2 * foc_vars.Vab[1];
 	      // clang-format on
@@ -888,7 +896,7 @@ static int PWM_cycles = 0;
 		else if (PWM_cycles < 80001) {//Collect Ld variable
 //generateBreak();
 			foc_vars.inject = 1; //flag to the SVPWM writer to inject at top
-			foc_vars.Vd_injectionV = 2.0f;
+			foc_vars.Vd_injectionV = 8.0f;
 			foc_vars.Vq_injectionV = 0.0f;
 			foc_vars.Vdq[0] = Vd_temp;
 			foc_vars.Vdq[1] = 0;
@@ -901,6 +909,7 @@ static int PWM_cycles = 0;
 				bottom_I_L = bottom_I_L+foc_vars.Idq[0];
 			}
 		}
+
 
 		else if(PWM_cycles < 80002){
 			generateBreak();
@@ -918,7 +927,7 @@ phW_Enable();
 		else if (PWM_cycles < 100003) {//Collect Lq variable
 //			generateBreak();
 			foc_vars.Vd_injectionV = 0.0f;
-			foc_vars.Vq_injectionV = 2.0f;
+			foc_vars.Vq_injectionV = 12.0f;
 			foc_vars.inject = 1; //flag to the SVPWM writer to update at top
 			foc_vars.Vdq[0] = 0;//Vd_temp;
 			foc_vars.Vdq[1] = 0;

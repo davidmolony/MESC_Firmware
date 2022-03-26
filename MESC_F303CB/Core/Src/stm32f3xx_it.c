@@ -44,6 +44,8 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
 extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim17;
+
 extern float angular_velocity;
 uint16_t previous_hall_angle;
 int IRQ_entry;
@@ -231,15 +233,15 @@ void USB_LP_CAN_RX0_IRQHandler(void)
 void TIM1_UP_TIM16_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
-    if (htim1.Instance->CNT > 512)
+	if (htim1.Instance->CNT > 512)
     {
-        IRQ_entry = htim1.Instance->CNT;
+	    foc_vars.IRQentry = htim17.Instance->CNT;
         fastLoop();
-        IRQ_exit = htim1.Instance->CNT;
+	    foc_vars.IRQexit = htim17.Instance->CNT - foc_vars.IRQentry;
     }
-
+__HAL_TIM_CLEAR_IT(&htim1,TIM_IT_UPDATE);
   /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim1);
+  //HAL_TIM_IRQHandler(&htim1);
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
 
   /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
