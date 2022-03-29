@@ -244,33 +244,9 @@ uint32_t directionstat2;
 void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
-  if (htim1.Instance->CNT > 512) {
-    foc_vars.IRQentry = htim7.Instance->CNT;
-    fastLoop();
-    foc_vars.IRQexit = htim7.Instance->CNT - foc_vars.IRQentry;
-    directionstat = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
-    foc_vars.FLrun++;
-  }
-  else{
-	    foc_vars.IRQentry = htim7.Instance->CNT;
-	    if(foc_vars.inject){
-	    	if(foc_vars.inject_high_low_now == 0){
-	    		foc_vars.inject_high_low_now=1;
-	    		foc_vars.Vdq[0] = foc_vars.Vdq[0] + foc_vars.Vd_injectionV;
-	    		foc_vars.Vdq[1] = foc_vars.Vdq[1] + foc_vars.Vq_injectionV;
-	    	}
-	    	else if(foc_vars.inject_high_low_now==1){
-	    		foc_vars.inject_high_low_now=0;
-	    			    		foc_vars.Vdq[0] = foc_vars.Vdq[0]-foc_vars.Vd_injectionV;
-	    			    		foc_vars.Vdq[1] = foc_vars.Vdq[1]-foc_vars.Vq_injectionV;
-	    	}
-	    }
-	    foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.angle_error;
-	  writePWM();
-	    foc_vars.IRQexit = htim7.Instance->CNT - foc_vars.IRQentry;
-  directionstat2 = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
-  foc_vars.VFLrun++;
-  }
+	MESC_PWM_IRQ_handler();
+	foc_vars.IRQexit = htim7.Instance->CNT - foc_vars.IRQentry;
+	directionstat = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
   __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
 
   /* USER CODE END TIM1_UP_TIM10_IRQn 0 */

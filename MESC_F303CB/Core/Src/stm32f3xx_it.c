@@ -233,12 +233,11 @@ void USB_LP_CAN_RX0_IRQHandler(void)
 void TIM1_UP_TIM16_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
-	if (htim1.Instance->CNT > 512)
-    {
-	    foc_vars.IRQentry = htim17.Instance->CNT;
-        fastLoop();
-	    foc_vars.IRQexit = htim17.Instance->CNT - foc_vars.IRQentry;
-    }
+    foc_vars.IRQentry = htim17.Instance->CNT;
+
+	MESC_PWM_IRQ_handler();
+	foc_vars.IRQexit = htim17.Instance->CNT - foc_vars.IRQentry;
+
 __HAL_TIM_CLEAR_IT(&htim1,TIM_IT_UPDATE);
   /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
   //HAL_TIM_IRQHandler(&htim1);

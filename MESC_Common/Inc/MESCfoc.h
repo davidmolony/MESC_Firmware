@@ -149,7 +149,9 @@ foc_measurement_t measurement_buffers;  // fixme: floating function prototype
 /* Function prototypes -----------------------------------------------*/
 
 void MESCInit();
+void MESC_PWM_IRQ_handler();
 void fastLoop();
+void hyperLoop();
 void VICheck();
 void ADCConversion();  // Roll this into the V_I_Check? less branching, can
                        // probably reduce no.ops and needs doing every cycle

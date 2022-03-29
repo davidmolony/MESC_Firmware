@@ -34,15 +34,25 @@
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef debugtim;
+
+#ifdef STM32F405xx
+extern TIM_HandleTypeDef htim7;
+#define debugtim htim7
+#endif
 
 #ifdef STM32F303xC
 extern OPAMP_HandleTypeDef hopamp1, hopamp2, hopamp3;
 extern TIM_HandleTypeDef htim17;
+#define debugtim htim17
 #endif
+
 extern ADC_HandleTypeDef hadc1, hadc2, hadc3, hadc4;
 #ifdef STM32F303xC
 extern COMP_HandleTypeDef hcomp1, hcomp2, hcomp4, hcomp7;
 #endif
+
+
 float one_on_sqrt6 = 0.408248;
 float one_on_sqrt3 = 0.577350;
 float one_on_sqrt2 = 0.707107;
@@ -57,8 +67,11 @@ uint8_t b_write_flash = 0;
 uint8_t b_read_flash = 0;
 static float flux_linked_alpha = 0.00001f;
 static float flux_linked_beta = 0.00001f;
+
+
 void MESCInit() {
 #ifdef STM32F303xC
+	HAL_TIM_Base_Start(&htim17);
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
   HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
   HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
@@ -141,6 +154,8 @@ void MESCInit() {
 
 #endif
 #ifdef STM32F405xx
+  HAL_TIM_Base_Start(&htim7); //tim7 is our general clock cycles counter to be used for e.g. timing the ISR length
+
   HAL_ADCEx_InjectedStart_IT(&hadc1);
   HAL_ADCEx_InjectedStart(&hadc2);
   HAL_ADCEx_InjectedStart(&hadc3);
@@ -164,15 +179,38 @@ void MESCInit() {
   // interrupt
 }
 
+//This should be the only function needed to be added into the PWM interrupt for MESC to run
+//Ensure that it is followed by the clear timer update interrupt
+MESC_PWM_IRQ_handler(){
+	  if (htim1.Instance->CNT > 512) {
+	    foc_vars.IRQentry = debugtim.Instance->CNT;
+	    fastLoop();
+	    foc_vars.IRQexit = debugtim.Instance->CNT - foc_vars.IRQentry;
+	    foc_vars.FLrun++;
+	  }
+	  else{
+		foc_vars.IRQentry = debugtim.Instance->CNT;
+		hyperLoop();
+		foc_vars.IRQexit = debugtim.Instance->CNT - foc_vars.IRQentry;
+		foc_vars.VFLrun++;
+	  }
+}
+
+//The fastloop runs at PWM timer counter top, which is when the new ADC current
+//readings arrive.
+//The first few clock cycles of the interrupt should not use the adc readings,
+//since the currents require approximately 1us = 144 clock cycles (f405) and 72
+//clock cycles (f303) to convert.
+
 static int current_hall_state;
 
 void fastLoop() {
-
-  current_hall_state = getHallState();
-
   // Call this directly from the ADC callback IRQ
-  ADCConversion();  // First thing we ever want to do is convert the ADC values
-                    // to real, useable numbers.
+  current_hall_state = getHallState();
+  // First thing we ever want to do is convert the ADC values
+  // to real, useable numbers.
+  ADCConversion();
+  adc_conv_end = htim1.Instance->CNT; //track the ADC conversion time
 
   switch (MotorState) {
     case MOTOR_STATE_RUN:
@@ -305,6 +343,28 @@ void fastLoop() {
   }
 }
 
+//The hyperloop runs at PWM timer bottom, when the PWM is in V7 (all high)
+//In this loop, we write the values of the PWM to be updated at the next update event (timer top)
+//This is where we want to inject signals for measurement so that the next signal
+//level takes affect right after the ADC reading
+//In normal run mode, we want to increment the angle and write the next PWM values
+void hyperLoop(){
+    if(foc_vars.inject){
+    	if(foc_vars.inject_high_low_now == 0){
+    		foc_vars.inject_high_low_now=1;
+    		foc_vars.Vdq[0] = foc_vars.Vdq[0] + foc_vars.Vd_injectionV;
+    		foc_vars.Vdq[1] = foc_vars.Vdq[1] + foc_vars.Vq_injectionV;
+    	}
+    	else if(foc_vars.inject_high_low_now==1){
+    		foc_vars.inject_high_low_now=0;
+    		foc_vars.Vdq[0] = foc_vars.Vdq[0]-foc_vars.Vd_injectionV;
+    		foc_vars.Vdq[1] = foc_vars.Vdq[1]-foc_vars.Vq_injectionV;
+    	}
+    }
+    foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.angle_error;
+    writePWM();
+}
+
 #define MAX_ERROR_COUNT 3
 
 // TODO: refactor this function. Is this function called by DMA interrupt?
@@ -343,6 +403,10 @@ void VICheck() {  // Check currents, voltages are within panic limits
         errorCount = 0;
       }
   }
+
+
+
+
 
   void ADCConversion() {
 #ifdef STM32F405xx
@@ -444,63 +508,9 @@ void VICheck() {  // Check currents, voltages are within panic limits
                       foc_vars.sincosangle[0] * foc_vars.Iab[0];
     // clang-format on
 
-    adc_conv_end = htim1.Instance->CNT;
   }
-  /////////////////////////////////////////////////////////////////////////////
-  ////////Hall Sensor Implementation///////////////////////////////////////////
-  static float dir = 1;
-  static uint16_t current_hall_angle;
-  static int last_hall_state;
-  static uint16_t last_hall_angle;
-  static float ticks_since_last_observer_change = 65535;
-  static float last_observer_period = 65536;
-  static float one_on_last_observer_period = 1;
-  float angular_velocity = 0;
-  static float angle_step = 0;
-
-  static int hall_error = 0;
-  void hallAngleEstimator() {  // Implementation using the mid point of the hall
-                               // sensor angles, which should be much more
-                               // reliable to generate that the edges
-
-    if (current_hall_state != last_hall_state) {
-      foc_vars.hall_update = 1;
-      if (current_hall_state == 0) {
-        MotorState = MOTOR_STATE_ERROR;
-        MotorError = MOTOR_ERROR_HALL0;
-      } else if (current_hall_state == 7) {
-        MotorState = MOTOR_STATE_ERROR;
-        MotorError = MOTOR_ERROR_HALL7;
-      }
-      //////////Implement the Hall table here, but the vector can be dynamically
-      /// created/filled by another function/////////////
-      current_hall_angle = foc_vars.hall_table[current_hall_state - 1][2];
-
-      // Calculate Hall error
-
-      uint16_t a;
-      if ((a = current_hall_angle - last_hall_angle) < 32000)  // Forwards
-      {
-        hall_error =
-            foc_vars.FOCAngle - foc_vars.hall_table[current_hall_state - 1][0];
-        dir = 1.0f;
-        // foc_vars.HallAngle = foc_vars.HallAngle - 5460;
-      } else  // Backwards
-      {
-        hall_error =
-            foc_vars.FOCAngle - foc_vars.hall_table[current_hall_state - 1][1];
-        dir = -1.0f;
-        // foc_vars.HallAngle = foc_vars.HallAngle + 5460;
-      }
-      if (hall_error > 32000) {
-        hall_error = hall_error - 65536;
-      }
-      if (hall_error < -32000) {
-        hall_error = hall_error + 65536;
-      }
-    }
-  }
-
+/////////////////////////////////////////////////////////////////////////////
+//SENSORLESS IMPLEMENTATION//////////////////////////////////////////////////
   static float Ia_last = 0;
   static float Ib_last = 0;
   static uint16_t angle = 0;
@@ -541,11 +551,11 @@ void VICheck() {  // Check currents, voltages are within panic limits
     }
 
     angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta, flux_linked_alpha)) - 32768;
-    foc_vars.angle_error =20;// (angle - foc_vars.FOCAngle)>>1;
+    foc_vars.angle_error =0;//#20;// (angle - foc_vars.FOCAngle)>>1;
 //    if(abs(foc_vars.angle_error<2000)){
 //    	foc_vars.angle_error = 0;
 //    }
-    foc_vars.FOCAngle = angle;
+    foc_vars.FOCAngle = 0;//angle;
   }
 
   // fast_atan2 based on https://math.stackexchange.com/a/1105038/81278
@@ -578,27 +588,61 @@ void VICheck() {  // Check currents, voltages are within panic limits
     return r;
   }
 
-  static float last_anglestep;
-  static float observerkp = 0.005f;
-  static float observerki = 0.01f;
+  /////////////////////////////////////////////////////////////////////////////
+    ////////Hall Sensor Implementation///////////////////////////////////////////
+    static float dir = 1;
+    static uint16_t current_hall_angle;
+    static int last_hall_state;
+    static uint16_t last_hall_angle;
+    static float ticks_since_last_observer_change = 65535;
+    static float last_observer_period = 65536;
+    static float one_on_last_observer_period = 1;
+    float angular_velocity = 0;
+    static float angle_step = 0;
 
-  void angleObservernew() {
-    // This version of the observer will eliminate all divide functions and
-    // correct based on a time rather than per cycle
-    if (foc_vars.hall_update == 1) {
-      foc_vars.hall_update = 0;
-      ticks_since_last_observer_change = ticks_since_last_observer_change + 1;
-    }
-    angle_step = angle_step - observerki * observerkp * hall_error;
-    foc_vars.FOCAngle =
-        foc_vars.FOCAngle +
-        (uint16_t)(angle_step - observerkp * hall_error * angle_step * 0.0005f);
+    static int hall_error = 0;
+    void hallAngleEstimator() {  // Implementation using the mid point of the hall
+                                 // sensor angles, which should be much more
+                                 // reliable to generate that the edges
 
-    if (ticks_since_last_observer_change > 3000.0f) {
-      ticks_since_last_observer_change = 1501.0f;
-      foc_vars.FOCAngle = current_hall_angle;
+      if (current_hall_state != last_hall_state) {
+        foc_vars.hall_update = 1;
+        if (current_hall_state == 0) {
+          MotorState = MOTOR_STATE_ERROR;
+          MotorError = MOTOR_ERROR_HALL0;
+        } else if (current_hall_state == 7) {
+          MotorState = MOTOR_STATE_ERROR;
+          MotorError = MOTOR_ERROR_HALL7;
+        }
+        //////////Implement the Hall table here, but the vector can be dynamically
+        /// created/filled by another function/////////////
+        current_hall_angle = foc_vars.hall_table[current_hall_state - 1][2];
+
+        // Calculate Hall error
+
+        uint16_t a;
+        if ((a = current_hall_angle - last_hall_angle) < 32000)  // Forwards
+        {
+          hall_error =
+              foc_vars.FOCAngle - foc_vars.hall_table[current_hall_state - 1][0];
+          dir = 1.0f;
+          // foc_vars.HallAngle = foc_vars.HallAngle - 5460;
+        } else  // Backwards
+        {
+          hall_error =
+              foc_vars.FOCAngle - foc_vars.hall_table[current_hall_state - 1][1];
+          dir = -1.0f;
+          // foc_vars.HallAngle = foc_vars.HallAngle + 5460;
+        }
+        if (hall_error > 32000) {
+          hall_error = hall_error - 65536;
+        }
+        if (hall_error < -32000) {
+          hall_error = hall_error + 65536;
+        }
+      }
     }
-  }
+
   void angleObserver() {
     // This function should take the available data (hall change, BEMF crossing
     // etc...) and process it with a PLL type mechanism
@@ -822,13 +866,15 @@ void VICheck() {  // Check currents, voltages are within panic limits
   static float top_I;
   static float bottom_I;
   static float count_top;
+  static float count_topq;
   static float count_bottom;
   static float Vd_temp;
   static float Vq_temp;
   static float Vinjected = 2.0f;
-  static int high_low = 1;
   static float top_I_L;
   static float bottom_I_L;
+  static float top_I_Lq;
+  static float bottom_I_Lq;
 
 void measureResistance2(){
 static int PWM_cycles = 0;
@@ -913,11 +959,12 @@ static int PWM_cycles = 0;
 
 		else if(PWM_cycles < 80002){
 			generateBreak();
-			motor.Lphase = (foc_vars.Vd_injectionV)/((top_I_L-bottom_I_L)/(count_top*foc_vars.pwm_period));
+			motor.Lphase = fabs((foc_vars.Vd_injectionV)/((top_I_L-bottom_I_L)/(count_top*foc_vars.pwm_period)));
 			motor.Lphase = motor.Lphase*0.666f;//modify to be phase rather than phase:2phases
-			top_I_L = 0;
-			bottom_I_L = 0;
-			count_top = 0;
+			top_I_Lq = 0;
+			bottom_I_Lq = 0;
+			count_topq = 0;
+			__NOP(); //Put a break point on it...
 		}
 		else if(PWM_cycles < 80003){
 phU_Enable();
@@ -933,22 +980,24 @@ phW_Enable();
 			foc_vars.Vdq[1] = 0;
 
 			if(foc_vars.inject_high_low_now==1){
-					top_I_L = top_I_L+foc_vars.Idq[1];
-					count_top++;
+					top_I_Lq = top_I_Lq+foc_vars.Idq[1];
+					count_topq++;
 			}
 			else if(foc_vars.inject_high_low_now==0){
-					bottom_I_L = bottom_I_L+foc_vars.Idq[1];
+					bottom_I_Lq = bottom_I_Lq+foc_vars.Idq[1];
 			}
 		}
 
 		else{
 			generateBreak();
-			motor.Lqphase = (foc_vars.Vq_injectionV)/((top_I_L-bottom_I_L)/(count_top*foc_vars.pwm_period));
+			motor.Lqphase = (foc_vars.Vq_injectionV)/((top_I_Lq-bottom_I_Lq)/(count_top*foc_vars.pwm_period));
 			motor.Lqphase = motor.Lqphase*0.5;//modify to be phase rather than phase:2phases
 			MotorState = MOTOR_STATE_IDLE;
 			motor.uncertainty = 0;
-			foc_vars.inject = 0; //flag to the SVPWM writer stop injecting at top
 
+			foc_vars.inject = 1; //flag to the SVPWM writer stop injecting at top
+			foc_vars.Vd_injectionV = 6.0f;
+			foc_vars.Vq_injectionV = 0.0f;
 	        calculateGains();
 	        // MotorState = MOTOR_STATE_IDLE;  //
 	        MotorState = MOTOR_STATE_DETECTING;
@@ -1496,6 +1545,12 @@ phW_Enable();
       foc_vars.Idq_req[1] =
           g_hw_setup.battMaxPower /
           (fabs(foc_vars.Vdq_smoothed[1]) * foc_vars.Vdqres_to_Vdq);
+    }
+
+    //Unpuc the observer
+    if(flux_linked_alpha*flux_linked_alpha + flux_linked_beta*flux_linked_beta < 0.25*motor.motor_flux*motor.motor_flux){
+    	flux_linked_alpha = 0.5*motor.motor_flux;
+    	flux_linked_beta = 0.5*motor.motor_flux;
     }
   }
   void MESCTrack() {

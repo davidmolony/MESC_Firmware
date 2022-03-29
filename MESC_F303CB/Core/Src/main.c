@@ -186,11 +186,13 @@ int main(void)
         b_read_flash = 1;
         readData();
     }
+    b_read_flash = 0;
+    motor.uncertainty = 1;
+
     // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
 
     htim1.Instance->ARR = 1024; // PWM
 
-    HAL_TIM_Base_Start(&htim17);
 
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
     HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);
