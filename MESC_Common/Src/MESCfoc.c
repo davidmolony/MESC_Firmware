@@ -52,7 +52,6 @@ extern ADC_HandleTypeDef hadc1, hadc2, hadc3, hadc4;
 extern COMP_HandleTypeDef hcomp1, hcomp2, hcomp4, hcomp7;
 #endif
 
-
 float one_on_sqrt6 = 0.408248;
 float one_on_sqrt3 = 0.577350;
 float one_on_sqrt2 = 0.707107;
@@ -68,10 +67,9 @@ uint8_t b_read_flash = 0;
 static float flux_linked_alpha = 0.00001f;
 static float flux_linked_beta = 0.00001f;
 
-
 void MESCInit() {
 #ifdef STM32F303xC
-	HAL_TIM_Base_Start(&htim17);
+  HAL_TIM_Base_Start(&htim17);
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
   HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
   HAL_ADCEx_Calibration_Start(&hadc3, ADC_SINGLE_ENDED);
@@ -154,7 +152,8 @@ void MESCInit() {
 
 #endif
 #ifdef STM32F405xx
-  HAL_TIM_Base_Start(&htim7); //tim7 is our general clock cycles counter to be used for e.g. timing the ISR length
+  HAL_TIM_Base_Start(&htim7);  // tim7 is our general clock cycles counter to be
+                               // used for e.g. timing the ISR length
 
   HAL_ADCEx_InjectedStart_IT(&hadc1);
   HAL_ADCEx_InjectedStart(&hadc2);
@@ -179,28 +178,28 @@ void MESCInit() {
   // interrupt
 }
 
-//This should be the only function needed to be added into the PWM interrupt for MESC to run
-//Ensure that it is followed by the clear timer update interrupt
-MESC_PWM_IRQ_handler(){
-	  if (htim1.Instance->CNT > 512) {
-	    foc_vars.IRQentry = debugtim.Instance->CNT;
-	    fastLoop();
-	    foc_vars.IRQexit = debugtim.Instance->CNT - foc_vars.IRQentry;
-	    foc_vars.FLrun++;
-	  }
-	  else{
-		foc_vars.IRQentry = debugtim.Instance->CNT;
-		hyperLoop();
-		foc_vars.IRQexit = debugtim.Instance->CNT - foc_vars.IRQentry;
-		foc_vars.VFLrun++;
-	  }
+// This should be the only function needed to be added into the PWM interrupt
+// for MESC to run Ensure that it is followed by the clear timer update
+// interrupt
+MESC_PWM_IRQ_handler() {
+  if (htim1.Instance->CNT > 512) {
+    foc_vars.IRQentry = debugtim.Instance->CNT;
+    fastLoop();
+    foc_vars.IRQexit = debugtim.Instance->CNT - foc_vars.IRQentry;
+    foc_vars.FLrun++;
+  } else {
+    foc_vars.IRQentry = debugtim.Instance->CNT;
+    hyperLoop();
+    foc_vars.IRQexit = debugtim.Instance->CNT - foc_vars.IRQentry;
+    foc_vars.VFLrun++;
+  }
 }
 
-//The fastloop runs at PWM timer counter top, which is when the new ADC current
-//readings arrive.
-//The first few clock cycles of the interrupt should not use the adc readings,
-//since the currents require approximately 1us = 144 clock cycles (f405) and 72
-//clock cycles (f303) to convert.
+// The fastloop runs at PWM timer counter top, which is when the new ADC current
+// readings arrive.
+// The first few clock cycles of the interrupt should not use the adc readings,
+// since the currents require approximately 1us = 144 clock cycles (f405) and 72
+// clock cycles (f303) to convert.
 
 static int current_hall_state;
 
@@ -210,7 +209,7 @@ void fastLoop() {
   // First thing we ever want to do is convert the ADC values
   // to real, useable numbers.
   ADCConversion();
-  adc_conv_end = htim1.Instance->CNT; //track the ADC conversion time
+  adc_conv_end = htim1.Instance->CNT;  // track the ADC conversion time
 
   switch (MotorState) {
     case MOTOR_STATE_RUN:
@@ -288,12 +287,12 @@ void fastLoop() {
         b_read_flash = 0;
         break;
       } else {
-
       }
-      if (motor.uncertainty == 1) {  // Every PWM cycle we enter this function until
-                                // the resistance measurement has converged at a
-                                // good value. Once the measurement is complete,
-                                // Rphase is set, and this is no longer called
+      if (motor.uncertainty ==
+          1) {  // Every PWM cycle we enter this function until
+                // the resistance measurement has converged at a
+                // good value. Once the measurement is complete,
+                // Rphase is set, and this is no longer called
         if (foc_vars.initing == 0) {
           measureResistance2();
         }
@@ -343,26 +342,53 @@ void fastLoop() {
   }
 }
 
-//The hyperloop runs at PWM timer bottom, when the PWM is in V7 (all high)
-//In this loop, we write the values of the PWM to be updated at the next update event (timer top)
-//This is where we want to inject signals for measurement so that the next signal
-//level takes affect right after the ADC reading
-//In normal run mode, we want to increment the angle and write the next PWM values
-void hyperLoop(){
-    if(foc_vars.inject){
-    	if(foc_vars.inject_high_low_now == 0){
-    		foc_vars.inject_high_low_now=1;
-    		foc_vars.Vdq[0] = foc_vars.Vdq[0] + foc_vars.Vd_injectionV;
-    		foc_vars.Vdq[1] = foc_vars.Vdq[1] + foc_vars.Vq_injectionV;
-    	}
-    	else if(foc_vars.inject_high_low_now==1){
-    		foc_vars.inject_high_low_now=0;
-    		foc_vars.Vdq[0] = foc_vars.Vdq[0]-foc_vars.Vd_injectionV;
-    		foc_vars.Vdq[1] = foc_vars.Vdq[1]-foc_vars.Vq_injectionV;
-    	}
+// The hyperloop runs at PWM timer bottom, when the PWM is in V7 (all high)
+// In this loop, we write the values of the PWM to be updated at the next update
+// event (timer top) This is where we want to inject signals for measurement so
+// that the next signal level takes affect right after the ADC reading In normal
+// run mode, we want to increment the angle and write the next PWM values
+static float Idq[2][2] = {{0.0f, 0.0f}, {0.0f, 0.0f}};
+static float dIdq[2] = {0.0f, 0.0f};
+static float IIR[2] = {0.0f, 0.0f};
+void hyperLoop() {
+  if (foc_vars.inject) {
+    if (foc_vars.inject_high_low_now == 0) {
+      foc_vars.inject_high_low_now = 1;
+      foc_vars.Vdq[0] = foc_vars.Vdq[0] + foc_vars.Vd_injectionV;
+      foc_vars.Vdq[1] = foc_vars.Vdq[1] + foc_vars.Vq_injectionV;
+      Idq[0][0] = foc_vars.Idq[0];
+      Idq[0][1] = foc_vars.Idq[1];
+    } else if (foc_vars.inject_high_low_now == 1) {
+      foc_vars.inject_high_low_now = 0;
+      foc_vars.Vdq[0] = foc_vars.Vdq[0] - foc_vars.Vd_injectionV;
+      foc_vars.Vdq[1] = foc_vars.Vdq[1] - foc_vars.Vq_injectionV;
+      Idq[1][0] = foc_vars.Idq[0];
+      Idq[1][1] = foc_vars.Idq[1];
     }
-    foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.angle_error;
-    writePWM();
+  }
+
+  dIdq[0] = fabsf(Idq[0][0] - Idq[1][0]);
+  dIdq[1] = (Idq[0][1] - Idq[1][1]);
+
+  static float ffactor = 32.0f;
+
+  IIR[0] *= (ffactor - 1.0f);
+  IIR[1] *= (ffactor - 1.0f);
+
+  IIR[0] += dIdq[0];
+  IIR[1] += dIdq[1];
+
+  IIR[0] /= ffactor;
+  IIR[1] /= ffactor;
+  if (MotorState == MOTOR_STATE_RUN) {
+    if (IIR[1] < 0.0f) {
+      foc_vars.FOCAngle -= 100;
+    } else {
+      foc_vars.FOCAngle += 100;
+    }
+  }
+  // foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.angle_error;
+  writePWM();
 }
 
 #define MAX_ERROR_COUNT 3
@@ -404,15 +430,11 @@ void VICheck() {  // Check currents, voltages are within panic limits
       }
   }
 
-
-
-
-
   void ADCConversion() {
 #ifdef STM32F405xx
-	    getRawADC();
+    getRawADC();
 
-	  VICheck();  // The f303 now uses the analog watchdog to process the over
+    VICheck();  // The f303 now uses the analog watchdog to process the over
                 // limits
                 // The f405 currently does not...
 #endif
@@ -468,28 +490,29 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // Here we select the phases that have the lowest duty cycle to us, since
     // they should have the best current measurements
     if (htim1.Instance->CCR1 > foc_vars.ADC_duty_threshold) {
-    	// Clark using phase V and W
+      // Clark using phase V and W
       foc_vars.Iab[0] = -measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
                         measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
       foc_vars.Iab[1] =
           one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
           one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
-    } else if(htim1.Instance->CCR2 > foc_vars.ADC_duty_threshold) {
-        // Clark using phase U and W
-          foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
-          foc_vars.Iab[1] =
-              -one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
-              two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
-    } else if(htim1.Instance->CCR3 > foc_vars.ADC_duty_threshold) {
-    	//        measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO] =
-    	//        			- measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
-    	//    				measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO];
-    	    	// Clark using phase U and V
-    	      foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
-    	      foc_vars.Iab[1] =
-    	          two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] +
-    	          one_on_sqrt3 * two_on_sqrt3 *
-    	              measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
+    } else if (htim1.Instance->CCR2 > foc_vars.ADC_duty_threshold) {
+      // Clark using phase U and W
+      foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
+      foc_vars.Iab[1] =
+          -one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
+          two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+    } else if (htim1.Instance->CCR3 > foc_vars.ADC_duty_threshold) {
+      //        measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO] =
+      //        			-
+      //        measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
+      //    				measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO];
+      // Clark using phase U and V
+      foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
+      foc_vars.Iab[1] =
+          two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] +
+          one_on_sqrt3 * two_on_sqrt3 *
+              measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
     } else {
       // Do the full transform
       foc_vars.Iab[0] =
@@ -497,8 +520,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
           0.33333f * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
           0.33333f * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
       foc_vars.Iab[1] =
-    	one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
-		one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+          one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
+          one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
     }
 
     // Park
@@ -507,33 +530,37 @@ void VICheck() {  // Check currents, voltages are within panic limits
     foc_vars.Idq[1] = foc_vars.sincosangle[1] * foc_vars.Iab[1] -
                       foc_vars.sincosangle[0] * foc_vars.Iab[0];
     // clang-format on
-
   }
-/////////////////////////////////////////////////////////////////////////////
-//SENSORLESS IMPLEMENTATION//////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////
+  // SENSORLESS IMPLEMENTATION//////////////////////////////////////////////////
   static float Ia_last = 0;
   static float Ib_last = 0;
   static uint16_t angle = 0;
   static uint16_t angle_error = 0;
 
   void flux_observer() {
-    //LICENCE NOTE:
-	  //This function deviates slightly from the BSD 3 clause licence.
-	  //The work here is entirely original to the MESC FOC project, and not based on any appnotes, or borrowed from another project.
-	  //This work is free to use, as granted in BSD 3 clause, with the exception that this note must be included in
-	  //where this code is implemented/modified to use your variable names, structures containing variables
-	  //or other minor rearrangements in place of the original names I have chosen, and credit to David Molony
-	  //as the original author must be noted.
+    // LICENCE NOTE:
+    // This function deviates slightly from the BSD 3 clause licence.
+    // The work here is entirely original to the MESC FOC project, and not based
+    // on any appnotes, or borrowed from another project. This work is free to
+    // use, as granted in BSD 3 clause, with the exception that this note must
+    // be included in where this code is implemented/modified to use your
+    // variable names, structures containing variables or other minor
+    // rearrangements in place of the original names I have chosen, and credit
+    // to David Molony as the original author must be noted.
 
-	  //With thanks to C0d3b453 for generally keeping this compiling and Elwin for producing data comparing the output to a 16bit encoder.
+    // With thanks to C0d3b453 for generally keeping this compiling and Elwin
+    // for producing data comparing the output to a 16bit encoder.
 
-	// This function we are going to integrate Va-Ri and clamp it positively and
+    // This function we are going to integrate Va-Ri and clamp it positively and
     // negatively the angle is then the arctangent of the integrals shifted 180
     // degrees
-    flux_linked_alpha = flux_linked_alpha + foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0] -
-            motor.Lphase * (foc_vars.Iab[0] - Ia_last) * foc_vars.pwm_frequency;
-    flux_linked_beta = flux_linked_beta + foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1] -
-            motor.Lphase * (foc_vars.Iab[1] - Ib_last) * foc_vars.pwm_frequency;
+    flux_linked_alpha =
+        flux_linked_alpha + foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0] -
+        motor.Lphase * (foc_vars.Iab[0] - Ia_last) * foc_vars.pwm_frequency;
+    flux_linked_beta =
+        flux_linked_beta + foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1] -
+        motor.Lphase * (foc_vars.Iab[1] - Ib_last) * foc_vars.pwm_frequency;
     Ia_last = foc_vars.Iab[0];
     Ib_last = foc_vars.Iab[1];
 
@@ -550,12 +577,12 @@ void VICheck() {  // Check currents, voltages are within panic limits
       flux_linked_beta = -motor.motor_flux;
     }
 
-    angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta, flux_linked_alpha)) - 32768;
-    foc_vars.angle_error =0;//#20;// (angle - foc_vars.FOCAngle)>>1;
-//    if(abs(foc_vars.angle_error<2000)){
-//    	foc_vars.angle_error = 0;
-//    }
-    foc_vars.FOCAngle = 0;//angle;
+    angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta,
+                                                        flux_linked_alpha)) -
+            32768;
+    //    if(abs(foc_vars.angle_error<2000)){
+    //    	foc_vars.angle_error = 0;
+    //    }/
   }
 
   // fast_atan2 based on https://math.stackexchange.com/a/1105038/81278
@@ -589,59 +616,59 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
 
   /////////////////////////////////////////////////////////////////////////////
-    ////////Hall Sensor Implementation///////////////////////////////////////////
-    static float dir = 1;
-    static uint16_t current_hall_angle;
-    static int last_hall_state;
-    static uint16_t last_hall_angle;
-    static float ticks_since_last_observer_change = 65535;
-    static float last_observer_period = 65536;
-    static float one_on_last_observer_period = 1;
-    float angular_velocity = 0;
-    static float angle_step = 0;
+  ////////Hall Sensor Implementation///////////////////////////////////////////
+  static float dir = 1;
+  static uint16_t current_hall_angle;
+  static int last_hall_state;
+  static uint16_t last_hall_angle;
+  static float ticks_since_last_observer_change = 65535;
+  static float last_observer_period = 65536;
+  static float one_on_last_observer_period = 1;
+  float angular_velocity = 0;
+  static float angle_step = 0;
 
-    static int hall_error = 0;
-    void hallAngleEstimator() {  // Implementation using the mid point of the hall
-                                 // sensor angles, which should be much more
-                                 // reliable to generate that the edges
+  static int hall_error = 0;
+  void hallAngleEstimator() {  // Implementation using the mid point of the hall
+                               // sensor angles, which should be much more
+                               // reliable to generate that the edges
 
-      if (current_hall_state != last_hall_state) {
-        foc_vars.hall_update = 1;
-        if (current_hall_state == 0) {
-          MotorState = MOTOR_STATE_ERROR;
-          MotorError = MOTOR_ERROR_HALL0;
-        } else if (current_hall_state == 7) {
-          MotorState = MOTOR_STATE_ERROR;
-          MotorError = MOTOR_ERROR_HALL7;
-        }
-        //////////Implement the Hall table here, but the vector can be dynamically
-        /// created/filled by another function/////////////
-        current_hall_angle = foc_vars.hall_table[current_hall_state - 1][2];
+    if (current_hall_state != last_hall_state) {
+      foc_vars.hall_update = 1;
+      if (current_hall_state == 0) {
+        MotorState = MOTOR_STATE_ERROR;
+        MotorError = MOTOR_ERROR_HALL0;
+      } else if (current_hall_state == 7) {
+        MotorState = MOTOR_STATE_ERROR;
+        MotorError = MOTOR_ERROR_HALL7;
+      }
+      //////////Implement the Hall table here, but the vector can be dynamically
+      /// created/filled by another function/////////////
+      current_hall_angle = foc_vars.hall_table[current_hall_state - 1][2];
 
-        // Calculate Hall error
+      // Calculate Hall error
 
-        uint16_t a;
-        if ((a = current_hall_angle - last_hall_angle) < 32000)  // Forwards
-        {
-          hall_error =
-              foc_vars.FOCAngle - foc_vars.hall_table[current_hall_state - 1][0];
-          dir = 1.0f;
-          // foc_vars.HallAngle = foc_vars.HallAngle - 5460;
-        } else  // Backwards
-        {
-          hall_error =
-              foc_vars.FOCAngle - foc_vars.hall_table[current_hall_state - 1][1];
-          dir = -1.0f;
-          // foc_vars.HallAngle = foc_vars.HallAngle + 5460;
-        }
-        if (hall_error > 32000) {
-          hall_error = hall_error - 65536;
-        }
-        if (hall_error < -32000) {
-          hall_error = hall_error + 65536;
-        }
+      uint16_t a;
+      if ((a = current_hall_angle - last_hall_angle) < 32000)  // Forwards
+      {
+        hall_error =
+            foc_vars.FOCAngle - foc_vars.hall_table[current_hall_state - 1][0];
+        dir = 1.0f;
+        // foc_vars.HallAngle = foc_vars.HallAngle - 5460;
+      } else  // Backwards
+      {
+        hall_error =
+            foc_vars.FOCAngle - foc_vars.hall_table[current_hall_state - 1][1];
+        dir = -1.0f;
+        // foc_vars.HallAngle = foc_vars.HallAngle + 5460;
+      }
+      if (hall_error > 32000) {
+        hall_error = hall_error - 65536;
+      }
+      if (hall_error < -32000) {
+        hall_error = hall_error + 65536;
       }
     }
+  }
 
   void angleObserver() {
     // This function should take the available data (hall change, BEMF crossing
@@ -714,13 +741,15 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // Here we are going to do a PID loop to control the dq currents, converting
     // Idq into Vdq Calculate the errors
     static float Idq_err[2];
-    Idq_err[0] = (foc_vars.Idq_req[0] - foc_vars.Idq[0])*foc_vars.Id_pgain;
-    Idq_err[1] = (foc_vars.Idq_req[1] - foc_vars.Idq[1])*foc_vars.Iq_pgain;
+    Idq_err[0] = (foc_vars.Idq_req[0] - foc_vars.Idq[0]) * foc_vars.Id_pgain;
+    Idq_err[1] = (foc_vars.Idq_req[1] - foc_vars.Idq[1]) * foc_vars.Iq_pgain;
 
     // Integral error
     static float Idq_int_err[2];
-    Idq_int_err[0] = Idq_int_err[0] + foc_vars.Id_igain * Idq_err[0] * foc_vars.pwm_period;
-    Idq_int_err[1] = Idq_int_err[1] + foc_vars.Iq_igain * Idq_err[1] * foc_vars.pwm_period;
+    Idq_int_err[0] =
+        Idq_int_err[0] + foc_vars.Id_igain * Idq_err[0] * foc_vars.pwm_period;
+    Idq_int_err[1] =
+        Idq_int_err[1] + foc_vars.Iq_igain * Idq_err[1] * foc_vars.pwm_period;
     // Apply the integral gain at this stage to enable bounding it
 
     static int i = 0;
@@ -780,7 +809,6 @@ void VICheck() {  // Check currents, voltages are within panic limits
     }
     i = i - 1;
 
-
     writePWM();
   }
 
@@ -790,33 +818,32 @@ void VICheck() {  // Check currents, voltages are within panic limits
   float bottom_value;
 
   void writePWM() {
-
-	  // Now we update the sin and cos values, since when we do the inverse
-	      // transforms, we would like to use the most up to date versions(or even the
-	      // next predicted version...)
-	      foc_vars.sincosangle[0] = sinwave[foc_vars.FOCAngle >> 8];
-	      foc_vars.sincosangle[1] = sinwave[(foc_vars.FOCAngle >> 8) + 64];
-	      // Inverse Park transform
-	      foc_vars.Vab[0] = foc_vars.sincosangle[1] * foc_vars.Vdq[0] -
-	                        foc_vars.sincosangle[0] * foc_vars.Vdq[1];
-	      foc_vars.Vab[1] = foc_vars.sincosangle[0] * foc_vars.Vdq[0] +
-	                        foc_vars.sincosangle[1] * foc_vars.Vdq[1];
-	      foc_vars.Vab[2] = 0.0f;
-	      // clang-format off
+    // Now we update the sin and cos values, since when we do the inverse
+    // transforms, we would like to use the most up to date versions(or even the
+    // next predicted version...)
+    foc_vars.sincosangle[0] = sinwave[foc_vars.FOCAngle >> 8];
+    foc_vars.sincosangle[1] = sinwave[(foc_vars.FOCAngle >> 8) + 64];
+    // Inverse Park transform
+    foc_vars.Vab[0] = foc_vars.sincosangle[1] * foc_vars.Vdq[0] -
+                      foc_vars.sincosangle[0] * foc_vars.Vdq[1];
+    foc_vars.Vab[1] = foc_vars.sincosangle[0] * foc_vars.Vdq[0] +
+                      foc_vars.sincosangle[1] * foc_vars.Vdq[1];
+    foc_vars.Vab[2] = 0.0f;
+    // clang-format off
 
 	      // Inverse Clark transform - power variant
 	  	foc_vars.inverterVoltage[0] = foc_vars.Vab[0];
 	  	foc_vars.inverterVoltage[1] = -0.5f*foc_vars.inverterVoltage[0];
 	  	foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[1] - sqrt3_on_2 * foc_vars.Vab[1];
 	  	foc_vars.inverterVoltage[1] = foc_vars.inverterVoltage[1] + sqrt3_on_2 * foc_vars.Vab[1];
-	      // clang-format on
+    // clang-format on
 
     ////////////////////////////////////////////////////////
     // SVPM implementation
     // Try to do this as a "midpoint clamp" where rather than finding the
     // lowest, we find the highest and lowest and subtract the middle
- top_value = foc_vars.inverterVoltage[0];
- bottom_value = top_value;
+    top_value = foc_vars.inverterVoltage[0];
+    bottom_value = top_value;
 
     if (foc_vars.inverterVoltage[1] > top_value) {
       top_value = foc_vars.inverterVoltage[1];
@@ -831,7 +858,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
       bottom_value = foc_vars.inverterVoltage[2];
     }
 
-    mid_value = foc_vars.PWMmid - 0.5f * foc_vars.Vab_to_PWM * (top_value + bottom_value);
+    mid_value = foc_vars.PWMmid -
+                0.5f * foc_vars.Vab_to_PWM * (top_value + bottom_value);
 
     ////////////////////////////////////////////////////////
     // Actually write the value to the timer registers
@@ -876,138 +904,139 @@ void VICheck() {  // Check currents, voltages are within panic limits
   static float top_I_Lq;
   static float bottom_I_Lq;
 
-void measureResistance2(){
-static int PWM_cycles = 0;
+  void measureResistance2() {
+    static int PWM_cycles = 0;
 
-		if (PWM_cycles < 1) {
-		uint16_t half_ARR = htim1.Instance->ARR/2;
-	    htim1.Instance->CCR1 = half_ARR;
-        htim1.Instance->CCR2 = half_ARR;
-        htim1.Instance->CCR3 = half_ARR;
-        motor.Rphase = 0.001f; //Initialise with a very low value 1mR
-        motor.Lphase = 0.000001f;//Initialise with a very low value 1uH
-		calculateVoltageGain(); //Set initial gains to enable MESCFOC to run
-		calculateGains();
-		phU_Enable();
-		phV_Enable();
-		phW_Enable();
-		foc_vars.Idq_req[0] = 10.0f;
-		foc_vars.Idq_req[1] = 0.0f;
-		foc_vars.FOCAngle = 0;
+    if (PWM_cycles < 1) {
+      uint16_t half_ARR = htim1.Instance->ARR / 2;
+      htim1.Instance->CCR1 = half_ARR;
+      htim1.Instance->CCR2 = half_ARR;
+      htim1.Instance->CCR3 = half_ARR;
+      motor.Rphase = 0.001f;     // Initialise with a very low value 1mR
+      motor.Lphase = 0.000001f;  // Initialise with a very low value 1uH
+      calculateVoltageGain();    // Set initial gains to enable MESCFOC to run
+      calculateGains();
+      phU_Enable();
+      phV_Enable();
+      phW_Enable();
+      foc_vars.Idq_req[0] = 10.0f;
+      foc_vars.Idq_req[1] = 0.0f;
+      foc_vars.FOCAngle = 0;
 
-		foc_vars.inject = 0; //flag to not inject at SVPWM top
+      foc_vars.inject = 0;  // flag to not inject at SVPWM top
 
-		MESCFOC();
-		count_top = 0;
-		count_bottom = 0;
-		}
+      MESCFOC();
+      count_top = 0;
+      count_bottom = 0;
+    }
 
-		else if (PWM_cycles < 35000) {//Align the rotor for 1 second
-			foc_vars.Idq_req[0] = 15.0f;
-			MESCFOC();
-		}
+    else if (PWM_cycles < 35000) {  // Align the rotor for 1 second
+      foc_vars.Idq_req[0] = 15.0f;
+      MESCFOC();
+    }
 
-		else if (PWM_cycles < 40000) {//Lower setpoint
-			foc_vars.Idq_req[0] = 15.0f;
-			MESCFOC();
-			bottom_V = bottom_V+foc_vars.Vdq[0];
-			bottom_I = bottom_I+foc_vars.Idq[0];
-			count_bottom++;
-		}
+    else if (PWM_cycles < 40000) {  // Lower setpoint
+      foc_vars.Idq_req[0] = 15.0f;
+      MESCFOC();
+      bottom_V = bottom_V + foc_vars.Vdq[0];
+      bottom_I = bottom_I + foc_vars.Idq[0];
+      count_bottom++;
+    }
 
-		else if (PWM_cycles < 45000) {//Upper setpoint stabilisation
-			foc_vars.Idq_req[0] = 30.0f;
-			MESCFOC();
-		}
+    else if (PWM_cycles < 45000) {  // Upper setpoint stabilisation
+      foc_vars.Idq_req[0] = 30.0f;
+      MESCFOC();
+    }
 
-		else if (PWM_cycles < 50000) {//Upper setpoint
-			foc_vars.Idq_req[0] = 30.0f;
-			MESCFOC();
-			top_V = top_V+foc_vars.Vdq[0];
-			top_I = top_I+foc_vars.Idq[0];
-			count_top++;
-		}
-		else if (PWM_cycles < 50001) {//Calculate R
+    else if (PWM_cycles < 50000) {  // Upper setpoint
+      foc_vars.Idq_req[0] = 30.0f;
+      MESCFOC();
+      top_V = top_V + foc_vars.Vdq[0];
+      top_I = top_I + foc_vars.Idq[0];
+      count_top++;
+    } else if (PWM_cycles < 50001) {  // Calculate R
 
-		generateBreak();
-			motor.Rphase = (top_V-bottom_V)/(top_I-bottom_I);
-			motor.Rphase = motor.Rphase*0.666f;
-			count_top = 0;
-			Vd_temp = foc_vars.Vdq[0]*0.1f; //Store the voltage required for the high setpoint, to use as an offset for the inductance
-			Vq_temp = 0;
-			foc_vars.Vdq[1] = 0;
-			generateEnable();
-		}
+      generateBreak();
+      motor.Rphase = (top_V - bottom_V) / (top_I - bottom_I);
+      motor.Rphase = motor.Rphase * 0.666f;
+      count_top = 0;
+      Vd_temp = foc_vars.Vdq[0] *
+                0.1f;  // Store the voltage required for the high setpoint, to
+                       // use as an offset for the inductance
+      Vq_temp = 0;
+      foc_vars.Vdq[1] = 0;
+      generateEnable();
+    }
 
-		else if (PWM_cycles < 80001) {//Collect Ld variable
-//generateBreak();
-			foc_vars.inject = 1; //flag to the SVPWM writer to inject at top
-			foc_vars.Vd_injectionV = 8.0f;
-			foc_vars.Vq_injectionV = 0.0f;
-			foc_vars.Vdq[0] = Vd_temp;
-			foc_vars.Vdq[1] = 0;
+    else if (PWM_cycles < 80001) {  // Collect Ld variable
+      // generateBreak();
+      foc_vars.inject = 1;  // flag to the SVPWM writer to inject at top
+      foc_vars.Vd_injectionV = 8.0f;
+      foc_vars.Vq_injectionV = 0.0f;
+      foc_vars.Vdq[0] = Vd_temp;
+      foc_vars.Vdq[1] = 0;
 
-			if(foc_vars.inject_high_low_now==1){
-					top_I_L = top_I_L+foc_vars.Idq[0];
-					count_top++;
-			}
-			else if(foc_vars.inject_high_low_now==0){
-				bottom_I_L = bottom_I_L+foc_vars.Idq[0];
-			}
-		}
+      if (foc_vars.inject_high_low_now == 1) {
+        top_I_L = top_I_L + foc_vars.Idq[0];
+        count_top++;
+      } else if (foc_vars.inject_high_low_now == 0) {
+        bottom_I_L = bottom_I_L + foc_vars.Idq[0];
+      }
+    }
 
+    else if (PWM_cycles < 80002) {
+      generateBreak();
+      motor.Lphase =
+          fabs((foc_vars.Vd_injectionV) /
+               ((top_I_L - bottom_I_L) / (count_top * foc_vars.pwm_period)));
+      motor.Lphase = motor.Lphase *
+                     0.666f;  // modify to be phase rather than phase:2phases
+      top_I_Lq = 0;
+      bottom_I_Lq = 0;
+      count_topq = 0;
+      __NOP();  // Put a break point on it...
+    } else if (PWM_cycles < 80003) {
+      phU_Enable();
+      phV_Enable();
+      phW_Enable();
+    } else if (PWM_cycles < 100003) {  // Collect Lq variable
+      //			generateBreak();
+      foc_vars.Vd_injectionV = 0.0f;
+      foc_vars.Vq_injectionV = 12.0f;
+      foc_vars.inject = 1;  // flag to the SVPWM writer to update at top
+      foc_vars.Vdq[0] = 0;  // Vd_temp;
+      foc_vars.Vdq[1] = 0;
 
-		else if(PWM_cycles < 80002){
-			generateBreak();
-			motor.Lphase = fabs((foc_vars.Vd_injectionV)/((top_I_L-bottom_I_L)/(count_top*foc_vars.pwm_period)));
-			motor.Lphase = motor.Lphase*0.666f;//modify to be phase rather than phase:2phases
-			top_I_Lq = 0;
-			bottom_I_Lq = 0;
-			count_topq = 0;
-			__NOP(); //Put a break point on it...
-		}
-		else if(PWM_cycles < 80003){
-phU_Enable();
-phV_Enable();
-phW_Enable();
-		}
-		else if (PWM_cycles < 100003) {//Collect Lq variable
-//			generateBreak();
-			foc_vars.Vd_injectionV = 0.0f;
-			foc_vars.Vq_injectionV = 12.0f;
-			foc_vars.inject = 1; //flag to the SVPWM writer to update at top
-			foc_vars.Vdq[0] = 0;//Vd_temp;
-			foc_vars.Vdq[1] = 0;
+      if (foc_vars.inject_high_low_now == 1) {
+        top_I_Lq = top_I_Lq + foc_vars.Idq[1];
+        count_topq++;
+      } else if (foc_vars.inject_high_low_now == 0) {
+        bottom_I_Lq = bottom_I_Lq + foc_vars.Idq[1];
+      }
+    }
 
-			if(foc_vars.inject_high_low_now==1){
-					top_I_Lq = top_I_Lq+foc_vars.Idq[1];
-					count_topq++;
-			}
-			else if(foc_vars.inject_high_low_now==0){
-					bottom_I_Lq = bottom_I_Lq+foc_vars.Idq[1];
-			}
-		}
+    else {
+      generateBreak();
+      motor.Lqphase =
+          (foc_vars.Vq_injectionV) /
+          ((top_I_Lq - bottom_I_Lq) / (count_top * foc_vars.pwm_period));
+      motor.Lqphase =
+          motor.Lqphase * 0.5;  // modify to be phase rather than phase:2phases
+      MotorState = MOTOR_STATE_IDLE;
+      motor.uncertainty = 0;
 
-		else{
-			generateBreak();
-			motor.Lqphase = (foc_vars.Vq_injectionV)/((top_I_Lq-bottom_I_Lq)/(count_top*foc_vars.pwm_period));
-			motor.Lqphase = motor.Lqphase*0.5;//modify to be phase rather than phase:2phases
-			MotorState = MOTOR_STATE_IDLE;
-			motor.uncertainty = 0;
-
-			foc_vars.inject = 1; //flag to the SVPWM writer stop injecting at top
-			foc_vars.Vd_injectionV = 6.0f;
-			foc_vars.Vq_injectionV = 0.0f;
-	        calculateGains();
-	        // MotorState = MOTOR_STATE_IDLE;  //
-	        MotorState = MOTOR_STATE_DETECTING;
-	        phU_Enable();
-	        phV_Enable();
-	        phW_Enable();
-		}
-	PWM_cycles++;
-}
-
+      foc_vars.inject = 1;  // flag to the SVPWM writer stop injecting at top
+      foc_vars.Vd_injectionV = 6.0f;
+      foc_vars.Vq_injectionV = 0.0f;
+      calculateGains();
+      // MotorState = MOTOR_STATE_IDLE;  //
+      MotorState = MOTOR_STATE_DETECTING;
+      phU_Enable();
+      phV_Enable();
+      phW_Enable();
+    }
+    PWM_cycles++;
+  }
 
   void measureResistance() {
     /*In this function, we are going to use an openloop  controller to
@@ -1052,7 +1081,7 @@ phW_Enable();
       {
         if (measurement_buffers.ConvertedADC[1][0] >
             -10.0f) {  // Here we set the PWM duty automatically for this
-                      // conversion to ensure a current between 3A and 10A
+                       // conversion to ensure a current between 3A and 10A
           testPWM1 = testPWM1 + 1;
         }
         if (measurement_buffers.ConvertedADC[1][0] < -20.0f) {
@@ -1113,8 +1142,8 @@ phW_Enable();
           htim1.Instance->CCR1 = 0;
           a = a - 1;
         } else if (a == 2) {
-          currAcc4 =
-              (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) * 0.001f;
+          currAcc4 = (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) *
+                     0.001f;
           a = a - 1;
 
         } else if (a == 1) {
@@ -1123,8 +1152,8 @@ phW_Enable();
           htim1.Instance->CCR1 =
               0;  // Write the PWM low, the next PWM pulse is
                   // skipped, and the current allowed to decay
-          currAcc3 =
-              (999 * currAcc3 + measurement_buffers.ConvertedADC[1][0]) * 0.001f;
+          currAcc3 = (999 * currAcc3 + measurement_buffers.ConvertedADC[1][0]) *
+                     0.001f;
 
           a = 5;
         }
@@ -1143,12 +1172,13 @@ phW_Enable();
         phV_Break();
         phW_Break();
 
-        motor.Rphase = (((float)(testPWM2 - testPWM1)) / (2.0f * htim1.Instance->ARR) *
-                        measurement_buffers.ConvertedADC[0][1]) /
-                       (-(currAcc2 - currAcc1));
-        motor.Lphase =
-            ((currAcc3 + currAcc4) * motor.Rphase *
-             (2.0f * 2.0f* htim1.Instance->ARR / 72000000.0f) / ((currAcc4 - currAcc3)));
+        motor.Rphase =
+            (((float)(testPWM2 - testPWM1)) / (2.0f * htim1.Instance->ARR) *
+             measurement_buffers.ConvertedADC[0][1]) /
+            (-(currAcc2 - currAcc1));
+        motor.Lphase = ((currAcc3 + currAcc4) * motor.Rphase *
+                        (2.0f * 2.0f * htim1.Instance->ARR / 72000000.0f) /
+                        ((currAcc4 - currAcc3)));
         motor.Lphase =
             motor.Lphase /
             2.0f;  // The above line calculates the phase to phase inductance,
@@ -1295,7 +1325,7 @@ phW_Enable();
 
   void getkV() {
     foc_vars.Idq_req[0] = 15.0f;  // 10A for the openloop spin
-    foc_vars.Idq_req[1] = 0.0f;  // 10A for the openloop spin
+    foc_vars.Idq_req[1] = 0.0f;   // 10A for the openloop spin
 
     OLGenerateAngle();
     static int count = 0;
@@ -1322,9 +1352,9 @@ phW_Enable();
     cycles++;
     // Here we are going to integrate the back EMF and find the constant in
     // openloop Theory is that the integral over a half wave represents the flux
-    // linkage. Have to account for the lead/lag, so we take the euclidian normal
-    // of Va and Vb, which results in a value 2x higher than we want, since
-    // integration should always have a +C term
+    // linkage. Have to account for the lead/lag, so we take the euclidian
+    // normal of Va and Vb, which results in a value 2x higher than we want,
+    // since integration should always have a +C term
 
     da = foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0] -
          motor.Lphase * (foc_vars.Iab[0] - Ia_last) * foc_vars.pwm_frequency;
@@ -1416,8 +1446,9 @@ phW_Enable();
   }
 
   void calculateGains() {
-    foc_vars.pwm_period =
-        2.0f * ((float)htim1.Instance->PSC + 1.0f) * (float)htim1.Instance->ARR / (float)HAL_RCC_GetHCLKFreq();
+    foc_vars.pwm_period = 2.0f * ((float)htim1.Instance->PSC + 1.0f) *
+                          (float)htim1.Instance->ARR /
+                          (float)HAL_RCC_GetHCLKFreq();
 
     foc_vars.pwm_frequency =
         (float)HAL_RCC_GetHCLKFreq() /
@@ -1426,9 +1457,12 @@ phW_Enable();
     foc_vars.PWMmid = htim1.Instance->ARR * 0.5f;
     foc_vars.ADC_duty_threshold = htim1.Instance->ARR * 0.85f;
 
-    foc_vars.Id_pgain = 10000.0f * motor.Lphase;  // 5000rads-1, hardcoded for now, * motorL
+    foc_vars.Id_pgain =
+        10000.0f * motor.Lphase;  // 5000rads-1, hardcoded for now, * motorL
 
-    foc_vars.Id_igain =  motor.Rphase/motor.Lphase; //Pole zero cancellation for series PI control
+    foc_vars.Id_igain =
+        motor.Rphase /
+        motor.Lphase;  // Pole zero cancellation for series PI control
 
     foc_vars.Iq_pgain = foc_vars.Id_pgain;
     foc_vars.Iq_igain = foc_vars.Id_igain;
@@ -1547,10 +1581,12 @@ phW_Enable();
           (fabs(foc_vars.Vdq_smoothed[1]) * foc_vars.Vdqres_to_Vdq);
     }
 
-    //Unpuc the observer
-    if(flux_linked_alpha*flux_linked_alpha + flux_linked_beta*flux_linked_beta < 0.25*motor.motor_flux*motor.motor_flux){
-    	flux_linked_alpha = 0.5*motor.motor_flux;
-    	flux_linked_beta = 0.5*motor.motor_flux;
+    // Unpuc the observer
+    if (flux_linked_alpha * flux_linked_alpha +
+            flux_linked_beta * flux_linked_beta <
+        0.25 * motor.motor_flux * motor.motor_flux) {
+      flux_linked_alpha = 0.5 * motor.motor_flux;
+      flux_linked_beta = 0.5 * motor.motor_flux;
     }
   }
   void MESCTrack() {
@@ -1561,11 +1597,12 @@ phW_Enable();
     // Clark transform
     foc_vars.Vab[0] =
         0.666f * (measurement_buffers.ConvertedADC[0][2] -
-                 0.5f * ((measurement_buffers.ConvertedADC[1][1] - 0.3f) +
-                        (measurement_buffers.ConvertedADC[1][2])));
+                  0.5f * ((measurement_buffers.ConvertedADC[1][1] - 0.3f) +
+                          (measurement_buffers.ConvertedADC[1][2])));
     foc_vars.Vab[1] =
-        0.666f * (sqrt3_on_2 * ((measurement_buffers.ConvertedADC[1][1]) -
-                               (measurement_buffers.ConvertedADC[1][2] + 0.6f)));
+        0.666f *
+        (sqrt3_on_2 * ((measurement_buffers.ConvertedADC[1][1]) -
+                       (measurement_buffers.ConvertedADC[1][2] + 0.6f)));
 
     foc_vars.sincosangle[0] = sinwave[foc_vars.FOCAngle >> 8];
     foc_vars.sincosangle[1] = sinwave[(foc_vars.FOCAngle >> 8) + 64];
