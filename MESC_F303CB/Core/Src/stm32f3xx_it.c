@@ -240,7 +240,7 @@ void TIM1_UP_TIM16_IRQHandler(void)
 
 __HAL_TIM_CLEAR_IT(&htim1,TIM_IT_UPDATE);
   /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
-  //HAL_TIM_IRQHandler(&htim1);
+  HAL_TIM_IRQHandler(&htim1);
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
 
   /* USER CODE END TIM1_UP_TIM16_IRQn 1 */

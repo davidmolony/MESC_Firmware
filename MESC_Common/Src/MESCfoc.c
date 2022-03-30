@@ -350,6 +350,11 @@ void fastLoop() {
 static float Idq[2][2] = {{0.0f, 0.0f}, {0.0f, 0.0f}};
 static float dIdq[2] = {0.0f, 0.0f};
 static float IIR[2] = {0.0f, 0.0f};
+static float avg;
+static float intdidq[2];
+static volatile float nrm;
+static volatile float nrm_avg;
+
 void hyperLoop() {
   if (foc_vars.inject) {
     if (foc_vars.inject_high_low_now == 0) {
@@ -367,25 +372,43 @@ void hyperLoop() {
     }
   }
 
-  dIdq[0] = fabsf(Idq[0][0] - Idq[1][0]);
-  dIdq[1] = (Idq[0][1] - Idq[1][1]);
 
-  static float ffactor = 32.0f;
-
-  IIR[0] *= (ffactor - 1.0f);
-  IIR[1] *= (ffactor - 1.0f);
-
-  IIR[0] += dIdq[0];
-  IIR[1] += dIdq[1];
-
-  IIR[0] /= ffactor;
-  IIR[1] /= ffactor;
   if (MotorState == MOTOR_STATE_RUN) {
-    if (IIR[1] < 0.0f) {
-      foc_vars.FOCAngle -= 100;
-    } else {
-      foc_vars.FOCAngle += 100;
-    }
+	  foc_vars.Vd_injectionV = 6.0f;
+	  foc_vars.Vq_injectionV = 0.0f;
+
+	  dIdq[0] = (Idq[0][0] - Idq[1][0]);
+	  dIdq[1] = (Idq[0][1] - Idq[1][1]);
+	  intdidq[1] = intdidq[1] + dIdq[1];
+//
+//	  avg = (fabsf(dIdq[0]) + fabsf(dIdq[1])) / 2.0f;
+//
+//	  dIdq[0] *= dIdq[0];
+//	  dIdq[1] *= dIdq[1];
+//
+//	  nrm = sqrtf(dIdq[0] + dIdq[1]);
+//	  nrm /= sqrtf(72.0f) / 6.0f;
+//
+//	  nrm_avg = nrm - avg;
+//
+	  static float ffactor = 32.0f;
+
+	  IIR[0] *= (ffactor - 1.0f);
+	  IIR[1] *= (ffactor - 1.0f);
+
+	  IIR[0] += dIdq[0];
+	  IIR[1] += dIdq[1];
+
+	  IIR[0] /= ffactor;
+	  IIR[1] /= ffactor;
+
+      foc_vars.FOCAngle += (int)(1000.0f*IIR[1]);
+
+//    if (IIR[1] < 0.0f) {
+//      foc_vars.FOCAngle -= 10;
+//    } else {
+//      foc_vars.FOCAngle += 10;
+//    }
   }
   // foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.angle_error;
   writePWM();
