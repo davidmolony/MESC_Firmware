@@ -380,6 +380,9 @@ void hyperLoop() {
 	  dIdq[0] = (Idq[0][0] - Idq[1][0]);
 	  dIdq[1] = (Idq[0][1] - Idq[1][1]);
 	  intdidq[1] = intdidq[1] + dIdq[1];
+	  if(intdidq[1]>1){intdidq[1]=1;}
+	  if(intdidq[1]<-1){intdidq[1]=-1;}
+
 //
 //	  avg = (fabsf(dIdq[0]) + fabsf(dIdq[1])) / 2.0f;
 //
@@ -401,8 +404,8 @@ void hyperLoop() {
 
 	  IIR[0] /= ffactor;
 	  IIR[1] /= ffactor;
-
-      foc_vars.FOCAngle += (int)(1000.0f*IIR[1]);
+foc_vars.Idq_req[0] = 10; //The system becomes much more stable if there is a small Id injection with the same sign as the desired Iq
+      foc_vars.FOCAngle += (int)(300.0f*dIdq[1] + 5.0f*intdidq[1]);
 
 //    if (IIR[1] < 0.0f) {
 //      foc_vars.FOCAngle -= 10;
