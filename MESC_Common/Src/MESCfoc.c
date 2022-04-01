@@ -374,7 +374,7 @@ void hyperLoop() {
 
 
   if (MotorState == MOTOR_STATE_RUN) {
-	  foc_vars.Vd_injectionV = 6.0f;
+	  foc_vars.Vd_injectionV = 5.0f;
 	  foc_vars.Vq_injectionV = 0.0f;
 
 	  dIdq[0] = (Idq[0][0] - Idq[1][0]);
@@ -394,7 +394,7 @@ void hyperLoop() {
 //
 //	  nrm_avg = nrm - avg;
 //
-	  static float ffactor = 32.0f;
+	  static float ffactor = 8.0f;
 
 	  IIR[0] *= (ffactor - 1.0f);
 	  IIR[1] *= (ffactor - 1.0f);
@@ -404,8 +404,8 @@ void hyperLoop() {
 
 	  IIR[0] /= ffactor;
 	  IIR[1] /= ffactor;
-foc_vars.Idq_req[0] = 10; //The system becomes much more stable if there is a small Id injection with the same sign as the desired Iq
-      foc_vars.FOCAngle += (int)(300.0f*dIdq[1] + 5.0f*intdidq[1]);
+foc_vars.Idq_req[0] = 2.0f; //The system becomes much more stable if there is a small Id injection with the same sign as the desired Iq
+      foc_vars.FOCAngle += (int)(300.0f*IIR[1] + 5.0f*intdidq[1]);
 
 //    if (IIR[1] < 0.0f) {
 //      foc_vars.FOCAngle -= 10;
@@ -834,7 +834,19 @@ void VICheck() {  // Check currents, voltages are within panic limits
       //        }
     }
     i = i - 1;
-
+//    if (foc_vars.inject) {
+//      if (foc_vars.inject_high_low_now == 0) {
+//        foc_vars.Vdq[0] = foc_vars.Vdq[0] + foc_vars.Vd_injectionV;
+//        foc_vars.Vdq[1] = foc_vars.Vdq[1] + foc_vars.Vq_injectionV;
+//        Idq[0][0] = foc_vars.Idq[0];
+//        Idq[0][1] = foc_vars.Idq[1];
+//      } else if (foc_vars.inject_high_low_now == 1) {
+//        foc_vars.Vdq[0] = foc_vars.Vdq[0] - foc_vars.Vd_injectionV;
+//        foc_vars.Vdq[1] = foc_vars.Vdq[1] - foc_vars.Vq_injectionV;
+//        Idq[1][0] = foc_vars.Idq[0];
+//        Idq[1][1] = foc_vars.Idq[1];
+//      }
+//    }
     writePWM();
   }
 
