@@ -67,6 +67,7 @@ uint8_t b_read_flash = 0;
 static float flux_linked_alpha = 0.00001f;
 static float flux_linked_beta = 0.00001f;
 
+// clang-format off
 void MESCInit() {
 #ifdef STM32F303xC
   HAL_TIM_Base_Start(&htim17);
@@ -597,7 +598,6 @@ void VICheck() {  // Check currents, voltages are within panic limits
                       foc_vars.sincosangle[0] * foc_vars.Iab[1];
     foc_vars.Idq[1] = foc_vars.sincosangle[1] * foc_vars.Iab[1] -
                       foc_vars.sincosangle[0] * foc_vars.Iab[0];
-    // clang-format on
   }
   /////////////////////////////////////////////////////////////////////////////
   // SENSORLESS IMPLEMENTATION//////////////////////////////////////////////////
@@ -824,14 +824,13 @@ void VICheck() {  // Check currents, voltages are within panic limits
     if (i == 0) {  // set or release the PID controller; may want to do this for
                    // cycle skipping, which may help for high inductance motors
       // Bounding
-      // clang-format off
 
         if (Idq_int_err[0] > foc_vars.Vdint_max){Idq_int_err[0] = foc_vars.Vdint_max;}
         if (Idq_int_err[0] < -foc_vars.Vdint_max){Idq_int_err[0] = -foc_vars.Vdint_max;}
         if (Idq_int_err[1] > foc_vars.Vqint_max){Idq_int_err[1] = foc_vars.Vqint_max;}
         if (Idq_int_err[1] < -foc_vars.Vqint_max){Idq_int_err[1] = -foc_vars.Vqint_max;}
-      // clang-format on
-      // Apply the PID, and potentially smooth the output for noise - sudden
+
+        // Apply the PID, and potentially smooth the output for noise - sudden
       // changes in VDVQ may be undesirable for some motors. Integral error is
       // pre-bounded to avoid integral windup, proportional gain needs to have
       // effect even at max integral to stabilise and avoid trips
@@ -909,14 +908,12 @@ void VICheck() {  // Check currents, voltages are within panic limits
     foc_vars.Vab[1] = foc_vars.sincosangle[0] * foc_vars.Vdq[0] +
                       foc_vars.sincosangle[1] * foc_vars.Vdq[1];
     foc_vars.Vab[2] = 0.0f;
-    // clang-format off
 
-	      // Inverse Clark transform - power variant
+	    // Inverse Clark transform - power variant
 	  	foc_vars.inverterVoltage[0] = foc_vars.Vab[0];
 	  	foc_vars.inverterVoltage[1] = -0.5f*foc_vars.inverterVoltage[0];
 	  	foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[1] - sqrt3_on_2 * foc_vars.Vab[1];
 	  	foc_vars.inverterVoltage[1] = foc_vars.inverterVoltage[1] + sqrt3_on_2 * foc_vars.Vab[1];
-    // clang-format on
 
     ////////////////////////////////////////////////////////
     // SVPM implementation
@@ -1362,12 +1359,11 @@ void VICheck() {  // Check currents, voltages are within panic limits
           hallangles[i][0] = hallangles[i][0] - 65535;
         }
       }
-      for (int i = 0; i < 6; i++) {  // clang-format off
+      for (int i = 0; i < 6; i++) {
             foc_vars.hall_table[i][2] = hallangles[i + 1][0];//This is the center angle of the hall state
             foc_vars.hall_table[i][3] = hallangles[i + 1][1];//This is the width of the hall state
             foc_vars.hall_table[i][0] = foc_vars.hall_table[i][2]-foc_vars.hall_table[i][3]/2;//This is the start angle of the hall state
             foc_vars.hall_table[i][1] = foc_vars.hall_table[i][2]+foc_vars.hall_table[i][3]/2;//This is the end angle of the hall state
-                                     // clang-format on
       }
       b_write_flash = 1;
       MotorState = MOTOR_STATE_RUN;
@@ -1536,16 +1532,13 @@ void VICheck() {  // Check currents, voltages are within panic limits
     foc_vars.Id_pgain =
         10000.0f * motor.Lphase;  // 5000rads-1, hardcoded for now, * motorL
 
-    foc_vars.Id_igain =
-        motor.Rphase /
-        motor.Lphase;  // Pole zero cancellation for series PI control
+    foc_vars.Id_igain = motor.Rphase / motor.Lphase;
+    // Pole zero cancellation for series PI control
 
     foc_vars.Iq_pgain = foc_vars.Id_pgain;
     foc_vars.Iq_igain = foc_vars.Id_igain;
-    foc_vars.Vdqres_to_Vdq =
-        0.333f * measurement_buffers.ConvertedADC[0][1] / 677.0f;
-    foc_vars.field_weakening_curr_max =
-        0.0f;  // test number, to be stored in user settings
+    foc_vars.Vdqres_to_Vdq = 0.333f * measurement_buffers.ConvertedADC[0][1] / 677.0f;
+    foc_vars.field_weakening_curr_max = 0.0f;  // test number, to be stored in user settings
   }
 
   void calculateVoltageGain() {
@@ -1740,10 +1733,10 @@ foc_vars.Idq_req[1] = input_vars.Idq_req_UART[1] + input_vars.Idq_req_RCPWM[1] +
     foc_vars.sincosangle[1] = sinwave[(foc_vars.FOCAngle >> 8) + 64];
 
     // Park transform
-    ;
 
     foc_vars.Vdq[0] = foc_vars.sincosangle[1] * foc_vars.Vab[0] +
                       foc_vars.sincosangle[0] * foc_vars.Vab[1];
     foc_vars.Vdq[1] = foc_vars.sincosangle[1] * foc_vars.Vab[1] -
                       foc_vars.sincosangle[0] * foc_vars.Vab[0];
   }
+  // clang-format on
