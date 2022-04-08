@@ -50,6 +50,8 @@
 #define MAX_ID_REQUEST 100.0f
 #define MAX_IQ_REQUEST 100.0f
 
+#define ABS_MAX_PHASE_CURRENT 150.0f
+#define ABS_MAX_BUS_VOLTAGE 50.0f
 /////////////END USER DEFINES//////////////////////
 
 

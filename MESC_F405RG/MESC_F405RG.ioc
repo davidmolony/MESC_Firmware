@@ -345,4 +345,4 @@ VP_TIM4_VS_ControllerModeReset.Signal=TIM4_VS_ControllerModeReset
 VP_TIM7_VS_ClockSourceINT.Mode=Enable_Timer
 VP_TIM7_VS_ClockSourceINT.Signal=TIM7_VS_ClockSourceINT
 board=custom
-isbadioc=true
+isbadioc=false
