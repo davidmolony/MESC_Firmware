@@ -337,7 +337,7 @@ void fastLoop() {
                 // good value. Once the measurement is complete,
                 // Rphase is set, and this is no longer called
         if (foc_vars.initing == 0) {
-          measureResistance2();
+          measureResistance();
         }
         break;
       } else if (motor.Lphase ==
@@ -417,7 +417,7 @@ void hyperLoop() {
 
 
   if (MotorState == MOTOR_STATE_RUN && foc_vars.inject==1) {
-	  foc_vars.Vd_injectionV = 0.0f;
+	  foc_vars.Vd_injectionV = 5.0f;
 	  foc_vars.Vq_injectionV = 0.0f;
 
 	  dIdq[0] = (Idq[0][0] - Idq[1][0]);
@@ -437,7 +437,7 @@ void hyperLoop() {
 //
 //	  nrm_avg = nrm - avg;
 //
-	  static float ffactor = 2.0f;
+	  static float ffactor = 8.0f;
 
 	  IIR[0] *= (ffactor - 1.0f);
 	  IIR[1] *= (ffactor - 1.0f);
@@ -646,7 +646,9 @@ void VICheck() {  // Check currents, voltages are within panic limits
     }
 
     angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta, flux_linked_alpha)) - 32768;
+    if(foc_vars.inject==0){
     foc_vars.FOCAngle = angle;
+    }
 
     //    if(abs(foc_vars.angle_error<2000)){
     //    	foc_vars.angle_error = 0;
@@ -981,7 +983,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   static float top_I_Lq;
   static float bottom_I_Lq;
 
-  void measureResistance2() {
+  void measureResistance() {
     static int PWM_cycles = 0;
 
     if (PWM_cycles < 1) {
@@ -1111,165 +1113,6 @@ void VICheck() {  // Check currents, voltages are within panic limits
     PWM_cycles++;
   }
 
-  void measureResistance() {
-    /*In this function, we are going to use an openloop  controller to
-     * create a current, probably ~4A, through a pair of motor windings, keeping
-     * the third tri-stated. We then generate a pair of V and I values, from the
-     * bus voltage and duty cycle, and the current reading. We repeat this at
-     * higher current, say ~12A, and then apply R=dV/dI from the two values to
-     * generate a resistance. Don't use a single point, since this is subject to
-     * anomalies from switching dead times, ADC sampling position...etc. Use of
-     * the derivative eliminates all steady state error sources ToDo Repeat for
-     * all phases? Or just assume they are all close enough that it doesn't
-     * matter? Could be useful for disconnection detection...
-     */
-    static float currAcc1 = 0;
-    static float currAcc2 = 0;
-    static float currAcc3 = 0;
-    static float currAcc4 = 0;
-
-    static uint16_t PWMcycles = 0;
-
-    if (0)  // isMotorRunning() //ToDo, implement this
-    {
-      // do nothing
-    } else {
-      // turn off phW, we are just going to measure RUV
-      static uint16_t testPWM1 =
-          0;  // Start it at zero point, adaptive current thingy can ramp it
-      static uint16_t testPWM2 = 0;  //
-      static uint16_t testPWM3 =
-          0;  // Use this for the inductance measurement, calculate it later
-      if (PWMcycles < 1) {
-        htim1.Instance->CCR1 = 0;
-        htim1.Instance->CCR2 = 0;
-        htim1.Instance->CCR3 = 0;
-      }
-      phW_Break();
-      phU_Enable();
-      phV_Enable();
-      ///////////////////////////////////////////////////////RESISTANCE/////////////////////////////////////////////////////////////////////
-
-      if (PWMcycles < 5000)  // Resistance lower measurement point
-      {
-        if (measurement_buffers.ConvertedADC[1][0] >
-            -10.0f) {  // Here we set the PWM duty automatically for this
-                       // conversion to ensure a current between 3A and 10A
-          testPWM1 = testPWM1 + 1;
-        }
-        if (measurement_buffers.ConvertedADC[1][0] < -20.0f) {
-          testPWM1 = testPWM1 - 1;
-        }
-
-        htim1.Instance->CCR2 = 0;
-        htim1.Instance->CCR1 = testPWM1;
-        // Accumulate the currents with an exponential smoother. This
-        // averaging should remove some noise and increase
-        // effective resolution
-        currAcc1 =
-            (99 * currAcc1 + measurement_buffers.ConvertedADC[1][0]) * 0.01f;
-      }
-
-      else if (PWMcycles < 10000)  // Resistance higher measurement point
-      {
-        if (measurement_buffers.ConvertedADC[1][0] >
-            -20.0f) {  // Here we set the PWM to get a current between 10A and
-                       // 20A
-          testPWM2 = testPWM2 + 1;
-        }
-        if (measurement_buffers.ConvertedADC[1][0] < -30.0f) {
-          testPWM2 = testPWM2 - 1;
-        }
-
-        htim1.Instance->CCR2 = 0;
-        htim1.Instance->CCR1 = testPWM2;
-        // Accumulate the currents with an exponential smoother
-        currAcc2 =
-            (99 * currAcc2 + measurement_buffers.ConvertedADC[1][0]) * 0.01f;
-      }
-      ///////////////////////////////////////////////////////INDUCTANCE/////////////////////////////////////////////////////////////////////
-      else if (PWMcycles == 10000) {
-        // calculate the resistance from two accumulated currents and two
-        // voltages
-        testPWM3 = 2 * testPWM2;  // We assign the value we determined was OK
-                                  // for the resistance measurement as the value
-                                  // to use for inductance measurement, since we
-                                  // need an absolutely  stable steady state
-      }
-
-      else if (PWMcycles <
-               65000)  // Inductance measurement points are rolled into one
-                       // loop, we will skip pulses on the PWM to generate a
-                       // higher ripple. ToDo Untested with higher inductance
-                       // motors (only 1.5uH, 6uH and ~60uH motors tested as of
-                       // 20201224) may have to skip multiple pulses
-      {
-        static int a = 0;  // A variable local to here to track whether the PWM
-                           // was high or low last time
-        if (a > 3) {
-          htim1.Instance->CCR1 = testPWM3;  // Write the high PWM, the next
-          a = a - 1;
-        }
-        // cycle will be a higher current
-        else if (a == 3) {
-          htim1.Instance->CCR1 = 0;
-          a = a - 1;
-        } else if (a == 2) {
-          currAcc4 = (999 * currAcc4 + measurement_buffers.ConvertedADC[1][0]) *
-                     0.001f;
-          a = a - 1;
-
-        } else if (a == 1) {
-          a = a - 1;
-        } else if (a == 0) {
-          htim1.Instance->CCR1 =
-              0;  // Write the PWM low, the next PWM pulse is
-                  // skipped, and the current allowed to decay
-          currAcc3 = (999 * currAcc3 + measurement_buffers.ConvertedADC[1][0]) *
-                     0.001f;
-
-          a = 5;
-        }
-      }
-
-      else if (PWMcycles == 65000)  // This really does not need to be 65000
-                                    // cycles, yet I don't want to change it :(
-      {                             // Do the calcs
-        // First let's just turn everything off. Nobody likes motors sitting
-        // there getting hot while debugging.
-        htim1.Instance->CCR1 = 0;
-        htim1.Instance->CCR2 = 0;
-        htim1.Instance->CCR3 = 0;
-
-        phU_Break();
-        phV_Break();
-        phW_Break();
-
-        motor.Rphase =
-            (((float)(testPWM2 - testPWM1)) / (2.0f * htim1.Instance->ARR) *
-             measurement_buffers.ConvertedADC[0][1]) /
-            (-(currAcc2 - currAcc1));
-        motor.Lphase = ((currAcc3 + currAcc4) * motor.Rphase *
-                        (2.0f * 2.0f * htim1.Instance->ARR / 72000000.0f) /
-                        ((currAcc4 - currAcc3)));
-        motor.Lphase =
-            motor.Lphase /
-            2.0f;  // The above line calculates the phase to phase inductance,
-                   // but since we want one phase inductance div2
-        if (motor.Lphase <= 0) {
-          motor.Lphase = 0.00001f;
-        }
-        // L=iRdt/di, where R in this case is 2*motor.Rphase
-        calculateGains();
-        // MotorState = MOTOR_STATE_IDLE;  //
-        MotorState = MOTOR_STATE_DETECTING;
-        phU_Enable();
-        phV_Enable();
-        phW_Enable();
-      }
-    }
-    PWMcycles = PWMcycles + 1;
-  }
 
   void getHallTable() {
     static int firstturn = 1;
@@ -1518,19 +1361,18 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
 
   void calculateGains() {
-    foc_vars.pwm_period = 2.0f * ((float)htim1.Instance->PSC + 1.0f) *
-                          (float)htim1.Instance->ARR /
-                          (float)HAL_RCC_GetHCLKFreq();
+    foc_vars.pwm_period =
+		2.0f * ((float)htim1.Instance->PSC + 1.0f) * (float)htim1.Instance->ARR /
+		(float)HAL_RCC_GetHCLKFreq();
 
     foc_vars.pwm_frequency =
-        (float)HAL_RCC_GetHCLKFreq() /
-        (2 * (float)htim1.Instance->ARR * ((float)htim1.Instance->PSC + 1));
+        (float)HAL_RCC_GetHCLKFreq() / (2 * (float)htim1.Instance->ARR * ((float)htim1.Instance->PSC + 1));
 
     foc_vars.PWMmid = htim1.Instance->ARR * 0.5f;
+
     foc_vars.ADC_duty_threshold = htim1.Instance->ARR * 0.85f;
 
-    foc_vars.Id_pgain =
-        10000.0f * motor.Lphase;  // 5000rads-1, hardcoded for now, * motorL
+    foc_vars.Id_pgain = 10000.0f * motor.Lphase;  // 10000rads-1, hardcoded for now, * motorL
 
     foc_vars.Id_igain = motor.Rphase / motor.Lphase;
     // Pole zero cancellation for series PI control
@@ -1600,30 +1442,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
 		  input_vars.pulse_recieved = 0;
 
 	  }
-	    // If the event was CC1...
-//	    if (input_vars.fCC1 != RESET) {
-//	      if (measurement_buffers.RawADC[1][3] > 1200) {
-//	        foc_vars.Idq_req[1] =
-//	            foc_vars.Idq_req[1] +
-//	            (((float)(measurement_buffers.RawADC[1][3] - 1200)) * 0.05f);
-////									if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2) {
-//
-////									}
-//	          input_vars.IC_duration = htim->Instance->CCR1;
-//	          input_vars.IC_pulse = htim->Instance->CCR2;
-//	        input_vars.pulse_recieved = 1;
-//	      } else {
-//	      }
-//	    }
-//	    // If the event was UPDATE ...
-//	    else if (input_vars.fUPD != RESET) {
-//			  if (measurement_buffers.RawADC[1][3] > 1200) {
-//				foc_vars.Idq_req[1] =
-//					(((float)(measurement_buffers.RawADC[1][3] - 1200)) * 0.05f);
-//			  } else {
-//				foc_vars.Idq_req[1] = 0.0f;
-//			  }
-//	    }
+
 	    if(htim->Instance->SR & TIM_FLAG_UPDATE){
 	    		      slowLoop(&htim);
 	    }
@@ -1712,6 +1531,13 @@ foc_vars.Idq_req[1] = input_vars.Idq_req_UART[1] + input_vars.Idq_req_RCPWM[1] +
         0.25 * motor.motor_flux * motor.motor_flux) {
       flux_linked_alpha = 0.5 * motor.motor_flux;
       flux_linked_beta = 0.5 * motor.motor_flux;
+    }
+
+    if((foc_vars.Vdq[1] > 3.0f)||(foc_vars.Vdq[1] < -3.0f)){
+    	foc_vars.inject = 0;
+    }
+    else if((foc_vars.Vdq[1] < 2.0f)&&(foc_vars.Vdq[1] > -2.0f)){
+    	foc_vars.inject = 1;
     }
   }
   void MESCTrack() {
