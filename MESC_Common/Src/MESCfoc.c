@@ -422,6 +422,8 @@ void hyperLoop() {
 
 	  dIdq[0] = (Idq[0][0] - Idq[1][0]);
 	  dIdq[1] = (Idq[0][1] - Idq[1][1]);
+	  if(dIdq[1]>1.0f){dIdq[1] = 1.0f;}
+	  if(dIdq[1]<-1.0f){dIdq[1] = -1.0f;}
 	  intdidq[1] = intdidq[1] + dIdq[1];
 	  if(intdidq[1]>10){intdidq[1]=10;}
 	  if(intdidq[1]<-10){intdidq[1]=-10;}
@@ -437,7 +439,7 @@ void hyperLoop() {
 //
 //	  nrm_avg = nrm - avg;
 //
-	  static float ffactor = 8.0f;
+	  static float ffactor = 2.0f;
 
 	  IIR[0] *= (ffactor - 1.0f);
 	  IIR[1] *= (ffactor - 1.0f);
@@ -447,7 +449,7 @@ void hyperLoop() {
 
 	  IIR[0] /= ffactor;
 	  IIR[1] /= ffactor;
-foc_vars.Idq_req[0] = 5.0f; //The system becomes much more stable if there is a small Id injection with the same sign as the desired Iq
+foc_vars.Idq_req[0] = 1.0f; //The system becomes much more stable if there is a small Id injection with the same sign as the desired Iq
       foc_vars.FOCAngle += (int)(250.0f*IIR[1] + 5.50f*intdidq[1]);
 
 //    if (IIR[1] < 0.0f) {
@@ -1470,6 +1472,10 @@ void VICheck() {  // Check currents, voltages are within panic limits
 			  else if(input_vars.IC_pulse<(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE)){
 				  input_vars.Idq_req_RCPWM[0] = 0;
 				  input_vars.Idq_req_RCPWM[1] = ((float)input_vars.IC_pulse - (float)(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
+			  }
+			  else{
+				  input_vars.Idq_req_RCPWM[0] = 0;
+				  input_vars.Idq_req_RCPWM[1] = 0;
 			  }
 		  }
 		  else {
