@@ -24,6 +24,35 @@
 
 #include "stm32fxxx_hal.h"
 
+
+////////////////////USER DEFINES//////////////////
+	///////////////////RCPWM//////////////////////
+#define IC_DURATION_MAX 15000
+#define IC_DURATION_MIN 25000
+
+#define IC_PULSE_MAX 2100
+#define IC_PULSE_MIN 900
+#define IC_PULSE_MID 1500
+
+#define IC_PULSE_DEADZONE 100
+
+
+	/////////////////ADC///////////////
+#define  ADC1MIN 1200
+#define  ADC1MAX 4095
+#define  ADC2MIN 1200
+#define  ADC2MAX 4095
+
+#define ADC1_POLARITY 1.0f
+#define ADC2_POLARITY -1.0f
+
+#define DEFAULT_INPUT	0b0110 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
+#define MAX_ID_REQUEST 100.0f
+#define MAX_IQ_REQUEST 100.0f
+
+/////////////END USER DEFINES//////////////////////
+
+
 //#define HW_SETUP_RSHUNT (1000)
 //:
 //#define HW_SETUP_IGAIN ((HW_SETUP_RSHUNT*...)/(...))

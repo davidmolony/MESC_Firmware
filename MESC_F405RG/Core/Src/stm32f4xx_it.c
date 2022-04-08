@@ -65,7 +65,7 @@ extern DMA_HandleTypeDef hdma_usart3_tx;
 extern UART_HandleTypeDef huart3;
 /* USER CODE BEGIN EV */
 extern TIM_HandleTypeDef htim7;
-
+uint32_t directionstat;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -238,12 +238,11 @@ void ADC_IRQHandler(void)
 /**
   * @brief This function handles TIM1 update interrupt and TIM10 global interrupt.
   */
-uint32_t directionstat;
-uint32_t directionstat2;
-
 void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, 1);
+
 	MESC_PWM_IRQ_handler();
 	foc_vars.IRQexit = htim7.Instance->CNT - foc_vars.IRQentry;
 	directionstat = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
@@ -251,6 +250,7 @@ void TIM1_UP_TIM10_IRQHandler(void)
 
   /* USER CODE END TIM1_UP_TIM10_IRQn 0 */
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 1 */
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, 0);
 
   /* USER CODE END TIM1_UP_TIM10_IRQn 1 */
 }
@@ -261,10 +261,20 @@ void TIM1_UP_TIM10_IRQHandler(void)
 void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
-  slowLoop(&htim4);
-  /* USER CODE END TIM4_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim4);
-  /* USER CODE BEGIN TIM4_IRQn 1 */
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+//    input_vars.fCC1 = __HAL_TIM_GET_FLAG(&htim4, TIM_FLAG_CC1) &
+//                    __HAL_TIM_GET_IT_SOURCE(&htim4, TIM_IT_CC1);
+//    input_vars.fUPD = __HAL_TIM_GET_FLAG(&htim4, TIM_FLAG_UPDATE) &
+//                    __HAL_TIM_GET_IT_SOURCE(&htim4, TIM_IT_UPDATE);
+
+MESC_Slow_IRQ_handler(&htim4);
+__HAL_TIM_CLEAR_IT(&htim4, TIM_IT_CC1);
+__HAL_TIM_CLEAR_IT(&htim4, TIM_IT_CC2);
+__HAL_TIM_CLEAR_IT(&htim4, TIM_IT_UPDATE);
+/* USER CODE END TIM4_IRQn 0 */
+
+/* USER CODE BEGIN TIM4_IRQn 1 */
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
 
   /* USER CODE END TIM4_IRQn 1 */
 }

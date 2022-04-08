@@ -21,7 +21,6 @@
  *  Created on: 18 Jul 2020
  *      Author: David Molony
  */
-
 #include "stm32fxxx_hal.h"
 
 #define FOC_SECTORS_PER_REVOLUTION (6)
@@ -146,10 +145,62 @@ typedef struct {
 
 foc_measurement_t measurement_buffers;  // fixme: floating function prototype
 
+typedef struct {
+
+	///////////////////RCPWM//////////////////////
+	uint32_t IC_duration; 	//Retrieve this from timer input capture CC1
+	uint32_t IC_pulse; 		//Retrieve this from timer input capture CC2
+	uint32_t pulse_recieved;
+
+	uint32_t IC_duration_MAX;
+	uint32_t IC_duration_MIN;
+	uint32_t IC_pulse_MAX;
+	uint32_t IC_pulse_MIN;
+	uint32_t IC_pulse_MID;
+	uint32_t IC_pulse_DEADZONE; //single sided; no response before MID +- this
+	float RCPWM_gain[2][2];
+
+	enum RCPWMMode{
+		THROTTLE_ONLY,
+		THROTTLE_REVERSE,
+		THROTTLE_NO_REVERSE
+	};
+
+	 uint32_t fCC1;
+	 uint32_t fUPD;
+
+/////////////////ADC///////////////
+	uint32_t adc1_MIN; //Value below which response is zero
+	uint32_t adc1_MAX; //Max throttle calculated at this point
+	float adc1_gain[2];
+
+	uint32_t adc2_MIN;
+	uint32_t adc2_MAX;
+	float adc2_gain[2];
+
+	float ADC1_polarity;
+	float ADC2_polarity;
+
+	float Idq_req_UART[2];
+	float Idq_req_RCPWM[2];
+	float Idq_req_ADC1[2];
+	float Idq_req_ADC2[2];
+
+	uint32_t input_options; //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
+
+float max_request_Idq[2];
+float  min_request_Idq[2];
+} input_vars_t;
+
+input_vars_t input_vars;
+
 /* Function prototypes -----------------------------------------------*/
 
 void MESCInit();
-void MESC_PWM_IRQ_handler();
+void InputInit();
+void MESC_PWM_IRQ_handler(); //Put this into the PWM interrupt,
+							//(or less optimally) ADC conversion complete interrupt
+							//If using ADC interrupt, may want to get ADC to convert on top and bottom of PWM
 void fastLoop();
 void hyperLoop();
 void VICheck();
@@ -210,5 +261,8 @@ void calculateVoltageGain();
 
 void doublePulseTest();
 
+void MESC_Slow_IRQ_handler(TIM_HandleTypeDef *htim); 	//This loop should run off a slow timer e.g. timer 3,4... at 20-50Hz in reset mode
+														//Default setup is to use a 50Hz RCPWM input, which if the RCPWM is not present will run at 20Hz
+														//If entered from update (reset, CC1) no data available for the PWM in. If entered from CC2, new PWM data available
 void slowLoop(TIM_HandleTypeDef *htim);
 void MESCTrack();

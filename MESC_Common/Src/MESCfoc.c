@@ -87,11 +87,7 @@ void MESCInit() {
   // motor.Rphase = 0.1; //Hack to make it skip over currently not used motor
   // parameter detection
   foc_vars.initing = 1;  // Tell it we ARE initing...
-                         // BLDCInit();	//Not currently using this, since FOC
-                         // has taken over as primary method of interest
-  // Although we are using an exponential filter over thousands of samples to
-  // find this offset, accuracy still improved by starting near to the final
-  // value. Initiialise the hall sensor offsets
+
   foc_vars.hall_forwards_adjust = 5460;
   foc_vars.hall_backwards_adjust = 5460;
 
@@ -176,6 +172,52 @@ void MESCInit() {
   // At this point we just let the whole thing run off into interrupt land, and
   // the fastLoop() starts to be triggered by the ADC conversion complete
   // interrupt
+
+  InputInit();
+}
+
+void InputInit(){
+
+	input_vars.max_request_Idq[0] = 0.0f; //Not supporting d-axis input current for now
+	input_vars.min_request_Idq[0] = 0.0f;
+	input_vars.max_request_Idq[1] = MAX_ID_REQUEST;
+	input_vars.min_request_Idq[1] = -MAX_ID_REQUEST;
+
+	input_vars.IC_pulse_MAX = IC_PULSE_MAX;
+	input_vars.IC_pulse_MIN = IC_PULSE_MIN;
+	input_vars.IC_pulse_MID = IC_PULSE_MID;
+	input_vars.IC_pulse_DEADZONE = IC_PULSE_DEADZONE;
+
+
+	input_vars.adc1_MAX = ADC1MAX;
+	input_vars.adc1_MIN = ADC1MIN;
+
+	input_vars.adc2_MAX = ADC2MAX;
+	input_vars.adc2_MIN = ADC2MIN;
+
+	input_vars.adc1_gain[0] = (input_vars.max_request_Idq[0])/(input_vars.adc1_MAX-input_vars.adc1_MIN);
+	input_vars.adc1_gain[1] = (input_vars.max_request_Idq[1])/(input_vars.adc1_MAX-input_vars.adc1_MIN);
+
+	input_vars.adc2_gain[0] = (input_vars.max_request_Idq[0])/(input_vars.adc2_MAX-input_vars.adc2_MIN);
+	input_vars.adc2_gain[1] = (input_vars.max_request_Idq[1])/(input_vars.adc2_MAX-input_vars.adc2_MIN);
+
+	//RCPWM forward gain//index [0][x] is used for Idq requests for now, might support asymmetric brake and throttle later
+	input_vars.RCPWM_gain[0][0] = (input_vars.max_request_Idq[0])/((float)input_vars.IC_pulse_MAX - (float)input_vars.IC_pulse_MID - (float)input_vars.IC_pulse_DEADZONE);
+	input_vars.RCPWM_gain[0][1] = (input_vars.max_request_Idq[1])/(((float)input_vars.IC_pulse_MID - (float)input_vars.IC_pulse_DEADZONE)-(float)input_vars.IC_pulse_MIN);
+
+	input_vars.input_options = DEFAULT_INPUT;
+	input_vars.ADC1_polarity = ADC1_POLARITY;
+	input_vars.ADC2_polarity = ADC2_POLARITY;
+
+	input_vars.Idq_req_UART[0] =0;
+	input_vars.Idq_req_RCPWM[0] =0;
+	input_vars.Idq_req_ADC1[0] =0;
+	input_vars.Idq_req_ADC2[0] =0;
+	input_vars.Idq_req_UART[1] =0;
+	input_vars.Idq_req_RCPWM[1] =0;
+	input_vars.Idq_req_ADC1[1] =0;
+	input_vars.Idq_req_ADC2[1] =0;
+
 }
 
 // This should be the only function needed to be added into the PWM interrupt
@@ -373,15 +415,15 @@ void hyperLoop() {
   }
 
 
-  if (MotorState == MOTOR_STATE_RUN) {
-	  foc_vars.Vd_injectionV = 5.0f;
+  if (MotorState == MOTOR_STATE_RUN && foc_vars.inject==1) {
+	  foc_vars.Vd_injectionV = 0.0f;
 	  foc_vars.Vq_injectionV = 0.0f;
 
 	  dIdq[0] = (Idq[0][0] - Idq[1][0]);
 	  dIdq[1] = (Idq[0][1] - Idq[1][1]);
 	  intdidq[1] = intdidq[1] + dIdq[1];
-	  if(intdidq[1]>1){intdidq[1]=1;}
-	  if(intdidq[1]<-1){intdidq[1]=-1;}
+	  if(intdidq[1]>10){intdidq[1]=10;}
+	  if(intdidq[1]<-10){intdidq[1]=-10;}
 
 //
 //	  avg = (fabsf(dIdq[0]) + fabsf(dIdq[1])) / 2.0f;
@@ -394,7 +436,7 @@ void hyperLoop() {
 //
 //	  nrm_avg = nrm - avg;
 //
-	  static float ffactor = 8.0f;
+	  static float ffactor = 2.0f;
 
 	  IIR[0] *= (ffactor - 1.0f);
 	  IIR[1] *= (ffactor - 1.0f);
@@ -404,8 +446,8 @@ void hyperLoop() {
 
 	  IIR[0] /= ffactor;
 	  IIR[1] /= ffactor;
-foc_vars.Idq_req[0] = 2.0f; //The system becomes much more stable if there is a small Id injection with the same sign as the desired Iq
-      foc_vars.FOCAngle += (int)(300.0f*IIR[1] + 5.0f*intdidq[1]);
+foc_vars.Idq_req[0] = 5.0f; //The system becomes much more stable if there is a small Id injection with the same sign as the desired Iq
+      foc_vars.FOCAngle += (int)(250.0f*IIR[1] + 5.50f*intdidq[1]);
 
 //    if (IIR[1] < 0.0f) {
 //      foc_vars.FOCAngle -= 10;
@@ -603,9 +645,9 @@ void VICheck() {  // Check currents, voltages are within panic limits
       flux_linked_beta = -motor.motor_flux;
     }
 
-    angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta,
-                                                        flux_linked_alpha)) -
-            32768;
+    angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta, flux_linked_alpha)) - 32768;
+    foc_vars.FOCAngle = angle;
+
     //    if(abs(foc_vars.angle_error<2000)){
     //    	foc_vars.angle_error = 0;
     //    }/
@@ -996,7 +1038,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
       generateBreak();
       motor.Rphase = (top_V - bottom_V) / (top_I - bottom_I);
-      motor.Rphase = motor.Rphase * 0.666f;
+      //motor.Rphase = motor.Rphase * 0.666f;
       count_top = 0;
       Vd_temp = foc_vars.Vdq[0] *
                 0.1f;  // Store the voltage required for the high setpoint, to
@@ -1024,11 +1066,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
     else if (PWM_cycles < 80002) {
       generateBreak();
-      motor.Lphase =
-          fabs((foc_vars.Vd_injectionV) /
-               ((top_I_L - bottom_I_L) / (count_top * foc_vars.pwm_period)));
-      motor.Lphase = motor.Lphase *
-                     0.666f;  // modify to be phase rather than phase:2phases
+      motor.Lphase = fabs((foc_vars.Vd_injectionV) / ((top_I_L - bottom_I_L) / (count_top * foc_vars.pwm_period)));
+
       top_I_Lq = 0;
       bottom_I_Lq = 0;
       count_topq = 0;
@@ -1058,13 +1097,12 @@ void VICheck() {  // Check currents, voltages are within panic limits
       motor.Lqphase =
           (foc_vars.Vq_injectionV) /
           ((top_I_Lq - bottom_I_Lq) / (count_top * foc_vars.pwm_period));
-      motor.Lqphase =
-          motor.Lqphase * 0.5;  // modify to be phase rather than phase:2phases
+
       MotorState = MOTOR_STATE_IDLE;
       motor.uncertainty = 0;
 
       foc_vars.inject = 1;  // flag to the SVPWM writer stop injecting at top
-      foc_vars.Vd_injectionV = 6.0f;
+      foc_vars.Vd_injectionV = 3.0f;
       foc_vars.Vq_injectionV = 0.0f;
       calculateGains();
       // MotorState = MOTOR_STATE_IDLE;  //
@@ -1555,6 +1593,48 @@ void VICheck() {  // Check currents, voltages are within panic limits
       MotorState = MOTOR_STATE_IDLE;
     }
   }
+  void MESC_Slow_IRQ_handler(TIM_HandleTypeDef *htim){
+
+
+	  if(htim->Instance->SR & TIM_FLAG_CC2){
+		  input_vars.IC_duration = htim4.Instance->CCR1;// HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_1);
+		  input_vars.IC_pulse = htim4.Instance->CCR2;//HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_2);
+		  input_vars.pulse_recieved = 1;
+
+	  }else{
+		  input_vars.IC_duration = 50000;
+		  input_vars.IC_pulse = 0;
+		  input_vars.pulse_recieved = 0;
+
+	  }
+	    // If the event was CC1...
+//	    if (input_vars.fCC1 != RESET) {
+//	      if (measurement_buffers.RawADC[1][3] > 1200) {
+//	        foc_vars.Idq_req[1] =
+//	            foc_vars.Idq_req[1] +
+//	            (((float)(measurement_buffers.RawADC[1][3] - 1200)) * 0.05f);
+////									if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2) {
+//
+////									}
+//	          input_vars.IC_duration = htim->Instance->CCR1;
+//	          input_vars.IC_pulse = htim->Instance->CCR2;
+//	        input_vars.pulse_recieved = 1;
+//	      } else {
+//	      }
+//	    }
+//	    // If the event was UPDATE ...
+//	    else if (input_vars.fUPD != RESET) {
+//			  if (measurement_buffers.RawADC[1][3] > 1200) {
+//				foc_vars.Idq_req[1] =
+//					(((float)(measurement_buffers.RawADC[1][3] - 1200)) * 0.05f);
+//			  } else {
+//				foc_vars.Idq_req[1] = 0.0f;
+//			  }
+//	    }
+	    if(htim->Instance->SR & TIM_FLAG_UPDATE){
+	    		      slowLoop(&htim);
+	    }
+  }
 
   void slowLoop(TIM_HandleTypeDef * htim) {
     // The slow loop runs at either 20Hz or at the PWM input frequency.
@@ -1562,34 +1642,51 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // are critical, but do not need to be executed very often e.g. adjustment
     // for battery voltage change
 
-    uint32_t fCC1 = __HAL_TIM_GET_FLAG(htim, TIM_FLAG_CC1) &
-                    __HAL_TIM_GET_IT_SOURCE(htim, TIM_IT_CC1);
-    uint32_t fUPD = __HAL_TIM_GET_FLAG(htim, TIM_FLAG_UPDATE) &
-                    __HAL_TIM_GET_IT_SOURCE(htim, TIM_IT_UPDATE);
+	  //Collect the requested throttle inputs
+		  //UART input
+	  if(input_vars.input_options & 0b1000){
 
-    HAL_TIM_IRQHandler(htim);
+	  }
+
+	  //RCPWM input
+	  if(input_vars.input_options & 0b0100){
+		  if(input_vars.pulse_recieved){
+			  if(input_vars.IC_pulse>(input_vars.IC_pulse_MID + input_vars.IC_pulse_DEADZONE)){
+				  input_vars.Idq_req_RCPWM[0] = 0;
+				  input_vars.Idq_req_RCPWM[1] = (float)(input_vars.IC_pulse - (input_vars.IC_pulse_MID + input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
+			  }
+			  else if(input_vars.IC_pulse<(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE)){
+				  input_vars.Idq_req_RCPWM[0] = 0;
+				  input_vars.Idq_req_RCPWM[1] = ((float)input_vars.IC_pulse - (float)(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
+			  }
+		  }
+		  else {
+			  input_vars.Idq_req_RCPWM[0] = 0;
+			  input_vars.Idq_req_RCPWM[1] = 0;
+		  }
+	  }
+
+	  //ADC1 input
+	  if(input_vars.input_options & 0b0010){
+		  if(measurement_buffers.RawADC[1][3]>input_vars.adc1_MIN){
+			  input_vars.Idq_req_ADC1[0] = 0;
+			  input_vars.Idq_req_ADC1[1] = ((float)measurement_buffers.RawADC[1][3]-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
+		  }
+		  else{
+			  input_vars.Idq_req_ADC1[0] = 0;
+			  input_vars.Idq_req_ADC1[1] = 0;
+		  }
+	  }
+	  if(input_vars.input_options & 0b0001){
+		  //ADC2 input
+		  //placeholder
+	  }
+
+foc_vars.Idq_req[1] = input_vars.Idq_req_UART[1] + input_vars.Idq_req_RCPWM[1] + input_vars.Idq_req_ADC1[1] + input_vars.Idq_req_ADC2[1];
+
 
     // Adjust the SVPWM gains to account for the change in battery voltage etc
     calculateVoltageGain();
-
-    // If the event was CC1...
-    if (fCC1 != RESET) {
-      if (measurement_buffers.RawADC[1][3] > 1200) {
-        foc_vars.Idq_req[1] =
-            foc_vars.Idq_req[1] +
-            (((float)(measurement_buffers.RawADC[1][3] - 1200)) * 0.02f);
-      } else {
-      }
-    }
-    // If the event was UPDATE ...
-    else if (fUPD != RESET) {
-      if (measurement_buffers.RawADC[1][3] > 1200) {
-        foc_vars.Idq_req[1] =
-            (((float)(measurement_buffers.RawADC[1][3] - 1200)) * 0.02f);
-      } else {
-        foc_vars.Idq_req[1] = 0.0f;
-      }
-    }
 
     // Run field weakening (and maybe MTPA later)
     if (fabs(foc_vars.Vdq[1]) > foc_vars.field_weakening_threshold) {
@@ -1610,13 +1707,10 @@ void VICheck() {  // Check currents, voltages are within panic limits
                                  foc_vars.Vdqres_to_Vdq);
     foc_vars.reqPower = fabs(foc_vars.Vdq_smoothed[1] * foc_vars.Idq_req[1] *
                              foc_vars.Vdqres_to_Vdq);
-    if (foc_vars.reqPower >
-        g_hw_setup.battMaxPower) {  // foc_vars.Vdq[0]*foc_vars.Idq[0]+
+    if (foc_vars.reqPower > g_hw_setup.battMaxPower) {  // foc_vars.Vdq[0]*foc_vars.Idq[0]+
       // foc_vars.Idq_req[1] = foc_vars.Idq_req[1] * g_hw_setup.battMaxPower /
       // foc_vars.reqPower;
-      foc_vars.Idq_req[1] =
-          g_hw_setup.battMaxPower /
-          (fabs(foc_vars.Vdq_smoothed[1]) * foc_vars.Vdqres_to_Vdq);
+      foc_vars.Idq_req[1] = g_hw_setup.battMaxPower / (fabs(foc_vars.Vdq_smoothed[1]) * foc_vars.Vdqres_to_Vdq);
     }
 
     // Unpuc the observer
