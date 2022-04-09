@@ -23,6 +23,5 @@
  */
 #include <stdint.h>
 
-#define SINLUT_ENTRIES (256)
-
-const uint8_t g_sin_lut[SINLUT_ENTRIES];
+// Vector 256 long of sin wave, stretched by 65 to allow computation of cosine as sin(angle+64) without needing wrapping
+extern float sinwave[321];

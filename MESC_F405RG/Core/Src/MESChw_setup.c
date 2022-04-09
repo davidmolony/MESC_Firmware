@@ -30,6 +30,9 @@ extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 extern ADC_HandleTypeDef hadc3;
 
+hw_setup_s g_hw_setup;
+motor_s motor;
+
 void motor_init() {
   motor.Rphase = 0;  // We init at 0 to trigger the measurer to get the vals
   motor.Lphase = 0;  // We init at 0 to trigger the measurer to get the vals

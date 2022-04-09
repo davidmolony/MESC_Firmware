@@ -1,12 +1,28 @@
 /*
- * sin_cos.h
+ **
+ ******************************************************************************
+ * @file           : MESCmotor_state.c
+ * @brief          : Code for motor state machine
+ ******************************************************************************
+ * @attention
  *
- *  Created on: Dec 28, 2020
- *      Author: salavat.magazov
+ * <h2><center>&copy; Copyright (c) 2020 David Molony.
+ * All rights reserved.</center></h2>
+ *
+ * This software component is licensed under BSD 3-Clause license,
+ * the "License"; You may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at:
+ *                        opensource.org/licenses/BSD-3-Clause
+ *
+ ******************************************************************************
+
+ * MESCsin_lut.c
+ *
+ *  Created on: 25 Jul 2020
+ *      Author: David Molony
  */
 
-#ifndef SRC_SIN_COS_H_
-#define SRC_SIN_COS_H_
+/* Includes ------------------------------------------------------------------*/
 
 // Vector 256 long of sin wave, stretched by 65 to allow computation of cosine as sin(angle+64) without needing wrapping
 float sinwave[321] = {0,
@@ -330,5 +346,3 @@ float sinwave[321] = {0,
                       0.9987954562,
                       0.9996988187,
                       1};
-
-#endif /* SRC_SIN_COS_H_ */

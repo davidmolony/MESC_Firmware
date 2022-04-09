@@ -117,13 +117,13 @@ typedef struct {
   uint16_t angle_error;
 } MESCfoc_s;
 
-MESCfoc_s foc_vars;
+extern MESCfoc_s foc_vars;
 
 typedef struct {
   float dp_current_final[10];
 } MESCtest_s;
 
-MESCtest_s test_vals;
+extern MESCtest_s test_vals;
 
 typedef struct {
   int32_t RawADC[FOC_NUM_ADC]
@@ -143,7 +143,7 @@ typedef struct {
 
 } foc_measurement_t;
 
-foc_measurement_t measurement_buffers;  // fixme: floating function prototype
+extern foc_measurement_t measurement_buffers;  // fixme: floating function prototype
 
 typedef struct {
 
@@ -192,7 +192,7 @@ float max_request_Idq[2];
 float  min_request_Idq[2];
 } input_vars_t;
 
-input_vars_t input_vars;
+extern input_vars_t input_vars;
 
 /* Function prototypes -----------------------------------------------*/
 

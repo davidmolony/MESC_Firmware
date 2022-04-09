@@ -25,6 +25,12 @@
 /* Includes ------------------------------------------------------------------*/
 #include "MESCmotor_state.h"
 
+motor_state_e MotorState;
+motor_sensor_mode_e MotorSensorMode;
+motor_error_type_e MotorError;
+motor_direction_e MotorDirection;
+motor_control_type_e MotorControlType;
+
 void MESC_Init() {
     MotorState = MOTOR_STATE_IDLE;
     MotorSensorMode = MOTOR_SENSOR_MODE_HALL;

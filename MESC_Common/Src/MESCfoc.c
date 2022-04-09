@@ -30,7 +30,7 @@
 #include "MESCBLDC.h"
 #include "MESChw_setup.h"
 #include "MESCmotor_state.h"
-#include "sin_cos.h"
+#include "MESCsin_lut.h"
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
@@ -66,6 +66,11 @@ uint8_t b_write_flash = 0;
 uint8_t b_read_flash = 0;
 static float flux_linked_alpha = 0.00001f;
 static float flux_linked_beta = 0.00001f;
+
+MESCfoc_s foc_vars;
+MESCtest_s test_vals;
+foc_measurement_t measurement_buffers;  // fixme: floating function prototype
+input_vars_t input_vars;
 
 // clang-format off
 void MESCInit() {

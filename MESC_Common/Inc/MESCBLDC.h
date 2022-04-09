@@ -38,7 +38,7 @@ typedef struct {
   int iGain;
 } MESCBLDCVars_s;
 
-MESCBLDCVars_s BLDCVars;
+extern MESCBLDCVars_s BLDCVars;
 
 typedef enum {
   BLDC_FORWARDS = 1,
@@ -47,7 +47,7 @@ typedef enum {
   BLDC_BRAKE = 4
 } MESCBLDCState_e;
 
-MESCBLDCState_e BLDCState;
+extern MESCBLDCState_e BLDCState;
 
 /* Function prototypes -----------------------------------------------*/
 void BLDCInit();

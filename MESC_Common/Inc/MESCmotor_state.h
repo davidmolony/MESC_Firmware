@@ -77,7 +77,7 @@ typedef enum {
 
 } motor_state_e;
 
-motor_state_e MotorState;
+extern motor_state_e MotorState;
 
 typedef enum {
   MOTOR_SENSOR_MODE_SENSORLESS,
@@ -85,7 +85,7 @@ typedef enum {
   MOTOR_SENSOR_MODE_OPENLOOP,
 } motor_sensor_mode_e;
 
-motor_sensor_mode_e MotorSensorMode;
+extern motor_sensor_mode_e MotorSensorMode;
 
 typedef enum {
   MOTOR_ERROR_NONE,
@@ -99,21 +99,21 @@ typedef enum {
   MOTOR_ERROR_OTHER,
 } motor_error_type_e;
 
-motor_error_type_e MotorError;
+extern motor_error_type_e MotorError;
 
 typedef enum {
   MOTOR_DIRECTION_CLOCKWISE,
   MOTOR_DIRECTION_COUNTERCLOCKWISE
 } motor_direction_e;
 
-motor_direction_e MotorDirection;
+extern motor_direction_e MotorDirection;
 
 typedef enum {
   MOTOR_CONTROL_TYPE_BLDC,
   MOTOR_CONTROL_TYPE_FOC
 } motor_control_type_e;
 
-motor_control_type_e MotorControlType;
+extern motor_control_type_e MotorControlType;
 
 /* Function prototypes -----------------------------------------------*/
 
