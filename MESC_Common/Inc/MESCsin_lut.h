@@ -23,5 +23,6 @@
  */
 #include <stdint.h>
 
-// Vector 256 long of sin wave, stretched by 65 to allow computation of cosine as sin(angle+64) without needing wrapping
-extern float sinwave[321];
+#define USE_HIGH_RES	1
+
+void sin_cos_fast( int16_t angle , float * sin, float * cos);

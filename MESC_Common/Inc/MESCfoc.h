@@ -47,6 +47,11 @@ typedef float current_amps_t;
 typedef float voltage_t;
 
 typedef struct {
+	float sin;
+	float cos;
+}MESCsin_cos_s;
+
+typedef struct {
   int initing;  // Flag to say we are initialising
   uint16_t FOCError;
   foc_angle_t RotorAngle;  // Rotor angle, either fetched from hall sensors or
@@ -57,9 +62,9 @@ typedef struct {
   foc_angle_t openloop_step;//The angle to increment by for openloop
   foc_angle_t FOCAngle;  // Angle generated in the hall sensor estimator
 
-  float sincosangle[2];  // This variable carries the current sin and cosine of
-                         // the angle being used for Park and Clark transforms,
-                         // so they only need computing once per pwm cycle
+  MESCsin_cos_s sincosangle;  // This variable carries the current sin and cosine of
+                         	  // the angle being used for Park and Clark transforms,
+                              // so they only need computing once per pwm cycle
 
   float Iab[FOC_TRANSFORMED_CHANNELS + 1];  // Float vector containing the Clark
                                             // transformed current in amps
