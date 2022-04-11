@@ -49,12 +49,14 @@ ADC_HandleTypeDef hadc3;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
-
+static int countdown = 2000000;
+static int answer;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -67,6 +69,7 @@ static void MX_ADC3_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_TIM7_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -112,21 +115,27 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM4_Init();
   MX_USART3_UART_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
   if (getStatus() == VALID) {
     b_read_flash = 1;
     readData();
   }
+  //Change this to hard code running detection
+  // on startup (0) or using presumed values (1)
+  b_read_flash = 1;
 
-  HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_1);
-  HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_2);
+
+  HAL_TIM_IC_Start(&htim4, TIM_CHANNEL_1);
+  HAL_TIM_IC_Start(&htim4, TIM_CHANNEL_2);
   __HAL_TIM_ENABLE_IT(&htim4, TIM_IT_UPDATE);
   // Here we can auto set the prescaler to get the us input regardless of the
   // main clock
-  __HAL_TIM_SET_PRESCALER(&htim4, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
+ // __HAL_TIM_SET_PRESCALER(&htim4, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
 
   MESCInit();
+  motor_init();
   // MESC_Init();
   MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
@@ -134,14 +143,18 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  HAL_Delay(1000);
 
 
-//motor.motor_flux = 32; //Propdrive 2826 1200kV
-//motor.motor_flux = 464; //Red 70kV McMaster 8080 motor
-motor.motor_flux = 575; //Alien 8080 50kV motor
+//motor.motor_flux = 32.0f; //Propdrive 2826 1200kV
+//motor.motor_flux = 464.0f; //Red 70kV McMaster 8080 motor
+motor.motor_flux = 500.0f; //Alien 8080 50kV motor
+motor.motor_flux = 225.0f; //AT12070 62kV
+motor.motor_flux = 135.0f; //CA120 150kV
+motor.Lphase = 0.000006f;//CA120 150kV
+motor.Rphase = 0.006f;//CA120 150kV
 
 //650 is the right number for a motor with 7PP and 50kV
+  HAL_Delay(1000);
 
 HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
 //Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
@@ -163,7 +176,17 @@ MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
       __HAL_TIM_MOE_ENABLE(&htim1);
       b_write_flash = 0;
     }
+HAL_Delay(4000);
+    HAL_UART_Transmit_DMA(&huart3, "hello World \r\n", 13);
 
+//if(countdown >= 0){
+//countdown--;
+//answer = (countdown+1)/countdown;
+//}
+//if(countdown==0){
+//	// /*This makes it crash into the hardfault handler, intentionally :D*/
+//
+//}
     //HAL_UART_Transmit(&huart3, "hello World", 12, 10);
     /* USER CODE END WHILE */
 
@@ -567,7 +590,7 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 1 */
   htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 143;
+  htim4.Init.Prescaler = 71;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim4.Init.Period = 50000;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -615,6 +638,44 @@ static void MX_TIM4_Init(void)
 }
 
 /**
+  * @brief TIM7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM7_Init(void)
+{
+
+  /* USER CODE BEGIN TIM7_Init 0 */
+
+  /* USER CODE END TIM7_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM7_Init 1 */
+
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 0;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 65535;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM7_Init 2 */
+
+  /* USER CODE END TIM7_Init 2 */
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -658,7 +719,7 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
 
 }
@@ -678,11 +739,21 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5|GPIO_PIN_7, GPIO_PIN_RESET);
+
   /*Configure GPIO pins : PC6 PC7 PC8 */
   GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB5 PB7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 

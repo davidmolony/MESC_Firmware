@@ -27,6 +27,9 @@
 
 extern ADC_HandleTypeDef hadc1, hadc2, hadc3, hadc4;
 
+hw_setup_s g_hw_setup;
+motor_s motor;
+
 void motor_init()
 {
     motor.Rphase = 0;  // We init at 0 to trigger the measurer to get the vals
@@ -37,7 +40,7 @@ void motor_init()
 void hw_init()
 {
     g_hw_setup.Imax =
-        48.0;  // Imax is the current at which we are either no longer able to read it, or hardware "don't ever exceed to avoid breakage"
+        110.0;  // Imax is the current at which we are either no longer able to read it, or hardware "don't ever exceed to avoid breakage"
     g_hw_setup.Vmax = 50.0;  // Headroom beyond which likely to get avalanche of MOSFETs or DCDC converter
     g_hw_setup.Vmin = 10;    // This implies that the PSU has crapped out or a wire has fallen out, and suddenly there will be no power.
     g_hw_setup.Rshunt = 0.0005;

@@ -21,7 +21,6 @@
  *  Created on: 18 Jul 2020
  *      Author: David Molony
  */
-
 #include "stm32fxxx_hal.h"
 
 #define FOC_SECTORS_PER_REVOLUTION (6)
@@ -48,6 +47,11 @@ typedef float current_amps_t;
 typedef float voltage_t;
 
 typedef struct {
+	float sin;
+	float cos;
+}MESCsin_cos_s;
+
+typedef struct {
   int initing;  // Flag to say we are initialising
   uint16_t FOCError;
   foc_angle_t RotorAngle;  // Rotor angle, either fetched from hall sensors or
@@ -58,9 +62,9 @@ typedef struct {
   foc_angle_t openloop_step;//The angle to increment by for openloop
   foc_angle_t FOCAngle;  // Angle generated in the hall sensor estimator
 
-  float sincosangle[2];  // This variable carries the current sin and cosine of
-                         // the angle being used for Park and Clark transforms,
-                         // so they only need computing once per pwm cycle
+  MESCsin_cos_s sincosangle;  // This variable carries the current sin and cosine of
+                         	  // the angle being used for Park and Clark transforms,
+                              // so they only need computing once per pwm cycle
 
   float Iab[FOC_TRANSFORMED_CHANNELS + 1];  // Float vector containing the Clark
                                             // transformed current in amps
@@ -108,18 +112,23 @@ typedef struct {
   uint16_t state[4];  // current state, last state, angle change occurred
   uint16_t hall_update;
   uint16_t BEMF_update;
-  uint16_t IRQentry;
-  uint16_t IRQexit;
-
+  uint32_t IRQentry;
+  uint32_t IRQexit;
+  uint16_t inject;
+  uint16_t inject_high_low_now;
+  float Vd_injectionV;
+  float Vq_injectionV;
+  uint32_t FLrun, VFLrun;
+  uint16_t angle_error;
 } MESCfoc_s;
 
-MESCfoc_s foc_vars;
+extern MESCfoc_s foc_vars;
 
 typedef struct {
   float dp_current_final[10];
 } MESCtest_s;
 
-MESCtest_s test_vals;
+extern MESCtest_s test_vals;
 
 typedef struct {
   int32_t RawADC[FOC_NUM_ADC]
@@ -135,16 +144,70 @@ typedef struct {
   float ConvertedADC[FOC_NUM_ADC]
                     [FOC_CONV_CHANNELS];  // We will fill this with currents
                                           // in A and voltages in Volts
-  uint32_t adc1, adc2, adc3, adc4;
+  uint32_t adc1, adc2, adc3, adc4, adc5;
 
 } foc_measurement_t;
 
-foc_measurement_t measurement_buffers;  // fixme: floating function prototype
+extern foc_measurement_t measurement_buffers;  // fixme: floating function prototype
+
+typedef struct {
+
+	///////////////////RCPWM//////////////////////
+	uint32_t IC_duration; 	//Retrieve this from timer input capture CC1
+	uint32_t IC_pulse; 		//Retrieve this from timer input capture CC2
+	uint32_t pulse_recieved;
+
+	uint32_t IC_duration_MAX;
+	uint32_t IC_duration_MIN;
+	uint32_t IC_pulse_MAX;
+	uint32_t IC_pulse_MIN;
+	uint32_t IC_pulse_MID;
+	uint32_t IC_pulse_DEADZONE; //single sided; no response before MID +- this
+	float RCPWM_gain[2][2];
+
+	enum RCPWMMode{
+		THROTTLE_ONLY,
+		THROTTLE_REVERSE,
+		THROTTLE_NO_REVERSE
+	};
+
+	 uint32_t fCC1;
+	 uint32_t fUPD;
+
+/////////////////ADC///////////////
+	uint32_t adc1_MIN; //Value below which response is zero
+	uint32_t adc1_MAX; //Max throttle calculated at this point
+	float adc1_gain[2];
+
+	uint32_t adc2_MIN;
+	uint32_t adc2_MAX;
+	float adc2_gain[2];
+
+	float ADC1_polarity;
+	float ADC2_polarity;
+
+	float Idq_req_UART[2];
+	float Idq_req_RCPWM[2];
+	float Idq_req_ADC1[2];
+	float Idq_req_ADC2[2];
+
+	uint32_t input_options; //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
+
+float max_request_Idq[2];
+float  min_request_Idq[2];
+} input_vars_t;
+
+extern input_vars_t input_vars;
 
 /* Function prototypes -----------------------------------------------*/
 
 void MESCInit();
+void InputInit();
+void MESC_PWM_IRQ_handler(); //Put this into the PWM interrupt,
+							//(or less optimally) ADC conversion complete interrupt
+							//If using ADC interrupt, may want to get ADC to convert on top and bottom of PWM
 void fastLoop();
+void hyperLoop();
 void VICheck();
 void ADCConversion();  // Roll this into the V_I_Check? less branching, can
                        // probably reduce no.ops and needs doing every cycle
@@ -179,6 +242,8 @@ void writePWM();  // Offset the PWM to voltage centred (0Vduty is 50% PWM) or
 
 void generateBreak();  // Software break that does not stop the PWM timer but
                        // disables the outputs, sum of phU,V,W_Break();
+void generateEnable(); // Opposite of generateBreak
+
 int isMotorRunning();  // return motor state if state is one of the running
                        // states, if it's an idle, error or break state, disable
                        // all outputs and measure the phase voltages - if all
@@ -201,5 +266,8 @@ void calculateVoltageGain();
 
 void doublePulseTest();
 
+void MESC_Slow_IRQ_handler(TIM_HandleTypeDef *htim); 	//This loop should run off a slow timer e.g. timer 3,4... at 20-50Hz in reset mode
+														//Default setup is to use a 50Hz RCPWM input, which if the RCPWM is not present will run at 20Hz
+														//If entered from update (reset, CC1) no data available for the PWM in. If entered from CC2, new PWM data available
 void slowLoop(TIM_HandleTypeDef *htim);
 void MESCTrack();
