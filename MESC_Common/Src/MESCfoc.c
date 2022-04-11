@@ -57,6 +57,8 @@ MESCtest_s test_vals;
 foc_measurement_t measurement_buffers;  // fixme: floating function prototype
 input_vars_t input_vars;
 
+void MESCInit() {
+
   mesc_init_1();
 
   HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle,
