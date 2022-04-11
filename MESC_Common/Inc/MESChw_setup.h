@@ -94,7 +94,7 @@ typedef struct {
   float battMaxPower;   // Maximum battery power init...
 } hw_setup_s;
 
-hw_setup_s g_hw_setup;
+extern hw_setup_s g_hw_setup;
 // _OR_
 // void hw_setup_init( hw_setp_s * hw_setup );
 
@@ -108,7 +108,7 @@ typedef struct {
   float motor_flux;
 } motor_s;
 
-motor_s motor;
+extern motor_s motor;
 // _OR_
 // void motor_init( struct motor_s *motor);	//Rob created prototype init,
 // unused for now

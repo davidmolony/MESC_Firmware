@@ -30,7 +30,7 @@
 #include "MESCBLDC.h"
 #include "MESChw_setup.h"
 #include "MESCmotor_state.h"
-#include "sin_cos.h"
+#include "MESCsin_lut.h"
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
@@ -66,6 +66,11 @@ uint8_t b_write_flash = 0;
 uint8_t b_read_flash = 0;
 static float flux_linked_alpha = 0.00001f;
 static float flux_linked_beta = 0.00001f;
+
+MESCfoc_s foc_vars;
+MESCtest_s test_vals;
+foc_measurement_t measurement_buffers;  // fixme: floating function prototype
+input_vars_t input_vars;
 
 // clang-format off
 void MESCInit() {
@@ -596,10 +601,10 @@ void VICheck() {  // Check currents, voltages are within panic limits
     }
 
     // Park
-    foc_vars.Idq[0] = foc_vars.sincosangle[1] * foc_vars.Iab[0] +
-                      foc_vars.sincosangle[0] * foc_vars.Iab[1];
-    foc_vars.Idq[1] = foc_vars.sincosangle[1] * foc_vars.Iab[1] -
-                      foc_vars.sincosangle[0] * foc_vars.Iab[0];
+    foc_vars.Idq[0] = foc_vars.sincosangle.cos * foc_vars.Iab[0] +
+                      foc_vars.sincosangle.sin * foc_vars.Iab[1];
+    foc_vars.Idq[1] = foc_vars.sincosangle.cos * foc_vars.Iab[1] -
+                      foc_vars.sincosangle.sin * foc_vars.Iab[0];
   }
   /////////////////////////////////////////////////////////////////////////////
   // SENSORLESS IMPLEMENTATION//////////////////////////////////////////////////
@@ -904,13 +909,13 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // Now we update the sin and cos values, since when we do the inverse
     // transforms, we would like to use the most up to date versions(or even the
     // next predicted version...)
-    foc_vars.sincosangle[0] = sinwave[foc_vars.FOCAngle >> 8];
-    foc_vars.sincosangle[1] = sinwave[(foc_vars.FOCAngle >> 8) + 64];
+	sin_cos_fast(foc_vars.FOCAngle, &foc_vars.sincosangle.sin, &foc_vars.sincosangle.cos);
+
     // Inverse Park transform
-    foc_vars.Vab[0] = foc_vars.sincosangle[1] * foc_vars.Vdq[0] -
-                      foc_vars.sincosangle[0] * foc_vars.Vdq[1];
-    foc_vars.Vab[1] = foc_vars.sincosangle[0] * foc_vars.Vdq[0] +
-                      foc_vars.sincosangle[1] * foc_vars.Vdq[1];
+    foc_vars.Vab[0] = foc_vars.sincosangle.cos * foc_vars.Vdq[0] -
+                      foc_vars.sincosangle.sin * foc_vars.Vdq[1];
+    foc_vars.Vab[1] = foc_vars.sincosangle.sin * foc_vars.Vdq[0] +
+                      foc_vars.sincosangle.cos * foc_vars.Vdq[1];
     foc_vars.Vab[2] = 0.0f;
 
 	    // Inverse Clark transform - power variant
@@ -1561,14 +1566,13 @@ foc_vars.Idq_req[1] = input_vars.Idq_req_UART[1] + input_vars.Idq_req_RCPWM[1] +
         (sqrt3_on_2 * ((measurement_buffers.ConvertedADC[1][1]) -
                        (measurement_buffers.ConvertedADC[1][2] + 0.6f)));
 
-    foc_vars.sincosangle[0] = sinwave[foc_vars.FOCAngle >> 8];
-    foc_vars.sincosangle[1] = sinwave[(foc_vars.FOCAngle >> 8) + 64];
+    sin_cos_fast(foc_vars.FOCAngle, &foc_vars.sincosangle.sin, &foc_vars.sincosangle.cos);
 
     // Park transform
 
-    foc_vars.Vdq[0] = foc_vars.sincosangle[1] * foc_vars.Vab[0] +
-                      foc_vars.sincosangle[0] * foc_vars.Vab[1];
-    foc_vars.Vdq[1] = foc_vars.sincosangle[1] * foc_vars.Vab[1] -
-                      foc_vars.sincosangle[0] * foc_vars.Vab[0];
+    foc_vars.Vdq[0] = foc_vars.sincosangle.cos * foc_vars.Vab[0] +
+                      foc_vars.sincosangle.sin * foc_vars.Vab[1];
+    foc_vars.Vdq[1] = foc_vars.sincosangle.cos * foc_vars.Vab[1] -
+                      foc_vars.sincosangle.sin * foc_vars.Vab[0];
   }
   // clang-format on

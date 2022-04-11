@@ -1,8 +1,8 @@
 /*
  **
  ******************************************************************************
- * @file           : MESCsin_lut.h
- * @brief          : BLDC running code
+ * @file           : MESCsin_lut.c
+ * @brief          : Sine LUT
  ******************************************************************************
  * @attention
  *
@@ -16,13 +16,16 @@
  *
  ******************************************************************************
 
- * MESCsin_lut.h
+ * MESCsin_lut.c
  *
- *  Created on: 25 Jul 2020
+ *  Created on: 11 Apr 2022
  *      Author: David Molony
+ *      		Jens Kerrinnes - Added higher res sin_lut
+ *
  */
+
 #include <stdint.h>
 
-#define SINLUT_ENTRIES (256)
+#define USE_HIGH_RES	1
 
-const uint8_t g_sin_lut[SINLUT_ENTRIES];
+void sin_cos_fast( uint16_t angle , float * sin, float * cos);
