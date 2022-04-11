@@ -1439,8 +1439,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
 
 	  if(htim->Instance->SR & TIM_FLAG_CC2){
-		  input_vars.IC_duration = htim4.Instance->CCR1;// HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_1);
-		  input_vars.IC_pulse = htim4.Instance->CCR2;//HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_2);
+		  input_vars.IC_duration = htim->Instance->CCR1;// HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_1);
+		  input_vars.IC_pulse = htim->Instance->CCR2;//HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_2);
 		  input_vars.pulse_recieved = 1;
 
 	  }else{

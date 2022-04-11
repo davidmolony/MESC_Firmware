@@ -63,10 +63,10 @@ int IRQ_exit;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern PCD_HandleTypeDef hpcd_USB_FS;
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 extern ADC_HandleTypeDef hadc3;
+extern ADC_HandleTypeDef hadc4;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim4;
@@ -155,6 +155,19 @@ void UsageFault_Handler(void)
 }
 
 /**
+  * @brief This function handles System service call via SWI instruction.
+  */
+void SVC_Handler(void)
+{
+  /* USER CODE BEGIN SVCall_IRQn 0 */
+
+  /* USER CODE END SVCall_IRQn 0 */
+  /* USER CODE BEGIN SVCall_IRQn 1 */
+
+  /* USER CODE END SVCall_IRQn 1 */
+}
+
+/**
   * @brief This function handles Debug monitor.
   */
 void DebugMon_Handler(void)
@@ -165,6 +178,33 @@ void DebugMon_Handler(void)
   /* USER CODE BEGIN DebugMonitor_IRQn 1 */
 
   /* USER CODE END DebugMonitor_IRQn 1 */
+}
+
+/**
+  * @brief This function handles Pendable request for system service.
+  */
+void PendSV_Handler(void)
+{
+  /* USER CODE BEGIN PendSV_IRQn 0 */
+
+  /* USER CODE END PendSV_IRQn 0 */
+  /* USER CODE BEGIN PendSV_IRQn 1 */
+
+  /* USER CODE END PendSV_IRQn 1 */
+}
+
+/**
+  * @brief This function handles System tick timer.
+  */
+void SysTick_Handler(void)
+{
+  /* USER CODE BEGIN SysTick_IRQn 0 */
+
+  /* USER CODE END SysTick_IRQn 0 */
+
+  /* USER CODE BEGIN SysTick_IRQn 1 */
+
+  /* USER CODE END SysTick_IRQn 1 */
 }
 
 /******************************************************************************/
@@ -214,20 +254,6 @@ void ADC1_2_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles USB low priority or CAN_RX0 interrupts.
-  */
-void USB_LP_CAN_RX0_IRQHandler(void)
-{
-  /* USER CODE BEGIN USB_LP_CAN_RX0_IRQn 0 */
-
-  /* USER CODE END USB_LP_CAN_RX0_IRQn 0 */
-  HAL_PCD_IRQHandler(&hpcd_USB_FS);
-  /* USER CODE BEGIN USB_LP_CAN_RX0_IRQn 1 */
-
-  /* USER CODE END USB_LP_CAN_RX0_IRQn 1 */
-}
-
-/**
   * @brief This function handles TIM1 update and TIM16 interrupts.
   */
 void TIM1_UP_TIM16_IRQHandler(void)
@@ -240,7 +266,6 @@ void TIM1_UP_TIM16_IRQHandler(void)
 
 __HAL_TIM_CLEAR_IT(&htim1,TIM_IT_UPDATE);
   /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim1);
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
 
   /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
@@ -252,11 +277,13 @@ __HAL_TIM_CLEAR_IT(&htim1,TIM_IT_UPDATE);
 void TIM3_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM3_IRQn 0 */
-
-	  slowLoop(&htim3);
+	MESC_Slow_IRQ_handler(&htim3);
+	__HAL_TIM_CLEAR_IT(&htim3, TIM_IT_CC1);
+	__HAL_TIM_CLEAR_IT(&htim3, TIM_IT_CC2);
+	__HAL_TIM_CLEAR_IT(&htim3, TIM_IT_UPDATE);
+	 // slowLoop(&htim3);
 
   /* USER CODE END TIM3_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim3);
   /* USER CODE BEGIN TIM3_IRQn 1 */
 
   /* USER CODE END TIM3_IRQn 1 */
@@ -268,32 +295,8 @@ void TIM3_IRQHandler(void)
 void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
-    /* check which interrupt fired */
-    if ((htim4.Instance->SR & TIM_SR_CC1IF))
-    {
-        /* this is CCR event interrupt */
-        angular_velocity = 1 / (float)htim4.Instance->CCR1;
-        uint16_t hall_state = ((GPIOB->IDR >> 6) & 0x7);
-        uint16_t hall_angle = foc_vars.hall_table[hall_state - 1][2];
-        if ((hall_angle - previous_hall_angle) > 32000U)
-        {
-            angular_velocity *= -1;
-        }
-        previous_hall_angle = hall_angle;
-        htim4.Instance->SR &= ~TIM_SR_CC1IF;
-        return;
-    }
 
-    if ((htim4.Instance->SR & TIM_SR_UIF))
-    {
-        /* this is overflow interrupt */
-        angular_velocity *= 0.5;  // fixme: see if this works.
-        htim4.Instance->SR &= ~TIM_SR_UIF;
-    }
-
-    /* when you commit after code regen comment this out. */
   /* USER CODE END TIM4_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim4);
   /* USER CODE BEGIN TIM4_IRQn 1 */
 
   /* USER CODE END TIM4_IRQn 1 */
@@ -343,6 +346,20 @@ void TIM7_IRQHandler(void)
   /* USER CODE BEGIN TIM7_IRQn 1 */
 
   /* USER CODE END TIM7_IRQn 1 */
+}
+
+/**
+  * @brief This function handles ADC4 interrupt.
+  */
+void ADC4_IRQHandler(void)
+{
+  /* USER CODE BEGIN ADC4_IRQn 0 */
+
+  /* USER CODE END ADC4_IRQn 0 */
+  HAL_ADC_IRQHandler(&hadc4);
+  /* USER CODE BEGIN ADC4_IRQn 1 */
+
+  /* USER CODE END ADC4_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
