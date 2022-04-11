@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -35,24 +35,29 @@
 #include "MESCmotor_state.h"
 
 extern UART_HandleTypeDef huart3;
-extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef  htim1;
 
-extern uint8_t UART_rx_buffer[2];
+static uint8_t UART_rx_buffer[2];
 
 extern uint8_t b_read_flash;
 
+static void uart_ack( void )
+{
+    // Required to allow next receive
+    HAL_UART_Receive_IT( &huart3, UART_rx_buffer, 1 );
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    if (UART_rx_buffer[0] == '\r')
+    if (UART_rx_buffer[0] == '\r') // Treat CR...
     {
-        UART_rx_buffer[0] = '\n';
+        UART_rx_buffer[0] = '\n'; // ...as LF
     }
 
     cli_process( UART_rx_buffer[0] );
     /*
     Commands may be executed here
     */
-    HAL_UART_Receive_IT( &huart3, UART_rx_buffer, 1 );
 }
 
 static void cmd_hall_dec( void )
@@ -112,5 +117,7 @@ void uart_init( void )
     cli_register_function( "reset"        , cmd_reset           );
     cli_register_function( "test"         , cmd_test            );
 
-    cli_register_io( &huart3, (int(*)(void*,void*,uint16_t))HAL_UART_Transmit_DMA );
+    cli_register_io( &huart3, (int(*)(void *,void *,uint16_t))HAL_UART_Transmit_DMA, uart_ack );
+    // Required to allow initial receive
+    uart_ack();
 }

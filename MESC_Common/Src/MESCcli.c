@@ -70,9 +70,9 @@ enum CLIState
 typedef enum CLIState CLIState;
 
 static CLIState cli_state;
-static uint8_t cli_cmd;
+static uint8_t  cli_cmd;
 
-static bool cli_hash_valid = false;
+static bool     cli_hash_valid = false;
 static uint32_t cli_hash = 0;
 
 // Flash functions
@@ -160,8 +160,8 @@ struct CLIEntry
 typedef struct CLIEntry CLIEntry;
 
 #define MAX_CLI_LUT_ENTRIES UINT32_C(32)
-static CLIEntry cli_lut[MAX_CLI_LUT_ENTRIES];
-static uint32_t cli_lut_entries = 0;
+static CLIEntry   cli_lut[MAX_CLI_LUT_ENTRIES];
+static uint32_t   cli_lut_entries = 0;
 static CLIEntry * cli_lut_entry = NULL;
 
 static MESC_STM_ALIAS(int,UART_HandleTypeDef) cli_io_write_noop( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size )
@@ -173,8 +173,14 @@ static MESC_STM_ALIAS(int,UART_HandleTypeDef) cli_io_write_noop( MESC_STM_ALIAS(
     return HAL_OK;
 }
 
-static MESC_STM_ALIAS(void,UART_HandleTypeDef) * cli_io_handle = NULL;
-static MESC_STM_ALIAS(int,HAL_StatusTypeDef) (* cli_io_write)( MESC_STM_ALIAS(void,UART_HandleTypeDef) *, MESC_STM_ALIAS(void,uint8_t) *, uint16_t ) = cli_io_write_noop;
+static void cli_io_read_noop( void )
+{
+
+}
+
+static MESC_STM_ALIAS(void,UART_HandleTypeDef) *  cli_io_handle = NULL;
+static MESC_STM_ALIAS(int ,HAL_StatusTypeDef ) (* cli_io_write)( MESC_STM_ALIAS(void,UART_HandleTypeDef) *, MESC_STM_ALIAS(void,uint8_t) *, uint16_t ) = cli_io_write_noop;
+static void                                    (* cli_io_read )( void ) = cli_io_read_noop;
  
 static void cli_idle( void )
 {
@@ -241,7 +247,7 @@ static void cli_execute( void )
 
             switch (MAKE_TYPE_SIZE( type, size ))
             {
-                case MAKE_TYPE_SIZE_CASE( INT, sizeof(int8_t) ):
+                case MAKE_TYPE_SIZE_CASE(  INT, sizeof(int8_t) ):
                     if (cli_cmd == 'I')
                     {
                         tmp->i8 += (int8_t)cli_var.var.i;
@@ -251,7 +257,7 @@ static void cli_execute( void )
                         tmp->i8 -= (int8_t)cli_var.var.i;
                     }
                     break;
-                case MAKE_TYPE_SIZE_CASE( INT, sizeof(int16_t) ):
+                case MAKE_TYPE_SIZE_CASE(  INT, sizeof(int16_t) ):
                     if (cli_cmd == 'I')
                     {
                         tmp->i16 += (int16_t)cli_var.var.i;
@@ -261,7 +267,7 @@ static void cli_execute( void )
                         tmp->i16 -= (int16_t)cli_var.var.i;
                     }
                     break;
-                case MAKE_TYPE_SIZE_CASE( INT, sizeof(int32_t) ):
+                case MAKE_TYPE_SIZE_CASE(  INT, sizeof(int32_t) ):
                     if (cli_cmd == 'I')
                     {
                         tmp->i32 += (int32_t)cli_var.var.i;
@@ -358,21 +364,21 @@ static void cli_process_read_xint( void )
     if (cli_lut_entry != NULL)
     {
         CLIVariableType const type = cli_lut_entry->type;
-        uint32_t const size = cli_lut_entry->size;
+        uint32_t        const size = cli_lut_entry->size;
         char * fmt_10 = NULL;
         char * fmt_16 = NULL;
 
         switch (MAKE_TYPE_SIZE( type, size ))
         {
-            case MAKE_TYPE_SIZE_CASE( INT, 1 ):
+            case MAKE_TYPE_SIZE_CASE(  INT, 1 ):
                 fmt_10 = PRId8;
                 fmt_16 = PRIX8;
                 break;
-            case MAKE_TYPE_SIZE_CASE( INT, 2 ):
+            case MAKE_TYPE_SIZE_CASE(  INT, 2 ):
                 fmt_10 = PRId16;
                 fmt_16 = PRIX16;
                 break;
-            case MAKE_TYPE_SIZE_CASE( INT, 4 ):
+            case MAKE_TYPE_SIZE_CASE(  INT, 4 ):
                 fmt_10 = PRId32;
                 fmt_16 = PRIX32;
                 break;
@@ -487,7 +493,7 @@ static void cli_process_read_float( void )
     if (cli_lut_entry != NULL)
     {
         CLIVariableType const type = cli_lut_entry->type;
-        uint32_t const size = cli_lut_entry->size;
+        uint32_t        const size = cli_lut_entry->size;
 
         switch (MAKE_TYPE_SIZE( type, size ))
         {
@@ -654,10 +660,12 @@ void cli_register_function(
 
 void cli_register_io(
     MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle,
-    MESC_STM_ALIAS(int,HAL_StatusTypeDef) (* const write)( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size ) )
+    MESC_STM_ALIAS(int,HAL_StatusTypeDef) (* const write)( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size ),
+    void (* const read)( void ) )
 {
     cli_io_handle = handle;
-    cli_io_write = write;
+    cli_io_write  = write;
+    cli_io_read   = read;
 }
 
 static CLIEntry * cli_lookup( uint32_t const hash )
@@ -1020,6 +1028,9 @@ MESC_INTERNAL_ALIAS(int,CLIState) cli_process( char const c )
 
             break;
     }
+
+    // Required to allow subsequent receive
+    cli_io_read();
 
     return cli_state;
 }

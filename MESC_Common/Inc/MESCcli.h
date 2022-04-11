@@ -80,7 +80,8 @@ void cli_register_function(
 
 void cli_register_io(
     MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle,
-    MESC_STM_ALIAS(int,HAL_StatusTypeDef) (* const write)( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size ) ); // NOTE: This prototype is deliberately punned to match HAL_UART_Transmit_DMA
+    MESC_STM_ALIAS(int,HAL_StatusTypeDef) (* const write)( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size ), // NOTE: This prototype is deliberately punned to match HAL_UART_Transmit_DMA
+    void (* const read) ( void ) );
 
 MESC_INTERNAL_ALIAS(int,CLIState) cli_process( char const c );
 

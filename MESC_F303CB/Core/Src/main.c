@@ -90,7 +90,6 @@ const osThreadAttr_t defaultTask_attributes = {.name = "defaultTask", .priority 
 /* USER CODE BEGIN PV */
 // int initing = 1;
 char UART_buffer[12];
-uint8_t UART_rx_buffer[2];
 char USBRxBuffer[12];
 extern uint8_t b_write_flash;
 extern uint8_t b_read_flash;
@@ -232,7 +231,6 @@ int main(void)
     // Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
 
     // BLDCVars.BLDCduty = 70;
-    HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
     {
     char message[20];
     int length = sprintf( message, "%s", "startup!!\r\n" );

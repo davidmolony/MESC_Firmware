@@ -48,6 +48,7 @@ void temp_init( TEMPProfile const * const profile )
     {
         static TEMPProfile temp_profile_default =
         {
+            .reading            = TEMP_READING_BOARD,
             .V                  = 3.3f,
             .R_F                = MESC_PROFILE_TEMP_R_F,
             .adc_range          = 4096,
@@ -58,8 +59,8 @@ void temp_init( TEMPProfile const * const profile )
             .parameters.SH.T0   = CVT_CELSIUS_TO_KELVIN_F( 25.0f ),
             .parameters.SH.R0   = MESC_PROFILE_TEMP_SH_R0,
 
-            .limit.Tmin = CVT_CELSIUS_TO_KELVIN_F(  5.0f ),
-            .limit.Tmax = CVT_CELSIUS_TO_KELVIN_F( 80.0f ),
+            .limit.Tmin         = CVT_CELSIUS_TO_KELVIN_F(  5.0f ),
+            .limit.Tmax         = CVT_CELSIUS_TO_KELVIN_F( 80.0f ),
         };
         uint32_t           temp_length = sizeof(temp_profile_default);
 

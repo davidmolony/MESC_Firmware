@@ -77,7 +77,6 @@ static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN 0 */
 extern uint8_t b_read_flash;
 extern uint8_t b_write_flash;
-uint8_t UART_rx_buffer[2];
 /* USER CODE END 0 */
 
 /**
