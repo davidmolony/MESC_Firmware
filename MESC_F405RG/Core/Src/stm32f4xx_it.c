@@ -61,9 +61,11 @@ extern ADC_HandleTypeDef hadc2;
 extern ADC_HandleTypeDef hadc3;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
+extern DMA_HandleTypeDef hdma_usart3_tx;
 extern UART_HandleTypeDef huart3;
 /* USER CODE BEGIN EV */
-
+extern TIM_HandleTypeDef htim7;
+uint32_t directionstat;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -204,19 +206,32 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
+  * @brief This function handles DMA1 stream3 global interrupt.
+  */
+void DMA1_Stream3_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Stream3_IRQn 0 */
+
+  /* USER CODE END DMA1_Stream3_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_usart3_tx);
+  /* USER CODE BEGIN DMA1_Stream3_IRQn 1 */
+
+  /* USER CODE END DMA1_Stream3_IRQn 1 */
+}
+
+/**
   * @brief This function handles ADC1, ADC2 and ADC3 global interrupts.
   */
 void ADC_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC_IRQn 0 */
-  //fastLoop();
+  // fastLoop();
+    __HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_JEOC));
+    __HAL_ADC_CLEAR_FLAG(&hadc2, (ADC_FLAG_JSTRT | ADC_FLAG_JEOC));
+    __HAL_ADC_CLEAR_FLAG(&hadc3, (ADC_FLAG_JSTRT | ADC_FLAG_JEOC));
 
   /* USER CODE END ADC_IRQn 0 */
-  HAL_ADC_IRQHandler(&hadc1);
-  HAL_ADC_IRQHandler(&hadc2);
-  HAL_ADC_IRQHandler(&hadc3);
   /* USER CODE BEGIN ADC_IRQn 1 */
-
   /* USER CODE END ADC_IRQn 1 */
 }
 
@@ -226,13 +241,16 @@ void ADC_IRQHandler(void)
 void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
-	if(htim1.Instance->CNT>512){
-		uint16_t entry = htim1.Instance->CNT;
-	fastLoop();}
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, 1);
+
+	MESC_PWM_IRQ_handler();
+	foc_vars.IRQexit = htim7.Instance->CNT - foc_vars.IRQentry;
+	directionstat = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
+  __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
 
   /* USER CODE END TIM1_UP_TIM10_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim1);
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 1 */
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, 0);
 
   /* USER CODE END TIM1_UP_TIM10_IRQn 1 */
 }
@@ -243,10 +261,19 @@ void TIM1_UP_TIM10_IRQHandler(void)
 void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
-  slowLoop(&htim4);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+//    input_vars.fCC1 = __HAL_TIM_GET_FLAG(&htim4, TIM_FLAG_CC1) &
+//                    __HAL_TIM_GET_IT_SOURCE(&htim4, TIM_IT_CC1);
+//    input_vars.fUPD = __HAL_TIM_GET_FLAG(&htim4, TIM_FLAG_UPDATE) &
+//                    __HAL_TIM_GET_IT_SOURCE(&htim4, TIM_IT_UPDATE);
+
+MESC_Slow_IRQ_handler(&htim4);
+__HAL_TIM_CLEAR_IT(&htim4, TIM_IT_CC1);
+__HAL_TIM_CLEAR_IT(&htim4, TIM_IT_CC2);
+__HAL_TIM_CLEAR_IT(&htim4, TIM_IT_UPDATE);
   /* USER CODE END TIM4_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim4);
   /* USER CODE BEGIN TIM4_IRQn 1 */
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
 
   /* USER CODE END TIM4_IRQn 1 */
 }

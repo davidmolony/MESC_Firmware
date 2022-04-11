@@ -24,6 +24,37 @@
 
 #include "stm32fxxx_hal.h"
 
+
+////////////////////USER DEFINES//////////////////
+	///////////////////RCPWM//////////////////////
+#define IC_DURATION_MAX 15000
+#define IC_DURATION_MIN 25000
+
+#define IC_PULSE_MAX 2100
+#define IC_PULSE_MIN 900
+#define IC_PULSE_MID 1500
+
+#define IC_PULSE_DEADZONE 100
+
+
+	/////////////////ADC///////////////
+#define  ADC1MIN 1200
+#define  ADC1MAX 4095
+#define  ADC2MIN 1200
+#define  ADC2MAX 4095
+
+#define ADC1_POLARITY 1.0f
+#define ADC2_POLARITY -1.0f
+
+#define DEFAULT_INPUT	0b0110 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
+#define MAX_ID_REQUEST 100.0f
+#define MAX_IQ_REQUEST 100.0f
+
+#define ABS_MAX_PHASE_CURRENT 150.0f
+#define ABS_MAX_BUS_VOLTAGE 50.0f
+/////////////END USER DEFINES//////////////////////
+
+
 //#define HW_SETUP_RSHUNT (1000)
 //:
 //#define HW_SETUP_IGAIN ((HW_SETUP_RSHUNT*...)/(...))
@@ -63,22 +94,24 @@ typedef struct {
   float battMaxPower;   // Maximum battery power init...
 } hw_setup_s;
 
-hw_setup_s g_hw_setup; // TODO PROFILE
+extern hw_setup_s g_hw_setup; // TODO PROFILE
+// _OR_
+// void hw_setup_init( hw_setp_s * hw_setup );
 
 typedef struct {
-  hardware_vars_t Rphase;  // unsigned int containing phase resistance in mOhms,
-                           // populated by DETECTING if not already known;
-  hardware_vars_t Lphase;  // unsigned int containing phase inductance in uH,
-                           // range from very very low inductance high kV strong
+  hardware_vars_t Rphase;  // float containing phase resistance in mOhms,
+                           // populated by MEASURING if not already known;
+  hardware_vars_t Lphase;  // float containing phase inductance in uH,
+  hardware_vars_t Lqphase;  // range from very very low inductance high kV strong
                            // magnet BLDC motors to low kV weak magnet ones;
-  uint8_t uncertainty;     // uncertainty should start at 255 an as the measure
-                           // resistance is called each PWM cycle, be deprecated
-                           // by accumulating the measurements until it reaches
-                           // 0, at which point the resistance is accepted
+      uint8_t uncertainty;
   float motor_flux;
 } motor_s;
 
-motor_s motor;  // TODO PROFILE
+extern motor_s motor; // TODO PROFILE
+// _OR_
+// void motor_init( struct motor_s *motor);	//Rob created prototype init,
+// unused for now
 
 /*
 Hardware-specific implementation
@@ -106,6 +139,8 @@ void hw_init(void);  // Fills the parameters of the hardware struct, simplifies
 
 void setAWDVals();
 void getRawADC(void);
+void getRawADCVph(void);
+
 /*
 #define getHallState(...)
 OR

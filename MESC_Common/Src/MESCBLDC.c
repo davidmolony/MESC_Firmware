@@ -30,6 +30,9 @@
 
 extern TIM_HandleTypeDef htim1;
 
+MESCBLDCVars_s BLDCVars;
+MESCBLDCState_e BLDCState;
+
 void BLDCInit() {
   BLDCVars.ReqCurrent = 0;  // Start the motor at 0 current
   BLDCVars.BLDCduty = 0;

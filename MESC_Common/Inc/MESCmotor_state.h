@@ -44,25 +44,20 @@ typedef enum {
   // Starting up in sensorless mode
   MOTOR_STATE_OPEN_LOOP_TRANSITION = 5,
   // Checking motor is running synchronously and phaselocking
-  MOTOR_STATE_HALL_NEAR_STATIONARY = 6,
-  /*Hall sensors detected but the hall timer is overflowing because motor is
-   too slow. Commutation based on number of steps advanced/lagging Positive
-   throttle implies step will always give positive torque - efield 60 or 120
-   degrees ahead of hall sensors Negative throttle implies braking - efield
-   always aligned 1 step behind direction of spin Direction of spin not needed
-   to be known - just if((efieldstep-hallstep)>1){efieldstep-1;}//need to
-   account for overflow of steps1-6
-   if((efieldstep-hallstep)<-1){efieldstep+1;}//need to account for overflow
-   of steps1-6 Implement PI loop+feed forward based on PP, kV, Resistance
-   */
-  MOTOR_STATE_HALL_RUN = 7,
+  MOTOR_STATE_TRACKING = 6,
+  // Monitor the phase voltages while the PWM is disabled
+  // Perform Clark and park
+  // Run sensorless/hall observer to keep the angle
+  // Load the PID integral values with the current Vd and Vq
+
+  MOTOR_STATE_RUN = 7,
   /*Hall sensors are changing state fast enough for the timer to detect them.
    From this, a continuous sinusoidal FOC algorithm can be running Always
    align the current 90degrees to the field(hall sensor) Magnitude of current
    proportional to throttle demand (+/- can either be +/- current, or invert
    90degree angle, depending on inverter algorithm
    */
-  MOTOR_STATE_SENSORLESS_RUN = 8,
+  MOTOR_STATE_GET_KV = 8,
   /*
    */
   MOTOR_STATE_TEST = 9,
@@ -82,15 +77,15 @@ typedef enum {
 
 } motor_state_e;
 
-motor_state_e MotorState;
+extern motor_state_e MotorState;
 
 typedef enum {
-  MOTOR_SENSOR_MODE_OPENLOOP,
-  MOTOR_SENSOR_MODE_HALL,
   MOTOR_SENSOR_MODE_SENSORLESS,
+  MOTOR_SENSOR_MODE_HALL,
+  MOTOR_SENSOR_MODE_OPENLOOP,
 } motor_sensor_mode_e;
 
-motor_sensor_mode_e MotorSensorMode;
+extern motor_sensor_mode_e MotorSensorMode;
 
 typedef enum {
   MOTOR_ERROR_NONE,
@@ -104,21 +99,21 @@ typedef enum {
   MOTOR_ERROR_OTHER,
 } motor_error_type_e;
 
-motor_error_type_e MotorError;
+extern motor_error_type_e MotorError;
 
 typedef enum {
   MOTOR_DIRECTION_CLOCKWISE,
   MOTOR_DIRECTION_COUNTERCLOCKWISE
 } motor_direction_e;
 
-motor_direction_e MotorDirection;
+extern motor_direction_e MotorDirection;
 
 typedef enum {
   MOTOR_CONTROL_TYPE_BLDC,
   MOTOR_CONTROL_TYPE_FOC
 } motor_control_type_e;
 
-motor_control_type_e MotorControlType;
+extern motor_control_type_e MotorControlType;
 
 /* Function prototypes -----------------------------------------------*/
 
