@@ -39,10 +39,10 @@ real type (mesc)
 */
 #define MESC_STM_ALIAS(mesc,stm) mesc
 
+#ifdef MESC_STM_FIXUP
 // Starting HAL_StatusTypeDef
-#ifndef HAL_OK
 #define HAL_OK (0)
-#endif
 // Finished HAL_StatusTypeDef
+#endif
 
 #endif

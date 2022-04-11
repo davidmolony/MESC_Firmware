@@ -47,8 +47,6 @@ float sqrt1_2 = 0.707107;
 float sqrt3_on_2 = 0.866025;
 float two_on_sqrt3 = 1.73205;
 int adc_conv_end;
-uint8_t b_write_flash = 0;
-uint8_t b_read_flash = 0;
 static float flux_linked_alpha = 0.00001f;
 static float flux_linked_beta = 0.00001f;
 
@@ -144,7 +142,7 @@ void InputInit(){
 // This should be the only function needed to be added into the PWM interrupt
 // for MESC to run Ensure that it is followed by the clear timer update
 // interrupt
-MESC_PWM_IRQ_handler() {
+void MESC_PWM_IRQ_handler() {
   if (htim1.Instance->CNT > 512) {
     foc_vars.IRQentry = debugtim.Instance->CNT;
     fastLoop();
@@ -245,12 +243,6 @@ void fastLoop() {
 
     case MOTOR_STATE_MEASURING:
 
-      if (b_read_flash) {
-        MotorState = MOTOR_STATE_RUN;
-        b_read_flash = 0;
-        break;
-      } else {
-      }
       if (motor.uncertainty ==
           1) {  // Every PWM cycle we enter this function until
                 // the resistance measurement has converged at a
@@ -313,7 +305,6 @@ void fastLoop() {
 static float Idq[2][2] = {{0.0f, 0.0f}, {0.0f, 0.0f}};
 static float dIdq[2] = {0.0f, 0.0f};
 static float IIR[2] = {0.0f, 0.0f};
-static float avg;
 static float intdidq[2];
 static volatile float nrm;
 static volatile float nrm_avg;
@@ -466,37 +457,37 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // they should have the best current measurements
     if (htim1.Instance->CCR1 > foc_vars.ADC_duty_threshold) {
       // Clark using phase V and W
-      foc_vars.Iab[0] = -measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
-                        measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+      foc_vars.Iab[0] = -measurement_buffers.ConvertedADC[ADCIV][FOC_CHANNEL_PHASE_I] -
+                        measurement_buffers.ConvertedADC[ADCIW][FOC_CHANNEL_PHASE_I];
       foc_vars.Iab[1] =
-          one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
-          one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+          one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][FOC_CHANNEL_PHASE_I] -
+          one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][FOC_CHANNEL_PHASE_I];
     } else if (htim1.Instance->CCR2 > foc_vars.ADC_duty_threshold) {
       // Clark using phase U and W
-      foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
+      foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][FOC_CHANNEL_PHASE_I];
       foc_vars.Iab[1] =
-          -one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
-          two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+          -one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIU][FOC_CHANNEL_PHASE_I] -
+          two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][FOC_CHANNEL_PHASE_I];
     } else if (htim1.Instance->CCR3 > foc_vars.ADC_duty_threshold) {
-      //        measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO] =
+      //        measurement_buffers.ConvertedADC[ADCIW][FOC_CHANNEL_PHASE_I] =
       //        			-
-      //        measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
-      //    				measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO];
+      //        measurement_buffers.ConvertedADC[ADCIU][FOC_CHANNEL_PHASE_I] -
+      //    				measurement_buffers.ConvertedADC[ADCIV][FOC_CHANNEL_PHASE_I];
       // Clark using phase U and V
-      foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
+      foc_vars.Iab[0] = measurement_buffers.ConvertedADC[ADCIU][FOC_CHANNEL_PHASE_I];
       foc_vars.Iab[1] =
-          two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] +
+          two_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][FOC_CHANNEL_PHASE_I] +
           one_on_sqrt3 * two_on_sqrt3 *
-              measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO];
+              measurement_buffers.ConvertedADC[ADCIU][FOC_CHANNEL_PHASE_I];
     } else {
       // Do the full transform
       foc_vars.Iab[0] =
-          0.66666f * measurement_buffers.ConvertedADC[ADCIU][I_CONV_NO] -
-          0.33333f * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
-          0.33333f * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+          0.66666f * measurement_buffers.ConvertedADC[ADCIU][FOC_CHANNEL_PHASE_I] -
+          0.33333f * measurement_buffers.ConvertedADC[ADCIV][FOC_CHANNEL_PHASE_I] -
+          0.33333f * measurement_buffers.ConvertedADC[ADCIW][FOC_CHANNEL_PHASE_I];
       foc_vars.Iab[1] =
-          one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][I_CONV_NO] -
-          one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][I_CONV_NO];
+          one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][FOC_CHANNEL_PHASE_I] -
+          one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][FOC_CHANNEL_PHASE_I];
     }
 
     // Park
@@ -510,7 +501,6 @@ void VICheck() {  // Check currents, voltages are within panic limits
   static float Ia_last = 0;
   static float Ib_last = 0;
   static uint16_t angle = 0;
-  static uint16_t angle_error = 0;
 
   void flux_observer() {
     // LICENCE NOTE:
@@ -883,7 +873,6 @@ void VICheck() {  // Check currents, voltages are within panic limits
   static float count_bottom;
   static float Vd_temp;
   static float Vq_temp;
-  static float Vinjected = 2.0f;
   static float top_I_L;
   static float bottom_I_L;
   static float top_I_Lq;
@@ -1115,7 +1104,6 @@ void VICheck() {  // Check currents, voltages are within panic limits
             foc_vars.hall_table[i][0] = foc_vars.hall_table[i][2]-foc_vars.hall_table[i][3]/2;//This is the start angle of the hall state
             foc_vars.hall_table[i][1] = foc_vars.hall_table[i][2]+foc_vars.hall_table[i][3]/2;//This is the end angle of the hall state
       }
-      b_write_flash = 1;
       MotorState = MOTOR_STATE_RUN;
       foc_vars.Idq_req[0] = 0;
       foc_vars.Idq_req[1] = 0;
@@ -1141,7 +1129,6 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
   static float acc_da = 0.0f;
   static float acc_db = 0.0f;
-  static uint16_t acc_num = 0;
   static float da;
   static float db;
 
@@ -1351,7 +1338,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
 	  }
 
 	    if(htim->Instance->SR & TIM_FLAG_UPDATE){
-	    		      slowLoop(&htim);
+	    		      slowLoop(htim);
 	    }
   }
 

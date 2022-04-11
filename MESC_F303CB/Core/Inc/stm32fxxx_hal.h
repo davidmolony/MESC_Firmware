@@ -20,6 +20,9 @@ Hardware identifiers
 
 #define MESC_GPIO_HALL GPIOB
 
+extern TIM_HandleTypeDef htim17;
+#define debugtim htim17
+
 /*
 Function prototypes
 */

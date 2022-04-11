@@ -160,6 +160,12 @@ typedef struct {
 
 extern foc_measurement_t measurement_buffers;  // fixme: floating function prototype
 
+enum RCPWMMode{
+	THROTTLE_ONLY,
+	THROTTLE_REVERSE,
+	THROTTLE_NO_REVERSE
+};
+
 typedef struct {
 
 	///////////////////RCPWM//////////////////////
@@ -174,12 +180,6 @@ typedef struct {
 	uint32_t IC_pulse_MID;
 	uint32_t IC_pulse_DEADZONE; //single sided; no response before MID +- this
 	float RCPWM_gain[2][2];
-
-	enum RCPWMMode{
-		THROTTLE_ONLY,
-		THROTTLE_REVERSE,
-		THROTTLE_NO_REVERSE
-	};
 
 	 uint32_t fCC1;
 	 uint32_t fUPD;

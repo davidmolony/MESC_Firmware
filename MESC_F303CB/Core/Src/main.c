@@ -22,7 +22,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "flash_wrapper.h"
 
 //#include "usbd_cdc_if.c"
 //#include "usbd_cdc.h"
@@ -34,6 +33,8 @@
 #include "MESCtemp.h"
 #include "MESCuart.h"
 #include "MESCui.h"
+
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -196,18 +197,6 @@ int main(void)
     Finished System Initialisation
     */
 
-    /* check if flash is empty and read data.
-     * This will populate the Halltable, Lphase, Rphase with values from flash.
-     * foc_vars.hall_table
-     * motor.Lphase
-     * motor.Rphase */
-    //    eraseData();
-    if (getStatus() == VALID)
-    {
-        b_read_flash = 1;
-        readData();
-    }
-    b_read_flash = 0;
     motor.uncertainty = 1;
 
     // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
@@ -268,13 +257,6 @@ int main(void)
 					measurement_buffers.adc3,
 					measurement_buffers.adc4 );
             HAL_UART_Transmit(&huart3, (uint8_t *)error_message, length, 100);
-        }
-        if (b_write_flash)
-        {
-            __HAL_TIM_MOE_DISABLE(&htim1);
-            writeData();
-            __HAL_TIM_MOE_ENABLE(&htim1);
-            b_write_flash = 0;
         }
 
         //         sprintf(UART_buffer, "helloWorld/r");  //        HAL_UART_Transmit(&huart3, (uint8_t *)"HelloWorld\r", 12, 10);

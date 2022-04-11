@@ -84,7 +84,6 @@ static void cmd_hello( void )
 static void cmd_parameter_setup( void )
 {
     MotorState = MOTOR_STATE_DETECTING;
-    b_read_flash = 0;
 
     cli_reply( "Vbus%.2f" "\r" "\n", measurement_buffers.ConvertedADC[0][1] );
 }

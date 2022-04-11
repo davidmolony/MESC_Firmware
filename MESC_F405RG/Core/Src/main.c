@@ -29,9 +29,7 @@
 #include "MESCtemp.h"
 #include "MESCuart.h"
 #include "MESCui.h"
-#include "flash_wrapper.h"
 #include "MESC_Comms.h"
-extern char UART_rx_buffer[2];
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,8 +59,6 @@ UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
-static int countdown = 2000000;
-static int answer;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -148,15 +144,6 @@ int main(void)
   Finished System Initialisation
   */
 
-  if (getStatus() == VALID) {
-    b_read_flash = 1;
-    readData();
-  }
-  //Change this to hard code running detection
-  // on startup (0) or using presumed values (1)
-  b_read_flash = 1;
-
-
   HAL_TIM_IC_Start(&htim4, TIM_CHANNEL_1);
   HAL_TIM_IC_Start(&htim4, TIM_CHANNEL_2);
   __HAL_TIM_ENABLE_IT(&htim4, TIM_IT_UPDATE);
@@ -186,7 +173,6 @@ motor.Rphase = 0.006f;//CA120 150kV
 //650 is the right number for a motor with 7PP and 50kV
   HAL_Delay(1000);
 
-HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
 //Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
 MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
 #if 0                                  // INIT FLASH
@@ -200,14 +186,8 @@ MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
 #endif
   while (1) {
     __NOP();
-    if (b_write_flash) {
-      __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(&htim1);
-      writeData();
-      __HAL_TIM_MOE_ENABLE(&htim1);
-      b_write_flash = 0;
-    }
 HAL_Delay(4000);
-    HAL_UART_Transmit_DMA(&huart3, "hello World \r\n", 13);
+    HAL_UART_Transmit_DMA(&huart3, (uint8_t *)"hello World \r\n", 13);
 
 //if(countdown >= 0){
 //countdown--;
