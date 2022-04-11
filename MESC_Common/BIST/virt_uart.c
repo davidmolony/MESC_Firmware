@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#define MESC_STM_FIXUP
 #include "MESC_STM.h"
 
 MESC_STM_ALIAS(int,HAL_StatusTypeDef) virt_uart_write( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size )

@@ -87,6 +87,7 @@ extern void          virt_flash_init( void );
 extern void          virt_flash_free( void );
 
 extern MESC_STM_ALIAS(int,HAL_StatusTypeDef) virt_uart_write( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size );
+static void virt_uart_read( void ) {}
 
 void bist_cli( void )
 {
@@ -104,7 +105,7 @@ void bist_cli( void )
 
     cli_register_function( "reset", reset );
 
-    cli_register_io( NULL, virt_uart_write );
+    cli_register_io( NULL, virt_uart_write, virt_uart_read );
 
     for ( uint32_t cmd = 0; cmd < (sizeof(commands) / sizeof(commands[0])); ++cmd )
     {
@@ -152,7 +153,7 @@ void i_cli( void )
     cli_register_function(  "reset", reset );
     cli_register_function(  "quit" , i_cli_quit );
 
-    cli_register_io( NULL, virt_uart_write );
+    cli_register_io( NULL, virt_uart_write, virt_uart_read );
 
     fprintf( stdout, "INFO: Use 'X quit' to exit\n" );
 

@@ -1,4 +1,4 @@
-# Copyright 2021 cod3b453
+# Copyright 2021-2022 cod3b453
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -55,39 +55,6 @@ SET( ${PROJECT_NAME}_src
     ${CMAKE_CURRENT_LIST_DIR}/ntc.c
 
     ${CMAKE_CURRENT_LIST_DIR}/util_ntc.c
-)
-
-ADD_EXECUTABLE( ${PROJECT_NAME} ${${PROJECT_NAME}_hdr} ${${PROJECT_NAME}_src} )
-
-TARGET_INCLUDE_DIRECTORIES( ${PROJECT_NAME} PUBLIC ${${PROJECT_NAME}_inc} )
-
-IF(MSVC)
-    #SET_PROPERTY( DIRECTORY ${CMAKE_CURRENT_LIST_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME} )
-ELSE()
-    TARGET_LINK_LIBRARIES( ${PROJECT_NAME} PUBLIC m )
-ENDIF()
-
-PROJECT( util_sinlut )
-
-IF(MSVC)
-    SET( CMAKE_C_FLAGS         "/W4 /MP" )
-    SET( CMAKE_C_FLAGS_DEBUG   "/Od /GS /ZI /RTC1" )
-    SET( CMAKE_C_FLAGS_RELEASE "/O2 /GF" )
-ELSE()
-    SET( CMAKE_C_FLAGS         "-Wall -Wextra -pedantic -std=c11" )
-    SET( CMAKE_C_FLAGS_DEBUG   "-O0 -g -ggdb3" )
-    SET( CMAKE_C_FLAGS_RELEASE "-O2" )
-ENDIF()
-
-SET( ${PROJECT_NAME}_inc
-    ${CMAKE_CURRENT_LIST_DIR}/../Inc
-)
-
-#SET( ${PROJECT_NAME}_hdr
-#)
-
-SET( ${PROJECT_NAME}_src
-    ${CMAKE_CURRENT_LIST_DIR}/util_sinlut.c
 )
 
 ADD_EXECUTABLE( ${PROJECT_NAME} ${${PROJECT_NAME}_hdr} ${${PROJECT_NAME}_src} )
