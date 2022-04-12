@@ -382,8 +382,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   if ((measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
       (measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
       (measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
-      (measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V   ] > g_hw_setup.RawVoltLim) ||
-      (temp_check( measurement_buffers.RawADC[3][0] ) == false)) {
+      (measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V   ] > g_hw_setup.RawVoltLim)){
         foc_vars.Idq_req[0] = foc_vars.Idq_req[0] * 0.9;
         foc_vars.Idq_req[1] = foc_vars.Idq_req[1] * 0.9;
 
@@ -1394,11 +1393,18 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
 foc_vars.Idq_req[1] = input_vars.Idq_req_UART[1] + input_vars.Idq_req_RCPWM[1] + input_vars.Idq_req_ADC1[1] + input_vars.Idq_req_ADC2[1];
 
+///////////// Clamp the overall request
+if(foc_vars.Idq_req[0]>input_vars.max_request_Idq[0]){foc_vars.Idq_req[0] = input_vars.max_request_Idq[0];}
+if(foc_vars.Idq_req[0]<input_vars.min_request_Idq[0]){foc_vars.Idq_req[0] = input_vars.min_request_Idq[0];}
+if(foc_vars.Idq_req[1]>input_vars.max_request_Idq[1]){foc_vars.Idq_req[1] = input_vars.max_request_Idq[1];}
+if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = input_vars.min_request_Idq[1];}
 
-    // Adjust the SVPWM gains to account for the change in battery voltage etc
+
+
+////// Adjust the SVPWM gains to account for the change in battery voltage etc
     calculateVoltageGain();
 
-    // Run field weakening (and maybe MTPA later)
+////// Run field weakening (and maybe MTPA later)
     if (fabs(foc_vars.Vdq[1]) > foc_vars.field_weakening_threshold) {
       foc_vars.Idq_req[0] =
           foc_vars.field_weakening_curr_max *
@@ -1407,10 +1413,16 @@ foc_vars.Idq_req[1] = input_vars.Idq_req_UART[1] + input_vars.Idq_req_RCPWM[1] +
     } else {
       foc_vars.Idq_req[0] = 0;
       foc_vars.field_weakening_flag = 0;
-      // Note, this FW implementation works terribly, I think it probably needs
+//////// Note, this FW implementation works terribly, I think it probably needs
       // to run in the fast loop.
     }
 
+    if(temp_check( measurement_buffers.RawADC[3][0] ) == false){
+    	if(0){generateBreak();
+    	MotorState = MOTOR_STATE_ERROR;
+    	MotorError = MOTOR_ERROR_OVER_LIMIT_TEMP;
+    	}
+    }
     // For anything else...
     foc_vars.rawThrottleVal[1] = foc_vars.Idq_req[1];
     foc_vars.currentPower = fabs(foc_vars.Vdq_smoothed[1] * foc_vars.Idq[1] *

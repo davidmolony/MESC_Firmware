@@ -164,12 +164,13 @@ int main(void)
 
 //motor.motor_flux = 32.0f; //Propdrive 2826 1200kV
 //motor.motor_flux = 464.0f; //Red 70kV McMaster 8080 motor
-motor.motor_flux = 500.0f; //Alien 8080 50kV motor
-motor.motor_flux = 225.0f; //AT12070 62kV
+//motor.motor_flux = 500.0f; //Alien 8080 50kV motor
+//motor.motor_flux = 225.0f; //AT12070 62kV
 motor.motor_flux = 135.0f; //CA120 150kV
 motor.Lphase = 0.000006f;//CA120 150kV
 motor.Rphase = 0.006f;//CA120 150kV
 
+calculateGains();
 //650 is the right number for a motor with 7PP and 50kV
   HAL_Delay(1000);
 
