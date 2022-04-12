@@ -1297,12 +1297,14 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
   void doublePulseTest() {
     static int dp_counter;
-    static int dp_periods = 7;
+    static int dp_periods = 3;
     if (dp_counter < dp_periods) {
       htim1.Instance->CCR1 = 0;
       htim1.Instance->CCR2 = 0;
-      htim1.Instance->CCR3 = 1023;
+      htim1.Instance->CCR3 = 1022;
       phU_Break();
+      phV_Enable();
+      phW_Enable();
       test_vals.dp_current_final[dp_counter] =
           measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
       dp_counter++;
@@ -1313,11 +1315,13 @@ void VICheck() {  // Check currents, voltages are within panic limits
           measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
       dp_counter++;
     } else {
+      htim1.Instance->CCR1 = 0;
       htim1.Instance->CCR2 = 0;
       htim1.Instance->CCR3 = 0;
       test_vals.dp_current_final[dp_counter] =
           measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
       dp_counter = 0;
+      generateBreak();
       MotorState = MOTOR_STATE_IDLE;
     }
   }
