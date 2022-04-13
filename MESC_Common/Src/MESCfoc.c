@@ -404,6 +404,11 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
 
   void ADCConversion() {
+	  foc_vars.Vdq_smoothed[0] = (foc_vars.Vdq_smoothed[0]*99.0f + foc_vars.Vdq[0])*0.01f;
+	  foc_vars.Vdq_smoothed[1] = (foc_vars.Vdq_smoothed[1]*99.0f + foc_vars.Vdq[1])*0.01f;
+	  foc_vars.Idq_smoothed[0] = (foc_vars.Idq_smoothed[0]*99.0f + foc_vars.Idq[0])*0.01f;
+	  foc_vars.Idq_smoothed[1] = (foc_vars.Idq_smoothed[1]*99.0f + foc_vars.Idq[1])*0.01f;
+
     getRawADC();
     VICheck();
 
@@ -1408,6 +1413,11 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
 ////// Adjust the SVPWM gains to account for the change in battery voltage etc
     calculateVoltageGain();
 
+////// Calculate the current power
+    foc_vars.currentPower[0] = 1.5f*(foc_vars.Vdq[0]*foc_vars.Idq_smoothed[0]);
+    foc_vars.currentPower[1] = 1.5f*(foc_vars.Vdq[1]*foc_vars.Idq_smoothed[1]);
+
+    foc_vars.Ibus = (foc_vars.currentPower[0] + foc_vars.currentPower[1]) /measurement_buffers.ConvertedADC[0][1];
 ////// Run field weakening (and maybe MTPA later)
     if (fabs(foc_vars.Vdq[1]) > foc_vars.field_weakening_threshold) {
       foc_vars.Idq_req[0] =
@@ -1427,33 +1437,32 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
     	MotorError = MOTOR_ERROR_OVER_LIMIT_TEMP;
     	}
     }
-    // For anything else...
-    foc_vars.rawThrottleVal[1] = foc_vars.Idq_req[1];
-    foc_vars.currentPower = fabs(foc_vars.Vdq_smoothed[1] * foc_vars.Idq[1] *
-                                 foc_vars.Vdqres_to_Vdq);
-    foc_vars.reqPower = fabs(foc_vars.Vdq_smoothed[1] * foc_vars.Idq_req[1] *
-                             foc_vars.Vdqres_to_Vdq);
-    if (foc_vars.reqPower > g_hw_setup.battMaxPower) {  // foc_vars.Vdq[0]*foc_vars.Idq[0]+
-      // foc_vars.Idq_req[1] = foc_vars.Idq_req[1] * g_hw_setup.battMaxPower /
-      // foc_vars.reqPower;
-      foc_vars.Idq_req[1] = g_hw_setup.battMaxPower / (fabs(foc_vars.Vdq_smoothed[1]) * foc_vars.Vdqres_to_Vdq);
+/////// Clamp the max power taken from the battery
+    foc_vars.reqPower = 1.5f*fabs(foc_vars.Vdq_smoothed[1] * foc_vars.Idq_req[1]);
+    if (foc_vars.reqPower > g_hw_setup.battMaxPower) {
+    	if(foc_vars.Idq_req[1] > 0.0f){
+    		foc_vars.Idq_req[1] = g_hw_setup.battMaxPower / (fabs(foc_vars.Vdq_smoothed[1])*1.5f);
+    	}else{
+    			foc_vars.Idq_req[1] = -g_hw_setup.battMaxPower / (fabs(foc_vars.Vdq_smoothed[1])*1.5f);
+    	}
     }
 
-    // Unpuc the observer
-    if (flux_linked_alpha * flux_linked_alpha +
-            flux_linked_beta * flux_linked_beta <
+/////// Unpuc the observer kludge
+    if ((flux_linked_alpha * flux_linked_alpha + flux_linked_beta * flux_linked_beta) <
         0.25 * motor.motor_flux * motor.motor_flux) {
       flux_linked_alpha = 0.5 * motor.motor_flux;
       flux_linked_beta = 0.5 * motor.motor_flux;
     }
-
+/////////////Set and reset the HFI////////////////////////
     if((foc_vars.Vdq[1] > 3.0f)||(foc_vars.Vdq[1] < -3.0f)){
     	foc_vars.inject = 0;
-    }
-    else if((foc_vars.Vdq[1] < 2.0f)&&(foc_vars.Vdq[1] > -2.0f)){
+    } else if((foc_vars.Vdq[1] < 2.0f)&&(foc_vars.Vdq[1] > -2.0f)){
     	foc_vars.inject = 1;
     }
+
   }
+
+
   void MESCTrack() {
     // here we are going to do the clark and park transform of the voltages to
     // get the VaVb and VdVq These can be handed later to the observers and used

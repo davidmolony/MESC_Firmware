@@ -63,32 +63,25 @@ typedef struct {
 
 typedef struct {
   int initing;  // Flag to say we are initialising
-  uint16_t FOCError;
-  uint16_t RotorAngle;  // Rotor angle, either fetched from hall sensors or
-                        // from observer
-  uint16_t AngleStep;   // At startup, step angle is zero, zero speed. This is
-                        // the angle by which the inverter increments each PWM
-                        // cycle under open loop
+
   uint16_t openloop_step;//The angle to increment by for openloop
   uint16_t FOCAngle;    // Angle generated in the hall sensor estimator
-
   MESCsin_cos_s sincosangle;  // This variable carries the current sin and cosine of
                          	  // the angle being used for Park and Clark transforms,
                               // so they only need computing once per pwm cycle
-
   float Iab[FOC_TRANSFORMED_CHANNELS + 1];  // Float vector containing the Clark
                                             // transformed current in amps
   float Idq[FOC_TRANSFORMED_CHANNELS];      // Float vector containing the Park
                                             // transformed current in amps
-
+  float Vab[FOC_TRANSFORMED_CHANNELS + 1];
   float Vdq[FOC_TRANSFORMED_CHANNELS];
   float Vdq_smoothed[FOC_TRANSFORMED_CHANNELS];
-  float Vab[FOC_TRANSFORMED_CHANNELS + 1];
+  float Idq_smoothed[FOC_TRANSFORMED_CHANNELS];
+
   float inverterVoltage[FOC_TRANSFORMED_CHANNELS + 1];
-  float smoothed_idq[2];
-  float Idq_req[2];
-  float rawThrottleVal[2];
-  float currentPower;
+  float Idq_req[2];							//The input to the PI controller. Load this with the values you want.
+  float currentPower[2];					//Power being consumed by the motor; this does not include steady state losses and losses to switching
+  float Ibus;
   float reqPower;
 
   uint16_t hall_table[6]

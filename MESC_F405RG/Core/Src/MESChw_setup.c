@@ -67,7 +67,7 @@ void hw_init() {
   g_hw_setup.RawVoltLim =
       (uint16_t)(4096.0f * (g_hw_setup.Vmax / 3.3f) * g_hw_setup.RVBB /
                  (g_hw_setup.RVBB + g_hw_setup.RVBT));
-  g_hw_setup.battMaxPower = 500.0f;
+  g_hw_setup.battMaxPower = 200.0f;
 }
 
 void getRawADC(void) {
