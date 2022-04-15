@@ -61,9 +61,9 @@ void bist_bat( void )
     float const Vdel =        0.05f * (float)bp.battery.series;
     float const Vlow = bp.cell.Vlow * (float)bp.battery.series;
 
-    float const Cmax = bp.cell.Cmax * (float)bp.battery.series * (float)bp.battery.parallel;
-    float const Cdel =         0.5f * (float)bp.battery.series * (float)bp.battery.parallel;
-    float const Clow = bp.cell.Clow * (float)bp.battery.series * (float)bp.battery.parallel;
+    float const Cmax = bp.cell.Cmax * (float)bp.battery.parallel;
+    float const Cdel =         0.5f * (float)bp.battery.parallel;
+    float const Clow = bp.cell.Clow * (float)bp.battery.parallel;
 
     for ( BATDisplay d = BAT_DISPLAY_PERCENT; (d <= BAT_DISPLAY_AMPHOUR); ++d )
     {

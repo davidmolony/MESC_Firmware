@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -85,7 +85,7 @@ void bat_notify_profile_update( void )
             Cscale = (100.0f / (bat_profile->cell.Cmax - bat_profile->cell.Clow));
             break;
         case BAT_DISPLAY_AMPHOUR:
-            Cscale = ((float)bat_profile->battery.series * (float)bat_profile->battery.parallel);
+            Cscale = (float)bat_profile->battery.parallel;
             break;
     }
 }
