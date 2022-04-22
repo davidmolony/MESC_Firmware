@@ -77,6 +77,8 @@ typedef struct {
   float Vdq[FOC_TRANSFORMED_CHANNELS];
   float Vdq_smoothed[FOC_TRANSFORMED_CHANNELS];
   float Idq_smoothed[FOC_TRANSFORMED_CHANNELS];
+  float Idq_int_err[2];
+
 
   float inverterVoltage[FOC_TRANSFORMED_CHANNELS + 1];
   float Idq_req[2];							//The input to the PI controller. Load this with the values you want.
@@ -123,6 +125,10 @@ typedef struct {
   float Vq_injectionV;
   uint32_t FLrun, VFLrun;
   uint16_t angle_error;
+  float Ldq_now[2];
+  float Ldq_now_dboost[2];
+
+  float IIR[2];
 } MESCfoc_s;
 
 extern MESCfoc_s foc_vars;

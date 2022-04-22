@@ -27,8 +27,8 @@
 
 ////////////////////USER DEFINES//////////////////
 	///////////////////RCPWM//////////////////////
-#define IC_DURATION_MAX 15000
-#define IC_DURATION_MIN 25000
+#define IC_DURATION_MAX 25000
+#define IC_DURATION_MIN 15000
 
 #define IC_PULSE_MAX 2100
 #define IC_PULSE_MIN 900

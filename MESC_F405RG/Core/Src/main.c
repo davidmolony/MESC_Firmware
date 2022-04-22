@@ -151,31 +151,37 @@ int main(void)
   // main clock
  // __HAL_TIM_SET_PRESCALER(&htim4, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
 
+
   MESCInit();
   motor_init();
   // MESC_Init();
-  MotorControlType = MOTOR_CONTROL_TYPE_FOC;
+
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-
-//motor.motor_flux = 32.0f; //Propdrive 2826 1200kV
-//motor.motor_flux = 464.0f; //Red 70kV McMaster 8080 motor
-//motor.motor_flux = 500.0f; //Alien 8080 50kV motor
-//motor.motor_flux = 225.0f; //AT12070 62kV
-motor.motor_flux = 135.0f; //CA120 150kV
-motor.Lphase = 0.000006f;//CA120 150kV
-motor.Rphase = 0.006f;//CA120 150kV
-
+//  motor.motor_flux = 32.0f; //Propdrive 2826 1200kV
+//  motor.motor_flux = 464.0f; //Red 70kV McMaster 8080 motor
+//  motor.motor_flux = 500.0f; //Alien 8080 50kV motor
+//  motor.motor_flux = 225.0f; //AT12070 62kV
+  motor.motor_flux = 135.0f; //CA120 150kV
+  motor.Lphase = 0.000006f;//CA120 150kV
+  motor.Rphase = 0.006f;//CA120 150kV
+  //Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
+//  MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
+htim1.Instance ->ARR = 1024;
+motor.motor_flux = motor.motor_flux * 1024.0f/(float)htim1.Instance ->ARR;
 calculateGains();
+calculateVoltageGain();
+  MotorControlType = MOTOR_CONTROL_TYPE_FOC;
+  HAL_Delay(1000);
+  MotorState = MOTOR_STATE_RUN;
 //650 is the right number for a motor with 7PP and 50kV
   HAL_Delay(1000);
 
-//Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
-MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
+
 #if 0                                  // INIT FLASH
   while (MotorState == MOTOR_STATE_MEASURING) {
     __NOP();

@@ -197,7 +197,7 @@ void mesc_init_2( void )
 
 void mesc_init_3( void )
 {
-    HAL_ADCEx_InjectedStart_IT( &hadc1 );
+    HAL_ADCEx_InjectedStart( &hadc1 );
     HAL_ADCEx_InjectedStart(    &hadc2 );
     HAL_ADCEx_InjectedStart(    &hadc3 );
 
