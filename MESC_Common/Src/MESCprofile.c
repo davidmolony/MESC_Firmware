@@ -246,11 +246,15 @@ static ProfileStatus profile_write_noop( void const * data, uint32_t const addre
 }
 
 static ProfileStatus (* profile_storage_read)(  void       * data, uint32_t const address, uint32_t const length ) = profile_read_noop;
+static ProfileStatus (* profile_storage_write_begin)( void );
 static ProfileStatus (* profile_storage_write)( void const * data, uint32_t const address, uint32_t const length ) = profile_write_noop;
+static ProfileStatus (* profile_storage_write_end)( void );
 
 void profile_configure_storage_io(
     ProfileStatus (* const read )( void       * buffer, uint32_t const address, uint32_t const length ),
-    ProfileStatus (* const write)( void const * buffer, uint32_t const address, uint32_t const length ) )
+    ProfileStatus (* const write)( void const * buffer, uint32_t const address, uint32_t const length ),
+	ProfileStatus (* const begin)( void ),
+	ProfileStatus (* const end  )( void ) )
 {
     if (read != NULL)
     {
@@ -259,7 +263,15 @@ void profile_configure_storage_io(
 
     if (write != NULL)
     {
+    	if (begin != NULL)
+    	{
+    		profile_storage_write_begin = begin;
+    	}
         profile_storage_write = write;
+        if (end != NULL)
+		{
+        	profile_storage_write_end = end;
+		}
     }
 
     cli_configure_storage_io( write );
@@ -543,7 +555,7 @@ ProfileStatus profile_get_entry(
         {
             ret = PROFILE_STATUS_ERROR_ENTRY_SIGNATURE;
 
-            if (profile_stub.entry[i].signature == signature)
+            if (profile_stub.entry[i].data_signature == signature)
             {
                 ret = PROFILE_STATUS_SUCCESS;
 
@@ -781,6 +793,14 @@ ProfileStatus profile_commit( void )
     uint32_t offset = sizeof(ProfileHeader) + (sizeof(ProfileEntry) * PROFILE_HEADER_ENTRIES);
     uint32_t checksum = fnv1a_init();
 
+    ProfileStatus sts = profile_storage_write_begin();
+
+    if (sts != PROFILE_STATUS_SUCCESS)
+    {
+    	profile_storage_write_end();
+    	return PROFILE_STATUS_ERROR_STORAGE_BEGIN;
+    }
+
     // Write entries
     for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
     {
@@ -811,6 +831,7 @@ ProfileStatus profile_commit( void )
                 case PROFILE_STATUS_COMMIT_SUCCESS_NOOP:
                     break;
                 default:
+                	profile_storage_write_end();
                     return PROFILE_STATUS_ERROR_STORAGE_WRITE;
             }
         }
@@ -857,6 +878,7 @@ ProfileStatus profile_commit( void )
             case PROFILE_STATUS_COMMIT_SUCCESS_NOOP:
                 break;
             default:
+            	profile_storage_write_end();
                 return PROFILE_STATUS_ERROR_STORAGE_WRITE;
         }
 
@@ -876,6 +898,13 @@ ProfileStatus profile_commit( void )
     // Write header
     profile_status_storage = profile_storage_write( &profile_stub.header, address, sizeof(profile_stub.header) );
 
+    sts = profile_storage_write_end();
+
+    if (sts != PROFILE_STATUS_SUCCESS)
+    {
+    	return PROFILE_STATUS_ERROR_STORAGE_END;
+    }
+
     switch (profile_status_storage)
     {
         case PROFILE_STATUS_SUCCESS:
@@ -883,10 +912,16 @@ ProfileStatus profile_commit( void )
         case PROFILE_STATUS_COMMIT_SUCCESS_NOOP:
             break;
         default:
+        	profile_storage_write_end();
             return PROFILE_STATUS_ERROR_STORAGE_WRITE;
     }
 
     profile_modified = false;
 
     return PROFILE_STATUS_SUCCESS;
+}
+
+bool profile_get_modified( void )
+{
+	return profile_modified;
 }

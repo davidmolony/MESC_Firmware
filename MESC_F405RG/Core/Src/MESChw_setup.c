@@ -147,9 +147,7 @@ ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
         return PROFILE_STATUS_ERROR_DATA_LENGTH;
     }
 
-    uint32_t const base  = getFlashBaseAddress();
-
-    uint32_t const saddr = base + address;
+    uint32_t const saddr = address;
     uint32_t const eaddr = saddr + length - 1;
 
     uint32_t const ssector = getFlashSectorIndex( saddr );
@@ -168,11 +166,11 @@ ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
     sector_erase.Sector    = ssector;
     sector_erase.NbSectors = (esector - ssector + 1);
 
-    uint32_t result = 0;
+    uint32_t bad_sector = 0;
 
-    HAL_FLASHEx_Erase( &sector_erase, &result );
+    HAL_StatusTypeDef const sts = HAL_FLASHEx_Erase( &sector_erase, &bad_sector );
 
-    switch (result)
+    switch (sts)
     {
         case HAL_OK:
             return PROFILE_STATUS_SUCCESS;

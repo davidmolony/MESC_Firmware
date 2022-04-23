@@ -54,7 +54,7 @@ The diagnostic profile is for hardware bring-up and debugging purposes only
 */
     uint32_t            diag_length = sizeof(diag_profile);
 
-    ProfileStatus ret = profile_get_entry(
+    ProfileStatus const ret = profile_get_entry(
         "SPDD", SPEED_PROFILE_SIGNATURE,
         &diag_profile, &diag_length );
 
@@ -78,7 +78,7 @@ whatever local requirements there are.
 */
     uint32_t            road_length = sizeof(road_profile);
 
-    ProfileStatus ret = profile_get_entry(
+    ProfileStatus const ret = profile_get_entry(
         "SPDR", SPEED_PROFILE_SIGNATURE,
         &road_profile, &road_length );
 
@@ -118,23 +118,26 @@ void speed_init( SPEEDProfile const * const profile )
         speed_profile_road();
         // DANGER - This is re-entrant
 
-        // If the profile was updated...
-        if (speed_profile != NULL)
-        {
-            // ...initialisaiton is complete
-            return;
-        }
         // ...otherwise fall back to diagnostic profile
-        speed_profile_diag();
+        if (speed_profile == NULL)
+        {
+			speed_profile_diag();
+			// DANGER - This is re-entrant
 
-        return;
+			if (speed_profile == NULL)
+			{
+				speed_profile = &road_profile;
+			}
+        }
+    }
+    else
+    {
+    	speed_profile = profile;
     }
 
     cli_register_function( "spd_diag"  , speed_profile_diag   );
     cli_register_function( "spd_road"  , speed_profile_road   );
     cli_register_function( "spd_toggle", speed_profile_toggle );
-
-    speed_profile = profile;
 
     float const gear_ratio          = (float)speed_profile->gear_ratio.motor
                                     / (float)speed_profile->gear_ratio.wheel;

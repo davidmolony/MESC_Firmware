@@ -31,6 +31,7 @@
 #define MESC_PROFILE_H
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -135,6 +136,8 @@ enum ProfileStatus
 
     PROFILE_STATUS_ERROR_STORAGE_READ,      // Error reading from the storage
     PROFILE_STATUS_ERROR_STORAGE_WRITE,     // Error writing to the storage
+	PROFILE_STATUS_ERROR_STORAGE_BEGIN,
+	PROFILE_STATUS_ERROR_STORAGE_END,
 
     PROFILE_STATUS_ERROR_ENTRY_ALLOC,       // No free entries available
     PROFILE_STATUS_ERROR_ENTRY_READONLY,    // Cannot modify read-only entry
@@ -184,7 +187,9 @@ static_assert( ((PROFILE_MAX_SIZE % 2048/*FLASH_BLOCK_SIZE*/) == 0), "PROFILE_MA
 
 void profile_configure_storage_io(
     ProfileStatus (* const read)(  void       * buffer, uint32_t const address, uint32_t const length ),
-    ProfileStatus (* const write)( void const * buffer, uint32_t const address, uint32_t const length ) );
+    ProfileStatus (* const write)( void const * buffer, uint32_t const address, uint32_t const length ),
+	ProfileStatus (* const begin)( void ),
+	ProfileStatus (* const end  )( void ) );
 
 ProfileStatus profile_init( void );
 
@@ -218,6 +223,8 @@ ProfileStatus profile_del_entry(
     char const * name, uint32_t const signature );
 
 ProfileStatus profile_commit( void );
+
+bool profile_get_modified( void );
 
 #define PROFILE_DEFAULT NULL // Generic symbol to indicate loading of default profile
 

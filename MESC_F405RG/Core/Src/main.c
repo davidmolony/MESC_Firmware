@@ -131,7 +131,7 @@ int main(void)
   // Attach flash IO to profile
   flash_register_profile_io();
   // Load stored profile
-  profile_init();
+  ProfileStatus const sts = profile_init();
 
   // Initialise components
   bat_init( PROFILE_DEFAULT );
@@ -139,6 +139,31 @@ int main(void)
   temp_init( PROFILE_DEFAULT );
   // Initialise user Interface
   ui_init( PROFILE_DEFAULT );
+// HACK
+  // Example store for debugging
+  UIProfile up;
+  up.type = UI_PROFILE_BUTTON;
+  up.desc.button.address = 1;
+  up.desc.button.identifier = 2;
+  up.desc.button.interface = 3;
+  uint32_t len = sizeof(up);
+  ProfileStatus ret = profile_put_entry( "TEST", UI_PROFILE_SIGNATURE, &up, &len );
+  (void)ret;
+// HACK
+  // If a profile was:
+  // (1) Not loaded
+  // (2) Corrupt
+  // (3) Modified
+  if  (
+		  (sts != PROFILE_STATUS_INIT_SUCCESS_LOADED) // (1)
+	  ||  profile_get_modified() // (3)
+	  )
+  {
+	// (1) Create a new profile
+	// (2) Replace the corrupt profile
+	// (3) Update the existing profile
+    profile_commit();
+  }
 
   /*
   Finished System Initialisation
@@ -171,7 +196,7 @@ int main(void)
   motor.Rphase = 0.006f;//CA120 150kV
   //Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
 //  MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
-htim1.Instance ->ARR = 1024;
+htim1.Instance ->ARR = 1400;
 motor.motor_flux = motor.motor_flux * 1024.0f/(float)htim1.Instance ->ARR;
 calculateGains();
 calculateVoltageGain();

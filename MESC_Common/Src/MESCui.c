@@ -47,7 +47,7 @@ void ui_init( UIProfile const * const profile )
 
         do
         {
-            ProfileStatus ret = profile_scan_entry(
+            ProfileStatus const ret = profile_scan_entry(
                 &i, UI_PROFILE_SIGNATURE,
                 &ui_profile[d], &ui_length,
                 &ui_profile_name[d] );

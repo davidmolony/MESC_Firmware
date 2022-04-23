@@ -62,19 +62,18 @@ void temp_init( TEMPProfile const * const profile )
             .limit.Tmin         = CVT_CELSIUS_TO_KELVIN_F(  5.0f ),
             .limit.Tmax         = CVT_CELSIUS_TO_KELVIN_F( 80.0f ),
         };
-        uint32_t           temp_length = sizeof(temp_profile_default);
+        uint32_t temp_length = sizeof(temp_profile_default);
 
-        ProfileStatus ret = profile_get_entry(
+        ProfileStatus const ret = profile_get_entry(
             "TEMP", TEMP_PROFILE_SIGNATURE,
             &temp_profile_default, &temp_length );
+
+        temp_profile = &temp_profile_default;
 
         if (ret != PROFILE_STATUS_SUCCESS)
         {
             cli_reply( "TEMP FAILED" "\r" "\n" );
-            return;
         }
-
-        temp_init( &temp_profile_default);
     }
     else
     {
