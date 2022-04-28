@@ -216,7 +216,9 @@ int main(void)
     // MotorState = MOTOR_STATE_HALL_RUN;
     MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
-    motor.motor_flux = 350;
+    motor.motor_flux = 787;
+    motor.Lphase = 0.000046f;
+    motor.Rphase = 0.048f;
     // 650 is the right number for a motor with 7PP and 50kV
     // Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
 

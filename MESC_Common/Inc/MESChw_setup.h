@@ -39,7 +39,7 @@
 
 	/////////////////ADC///////////////
 #define  ADC1MIN 1200
-#define  ADC1MAX 4095
+#define  ADC1MAX 2700
 #define  ADC2MIN 1200
 #define  ADC2MAX 4095
 
@@ -50,8 +50,9 @@
 #define MAX_ID_REQUEST 100.0f
 #define MAX_IQ_REQUEST 100.0f
 
-#define ABS_MAX_PHASE_CURRENT 150.0f
-#define ABS_MAX_BUS_VOLTAGE 50.0f
+#define ABS_MAX_PHASE_CURRENT 130.0f
+#define ABS_MAX_BUS_VOLTAGE 85.0f
+
 /////////////END USER DEFINES//////////////////////
 
 
@@ -91,7 +92,6 @@ typedef struct {
                         //  generated break from ADC. Actual voltage equal to
                         /// RawVoltLim*3.3*Divider/4096            //
                         /// example 2303*3.3/4096*(R1k5+R47k/R1K5)=60V
-  float battMaxPower;   // Maximum battery power init...
 } hw_setup_s;
 
 extern hw_setup_s g_hw_setup; // TODO PROFILE

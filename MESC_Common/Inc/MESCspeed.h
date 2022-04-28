@@ -84,6 +84,11 @@ struct SPEEDProfile
 
 typedef struct SPEEDProfile SPEEDProfile;
 
+extern SPEEDProfile const * speed_profile;
+
+void speed_limiter( void );
+void speed_road( void );
+
 void speed_init( SPEEDProfile const * const profile );
 
 void speed_register_vars( float const * const drev, float const * const dt );

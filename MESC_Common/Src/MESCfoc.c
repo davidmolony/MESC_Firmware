@@ -29,6 +29,7 @@
 #include "MESChw_setup.h"
 #include "MESCmotor_state.h"
 #include "MESCsin_lut.h"
+#include "MESCspeed.h"
 #include "MESCtemp.h"
 
 #include <math.h>
@@ -354,7 +355,7 @@ void hyperLoop() {
     }
   }
 
-  // foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.angle_error;
+ // foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.angle_error;
   writePWM();
 }
 
@@ -1428,6 +1429,20 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
     } else {
       foc_vars.Idq_req[0] = 0;
       foc_vars.field_weakening_flag = 0;
+
+      if(getHallState()==0){//This happens when the hall sensors overheat it seems.
+    	  if (MotorError == MOTOR_ERROR_NONE) {
+    		  speed_limiter();
+    	  }
+    	  MotorError = MOTOR_ERROR_HALL0;
+      }else /*if(getHallState()==7){
+    	  MotorError = MOTOR_ERROR_HALL7;
+      } else */{
+    	  if (MotorError != MOTOR_ERROR_NONE) {
+    		  speed_road();
+    	  }
+    	  MotorError = MOTOR_ERROR_NONE;
+      }
 //////// Note, this FW implementation works terribly, I think it probably needs
 // to run in the fast loop.
     }
@@ -1440,11 +1455,11 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
     }
 /////// Clamp the max power taken from the battery
     foc_vars.reqPower = 1.5f*fabs(foc_vars.Vdq_smoothed[1] * foc_vars.Idq_req[1]);
-    if (foc_vars.reqPower > g_hw_setup.battMaxPower) {
+    if (foc_vars.reqPower > speed_profile->motor.Pmax) {
     	if(foc_vars.Idq_req[1] > 0.0f){
-    		foc_vars.Idq_req[1] = g_hw_setup.battMaxPower / (fabs(foc_vars.Vdq_smoothed[1])*1.5f);
+    		foc_vars.Idq_req[1] = speed_profile->motor.Pmax / (fabs(foc_vars.Vdq_smoothed[1])*1.5f);
     	}else{
-    		foc_vars.Idq_req[1] = -g_hw_setup.battMaxPower / (fabs(foc_vars.Vdq_smoothed[1])*1.5f);
+    		foc_vars.Idq_req[1] = -speed_profile->motor.Pmax / (fabs(foc_vars.Vdq_smoothed[1])*1.5f);
     	}
     }
 
@@ -1460,6 +1475,7 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
     }
 
     //////Set tracking
+#if 1
 if(fabs(foc_vars.Idq_req[1])>0.1f){
 	if(MotorState != MOTOR_STATE_ERROR){
 	MotorState = MOTOR_STATE_RUN;
@@ -1471,8 +1487,8 @@ if(fabs(foc_vars.Idq_req[1])>0.1f){
     if((foc_vars.Vdq[1] > 3.0f)||(foc_vars.Vdq[1] < -3.0f)){
     	foc_vars.inject = 0;
     } else if((foc_vars.Vdq[1] < 2.0f)&&(foc_vars.Vdq[1] > -2.0f)){
-    	foc_vars.inject = 1;
-  	  foc_vars.Vd_injectionV = 4.0f;
+    	foc_vars.inject = 0;
+  	  foc_vars.Vd_injectionV = 6.0f;
   	  foc_vars.Vq_injectionV = 0.0f;
     }
 
@@ -1480,13 +1496,13 @@ if(fabs(foc_vars.Idq_req[1])>0.1f){
     	foc_vars.Idq_req[0] = 5;
 		static int HFI_countdown = 20;
 		if(HFI_countdown==1){
-			foc_vars.Idq_req[0] = 40;
+			foc_vars.Idq_req[0] = 20;
 		}else if(HFI_countdown==0){
 			foc_vars.Ldq_now_dboost[0] = foc_vars.IIR[0]; //Find the effect of d-axis current
 			foc_vars.Idq_req[0] = 5;
 			HFI_countdown = 20;
 		}else if(HFI_countdown == 3){
-			foc_vars.Idq_req[0] = -40;
+			foc_vars.Idq_req[0] = -20;
 		}else if(HFI_countdown == 2){
 			foc_vars.Ldq_now[0] = foc_vars.IIR[0];//foc_vars.Vd_injectionV;
 			foc_vars.Idq_req[0] = 5;
@@ -1496,6 +1512,7 @@ if(fabs(foc_vars.Idq_req[1])>0.1f){
 		}
 		HFI_countdown--;
     }
+#endif
   }
 
 

@@ -36,9 +36,9 @@
 
 #include <stddef.h>
 
-static SPEEDProfile road_profile;
-static SPEEDProfile diag_profile;
-static SPEEDProfile const * speed_profile = NULL;
+static SPEEDProfile road_profile = { .motor.Pmax =  250.0f };
+static SPEEDProfile diag_profile = { .motor.Pmax = 50.0f };
+SPEEDProfile const * speed_profile = &road_profile;
 
 static float rev_speed; // Speedometer units per motor revolution
 
@@ -107,6 +107,16 @@ static void speed_profile_toggle( void )
     {
         speed_profile_road();
     }
+}
+
+void speed_limiter( void )
+{
+	speed_profile = &diag_profile;
+}
+
+void speed_road( void )
+{
+	speed_profile = &road_profile;
 }
 
 void speed_init( SPEEDProfile const * const profile )
