@@ -1,5 +1,5 @@
 /*
-* Copyright 2021-2022 cod3b453
+* Copyright 2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,24 +27,16 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "virt_uart.h"
+#ifndef VIRT_UART_H
+#define VIRT_UART_H
 
-#include <assert.h>
-#include <stdint.h>
-#include <stdio.h>
+#define MESC_STM_FIXUP
+#include "MESC_STM.h"
 
-MESC_STM_ALIAS(int,HAL_StatusTypeDef) virt_uart_write( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size )
-{
-    fprintf( stderr, "VUART:>" );
-    size_t const ret = fwrite( data, 1, size, stderr );
-    assert( ret == size );
-    fprintf( stderr, "<:VUART\n" );
+#include <inttypes.h>
 
-    return HAL_OK;
-    (void)handle;
-}
+extern MESC_STM_ALIAS(int,HAL_StatusTypeDef) virt_uart_write( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size );
 
- void virt_uart_read( void )
- {
+extern void virt_uart_read( void );
 
- }
+#endif

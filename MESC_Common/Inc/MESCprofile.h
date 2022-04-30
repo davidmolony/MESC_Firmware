@@ -136,8 +136,8 @@ enum ProfileStatus
 
     PROFILE_STATUS_ERROR_STORAGE_READ,      // Error reading from the storage
     PROFILE_STATUS_ERROR_STORAGE_WRITE,     // Error writing to the storage
-	PROFILE_STATUS_ERROR_STORAGE_BEGIN,
-	PROFILE_STATUS_ERROR_STORAGE_END,
+	PROFILE_STATUS_ERROR_STORAGE_BEGIN,     // Error preparing write
+	PROFILE_STATUS_ERROR_STORAGE_END,       // Error finalising write
 
     PROFILE_STATUS_ERROR_ENTRY_ALLOC,       // No free entries available
     PROFILE_STATUS_ERROR_ENTRY_READONLY,    // Cannot modify read-only entry

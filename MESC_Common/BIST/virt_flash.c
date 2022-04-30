@@ -27,7 +27,7 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "MESCprofile.h"
+#include "virt_flash.h"
 
 #include <inttypes.h>
 #include <stdbool.h>
@@ -180,6 +180,16 @@ ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint3
     }
 
     return PROFILE_STATUS_ERROR_STORAGE_WRITE;
+}
+
+ProfileStatus virt_flash_begin( void )
+{
+    return PROFILE_STATUS_SUCCESS;
+}
+
+ProfileStatus virt_flash_end( void )
+{
+    return PROFILE_STATUS_SUCCESS;
 }
 
 void virt_flash_reset( void )

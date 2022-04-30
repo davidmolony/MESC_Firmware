@@ -59,6 +59,9 @@ SET( ${PROJECT_NAME}_hdr
     ${CMAKE_CURRENT_LIST_DIR}/../Inc/MESCtemp.h
     ${CMAKE_CURRENT_LIST_DIR}/../Inc/MESCui.h
 
+    ${CMAKE_CURRENT_LIST_DIR}/virt_flash.h
+    ${CMAKE_CURRENT_LIST_DIR}/virt_uart.h
+
     ${CMAKE_CURRENT_LIST_DIR}/virt/stm32fxxx_hal.h
 )
 

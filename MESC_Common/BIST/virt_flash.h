@@ -1,5 +1,5 @@
 /*
-* Copyright 2021-2022 cod3b453
+* Copyright 2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,24 +27,21 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "virt_uart.h"
+#include "MESCprofile.h"
 
-#include <assert.h>
-#include <stdint.h>
-#include <stdio.h>
+extern void          virt_flash_configure( bool const use_mem_not_fs, bool const read_zero_on_error );
 
-MESC_STM_ALIAS(int,HAL_StatusTypeDef) virt_uart_write( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size )
-{
-    fprintf( stderr, "VUART:>" );
-    size_t const ret = fwrite( data, 1, size, stderr );
-    assert( ret == size );
-    fprintf( stderr, "<:VUART\n" );
+extern void          virt_flash_apply_corruption( void );
+extern void          virt_flash_corrupt( char const * name, uint32_t const offset, uint32_t const length );
 
-    return HAL_OK;
-    (void)handle;
-}
+extern ProfileStatus virt_flash_read(  void       * data, uint32_t const address, uint32_t const length );
 
- void virt_uart_read( void )
- {
+extern ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint32_t const length );
+extern ProfileStatus virt_flash_begin( void );
+extern ProfileStatus virt_flash_end(   void );
 
- }
+extern void          virt_flash_reset( void );
+
+extern void          virt_flash_init(  void );
+
+extern void          virt_flash_free(  void );
