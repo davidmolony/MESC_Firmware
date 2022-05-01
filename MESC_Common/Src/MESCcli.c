@@ -71,7 +71,20 @@ enum CLIState
 typedef enum CLIState CLIState;
 
 static CLIState cli_state;
-static uint8_t  cli_cmd;
+
+enum CLICommand
+{
+    CLI_COMMAND_DECREASE = 'D',
+    CLI_COMMAND_FLASH    = 'F',
+    CLI_COMMAND_INCREASE = 'I',
+    CLI_COMMAND_READ     = 'R',
+    CLI_COMMAND_WRITE    = 'W',
+    CLI_COMMAND_EXECUTE  = 'X',
+};
+
+typedef enum CLICommand CLICommand;
+
+static CLICommand cli_cmd;
 
 static bool     cli_hash_valid = false;
 static uint32_t cli_hash = 0;
@@ -161,6 +174,7 @@ struct CLIEntry
 typedef struct CLIEntry CLIEntry;
 
 #define MAX_CLI_LUT_ENTRIES UINT32_C(32)
+
 static CLIEntry   cli_lut[MAX_CLI_LUT_ENTRIES];
 static uint32_t   cli_lut_entries = 0;
 static CLIEntry * cli_lut_entry = NULL;
@@ -182,7 +196,7 @@ static void cli_io_read_noop( void )
 static MESC_STM_ALIAS(void,UART_HandleTypeDef) *  cli_io_handle = NULL;
 static MESC_STM_ALIAS(int ,HAL_StatusTypeDef ) (* cli_io_write)( MESC_STM_ALIAS(void,UART_HandleTypeDef) *, MESC_STM_ALIAS(void,uint8_t) *, uint16_t ) = cli_io_write_noop;
 static void                                    (* cli_io_read )( void ) = cli_io_read_noop;
- 
+
 static void cli_idle( void )
 {
     cli_state = CLI_STATE_IDLE;
@@ -218,17 +232,17 @@ static void cli_execute( void )
 {
     switch (cli_cmd)
     {
-        case 'R':
+        case CLI_COMMAND_READ:
             cli_process_read_value();
             break;
-        case 'W':
+        case CLI_COMMAND_WRITE:
             memcpy( cli_lut_entry->var.w, &cli_var.var, cli_lut_entry->size );
             break;
-        case 'X':
+        case CLI_COMMAND_EXECUTE:
             cli_lut_entry->var.x();
             break;
-        case 'I':
-        case 'D':
+        case CLI_COMMAND_INCREASE:
+        case CLI_COMMAND_DECREASE:
         {
             CLIVariableType const type = cli_lut_entry->type;
             uint32_t const size = cli_lut_entry->size;
@@ -249,7 +263,7 @@ static void cli_execute( void )
             switch (MAKE_TYPE_SIZE( type, size ))
             {
                 case MAKE_TYPE_SIZE_CASE(  INT, sizeof(int8_t) ):
-                    if (cli_cmd == 'I')
+                    if (cli_cmd == CLI_COMMAND_INCREASE)
                     {
                         tmp->i8 += (int8_t)cli_var.var.i;
                     }
@@ -259,7 +273,7 @@ static void cli_execute( void )
                     }
                     break;
                 case MAKE_TYPE_SIZE_CASE(  INT, sizeof(int16_t) ):
-                    if (cli_cmd == 'I')
+                    if (cli_cmd == CLI_COMMAND_INCREASE)
                     {
                         tmp->i16 += (int16_t)cli_var.var.i;
                     }
@@ -269,7 +283,7 @@ static void cli_execute( void )
                     }
                     break;
                 case MAKE_TYPE_SIZE_CASE(  INT, sizeof(int32_t) ):
-                    if (cli_cmd == 'I')
+                    if (cli_cmd == CLI_COMMAND_INCREASE)
                     {
                         tmp->i32 += (int32_t)cli_var.var.i;
                     }
@@ -279,7 +293,7 @@ static void cli_execute( void )
                     }
                     break;
                 case MAKE_TYPE_SIZE_CASE( UINT, sizeof(uint8_t) ):
-                    if (cli_cmd == 'I')
+                    if (cli_cmd == CLI_COMMAND_INCREASE)
                     {
                         tmp->u8 += (uint8_t)cli_var.var.u;
                     }
@@ -289,7 +303,7 @@ static void cli_execute( void )
                     }
                     break;
                 case MAKE_TYPE_SIZE_CASE( UINT, sizeof(uint16_t) ):
-                    if (cli_cmd == 'I')
+                    if (cli_cmd == CLI_COMMAND_INCREASE)
                     {
                         tmp->u16 += (uint16_t)cli_var.var.u;
                     }
@@ -299,7 +313,7 @@ static void cli_execute( void )
                     }
                     break;
                 case MAKE_TYPE_SIZE_CASE( UINT, sizeof(uint32_t) ):
-                    if (cli_cmd == 'I')
+                    if (cli_cmd == CLI_COMMAND_INCREASE)
                     {
                         tmp->u32 += (uint32_t)cli_var.var.u;
                     }
@@ -309,7 +323,7 @@ static void cli_execute( void )
                     }
                     break;
                 case MAKE_TYPE_SIZE_CASE( FLOAT, sizeof(float) ):
-                    if (cli_cmd == 'I')
+                    if (cli_cmd == CLI_COMMAND_INCREASE)
                     {
                         tmp->f32 += (float)cli_var.var.f;
                     }
@@ -725,17 +739,17 @@ static void cli_process_variable( const char c )
 
             switch (cli_cmd)
             {
-                case 'R':
+                case CLI_COMMAND_READ:
                     access = CLI_ACCESS_R;
                     break;
-                case 'W':
+                case CLI_COMMAND_WRITE:
                     access = CLI_ACCESS_W;
                     break;
-                case 'X':
+                case CLI_COMMAND_EXECUTE:
                     access = CLI_ACCESS_X;
                     break;
-                case 'I':
-                case 'D':
+                case CLI_COMMAND_INCREASE:
+                case CLI_COMMAND_DECREASE:
                     access = CLI_ACCESS_RW;
                     break;
                 default:
@@ -755,10 +769,10 @@ static void cli_process_variable( const char c )
 
             switch (cli_cmd)
             {
-                case 'R':
+                case CLI_COMMAND_READ:
                     cli_process_read_value = cli_process_read_type( cli_lut_entry->type );
                     // fallthrough
-                case 'X':
+                case CLI_COMMAND_EXECUTE:
                     cli_state = CLI_STATE_EXECUTE;
 
                     if  (c == '\n')
@@ -774,7 +788,7 @@ static void cli_process_variable( const char c )
                     }
 
                     break;
-                case 'W':
+                case CLI_COMMAND_WRITE:
                     cli_process_write_value = cli_process_write_type( cli_lut_entry->type );
 
                     cli_state = CLI_STATE_VALUE;
@@ -782,8 +796,8 @@ static void cli_process_variable( const char c )
                     cli_hash = 0;
 
                     break;
-                case 'I':
-                case 'D':
+                case CLI_COMMAND_INCREASE:
+                case CLI_COMMAND_DECREASE:
                     cli_process_write_value = cli_process_write_type( cli_lut_entry->type );
                     cli_process_read_value = cli_process_read_type( cli_lut_entry->type );
 
@@ -835,7 +849,6 @@ static void cli_process_variable( const char c )
                     cli_abort();
                 }
             }
-//fprintf( stderr, "HASH %08" PRIX32 "\n", cli_hash );//debug
             break;
     }
 }
@@ -868,13 +881,13 @@ MESC_INTERNAL_ALIAS(int,CLIState) cli_process( char const c )
             {
                 case '\n':
                     break;
-                case 'R':
-                case 'W':
-                case 'X':
-                case 'I':
-                case 'D':
-                case 'F':
-                    cli_cmd = c;
+                case CLI_COMMAND_READ:
+                case CLI_COMMAND_WRITE:
+                case CLI_COMMAND_EXECUTE:
+                case CLI_COMMAND_INCREASE:
+                case CLI_COMMAND_DECREASE:
+                case CLI_COMMAND_FLASH:
+                    cli_cmd = (CLICommand)c;
                     cli_state = CLI_STATE_COMMAND;
                     break;
                 default:
@@ -895,7 +908,7 @@ MESC_INTERNAL_ALIAS(int,CLIState) cli_process( char const c )
                     cli_idle();
                     break;
                 case ' ':
-                    if (cli_cmd == 'F')
+                    if (cli_cmd == CLI_COMMAND_FLASH)
                     {
                         cli_flash_exp_len = 0;
                         cli_flash_exp_chk = 0;
@@ -1011,7 +1024,7 @@ MESC_INTERNAL_ALIAS(int,CLIState) cli_process( char const c )
                     &&  (cli_flash_cur_chk == cli_flash_exp_chk)
                     )
             {
-                ProfileStatus const res = (ProfileStatus)cli_flash_write( cli_flash_buffer, 0, cli_flash_exp_len );
+                ProfileStatus const res = cli_flash_write( cli_flash_buffer, 0, cli_flash_exp_len );
 
                 switch (res)
                 {

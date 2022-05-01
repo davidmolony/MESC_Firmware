@@ -116,7 +116,8 @@ function init() {
                   + '<h2>Generation</h2>'
                   + '<label>Version:</label> ' + '1' + '.' + '0' + '<br />'
                   + '<label>Timestamp:</label> ' + TIMESTAMP + '<br />'
-                  + '<label>git hash:</label> ' + GITHASH + '<br/>'
+                  + '<label>git hash:</label> ' + GITHASH + '<br />'
+                  + '<label>Command</label><input type="text" id="app-prf-cmd" class="command" disabled /> <input type="button" onclick=\"copy(\'app-prf-cmd\')\" value="Copy" /> <input type="button" onclick=\"copy(\'app-prf-dmp\')\" value="Copy Data" /><br />'
                   + '<textarea id="app-prf-dmp" readonly></textarea>';
 }
 
@@ -1374,9 +1375,40 @@ function rem(obj) {
 function gen()
 {
     console.clear();
+    
+    var prf_cmd = window.document.getElementById('app-prf-cmd');
     var prf_dmp = window.document.getElementById('app-prf-dmp');
 
-    // TODO populate header
+    var image_data   = dump_ProfileHeader( header );
+    var image_length = image_data.length / 2;
+    var image_hash   = fnv1a_process_hex( image_data );
 
-    prf_dmp.value = dump_ProfileHeader( header );
+    prf_cmd.value = 'F ' + toHex( image_length, 2 ) + ' ' + toHex( image_hash, 4 );
+    prf_dmp.value = image_data;
+}
+
+function copy(name)
+{
+    var obj = document.getElementById( name );
+
+    if (obj == undefined) {
+        return;
+    }
+
+    obj.select();
+
+    var text = obj.value;
+    var len  = text.length;
+
+    if (len == 0) {
+        return;
+    }
+
+    obj.setSelectionRange( 0, len ); // Required for mobile
+
+    if ("clipboard" in navigator)
+    {
+        navigator.clipboard.writeText( text );
+        console.log( "COPIED " + text );
+    }
 }

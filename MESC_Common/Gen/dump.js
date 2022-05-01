@@ -42,9 +42,8 @@ function int_from_str(value,bytes) {
     return val;
 }
 
-function dump_hex( value, bytes )
+function toHex( value, bytes )
 {
-    dump_log++;
 /*
 DANGER
 
@@ -57,6 +56,14 @@ Must use >>> 0 to force unsigned
         hex = "0" + hex;
     }
 
+    return hex;
+}
+
+function dump_hex( value, bytes )
+{
+    dump_log++;
+
+    var hex = toHex( value, bytes );
     var tmp = '';
 
     for ( var i = hex.length; i > 0; )
