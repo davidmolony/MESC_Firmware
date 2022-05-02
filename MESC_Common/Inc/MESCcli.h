@@ -38,12 +38,13 @@
 
 /*
 Command             Description
-R <NAME>            Read variable <NAME>
-W <NAME> <VALUE>    Write variable <NAME> with <VALUE>
+R <NAME>            Read variable <NAME>; return value '(dec) 0x(hex)'
+W <NAME> <VALUE>    Write variable <NAME> with <VALUE> (dec)
 X <NAME>            Execute function <NAME>
-I <NAME> <VALUE>    Increment variable <NAME> by <VALUE>
-D <NAME> <VALUE>    Decrement variable <NAME> by <VALUE>
+I <NAME> <VALUE>    Increment variable <NAME> by <VALUE> (dec)
+D <NAME> <VALUE>    Decrement variable <NAME> by <VALUE> (dec)
 F <SIZE> <CHECK>    Flash <SIZE> bytes with checksum <CHECK>
+P <NAME>            Probe variable <NAME>; return scope index (dec)
 */
 
 enum CLIVariableType
@@ -86,5 +87,7 @@ void cli_register_io(
 MESC_INTERNAL_ALIAS(int,CLIState) cli_process( char const c );
 
 void cli_reply( char const * p, ... );
+
+void cli_reply_scope( void );
 
 #endif
