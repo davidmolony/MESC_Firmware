@@ -176,7 +176,7 @@ int main(void)
   // main clock
  // __HAL_TIM_SET_PRESCALER(&htim4, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
 
-
+htim1.Instance->ARR = 1800;
   MESCInit();
   motor_init();
   // MESC_Init();
@@ -220,8 +220,14 @@ calculateVoltageGain();
 #endif
   while (1) {
     __NOP();
-HAL_Delay(4000);
-    HAL_UART_Transmit_DMA(&huart3, (uint8_t *)"hello World \r\n", 13);
+HAL_Delay(100);
+    //HAL_UART_Transmit_DMA(&huart3, (uint8_t *)"Hello World \r\n", 13);
+static int a;
+char transmit_buffer[100];
+int sizebuff;
+sizebuff = sprintf(transmit_buffer,"%d,%0.2f,%0.2f,%0.2f,%0.2f\n",a,foc_vars.Vdq[0],foc_vars.Vdq[1],foc_vars.Idq_smoothed[0],foc_vars.Idq_smoothed[1]);
+    HAL_UART_Transmit_DMA(&huart3, transmit_buffer, sizebuff);
+    a++;
 
 //if(countdown >= 0){
 //countdown--;
@@ -735,7 +741,7 @@ static void MX_USART3_UART_Init(void)
 
   /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 9600;
+  huart3.Init.BaudRate = 115200;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;

@@ -85,6 +85,7 @@ void MESCInit() {
   // triggering the ADC, which in turn triggers the ISR routine and wrecks the
   // startup
   mesc_init_3();
+  htim1.Instance->CCR4 = htim1.Instance->ARR-1;
 
   InputInit();
 
