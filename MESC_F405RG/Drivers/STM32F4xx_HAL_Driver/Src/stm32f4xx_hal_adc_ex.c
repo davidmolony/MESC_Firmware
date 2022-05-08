@@ -6,6 +6,17 @@
   *          functionalities of the ADC extension peripheral:
   *           + Extended features functions
   *
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2017 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
   @verbatim
   ==============================================================================
                     ##### How to use this driver #####
@@ -69,18 +80,6 @@
 
 
     @endverbatim
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2017 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
   */
 
 /* Includes ------------------------------------------------------------------*/
@@ -227,6 +226,14 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedStart(ADC_HandleTypeDef* hadc)
       }
     }
   }
+  else
+  {
+    /* Update ADC state machine to error */
+    SET_BIT(hadc->State, HAL_ADC_STATE_ERROR_INTERNAL);
+
+    /* Set ADC error code to ADC IP internal error */
+    SET_BIT(hadc->ErrorCode, HAL_ADC_ERROR_INTERNAL);
+  }
   
   /* Return function status */
   return HAL_OK;
@@ -325,6 +332,14 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedStart_IT(ADC_HandleTypeDef* hadc)
       }
     }
   }
+  else
+  {
+    /* Update ADC state machine to error */
+    SET_BIT(hadc->State, HAL_ADC_STATE_ERROR_INTERNAL);
+
+    /* Set ADC error code to ADC IP internal error */
+    SET_BIT(hadc->ErrorCode, HAL_ADC_ERROR_INTERNAL);
+  }
   
   /* Return function status */
   return HAL_OK;
@@ -411,10 +426,14 @@ HAL_StatusTypeDef HAL_ADCEx_InjectedPollForConversion(ADC_HandleTypeDef* hadc, u
     {
       if((Timeout == 0U)||((HAL_GetTick() - tickstart ) > Timeout))
       {
-        hadc->State= HAL_ADC_STATE_TIMEOUT;
-        /* Process unlocked */
-        __HAL_UNLOCK(hadc);
-        return HAL_TIMEOUT;
+        /* New check to avoid false timeout detection in case of preemption */
+        if(!(__HAL_ADC_GET_FLAG(hadc, ADC_FLAG_JEOC)))
+        {
+          hadc->State= HAL_ADC_STATE_TIMEOUT;
+          /* Process unlocked */
+          __HAL_UNLOCK(hadc);
+          return HAL_TIMEOUT;
+        }
       }
     }
   }
@@ -683,6 +702,14 @@ HAL_StatusTypeDef HAL_ADCEx_MultiModeStart_DMA(ADC_HandleTypeDef* hadc, uint32_t
       /* Enable the selected ADC software conversion for regular group */
       hadc->Instance->CR2 |= (uint32_t)ADC_CR2_SWSTART;
     }
+  }
+  else
+  {
+    /* Update ADC state machine to error */
+    SET_BIT(hadc->State, HAL_ADC_STATE_ERROR_INTERNAL);
+
+    /* Set ADC error code to ADC IP internal error */
+    SET_BIT(hadc->ErrorCode, HAL_ADC_ERROR_INTERNAL);
   }
   
   /* Return function status */
@@ -1083,4 +1110,3 @@ static void ADC_MultiModeDMAError(DMA_HandleTypeDef *hdma)
   * @}
   */ 
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -47,7 +47,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;
+ ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 ADC_HandleTypeDef hadc3;
 
@@ -258,6 +258,7 @@ void SystemClock_Config(void)
   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
@@ -273,6 +274,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
   /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
@@ -306,6 +308,7 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 1 */
 
   /* USER CODE END ADC1_Init 1 */
+
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
@@ -324,6 +327,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
   sConfig.Channel = ADC_CHANNEL_10;
@@ -333,6 +337,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_10;
@@ -348,6 +353,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_0;
@@ -356,6 +362,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_5;
@@ -388,6 +395,7 @@ static void MX_ADC2_Init(void)
   /* USER CODE BEGIN ADC2_Init 1 */
 
   /* USER CODE END ADC2_Init 1 */
+
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc2.Instance = ADC2;
@@ -406,6 +414,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
   sConfig.Channel = ADC_CHANNEL_11;
@@ -415,6 +424,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_11;
@@ -430,6 +440,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_14;
@@ -438,6 +449,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_1;
@@ -446,6 +458,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_9;
@@ -478,6 +491,7 @@ static void MX_ADC3_Init(void)
   /* USER CODE BEGIN ADC3_Init 1 */
 
   /* USER CODE END ADC3_Init 1 */
+
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc3.Instance = ADC3;
@@ -496,6 +510,7 @@ static void MX_ADC3_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
   sConfig.Channel = ADC_CHANNEL_12;
@@ -505,6 +520,7 @@ static void MX_ADC3_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_12;
@@ -520,6 +536,7 @@ static void MX_ADC3_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_13;
@@ -528,6 +545,7 @@ static void MX_ADC3_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_2;
@@ -741,7 +759,7 @@ static void MX_USART3_UART_Init(void)
 
   /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 115200;
+  huart3.Init.BaudRate = 9600;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;
@@ -842,5 +860,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

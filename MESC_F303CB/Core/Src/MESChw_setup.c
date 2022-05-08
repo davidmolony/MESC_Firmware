@@ -76,7 +76,7 @@ void hw_init()
         g_hw_setup.RawCurrLim = 4000;
     }  // 4000 is 96 counts away from ADC saturation, allow headroom for opamp not pulling rail:rail.
     g_hw_setup.RawVoltLim = (uint16_t)(4096.0f * (g_hw_setup.Vmax / 3.3f) * g_hw_setup.RVBB / (g_hw_setup.RVBB + g_hw_setup.RVBT));
-    g_hw_setup.battMaxPower = 3000.0f;
+
 }
 
 void setAWDVals()
