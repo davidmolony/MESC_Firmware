@@ -511,11 +511,11 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // negatively the angle is then the arctangent of the integrals shifted 180
     // degrees
     flux_linked_alpha =
-        flux_linked_alpha + foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0] -
-        motor.Lphase * (foc_vars.Iab[0] - Ia_last) * foc_vars.pwm_frequency;
+        flux_linked_alpha + (foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0])*foc_vars.pwm_period-
+        motor.Lphase * (foc_vars.Iab[0] - Ia_last);// * foc_vars.pwm_frequency;
     flux_linked_beta =
-        flux_linked_beta + foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1] -
-        motor.Lphase * (foc_vars.Iab[1] - Ib_last) * foc_vars.pwm_frequency;
+        flux_linked_beta + (foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1])*foc_vars.pwm_period -
+        motor.Lphase * (foc_vars.Iab[1] - Ib_last);// * foc_vars.pwm_frequency;
     Ia_last = foc_vars.Iab[0];
     Ib_last = foc_vars.Iab[1];
 
@@ -1256,12 +1256,9 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
 
   void calculateGains() {
-    foc_vars.pwm_period =
-		2.0f * ((float)htim1.Instance->PSC + 1.0f) * (float)htim1.Instance->ARR /
-		(float)HAL_RCC_GetHCLKFreq();
-
-    foc_vars.pwm_frequency =
-        (float)HAL_RCC_GetHCLKFreq() / (2 * (float)htim1.Instance->ARR * ((float)htim1.Instance->PSC + 1));
+    foc_vars.pwm_frequency =PWM_FREQUENCY;
+    foc_vars.pwm_period = 1.0f/foc_vars.pwm_frequency;
+    htim1.Instance->ARR = HAL_RCC_GetHCLKFreq()/(((float)htim1.Instance->PSC + 1.0f) * 2*foc_vars.pwm_frequency);
 
     foc_vars.PWMmid = htim1.Instance->ARR * 0.5f;
 
@@ -1291,7 +1288,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     foc_vars.Vq_max = 0.5f * measurement_buffers.ConvertedADC[0][1] *
                       MAX_MODULATION * SVPWM_MULTIPLIER * Vq_MAX_PROPORTION;
 
-    foc_vars.Vdint_max = foc_vars.Vd_max * 0.9f;
+    foc_vars.Vdint_max = foc_vars.Vd_max * 0.9f; //ToDo unvoodoo, logic in this is to always ensure headroom for the P term
     foc_vars.Vqint_max = foc_vars.Vq_max * 0.9f;
 
     foc_vars.field_weakening_threshold = foc_vars.Vq_max * 0.8f;
@@ -1477,41 +1474,52 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
 
     //////Set tracking
 #if 1
+static int was_last_tracking;
+
 if(fabs(foc_vars.Idq_req[1])>0.1f){
 	if(MotorState != MOTOR_STATE_ERROR){
 	MotorState = MOTOR_STATE_RUN;
 	}
 }else{
 	MotorState = MOTOR_STATE_TRACKING;
+	was_last_tracking = 1;
 }
 /////////////Set and reset the HFI////////////////////////
-    if((foc_vars.Vdq[1] > 3.0f)||(foc_vars.Vdq[1] < -3.0f)){
+    if((foc_vars.Vdq[1] > 2.0f)||(foc_vars.Vdq[1] < -2.0f)){
     	foc_vars.inject = 0;
-    } else if((foc_vars.Vdq[1] < 2.0f)&&(foc_vars.Vdq[1] > -2.0f)){
-    	foc_vars.inject = 0;
-  	  foc_vars.Vd_injectionV = 6.0f;
+    } else if((foc_vars.Vdq[1] < 1.0f)&&(foc_vars.Vdq[1] > -1.0f)){
+    	foc_vars.inject = 1;
+  	  foc_vars.Vd_injectionV = 3.0f;
   	  foc_vars.Vq_injectionV = 0.0f;
     }
 
     if(foc_vars.inject==1){
-    	foc_vars.Idq_req[0] = 5;
-		static int HFI_countdown = 20;
-		if(HFI_countdown==1){
-			foc_vars.Idq_req[0] = 20;
-		}else if(HFI_countdown==0){
+    	static int HFI_countdown;
+    	static int no_q;
+    	if(was_last_tracking==1){
+    		HFI_countdown = 4; //resolve the ambiguity immediately
+    		foc_vars.Idq_req[1] = 0.0f;
+    		no_q=1;
+    		was_last_tracking = 0;
+    	}
+		if(HFI_countdown==3){
+			foc_vars.Idq_req[0] = 30.0f;
+		}else if(HFI_countdown==2){
 			foc_vars.Ldq_now_dboost[0] = foc_vars.IIR[0]; //Find the effect of d-axis current
-			foc_vars.Idq_req[0] = 5;
-			HFI_countdown = 20;
-		}else if(HFI_countdown == 3){
-			foc_vars.Idq_req[0] = -20;
-		}else if(HFI_countdown == 2){
+			foc_vars.Idq_req[0] = 5.0f;
+		}else if(HFI_countdown == 1){
+			foc_vars.Idq_req[0] = -30.0f;
+		}else if(HFI_countdown == 0){
 			foc_vars.Ldq_now[0] = foc_vars.IIR[0];//foc_vars.Vd_injectionV;
-			foc_vars.Idq_req[0] = 5;
+			foc_vars.Idq_req[0] = 5.0f;
 		if(foc_vars.Ldq_now[0]>foc_vars.Ldq_now_dboost[0]){foc_vars.FOCAngle+=32768;}
+		HFI_countdown = 20;
+		no_q = 0;
 		}else{
-			foc_vars.Idq_req[0] = 5;
+			foc_vars.Idq_req[0] = 0.0f;
 		}
 		HFI_countdown--;
+	    if(no_q){foc_vars.Idq_req[1]=0.0f;}
     }
 #endif
   }

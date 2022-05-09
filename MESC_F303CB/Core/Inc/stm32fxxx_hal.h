@@ -22,6 +22,7 @@ Hardware identifiers
 
 extern TIM_HandleTypeDef htim17;
 #define debugtim htim17
+#include "MESC_FOC_ESC_V0.5.h"
 
 /*
 Function prototypes

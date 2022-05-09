@@ -60,13 +60,13 @@ void hw_init()
 {
     g_hw_setup.Imax = ABS_MAX_PHASE_CURRENT;  // Imax is the current at which we are either no longer able to read it, or hardware "don't ever exceed to avoid breakage"
     g_hw_setup.Vmax = ABS_MAX_BUS_VOLTAGE;  // Headroom beyond which likely to get avalanche of MOSFETs or DCDC converter
-    g_hw_setup.Vmin = 10;    // This implies that the PSU has crapped out or a wire has fallen out, and suddenly there will be no power.
-    g_hw_setup.Rshunt = 0.0005;
-    g_hw_setup.RIphPU = 4700;
-    g_hw_setup.RIphSR = 150;
-    g_hw_setup.RVBB = 1500;
-    g_hw_setup.RVBT = 82000;
-    g_hw_setup.OpGain = 16;  // Can this be inferred from the HAL declaration?
+    g_hw_setup.Vmin = ABS_MIN_BUS_VOLTAGE;    // This implies that the PSU has crapped out or a wire has fallen out, and suddenly there will be no power.
+    g_hw_setup.Rshunt = R_SHUNT;
+    g_hw_setup.RIphPU = R_SHUNT_PULLUP;
+    g_hw_setup.RIphSR = R_SHUNT_SERIES_RESISTANCE;
+    g_hw_setup.RVBB = R_VBUS_BOTTOM;
+    g_hw_setup.RVBT = R_VBUS_TOP;
+    g_hw_setup.OpGain = OPGAIN;  // Can this be inferred from the HAL declaration?
     g_hw_setup.VBGain = (3.3f / 4096.0f) * (g_hw_setup.RVBB + g_hw_setup.RVBT) / g_hw_setup.RVBB;
     g_hw_setup.Igain =
         3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain * SHUNT_POLARITY * g_hw_setup.RIphPU / (g_hw_setup.RIphPU + g_hw_setup.RIphSR));

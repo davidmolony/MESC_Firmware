@@ -172,7 +172,7 @@ int main(void)
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
-
+#if defined USE_PROFILE
     /*
     Starting System Initialisation
     */
@@ -196,9 +196,9 @@ int main(void)
     /*
     Finished System Initialisation
     */
+#endif
 
     motor.uncertainty = 1;
-
     // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
 
     htim1.Instance->ARR = 1024; // PWM

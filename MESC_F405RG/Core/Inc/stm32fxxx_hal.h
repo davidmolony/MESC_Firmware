@@ -9,7 +9,7 @@
 #define INC_STM32FXXX_HAL_H_
 
 #include "stm32f4xx_hal.h"
-
+#include "MESC_F405_V0.3.h"
 // TODO move all the 405 specific defines (STM32F405xx) into this from:
 // MESCfoc.c
 // MESC_Comms.c

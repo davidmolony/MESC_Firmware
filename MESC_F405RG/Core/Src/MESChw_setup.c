@@ -48,12 +48,12 @@ void hw_init() {
              	 	 	 	 	 	 	 	 	// read it, or hardware "don't ever exceed to avoid breakage"
   g_hw_setup.Vmax = ABS_MAX_BUS_VOLTAGE;  // Headroom beyond which likely to get avalanche of
                            	   	   	   	  // MOSFETs or DCDC converter
-  g_hw_setup.Vmin = 10;  // This implies that the PSU has crapped out or a wire
+  g_hw_setup.Vmin = ABS_MIN_BUS_VOLTAGE;  // This implies that the PSU has crapped out or a wire
                          // has fallen out, and suddenly there will be no power.
-  g_hw_setup.Rshunt = 0.00033;
-  g_hw_setup.RVBB = 1500;   //
-  g_hw_setup.RVBT = 82000;  //
-  g_hw_setup.OpGain = 10;   //
+  g_hw_setup.Rshunt = R_SHUNT;
+  g_hw_setup.RVBB = R_VBUS_BOTTOM;   //
+  g_hw_setup.RVBT = R_VBUS_TOP;  //
+  g_hw_setup.OpGain = OPGAIN;   //
   g_hw_setup.VBGain =
       (3.3f / 4096.0f) * (g_hw_setup.RVBB + g_hw_setup.RVBT) / g_hw_setup.RVBB;
   g_hw_setup.Igain = 3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain * SHUNT_POLARITY);  // TODO
