@@ -696,6 +696,18 @@ void VICheck() {  // Check currents, voltages are within panic limits
   //////////////////////////////////////////////////////////////////////////////////////////
 
   void MESCFOC() {
+#ifdef USE_FIELD_WEAKENING
+	    if (fabs(foc_vars.Vdq[1]) > foc_vars.field_weakening_threshold) {
+	      foc_vars.Idq_req[0] =
+	          foc_vars.field_weakening_curr_max *foc_vars.field_weakening_multiplier*
+	          (foc_vars.field_weakening_threshold - fabs(foc_vars.Vdq_smoothed[1]));
+	      foc_vars.field_weakening_flag = 1;
+	    } else {
+	    	//if(!foc_vars.inject){
+	      //foc_vars.Idq_req[0] = 0;}
+	      foc_vars.field_weakening_flag = 0;
+	    }
+#endif
     // Here we are going to do a PID loop to control the dq currents, converting
     // Idq into Vdq Calculate the errors
     static float Idq_err[2];
@@ -1272,7 +1284,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     foc_vars.Iq_pgain = foc_vars.Id_pgain;
     foc_vars.Iq_igain = foc_vars.Id_igain;
     foc_vars.Vdqres_to_Vdq = 0.333f * measurement_buffers.ConvertedADC[0][1] / 677.0f;
-    foc_vars.field_weakening_curr_max = 0.0f;  // test number, to be stored in user settings
+    foc_vars.field_weakening_curr_max = FIELD_WEAKENING_CURRENT;  // test number, to be stored in user settings
   }
 
   void calculateVoltageGain() {
@@ -1291,7 +1303,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
     foc_vars.Vdint_max = foc_vars.Vd_max * 0.9f; //ToDo unvoodoo, logic in this is to always ensure headroom for the P term
     foc_vars.Vqint_max = foc_vars.Vq_max * 0.9f;
 
-    foc_vars.field_weakening_threshold = foc_vars.Vq_max * 0.8f;
+    foc_vars.field_weakening_threshold = foc_vars.Vq_max * FIELD_WEAKENING_THRESHOLD;
+    foc_vars.field_weakening_multiplier = 1.0f-FIELD_WEAKENING_THRESHOLD;
   }
 
   void doublePulseTest() {
@@ -1419,6 +1432,7 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
 
     foc_vars.Ibus = (foc_vars.currentPower[0] + foc_vars.currentPower[1]) /measurement_buffers.ConvertedADC[0][1];
 ////// Run field weakening (and maybe MTPA later)
+#if 0
     if (fabs(foc_vars.Vdq[1]) > foc_vars.field_weakening_threshold) {
       foc_vars.Idq_req[0] =
           foc_vars.field_weakening_curr_max *
@@ -1427,22 +1441,23 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
     } else {
       foc_vars.Idq_req[0] = 0;
       foc_vars.field_weakening_flag = 0;
+    }
+    //////// Note, this FW implementation works terribly, I think it probably needs
+    // to run in the fast loop.
+#endif
 
-      if(getHallState()==0){//This happens when the hall sensors overheat it seems.
-    	  if (MotorError == MOTOR_ERROR_NONE) {
-    		  speed_limiter();
-    	  }
-    	  MotorError = MOTOR_ERROR_HALL0;
-      }else /*if(getHallState()==7){
-    	  MotorError = MOTOR_ERROR_HALL7;
-      } else */{
-    	  if (MotorError != MOTOR_ERROR_NONE) {
-    		  speed_road();
-    	  }
-    	  MotorError = MOTOR_ERROR_NONE;
-      }
-//////// Note, this FW implementation works terribly, I think it probably needs
-// to run in the fast loop.
+    if(getHallState()==0){//This happens when the hall sensors overheat it seems.
+  	  if (MotorError == MOTOR_ERROR_NONE) {
+  		  speed_limiter();
+  	  }
+  	  MotorError = MOTOR_ERROR_HALL0;
+    }else /*if(getHallState()==7){
+  	  MotorError = MOTOR_ERROR_HALL7;
+    } else */{
+  	  if (MotorError != MOTOR_ERROR_NONE) {
+  		  speed_road();
+  	  }
+  	  MotorError = MOTOR_ERROR_NONE;
     }
 
     if(temp_check( measurement_buffers.RawADC[3][0] ) == false){
@@ -1484,7 +1499,9 @@ if(fabs(foc_vars.Idq_req[1])>0.1f){
 	MotorState = MOTOR_STATE_TRACKING;
 	was_last_tracking = 1;
 }
+#endif
 /////////////Set and reset the HFI////////////////////////
+#ifdef USE_HFI
     if((foc_vars.Vdq[1] > 2.0f)||(foc_vars.Vdq[1] < -2.0f)){
     	foc_vars.inject = 0;
     } else if((foc_vars.Vdq[1] < 1.0f)&&(foc_vars.Vdq[1] > -1.0f)){
@@ -1503,15 +1520,15 @@ if(fabs(foc_vars.Idq_req[1])>0.1f){
     		was_last_tracking = 0;
     	}
 		if(HFI_countdown==3){
-			foc_vars.Idq_req[0] = 30.0f;
+			foc_vars.Idq_req[0] = 50.0f;
 		}else if(HFI_countdown==2){
 			foc_vars.Ldq_now_dboost[0] = foc_vars.IIR[0]; //Find the effect of d-axis current
-			foc_vars.Idq_req[0] = 5.0f;
+			foc_vars.Idq_req[0] = 1.0f;
 		}else if(HFI_countdown == 1){
-			foc_vars.Idq_req[0] = -30.0f;
+			foc_vars.Idq_req[0] = -50.0f;
 		}else if(HFI_countdown == 0){
 			foc_vars.Ldq_now[0] = foc_vars.IIR[0];//foc_vars.Vd_injectionV;
-			foc_vars.Idq_req[0] = 5.0f;
+			foc_vars.Idq_req[0] = 1.0f;
 		if(foc_vars.Ldq_now[0]>foc_vars.Ldq_now_dboost[0]){foc_vars.FOCAngle+=32768;}
 		HFI_countdown = 20;
 		no_q = 0;

@@ -111,6 +111,7 @@ typedef struct {
   // Field weakenning
   float field_weakening_curr_max;
   float field_weakening_threshold;
+  float field_weakening_multiplier;
   int field_weakening_flag;
 
   float VBEMFintegral[2];

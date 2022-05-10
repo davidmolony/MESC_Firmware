@@ -46,3 +46,7 @@
 #define DEFAULT_MOTOR_R 0.005f //Ohms
 //Use the Ebike Profile tool
 //#define USE_PROFILE
+#define USE_FIELD_WEAKENING
+#define FIELD_WEAKENING_CURRENT 10.0f
+#define FIELD_WEAKENING_THRESHOLD 0.8f
+#define USE_HFI
