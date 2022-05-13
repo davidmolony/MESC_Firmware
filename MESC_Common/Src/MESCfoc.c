@@ -102,8 +102,8 @@ void InputInit(){
 
 	input_vars.max_request_Idq[0] = 0.0f; //Not supporting d-axis input current for now
 	input_vars.min_request_Idq[0] = 0.0f;
-	input_vars.max_request_Idq[1] = MAX_ID_REQUEST;
-	input_vars.min_request_Idq[1] = -MAX_ID_REQUEST;
+	input_vars.max_request_Idq[1] = MAX_IQ_REQUEST;
+	input_vars.min_request_Idq[1] = -MAX_IQ_REQUEST;
 
 	input_vars.IC_pulse_MAX = IC_PULSE_MAX;
 	input_vars.IC_pulse_MIN = IC_PULSE_MIN;
@@ -1356,6 +1356,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
 	    		      slowLoop(htim);
 	    }
   }
+  extern uint32_t ADC_buffer[6];
 
   void slowLoop(TIM_HandleTypeDef * htim) {
     // The slow loop runs at either 20Hz or at the PWM input frequency.
@@ -1496,8 +1497,14 @@ if(fabs(foc_vars.Idq_req[1])>0.1f){
 	MotorState = MOTOR_STATE_RUN;
 	}
 }else{
+#ifdef HAS_PHASE_SENSORS
 	MotorState = MOTOR_STATE_TRACKING;
 	was_last_tracking = 1;
+#else
+	if(MotorState != MOTOR_STATE_ERROR){
+	MotorState = MOTOR_STATE_RUN;
+	}
+#endif
 }
 #endif
 /////////////Set and reset the HFI////////////////////////

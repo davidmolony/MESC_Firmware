@@ -35,7 +35,7 @@ extern TIM_HandleTypeDef htim1;
 hw_setup_s g_hw_setup;
 motor_s motor;
 
-static uint32_t ADC_buffer[6];
+uint32_t ADC_buffer[6];
 
 void motor_init() {
   motor.Rphase = 0;  // We init at 0 to trigger the measurer to get the vals

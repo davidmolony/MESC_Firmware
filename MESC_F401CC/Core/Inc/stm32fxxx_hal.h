@@ -20,8 +20,8 @@ Hardware identifiers
 
 #define MESC_GPIO_HALL GPIOC
 
-extern TIM_HandleTypeDef htim7;
-#define debugtim htim7
+extern TIM_HandleTypeDef htim10;
+#define debugtim htim10
 
 /*
 Function prototypes

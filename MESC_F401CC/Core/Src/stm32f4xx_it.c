@@ -58,6 +58,7 @@
 extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim10;
 extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
 
@@ -207,6 +208,7 @@ void SysTick_Handler(void)
 void ADC_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC_IRQn 0 */
+	//ToDo implement break if we get here
     __HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_AWD));
     //HAL_ADC_IRQHandler(&hadc1);
 
@@ -242,6 +244,7 @@ void TIM2_IRQHandler(void)
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_CC2);
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
   /* USER CODE END TIM2_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim2);
   /* USER CODE BEGIN TIM2_IRQn 1 */
 
   /* USER CODE END TIM2_IRQn 1 */

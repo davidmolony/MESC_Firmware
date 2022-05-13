@@ -1,4 +1,5 @@
 #define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
+#define HAS_PHASE_SENSORS
 
 #define SHUNT_POLARITY -1.0f
 
