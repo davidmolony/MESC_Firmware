@@ -29,4 +29,11 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>MESC_Common</name>
+			<type>2</type>
+			<location>C:/Users/HPEnvy/Documents/MESC_Firmware/MESC_Common</location>
+		</link>
+	</linkedResources>
 </projectDescription>

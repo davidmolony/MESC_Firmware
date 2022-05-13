@@ -2,19 +2,19 @@
 
 #define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 180.0f
-#define ABS_MAX_BUS_VOLTAGE 52.0f
-#define ABS_MIN_BUS_VOLTAGE 24.0f
-#define R_SHUNT 0.000333f
+#define ABS_MAX_PHASE_CURRENT 30.0f
+#define ABS_MAX_BUS_VOLTAGE 22.0f
+#define ABS_MIN_BUS_VOLTAGE 10.0f
+#define R_SHUNT 0.001f
 //ToDo need to define using a discrete opamp with resistors to set gain vs using one with a specified gain
 
-#define R_VBUS_BOTTOM 1500.0f //Phase and Vbus voltage sensors
-#define R_VBUS_TOP 82000.0f
+#define R_VBUS_BOTTOM 33000.0f //Phase and Vbus voltage sensors
+#define R_VBUS_TOP 1000000.0f
 #define OPGAIN 10.0f
 
 
-#define MAX_ID_REQUEST 100.0f
-#define MAX_IQ_REQUEST 100.0f
+#define MAX_ID_REQUEST 10.0f
+#define MAX_IQ_REQUEST 10.0f
 
 
 ////////////////////USER DEFINES//////////////////
@@ -46,7 +46,7 @@
 #define DEFAULT_MOTOR_R 0.005f //Ohms
 //Use the Ebike Profile tool
 //#define USE_PROFILE
-#define USE_FIELD_WEAKENING
+//#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
+//#define USE_HFI

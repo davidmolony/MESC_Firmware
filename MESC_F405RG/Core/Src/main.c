@@ -189,7 +189,7 @@ htim1.Instance->ARR = 1800;
 
 //  motor.motor_flux = 0.000092; //Propdrive 2826 1200kV
 //  motor.motor_flux = 0.010f; //Red 70kV McMaster 8080 motor
-//  motor.Lphase = 0.00016f;		//AT12070 62kV
+//  motor.Lphase = 0.00016f;	//Red 70kV McMaster 8080 motor
 //  motor.Rphase = 0.042f;
 //  motor.motor_flux = 0.014f; //Alien 8080 50kV motor
 //  motor.motor_flux = 0.0064f; 	//AT12070 62kV

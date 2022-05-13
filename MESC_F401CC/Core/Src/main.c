@@ -49,7 +49,6 @@ UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
-uint32_t ADC_buffer[6];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -103,26 +102,23 @@ int main(void)
   MX_TIM2_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&ADC_buffer, 6);
-HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
 
-HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
-HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-
-HAL_ADCEx_InjectedStart(&hadc1);
-__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD);
-__HAL_TIM_ENABLE_IT(&htim1,TIM_IT_UPDATE);
-hadc1.Instance->LTR = 4001;
-hadc1.Instance->LTR = 100;
+  MESCInit();
+  motor_init();
 
 
 HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1);
 HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_2);
 __HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
+
+//  motor.motor_flux = 0.010f; 	//Red 70kV McMaster 8080 motor
+//  motor.Lphase = 0.00016f;	//Red 70kV McMaster 8080 motor
+//  motor.Rphase = 0.042f;		//Red 70kV McMaster 8080 motor
+
+calculateGains();
+calculateVoltageGain();
+MotorControlType = MOTOR_CONTROL_TYPE_FOC;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
