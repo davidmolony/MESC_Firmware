@@ -113,9 +113,12 @@ HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1);
 HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_2);
 __HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
 
-  motor.motor_flux = 0.010f; 	//Red 70kV McMaster 8080 motor
-  motor.Lphase = 0.00016f;	//Red 70kV McMaster 8080 motor
-  motor.Rphase = 0.042f;		//Red 70kV McMaster 8080 motor
+//  motor.motor_flux = 0.010f; 	//Red 70kV McMaster 8080 motor
+//  motor.Lphase = 0.00016f;	//Red 70kV McMaster 8080 motor
+//  motor.Rphase = 0.042f;		//Red 70kV McMaster 8080 motor
+  motor.motor_flux = 0.0038f; //CA120 150kV
+  motor.Lphase = 0.000004f;//CA120 150kV
+  motor.Rphase = 0.006f;//CA120 150kV
 
 calculateGains();
 calculateVoltageGain();
@@ -209,8 +212,8 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ScanConvMode = ENABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
-  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T1_CC1;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 6;
   hadc1.Init.DMAContinuousRequests = ENABLE;
@@ -291,7 +294,7 @@ static void MX_ADC1_Init(void)
   sConfigInjected.InjectedChannel = ADC_CHANNEL_2;
   sConfigInjected.InjectedRank = 1;
   sConfigInjected.InjectedNbrOfConversion = 4;
-  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_15CYCLES;
+  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_3CYCLES;
   sConfigInjected.ExternalTrigInjecConvEdge = ADC_EXTERNALTRIGINJECCONVEDGE_RISING;
   sConfigInjected.ExternalTrigInjecConv = ADC_EXTERNALTRIGINJECCONV_T1_TRGO;
   sConfigInjected.AutoInjectedConv = DISABLE;
@@ -324,6 +327,7 @@ static void MX_ADC1_Init(void)
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_1;
   sConfigInjected.InjectedRank = 4;
+  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_15CYCLES;
   if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK)
   {
     Error_Handler();
@@ -572,7 +576,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pins : PC13 PC14 PC15 */
   GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
 }

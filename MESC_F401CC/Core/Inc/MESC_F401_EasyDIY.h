@@ -1,5 +1,7 @@
 #define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
+#define HAS_PHASE_SENSORS //This is not actually true. Really needs to have phase sensors... Leaving this in because it enables tracking and PWM disabling for debug.
 
+#define SOFTWARE_ADC_REGULAR
 #define SHUNT_POLARITY -1.0f
 
 #define ABS_MAX_PHASE_CURRENT 60.0f

@@ -302,6 +302,9 @@ generateEnable();
       generateBreak();
       break;
   }
+#ifdef SOFTWARE_ADC_REGULAR
+        HAL_ADC_Start(&hadc1); //ToDo Eliminate the HAL call, slow and inefficient.
+#endif
 }
 
 // The hyperloop runs at PWM timer bottom, when the PWM is in V7 (all high)
