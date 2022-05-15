@@ -37,6 +37,7 @@
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
 extern ADC_HandleTypeDef hadc1, hadc2, hadc3, hadc4;
+extern SPI_HandleTypeDef hspi3;
 
 float one_on_sqrt6 = 0.408248;
 float one_on_sqrt3 = 0.577350;
@@ -320,6 +321,7 @@ static volatile float nrm;
 static volatile float nrm_avg;
 
 void hyperLoop() {
+#ifdef USE_HFI
   if (foc_vars.inject) {
     if (foc_vars.inject_high_low_now == 0) {
       foc_vars.inject_high_low_now = 1;
@@ -358,7 +360,10 @@ void hyperLoop() {
         foc_vars.FOCAngle += (int)(250.0f*foc_vars.IIR[1] + 5.50f*intdidq[1]);
     }
   }
-
+#endif
+#ifdef USE_ENCODER
+tle5012();
+#endif
  // foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.angle_error;
   writePWM();
 }
@@ -565,7 +570,9 @@ static int cyclescountacc = 0;
     if(foc_vars.inject==0){
     foc_vars.FOCAngle = angle;
     }
-
+#ifdef USE_ENCODER
+    foc_vars.FOCAngle = foc_vars.enc_angle+ENCODER_E_OFFSET;
+#endif
     //    if(abs(foc_vars.angle_error<2000)){
     //    	foc_vars.angle_error = 0;
     //    }/
@@ -1602,5 +1609,25 @@ if(fabs(foc_vars.Idq_req[1])>0.1f){
     foc_vars.Vdq[1] = foc_vars.sincosangle.cos * foc_vars.Vab[1] -
                       foc_vars.sincosangle.sin * foc_vars.Vab[0];
     foc_vars.Idq_int_err[1] = foc_vars.Vdq[1];
+  }
+
+  uint16_t ang_reg_v = 0x8021, data_v;
+  float ang_v;
+  void tle5012(void)
+  {
+      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_2, GPIO_PIN_RESET);
+
+
+      HAL_SPI_Transmit(&hspi3, (uint8_t *)(&ang_reg_v), 1, 0xff);
+      HAL_SPI_Receive(&hspi3, (uint8_t *)(&data_v), 1, 0xff);
+
+      data_v = data_v & 0x7fff;
+      foc_vars.enc_angle = POLE_PAIRS*((data_v *2)%POLE_ANGLE);
+      ang_v = data_v / (0x7fff / 360.0);
+  //HAL_Delay(0);
+      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_2, GPIO_PIN_SET);
+
+      //USARTx_Printf("angle: %d.%03d\n", (int)ang_v, (int)((ang_v * 1000) - (int)(ang_v)*1000));
+  //    HAL_Delay(500);
   }
   // clang-format on
