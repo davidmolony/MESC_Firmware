@@ -206,6 +206,7 @@ void mesc_init_3( void )
 
     HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_3 );
     HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_3 );
+    generateBreak();//We have started the timers, but we really do not want them PWMing yet
 
     HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_4 );
 

@@ -187,7 +187,7 @@ void fastLoop() {
       //        BLDCCurrentController();
       //        BLDCCommuteHall();
       //      }//For now we are going to not support BLDC mode
-generateEnable();
+    	generateEnable();
       if (MotorSensorMode == MOTOR_SENSOR_MODE_HALL) {
         hallAngleEstimator();
         angleObserver();
@@ -363,7 +363,7 @@ void hyperLoop() {
   writePWM();
 }
 
-#define MAX_ERROR_COUNT 3
+#define MAX_ERROR_COUNT 2
 
 // TODO: refactor this function. Is this function called by DMA interrupt?
 void VICheck() {  // Check currents, voltages are within panic limits
@@ -406,6 +406,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // hardware gain values to create volt and amp variables
 
     if (foc_vars.initing) {
+    	MotorState = MOTOR_STATE_TRACKING;
       for (uint32_t i = 0; i < 3; i++) {
         measurement_buffers.ADCOffset[i] += measurement_buffers.RawADC[i][FOC_CHANNEL_PHASE_I];
       }
@@ -492,9 +493,16 @@ void VICheck() {  // Check currents, voltages are within panic limits
   }
   /////////////////////////////////////////////////////////////////////////////
   // SENSORLESS IMPLEMENTATION//////////////////////////////////////////////////
-  static float Ia_last = 0;
-  static float Ib_last = 0;
+  static float Ia_last = 0.0f;
+  static float Ib_last = 0.0f;
   static uint16_t angle = 0;
+  volatile static float FLAnow = 0.0f;
+  volatile static float FLAmax = 0.0f;
+  volatile static float FLAmin = 0.0f;
+  volatile static float FLAdiff = 0.0f;
+static int cyclescount = 0;
+static int cyclescountacc = 0;
+
 
   void flux_observer() {
     // LICENCE NOTE:
@@ -513,6 +521,23 @@ void VICheck() {  // Check currents, voltages are within panic limits
     // This function we are going to integrate Va-Ri and clamp it positively and
     // negatively the angle is then the arctangent of the integrals shifted 180
     // degrees
+#if 0// Code for investigating the flux linkage live. Initially used for Field weakening investigation
+	  if(foc_vars.FOCAngle<500){
+		  cyclescountacc = cyclescount;
+		  cyclescount = 0;
+		  FLAdiff = FLAmax-FLAmin;
+		  FLAnow = 0.0f;
+		  FLAmax = 0.0f;
+		  FLAmin = 0.0f;
+	  }
+	  cyclescount++;
+	  FLAnow = FLAnow + (foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0])*foc_vars.pwm_period-
+		        motor.Lphase * (foc_vars.Iab[0] - Ia_last);
+	  if(FLAnow>FLAmax){FLAmax = FLAnow;}
+	  if(FLAnow<FLAmin){FLAmin = FLAnow;}
+#endif
+
+
     flux_linked_alpha =
         flux_linked_alpha + (foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0])*foc_vars.pwm_period-
         motor.Lphase * (foc_vars.Iab[0] - Ia_last);// * foc_vars.pwm_frequency;
@@ -536,6 +561,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
     }
 
     angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta, flux_linked_alpha)) - 32768;
+    //foc_vars.angle_error = (15*foc_vars.angle_error + angle-foc_vars.FOCAngle)/16;//Currently this does not work well with the rollover and returns erroneous values
     if(foc_vars.inject==0){
     foc_vars.FOCAngle = angle;
     }
@@ -1286,7 +1312,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
 
     foc_vars.Iq_pgain = foc_vars.Id_pgain;
     foc_vars.Iq_igain = foc_vars.Id_igain;
-    foc_vars.Vdqres_to_Vdq = 0.333f * measurement_buffers.ConvertedADC[0][1] / 677.0f;
+//    foc_vars.Vdqres_to_Vdq = 0.333f * measurement_buffers.ConvertedADC[0][1] / 677.0f; //ToDo delete. Dud, old, I think?
     foc_vars.field_weakening_curr_max = FIELD_WEAKENING_CURRENT;  // test number, to be stored in user settings
   }
 
