@@ -66,6 +66,7 @@ typedef struct {
 
   uint16_t openloop_step;//The angle to increment by for openloop
   uint16_t FOCAngle;    // Angle generated in the hall sensor estimator
+  uint16_t enc_angle;
   MESCsin_cos_s sincosangle;  // This variable carries the current sin and cosine of
                          	  // the angle being used for Park and Clark transforms,
                               // so they only need computing once per pwm cycle
@@ -281,5 +282,6 @@ void MESC_Slow_IRQ_handler(TIM_HandleTypeDef *htim); 	//This loop should run off
 														//If entered from update (reset, CC1) no data available for the PWM in. If entered from CC2, new PWM data available
 void slowLoop(TIM_HandleTypeDef *htim);
 void MESCTrack();
+void tle5012();
 
 #endif

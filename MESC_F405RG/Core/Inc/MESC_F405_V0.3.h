@@ -3,8 +3,8 @@
 
 #define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 180.0f
-#define ABS_MAX_BUS_VOLTAGE 85.0f
+#define ABS_MAX_PHASE_CURRENT 100.0f
+#define ABS_MAX_BUS_VOLTAGE 55.0f
 #define ABS_MIN_BUS_VOLTAGE 24.0f
 #define R_SHUNT 0.000333f
 //ToDo need to define using a discrete opamp with resistors to set gain vs using one with a specified gain
@@ -15,7 +15,7 @@
 
 
 #define MAX_ID_REQUEST 100.0f
-#define MAX_IQ_REQUEST 140.0f
+#define MAX_IQ_REQUEST 40.0f
 
 
 ////////////////////USER DEFINES//////////////////
@@ -51,4 +51,8 @@
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
+//#define USE_HFI
+#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
+#define POLE_PAIRS 10
+#define ENCODER_E_OFFSET 9000
+#define POLE_ANGLE (65536/POLE_PAIRS)
