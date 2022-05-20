@@ -86,6 +86,9 @@ void MESCInit() {
   // triggering the ADC, which in turn triggers the ISR routine and wrecks the
   // startup
   mesc_init_3();
+#ifdef USE_ENCODER
+  foc_vars.enc_offset = ENCODER_E_OFFSET;
+#endif
   htim1.Instance->CCR4 = htim1.Instance->ARR-1;
 
   InputInit();
@@ -501,6 +504,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   static float Ia_last = 0.0f;
   static float Ib_last = 0.0f;
   static uint16_t angle = 0;
+  static uint16_t enc_obs_angle;
   volatile static float FLAnow = 0.0f;
   volatile static float FLAmax = 0.0f;
   volatile static float FLAmin = 0.0f;
@@ -571,7 +575,9 @@ static int cyclescountacc = 0;
     foc_vars.FOCAngle = angle;
     }
 #ifdef USE_ENCODER
-    foc_vars.FOCAngle = foc_vars.enc_angle+ENCODER_E_OFFSET;
+    foc_vars.FOCAngle = foc_vars.enc_angle;
+    enc_obs_angle = foc_vars.enc_angle-foc_vars.FOCAngle;
+    //foc_vars.FOCAngle = 0; //for aligning encoder
 #endif
     //    if(abs(foc_vars.angle_error<2000)){
     //    	foc_vars.angle_error = 0;
@@ -1542,6 +1548,8 @@ if(fabs(foc_vars.Idq_req[1])>0.1f){
 	}
 #endif
 }
+
+//foc_vars.Idq_req[0] = 10; //for aligning encoder
 #endif
 /////////////Set and reset the HFI////////////////////////
 #ifdef USE_HFI
@@ -1622,7 +1630,7 @@ if(fabs(foc_vars.Idq_req[1])>0.1f){
       HAL_SPI_Receive(&hspi3, (uint8_t *)(&data_v), 1, 0xff);
 
       data_v = data_v & 0x7fff;
-      foc_vars.enc_angle = POLE_PAIRS*((data_v *2)%POLE_ANGLE);
+      foc_vars.enc_angle = POLE_PAIRS*((data_v *2)%POLE_ANGLE)-foc_vars.enc_offset;
       ang_v = data_v / (0x7fff / 360.0);
   //HAL_Delay(0);
       HAL_GPIO_WritePin(GPIOD, GPIO_PIN_2, GPIO_PIN_SET);

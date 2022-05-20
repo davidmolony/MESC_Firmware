@@ -67,6 +67,7 @@ typedef struct {
   uint16_t openloop_step;//The angle to increment by for openloop
   uint16_t FOCAngle;    // Angle generated in the hall sensor estimator
   uint16_t enc_angle;
+  uint16_t enc_offset;
   MESCsin_cos_s sincosangle;  // This variable carries the current sin and cosine of
                          	  // the angle being used for Park and Clark transforms,
                               // so they only need computing once per pwm cycle
