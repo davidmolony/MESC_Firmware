@@ -41,10 +41,11 @@
 
 #define DEFAULT_INPUT	0b0110 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
-#define DEFAULT_MOTOR_FLUX 0.0038f //mWb
+//////Motor parameters
+#define DEFAULT_FLUX_LINKAGE 0.004f//Set this to the motor linkage in wB
 #define DEFAULT_MOTOR_Ld 0.000005f //Henries
-#define DEFAULT_MOTOR_Lq 0.000005f//Henries
-#define DEFAULT_MOTOR_R 0.005f //Ohms
+#define DEFAULT_MOTOR_Lq 0.0000080f//Henries
+#define DEFAULT_MOTOR_R 0.0050f //Ohms
 //Use the Ebike Profile tool
 //#define USE_PROFILE
 
@@ -52,7 +53,14 @@
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
 //#define USE_HFI
-#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
+
+//#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
 #define POLE_PAIRS 10
 #define ENCODER_E_OFFSET 25000
 #define POLE_ANGLE (65536/POLE_PAIRS)
+
+/////Related to observer
+#define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
+#define MAX_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*2.0f //Sets the limits for tracking.
+#define MIN_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*0.7f//Faster convergence with closer start points
+#define FLUX_LINKAGE_GAIN 10.0f * sqrtf(DEFAULT_FLUX_LINKAGE)//*(DEFAULT_FLUX_LINKAGE*DEFAULT_FLUX_LINKAGE)*PWM_FREQUENCY
