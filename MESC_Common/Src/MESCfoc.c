@@ -504,7 +504,6 @@ void VICheck() {  // Check currents, voltages are within panic limits
   static float Ia_last = 0.0f;
   static float Ib_last = 0.0f;
   static uint16_t angle = 0;
-  static uint16_t enc_obs_angle;
   volatile static float FLAnow = 0.0f;
   volatile static float FLAmax = 0.0f;
   volatile static float FLAmin = 0.0f;
@@ -527,14 +526,12 @@ static int cyclescountacc = 0;
     // With thanks to C0d3b453 for generally keeping this compiling and Elwin
     // for producing data comparing the output to a 16bit encoder.
 
-    // This function we are going to integrate Va-Ri and clamp it positively and
-    // negatively the angle is then the arctangent of the integrals shifted 180
-    // degrees
+
 #if 0// Code for investigating the flux linkage live. Initially used for Field weakening investigation
 	  if(foc_vars.FOCAngle<500){
 		  cyclescountacc = cyclescount;
 		  cyclescount = 0;
-		  FLAdiff = FLAmax-FLAmin;
+		  foc_vars.FLAdiff = 0.5f*(FLAmax-FLAmin);//This is the flux linkage of the last electrical cycle
 		  FLAnow = 0.0f;
 		  FLAmax = 0.0f;
 		  FLAmin = 0.0f;
@@ -546,28 +543,39 @@ static int cyclescountacc = 0;
 	  if(FLAnow<FLAmin){FLAmin = FLAnow;}
 #endif
 
-
+#ifdef USE_FLUX_LINKAGE_OBSERVER
+	  //Variant of the flux linkage observer created by Benjamin Vedder to
+	  //eliminate the need to accurately know the flux linked motor parameter.
+	  //This may be useful when approaching saturation; currently unclear and
+	  //definitely makes setup less critical
+	  //It basically takes the normal of the flux linkage at any time and
+	  //changes the flux limits accordingly, ignoring using a sqrt for computational efficiency
+	  float flux_linked_norm = flux_linked_alpha*flux_linked_alpha+flux_linked_beta*flux_linked_beta;
+	  float flux_err = flux_linked_norm-motor.motor_flux*motor.motor_flux;
+	  motor.motor_flux = motor.motor_flux+FLUX_LINKAGE_GAIN*flux_err;
+	  if(motor.motor_flux>MAX_FLUX_LINKAGE){motor.motor_flux = MAX_FLUX_LINKAGE;}
+	  if(motor.motor_flux<MIN_FLUX_LINKAGE){motor.motor_flux = MIN_FLUX_LINKAGE;}
+#endif
+	// This is the actual observer function.
+	// We are going to integrate Va-Ri and clamp it positively and negatively
+	// the angle is then the arctangent of the integrals shifted 180 degrees
     flux_linked_alpha =
         flux_linked_alpha + (foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0])*foc_vars.pwm_period-
-        motor.Lphase * (foc_vars.Iab[0] - Ia_last);// * foc_vars.pwm_frequency;
+        motor.Lphase * (foc_vars.Iab[0] - Ia_last);
     flux_linked_beta =
         flux_linked_beta + (foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1])*foc_vars.pwm_period -
-        motor.Lphase * (foc_vars.Iab[1] - Ib_last);// * foc_vars.pwm_frequency;
+        motor.Lphase * (foc_vars.Iab[1] - Ib_last);
     Ia_last = foc_vars.Iab[0];
     Ib_last = foc_vars.Iab[1];
 
     if (flux_linked_alpha > motor.motor_flux) {
-      flux_linked_alpha = motor.motor_flux;
-    }
+      flux_linked_alpha = motor.motor_flux;}
     if (flux_linked_alpha < -motor.motor_flux) {
-      flux_linked_alpha = -motor.motor_flux;
-    }
+      flux_linked_alpha = -motor.motor_flux;}
     if (flux_linked_beta > motor.motor_flux) {
-      flux_linked_beta = motor.motor_flux;
-    }
+      flux_linked_beta = motor.motor_flux;}
     if (flux_linked_beta < -motor.motor_flux) {
-      flux_linked_beta = -motor.motor_flux;
-    }
+      flux_linked_beta = -motor.motor_flux;}
 
     angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta, flux_linked_alpha)) - 32768;
     //foc_vars.angle_error = (15*foc_vars.angle_error + angle-foc_vars.FOCAngle)/16;//Currently this does not work well with the rollover and returns erroneous values
@@ -575,13 +583,10 @@ static int cyclescountacc = 0;
     foc_vars.FOCAngle = angle;
     }
 #ifdef USE_ENCODER
+    foc_vars.enc_obs_angle = foc_vars.enc_angle-foc_vars.FOCAngle;
     foc_vars.FOCAngle = foc_vars.enc_angle;
-    enc_obs_angle = foc_vars.enc_angle-foc_vars.FOCAngle;
-    //foc_vars.FOCAngle = 0; //for aligning encoder
+    //foc_vars.FOCAngle = 0; //for aligning encoder for testing
 #endif
-    //    if(abs(foc_vars.angle_error<2000)){
-    //    	foc_vars.angle_error = 0;
-    //    }/
   }
 
   // fast_atan2 based on https://math.stackexchange.com/a/1105038/81278

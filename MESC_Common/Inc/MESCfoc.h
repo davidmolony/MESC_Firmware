@@ -68,6 +68,8 @@ typedef struct {
   uint16_t FOCAngle;    // Angle generated in the hall sensor estimator
   uint16_t enc_angle;
   uint16_t enc_offset;
+  int enc_obs_angle;
+  float FLAdiff;
   MESCsin_cos_s sincosangle;  // This variable carries the current sin and cosine of
                          	  // the angle being used for Park and Clark transforms,
                               // so they only need computing once per pwm cycle

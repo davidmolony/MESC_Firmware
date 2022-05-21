@@ -185,7 +185,8 @@ int main(void)
   // Here we can auto set the prescaler to get the us input regardless of the
   // main clock
  // __HAL_TIM_SET_PRESCALER(&htim4, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
-
+HAL_UART_Init(&huart3);
+foc_vars.FLAdiff = 0.004f;
 htim1.Instance->ARR = 1800;
   MESCInit();
   motor_init();
@@ -198,16 +199,19 @@ htim1.Instance->ARR = 1800;
   /* USER CODE BEGIN WHILE */
 
 //  motor.motor_flux = 0.000092; //Propdrive 2826 1200kV
-//  motor.motor_flux = 0.012f; //Red 70kV McMaster 8080 motor
+//  motor.motor_flux = 0.011f; //Red 70kV McMaster 8080 motor
 //  motor.Lphase = 0.00010f;	//Red 70kV McMaster 8080 motor
 //  motor.Rphase = 0.042f;
 //  motor.motor_flux = 0.014f; //Alien 8080 50kV motor
 //  motor.motor_flux = 0.007f; 	//AT12070 62kV
 //  motor.Lphase = 0.000016f;		//AT12070 62kV
 //  motor.Rphase = 0.012f;		//AT12070 62kV
-  motor.motor_flux = 0.0041f; //CA120 150kV
-  motor.Lphase = 0.000006f;//CA120 150kV
-  motor.Rphase = 0.006f;//CA120 150kV
+//  motor.motor_flux = 0.0041f; //CA120 150kV
+//  motor.Lphase = 0.000006f;//CA120 150kV
+//  motor.Rphase = 0.006f;//CA120 150kV
+  motor.Lphase = DEFAULT_MOTOR_Ld;
+  motor.Rphase = DEFAULT_MOTOR_R;
+  motor.motor_flux = DEFAULT_FLUX_LINKAGE; //Set in header file
   //Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
 //  MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
 //htim1.Instance ->ARR = 1400;
@@ -237,19 +241,12 @@ HAL_Delay(100);
 static int a;
 char transmit_buffer[100];
 int sizebuff;
-sizebuff = sprintf(transmit_buffer,"%d,%0.2f,%0.2f,%0.2f,%0.2f\n",a,foc_vars.Vdq[0],foc_vars.Vdq[1],foc_vars.Idq_smoothed[0],foc_vars.Idq_smoothed[1]);
+extern uint16_t enc_obs_angle;
+sizebuff = sprintf(transmit_buffer,"%d,%0.2f,%0.2f,%0.2f,%0.2f\n",a,0.005493f*(float)foc_vars.enc_obs_angle,foc_vars.Vdq[1],1000.0f*motor.motor_flux,foc_vars.Idq_smoothed[1]);
     HAL_UART_Transmit_DMA(&huart3, transmit_buffer, sizebuff);
     a++;
 
-//if(countdown >= 0){
-//countdown--;
-//answer = (countdown+1)/countdown;
-//}
-//if(countdown==0){
-//	// /*This makes it crash into the hardfault handler, intentionally :D*/
-//
-//}
-    //HAL_UART_Transmit(&huart3, "hello World", 12, 10);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
