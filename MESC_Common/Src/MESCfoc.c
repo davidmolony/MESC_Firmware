@@ -49,8 +49,8 @@ float sqrt1_2 = 0.707107;
 float sqrt3_on_2 = 0.866025;
 float two_on_sqrt3 = 1.73205;
 int adc_conv_end;
-static float flux_linked_alpha = 0.00001f;
-static float flux_linked_beta = 0.00001f;
+static float flux_linked_alpha = 0.00501f;
+static float flux_linked_beta = 0.00511f;
 
 MESCfoc_s foc_vars;
 MESCtest_s test_vals;
@@ -75,8 +75,8 @@ void MESCInit() {
   foc_vars.hall_forwards_adjust = 5460;
   foc_vars.hall_backwards_adjust = 5460;
 
-  flux_linked_alpha = 0.00001f;
-  flux_linked_beta = -0.00001f;
+  flux_linked_alpha = 0.00501f;
+  flux_linked_beta = -0.00401f;
 
   measurement_buffers.ADCOffset[0] = 0;
   measurement_buffers.ADCOffset[1] = 0;
@@ -510,7 +510,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   volatile static float FLAdiff = 0.0f;
 static int cyclescount = 0;
 static int cyclescountacc = 0;
-
+static float obs_gain = 1001.0f;
 
   void flux_observer() {
     // LICENCE NOTE:
@@ -544,10 +544,10 @@ static int cyclescountacc = 0;
 #endif
 
 #ifdef USE_FLUX_LINKAGE_OBSERVER
-	  //Variant of the flux linkage observer created by Benjamin Vedder to
+	  //Variant of the flux linkage observer created by/with Benjamin Vedder to
 	  //eliminate the need to accurately know the flux linked motor parameter.
-	  //This may be useful when approaching saturation; currently unclear and
-	  //definitely makes setup less critical
+	  //This may be useful when approaching saturation; currently unclear but
+	  //definitely makes setup less critical.
 	  //It basically takes the normal of the flux linkage at any time and
 	  //changes the flux limits accordingly, ignoring using a sqrt for computational efficiency
 	  float flux_linked_norm = flux_linked_alpha*flux_linked_alpha+flux_linked_beta*flux_linked_beta;
@@ -568,6 +568,14 @@ static int cyclescountacc = 0;
     Ia_last = foc_vars.Iab[0];
     Ib_last = foc_vars.Iab[1];
 
+#ifdef USE_NONLINEAR_CENTERING
+///Try directly applying the centering using the same method as the flux linkage observer
+    float err = motor.motor_flux*motor.motor_flux-flux_linked_alpha*flux_linked_alpha-flux_linked_beta*flux_linked_beta;
+    flux_linked_beta = flux_linked_beta+err*flux_linked_beta*obs_gain;
+    flux_linked_alpha = flux_linked_alpha+err*flux_linked_alpha*obs_gain;
+
+#endif
+#ifdef USE_CLAMPED_OBSERVER
     if (flux_linked_alpha > motor.motor_flux) {
       flux_linked_alpha = motor.motor_flux;}
     if (flux_linked_alpha < -motor.motor_flux) {
@@ -576,7 +584,7 @@ static int cyclescountacc = 0;
       flux_linked_beta = motor.motor_flux;}
     if (flux_linked_beta < -motor.motor_flux) {
       flux_linked_beta = -motor.motor_flux;}
-
+#endif
     angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta, flux_linked_alpha)) - 32768;
     //foc_vars.angle_error = (15*foc_vars.angle_error + angle-foc_vars.FOCAngle)/16;//Currently this does not work well with the rollover and returns erroneous values
     if(foc_vars.inject==0){
