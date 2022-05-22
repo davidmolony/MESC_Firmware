@@ -54,14 +54,19 @@
 #define FIELD_WEAKENING_THRESHOLD 0.8f
 //#define USE_HFI
 
-//#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
+#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
 #define POLE_PAIRS 10
 #define ENCODER_E_OFFSET 25000
 #define POLE_ANGLE (65536/POLE_PAIRS)
 
 /////Related to observer
-//#define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
+#define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
 #define MAX_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*2.0f //Sets the limits for tracking.
 #define MIN_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*0.7f//Faster convergence with closer start points
 #define FLUX_LINKAGE_GAIN 10.0f * sqrtf(DEFAULT_FLUX_LINKAGE)//*(DEFAULT_FLUX_LINKAGE*DEFAULT_FLUX_LINKAGE)*PWM_FREQUENCY
-#define USE_NONLINEAR_CENTERING
+
+//#define USE_NONLINEAR_OBSERVER_CENTERING //This is not a preferred option, since it relies on gain tuning and instability,
+										//which is precisely what the original observer intended to avoid.
+										//Also, incompatible with flux linkage observer for now...
+#define NON_LINEAR_CENTERING_GAIN 5000.0f
+#define USE_CLAMPED_OBSERVER_CENTERING //Pick one of the two centering methods... preferably this one

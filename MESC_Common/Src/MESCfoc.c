@@ -424,7 +424,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
       if (initcycles == 1000) {
         calculateGains();
         calculateVoltageGain();
-
+        flux_linked_beta = 0.001;
+        flux_linked_alpha = 0.001;
         for (uint32_t i = 0; i < 3; i++) {
           measurement_buffers.ADCOffset[i] /= 1000;
         }
@@ -510,7 +511,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   volatile static float FLAdiff = 0.0f;
 static int cyclescount = 0;
 static int cyclescountacc = 0;
-static float obs_gain = 1001.0f;
+static float obs_gain = NON_LINEAR_CENTERING_GAIN;
 
   void flux_observer() {
     // LICENCE NOTE:
@@ -568,14 +569,14 @@ static float obs_gain = 1001.0f;
     Ia_last = foc_vars.Iab[0];
     Ib_last = foc_vars.Iab[1];
 
-#ifdef USE_NONLINEAR_CENTERING
+#ifdef USE_NONLINEAR_OBSERVER_CENTERING
 ///Try directly applying the centering using the same method as the flux linkage observer
     float err = motor.motor_flux*motor.motor_flux-flux_linked_alpha*flux_linked_alpha-flux_linked_beta*flux_linked_beta;
     flux_linked_beta = flux_linked_beta+err*flux_linked_beta*obs_gain;
     flux_linked_alpha = flux_linked_alpha+err*flux_linked_alpha*obs_gain;
 
 #endif
-#ifdef USE_CLAMPED_OBSERVER
+#ifdef USE_CLAMPED_OBSERVER_CENTERING
     if (flux_linked_alpha > motor.motor_flux) {
       flux_linked_alpha = motor.motor_flux;}
     if (flux_linked_alpha < -motor.motor_flux) {
@@ -592,7 +593,7 @@ static float obs_gain = 1001.0f;
     }
 #ifdef USE_ENCODER
     foc_vars.enc_obs_angle = foc_vars.enc_angle-foc_vars.FOCAngle;
-    foc_vars.FOCAngle = foc_vars.enc_angle;
+    //foc_vars.FOCAngle = foc_vars.enc_angle;
     //foc_vars.FOCAngle = 0; //for aligning encoder for testing
 #endif
   }
