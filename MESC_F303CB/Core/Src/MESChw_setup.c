@@ -51,8 +51,9 @@ motor_s motor;
 
 void motor_init()
 {
-    motor.Rphase = 0;  // We init at 0 to trigger the measurer to get the vals
-    motor.Lphase = 0;  // We init at 0 to trigger the measurer to get the vals
+    motor.Lphase = DEFAULT_MOTOR_Ld;
+    motor.Rphase = DEFAULT_MOTOR_R;
+    motor.motor_flux = DEFAULT_FLUX_LINKAGE; //Set in header file
     motor.uncertainty = 1;
 }
 
