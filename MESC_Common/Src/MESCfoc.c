@@ -1325,6 +1325,7 @@ static float obs_gain = NON_LINEAR_CENTERING_GAIN;
     foc_vars.Iq_igain = foc_vars.Id_igain;
 //    foc_vars.Vdqres_to_Vdq = 0.333f * measurement_buffers.ConvertedADC[0][1] / 677.0f; //ToDo delete. Dud, old, I think?
     foc_vars.field_weakening_curr_max = FIELD_WEAKENING_CURRENT;  // test number, to be stored in user settings
+  motor.Lqd_diff = motor.Lqphase-motor.Lphase;
   }
 
   void calculateVoltageGain() {
@@ -1472,20 +1473,28 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
     foc_vars.currentPower[1] = 1.5f*(foc_vars.Vdq[1]*foc_vars.Idq_smoothed[1]);
 
     foc_vars.Ibus = (foc_vars.currentPower[0] + foc_vars.currentPower[1]) /measurement_buffers.ConvertedADC[0][1];
-////// Run field weakening (and maybe MTPA later)
-#if 0
-    if (fabs(foc_vars.Vdq[1]) > foc_vars.field_weakening_threshold) {
-      foc_vars.Idq_req[0] =
-          foc_vars.field_weakening_curr_max *
-          (foc_vars.field_weakening_threshold - fabs(foc_vars.Vdq[1]));
-      foc_vars.field_weakening_flag = 1;
-    } else {
-      foc_vars.Idq_req[0] = 0;
-      foc_vars.field_weakening_flag = 0;
+
+//Run MTPA (Field weakening seems to have to go in  the fast loop to be stable)
+#ifdef USE_MTPA
+
+    if(motor.Lqd_diff>0){
+    	foc_vars.id_mtpa = motor.motor_flux/(4.0f*motor.Lqd_diff) - sqrtf((motor.motor_flux*motor.motor_flux/(16.0f*motor.Lqd_diff*motor.Lqd_diff))+foc_vars.Idq_req[1]*foc_vars.Idq_req[1]*0.5f);
+    	if(foc_vars.Idq_req[1]>foc_vars.id_mtpa){
+    	foc_vars.iq_mtpa = sqrtf(foc_vars.Idq_req[1]*foc_vars.Idq_req[1]-foc_vars.id_mtpa*foc_vars.id_mtpa);
+    	}
+    	else{
+    		foc_vars.iq_mtpa = 0;
+    	}
+    foc_vars.Idq_req[0] = foc_vars.id_mtpa;
+    if(foc_vars.Idq_req[1]>0.0f){
+    foc_vars.Idq_req[1] = foc_vars.iq_mtpa;}
+    else{
+    	foc_vars.Idq_req[1] = -foc_vars.iq_mtpa;}
     }
-    //////// Note, this FW implementation works terribly, I think it probably needs
-    // to run in the fast loop.
+
+
 #endif
+
 
     if(getHallState()==0){//This happens when the hall sensors overheat it seems.
   	  if (MotorError == MOTOR_ERROR_NONE) {

@@ -55,6 +55,8 @@
 #define FIELD_WEAKENING_THRESHOLD 0.8f
 #define USE_HFI
 
+#define USE_MTPA //Cannot currently use at the same time as field weakening...
+
 //#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
 #define POLE_PAIRS 10
 #define ENCODER_E_OFFSET 25000

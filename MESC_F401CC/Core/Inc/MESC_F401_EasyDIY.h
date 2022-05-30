@@ -54,6 +54,8 @@
 #define FIELD_WEAKENING_THRESHOLD 0.8f
 //#define USE_HFI
 
+//#define USE_MTPA
+
 /////Related to observer
 #define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
 #define MAX_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*2.0f //Sets the limits for tracking.

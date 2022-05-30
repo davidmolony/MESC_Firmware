@@ -80,6 +80,7 @@ typedef struct {
   hardware_vars_t Lphase;  // float containing phase inductance in uH,
   hardware_vars_t Lqphase;  // range from very very low inductance high kV strong
                            // magnet BLDC motors to low kV weak magnet ones;
+  hardware_vars_t Lqd_diff; //Lq-Ld for using MTPA
       uint8_t uncertainty;
   float motor_flux;
 } motor_s;
