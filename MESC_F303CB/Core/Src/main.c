@@ -210,6 +210,7 @@ int main(void)
     // Here we can auto set the prescaler to get the us input regardless of the main clock
     __HAL_TIM_SET_PRESCALER(&htim3, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
 
+    //Initialise MESC
     MESCInit();
     MotorState = MOTOR_STATE_MEASURING;
     MotorControlType = MOTOR_CONTROL_TYPE_FOC;

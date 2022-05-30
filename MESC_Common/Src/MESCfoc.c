@@ -92,11 +92,11 @@ void MESCInit() {
   InputInit();
 
   //htim1.Instance->BDTR |=TIM_BDTR_MOE;
-       // initialising the comparators triggers the break state,
-                     // so turn it back on
-  // At this point we just let the whole thing run off into interrupt land, and
-  // the fastLoop() starts to be triggered by the ADC conversion complete
-  // interrupt
+	  // initialising the comparators triggers the break state,
+	  // so turn it back on
+	  // At this point we just let the whole thing run off into interrupt land, and
+	  // the fastLoop() starts to be triggered by the ADC conversion complete
+	  // interrupt
 
 }
 
