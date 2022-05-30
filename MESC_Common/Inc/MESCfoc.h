@@ -82,6 +82,8 @@ typedef struct {
   float Vdq_smoothed[FOC_TRANSFORMED_CHANNELS];
   float Idq_smoothed[FOC_TRANSFORMED_CHANNELS];
   float Idq_int_err[2];
+  float id_mtpa;
+  float iq_mtpa;
 
 
   float inverterVoltage[FOC_TRANSFORMED_CHANNELS + 1];
