@@ -106,24 +106,20 @@ int main(void)
   MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
 
-  motor_init();
 
+  //Set up the input capture for throttle
+  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_2);
+  __HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
+  // Here we can auto set the prescaler to get the us input regardless of the main clock
+  __HAL_TIM_SET_PRESCALER(&htim2, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
 
-HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1);
-HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_2);
-__HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
-
-//  motor.motor_flux = 0.010f; 	//Red 70kV McMaster 8080 motor
-//  motor.Lphase = 0.00016f;	//Red 70kV McMaster 8080 motor
-//  motor.Rphase = 0.042f;		//Red 70kV McMaster 8080 motor
-  motor.motor_flux = 0.0038f; //CA120 150kV
-  motor.Lphase = 0.000004f;//CA120 150kV
-  motor.Rphase = 0.006f;//CA120 150kV
+//Initialise MESC
+MESCInit();
+motor_init();
 
 calculateGains();
 calculateVoltageGain();
-MESCInit();
-
 MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
   /* USER CODE END 2 */
