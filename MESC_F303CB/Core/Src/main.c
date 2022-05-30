@@ -201,42 +201,29 @@ int main(void)
     motor.uncertainty = 1;
     // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
 
-    htim1.Instance->ARR = 1024; // PWM
-
-
+    //Set up the input capture for throttle
     HAL_TIM_IC_Start(&htim3, TIM_CHANNEL_1);
     HAL_TIM_IC_Start(&htim3, TIM_CHANNEL_2);
     __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
     // Here we can auto set the prescaler to get the us input regardless of the main clock
     __HAL_TIM_SET_PRESCALER(&htim3, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
-    // Place to mess about with PWM in
 
     MESCInit();
     MotorState = MOTOR_STATE_MEASURING;
-    // MotorState = MOTOR_STATE_HALL_RUN;
     MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
-    //motor.motor_flux = 787;
-    motor.Lphase = 0.000046f;
-    motor.Rphase = 0.048f;
-    // 650 is the right number for a motor with 7PP and 50kV
-    // Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
+    motor_init();
+    calculateGains();
+    calculateVoltageGain();
 
-    // BLDCVars.BLDCduty = 70;
-    {
     char message[20];
     int length = sprintf( message, "%s", "startup!!\r\n" );
     HAL_UART_Transmit_DMA(&huart3, (uint8_t *)message, length);
-    }
 
-    // Add a little area in which I can mess about without the RTOS
+  /* USER CODE END 2 */
 
-    HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_1);
-    //    HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_2);
-    //    HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_3);
-    __HAL_TIM_SET_PRESCALER(&htim4, 71);
-    __HAL_TIM_ENABLE_IT(&htim4, (TIM_IT_CC1 | TIM_IT_UPDATE));
-
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
     while (1)
     {
         // HAL_Delay(100);
@@ -260,16 +247,6 @@ int main(void)
 					measurement_buffers.adc4 );
             HAL_UART_Transmit(&huart3, (uint8_t *)error_message, length, 100);
         }
-
-        //         sprintf(UART_buffer, "helloWorld/r");  //        HAL_UART_Transmit(&huart3, (uint8_t *)"HelloWorld\r", 12, 10);
-        //         HAL_UART_Transmit_DMA(&huart3, UART_buffer, 10);
-    }
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-    while (1)
-    {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

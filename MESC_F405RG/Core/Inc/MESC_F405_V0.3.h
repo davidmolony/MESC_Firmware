@@ -1,5 +1,5 @@
 #define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
-#define HAS_PHASE_SENSORS
+#define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!
 
 #define SHUNT_POLARITY -1.0f
 
@@ -16,6 +16,7 @@
 
 #define MAX_ID_REQUEST 100.0f
 #define MAX_IQ_REQUEST 40.0f
+
 
 
 ////////////////////USER DEFINES//////////////////
@@ -45,16 +46,16 @@
 #define DEFAULT_FLUX_LINKAGE 0.004f//Set this to the motor linkage in wB
 #define DEFAULT_MOTOR_Ld 0.000005f //Henries
 #define DEFAULT_MOTOR_Lq 0.0000080f//Henries
-#define DEFAULT_MOTOR_R 0.0050f //Ohms
+#define DEFAULT_MOTOR_R 0.0060f //Ohms
 //Use the Ebike Profile tool
 //#define USE_PROFILE
 
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-//#define USE_HFI
+#define USE_HFI
 
-#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
+//#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
 #define POLE_PAIRS 10
 #define ENCODER_E_OFFSET 25000
 #define POLE_ANGLE (65536/POLE_PAIRS)
@@ -70,3 +71,18 @@
 										//Also, incompatible with flux linkage observer for now...
 #define NON_LINEAR_CENTERING_GAIN 5000.0f
 #define USE_CLAMPED_OBSERVER_CENTERING //Pick one of the two centering methods... preferably this one
+
+
+
+// Example motors
+//  motor.motor_flux = 0.000092; //Propdrive 2826 1200kV
+//  motor.motor_flux = 0.011f; //Red 70kV McMaster 8080 motor
+//  motor.Lphase = 0.00010f;	//Red 70kV McMaster 8080 motor
+//  motor.Rphase = 0.042f;
+//  motor.motor_flux = 0.014f; //Alien 8080 50kV motor
+//  motor.motor_flux = 0.007f; 	//AT12070 62kV
+//  motor.Lphase = 0.000016f;		//AT12070 62kV
+//  motor.Rphase = 0.012f;		//AT12070 62kV
+//  motor.motor_flux = 0.0041f; //CA120 150kV
+//  motor.Lphase = 0.000006f;//CA120 150kV
+//  motor.Rphase = 0.006f;//CA120 150kV

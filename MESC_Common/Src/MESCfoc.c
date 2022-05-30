@@ -37,7 +37,6 @@
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
 extern ADC_HandleTypeDef hadc1, hadc2, hadc3, hadc4;
-extern SPI_HandleTypeDef hspi3;
 
 float one_on_sqrt6 = 0.408248;
 float one_on_sqrt3 = 0.577350;
@@ -89,7 +88,6 @@ void MESCInit() {
 #ifdef USE_ENCODER
   foc_vars.enc_offset = ENCODER_E_OFFSET;
 #endif
-  htim1.Instance->CCR4 = htim1.Instance->ARR-1;
 
   InputInit();
 
@@ -814,22 +812,7 @@ static float obs_gain = NON_LINEAR_CENTERING_GAIN;
 
       i = FOC_PERIODS;
 
-      // Field weakening? - The below works pretty nicely, but needs turning
-      // into an implementation where it is switchable by the user. Not useable
-      // when manually setting Id, or if there is an MTPA implementation Can
-      // result in problems e.g. tripping PSUs...
-      //        if((foc_vars.Vdq[1]>300)){
-      //        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]-300)*-0.1; //36A
-      //        max field weakening current
-      //        }
-      //        else if((foc_vars.Vdq[1]<-300)){
-      //        	foc_vars.Idq_req[0]=(foc_vars.Vdq[1]+300)*0.1; //36A max
-      //        field weakening current
-      //        }
-      //        else{
-      //        	foc_vars.Idq_req[0]=0; //30A max field weakening current
-      //
-      //        }
+
     }
     i = i - 1;
 //    if (foc_vars.inject) {
@@ -1327,6 +1310,7 @@ static float obs_gain = NON_LINEAR_CENTERING_GAIN;
     foc_vars.pwm_frequency =PWM_FREQUENCY;
     foc_vars.pwm_period = 1.0f/foc_vars.pwm_frequency;
     htim1.Instance->ARR = HAL_RCC_GetHCLKFreq()/(((float)htim1.Instance->PSC + 1.0f) * 2*foc_vars.pwm_frequency);
+    htim1.Instance->CCR4 = htim1.Instance->ARR-1;
 
     foc_vars.PWMmid = htim1.Instance->ARR * 0.5f;
 
@@ -1637,6 +1621,7 @@ if(fabs(foc_vars.Idq_req[1])>0.1f){
   float ang_v;
   void tle5012(void)
   {
+#ifdef USE_ENCODER
       HAL_GPIO_WritePin(GPIOD, GPIO_PIN_2, GPIO_PIN_RESET);
 
 
@@ -1651,5 +1636,6 @@ if(fabs(foc_vars.Idq_req[1])>0.1f){
 
       //USARTx_Printf("angle: %d.%03d\n", (int)ang_v, (int)((ang_v * 1000) - (int)(ang_v)*1000));
   //    HAL_Delay(500);
+#endif
   }
   // clang-format on
