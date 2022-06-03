@@ -170,7 +170,8 @@ void MESC_PWM_IRQ_handler() {
 // clock cycles (f303) to convert.
 
 static int current_hall_state;
-
+float VacalcDS, VbcalcDS, VdcalcDS, VqcalcDS;
+uint16_t angleDS, angleErrorDS, angleErrorPhaseS;
 void fastLoop() {
   // Call this directly from the ADC callback IRQ
   current_hall_state = getHallState();
@@ -203,10 +204,48 @@ void fastLoop() {
       break;
 
     case MOTOR_STATE_TRACKING:
-      // Track using BEMF from phase sensors
-      generateBreak();
-      MESCTrack();
-      flux_observer();
+#ifdef HAS_PHASE_SENSORS
+			  // Track using BEMF from phase sensors
+			  generateBreak();
+		      MESCTrack();
+		      flux_observer();
+//#else
+		static uint16_t countdown = 1000;
+		if(countdown > 2){
+			generateBreak();
+			htim1.Instance->CCR1 = 0;
+			htim1.Instance->CCR2 = 0;
+			htim1.Instance->CCR3 = 0;
+			//Preload the timer at mid
+		}
+		if(countdown == 2){
+			htim1.Instance->CCR1 = 0;
+			htim1.Instance->CCR2 = 0;
+			htim1.Instance->CCR3 = 0;
+			generateEnable();
+		}
+		if(countdown == 1){
+			generateEnable();
+		}
+		if(countdown == 0){
+			//Need to collect the ADC currents here
+			generateBreak();
+			//Calculate the voltages in the alpha beta phase...
+			VacalcDS = motor.Lphase*foc_vars.Iab[0]/foc_vars.pwm_period;
+			VbcalcDS = motor.Lphase*foc_vars.Iab[1]/foc_vars.pwm_period;
+			angleDS= (uint16_t)(32768.0f + 10430.0f * fast_atan2(VbcalcDS, VacalcDS)) - 32768  -16384;
+			angleErrorDS = angleDS-foc_vars.enc_angle;
+			angleErrorPhaseS = foc_vars.FOCAngle-foc_vars.enc_angle;
+			//Park transform it to get VdVq
+			VdcalcDS = foc_vars.sincosangle.cos * VacalcDS +
+		                      foc_vars.sincosangle.sin * VbcalcDS;
+			VqcalcDS = foc_vars.sincosangle.cos * VbcalcDS -
+		                      foc_vars.sincosangle.sin * VacalcDS;
+
+			countdown = (uint16_t)PWM_FREQUENCY>>7;;
+		}
+		countdown--;
+#endif
       break;
 
     case MOTOR_STATE_OPEN_LOOP_STARTUP:
@@ -366,7 +405,9 @@ void hyperLoop() {
 tle5012();
 #endif
  // foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.angle_error;
-  writePWM();
+if(MotorState==MOTOR_STATE_RUN){
+	writePWM();
+	}
 }
 
 #define MAX_ERROR_COUNT 2
