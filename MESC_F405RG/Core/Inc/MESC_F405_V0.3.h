@@ -1,5 +1,7 @@
 #define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
 #define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!
+#define USE_DEADSHORT //This can be used in place of the phase sensors for startup from running.
+//^^WIP, do not use yet
 
 #define SHUNT_POLARITY -1.0f
 
@@ -57,7 +59,7 @@
 
 #define USE_MTPA //Cannot currently use at the same time as field weakening...
 
-//#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
+#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
 #define POLE_PAIRS 10
 #define ENCODER_E_OFFSET 25000
 #define POLE_ANGLE (65536/POLE_PAIRS)
