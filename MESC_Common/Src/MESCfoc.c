@@ -170,7 +170,7 @@ void MESC_PWM_IRQ_handler() {
 // clock cycles (f303) to convert.
 
 static int current_hall_state;
-float VacalcDS, VbcalcDS, VdcalcDS, VqcalcDS;
+float IacalcDS, IbcalcDS, VacalcDS, VbcalcDS, VdcalcDS, VqcalcDS;
 uint16_t angleDS, angleErrorDS, angleErrorPhaseS;
 void fastLoop() {
   // Call this directly from the ADC callback IRQ
@@ -209,7 +209,26 @@ void fastLoop() {
 			  generateBreak();
 		      MESCTrack();
 		      flux_observer();
-//#else
+#endif
+#ifdef USE_DEADSHORT
+// LICENCE NOTE:
+// This function deviates slightly from the BSD 3 clause licence.
+// The work here is entirely original to the MESC FOC project, and not based
+// on any appnotes, or borrowed from another project. This work is free to
+// use, as granted in BSD 3 clause, with the exception that this note must
+// be included in where this code is implemented/modified to use your
+// variable names, structures containing variables or other minor
+// rearrangements in place of the original names I have chosen, and credit
+// to David Molony as the original author must be noted.
+
+//This "deadshort " function is an original idea (who knows, someone may have had it before) for finding the rotor angle
+//Concept is that when starting from spinning with no phase sensors or encoder, you need to know the angle and the voltages.
+//To achieve this, we simply short out the motor for a PWM period and allow the current to build up.
+//We can then calculate the voltage from V=Ldi/dt in the alpha beta reference frame
+//We can calculate the angle from the atan2 of the alpha beta voltages
+//With this angle, we can get Vd and Vq for preloading the PI controllers
+//We can also preload the flux observer with motor.motorflux*sin and motor.motorflux*cos terms
+
 		static uint16_t countdown = 1000;
 		if(countdown > 2){
 			generateBreak();
@@ -231,6 +250,8 @@ void fastLoop() {
 			//Need to collect the ADC currents here
 			generateBreak();
 			//Calculate the voltages in the alpha beta phase...
+			IacalcDS = foc_vars.Iab[0];
+			IbcalcDS = foc_vars.Iab[1];
 			VacalcDS = motor.Lphase*foc_vars.Iab[0]/foc_vars.pwm_period;
 			VbcalcDS = motor.Lphase*foc_vars.Iab[1]/foc_vars.pwm_period;
 			angleDS= (uint16_t)(32768.0f + 10430.0f * fast_atan2(VbcalcDS, VacalcDS)) - 32768  -16384;
