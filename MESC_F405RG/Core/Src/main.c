@@ -24,11 +24,14 @@
 /* USER CODE BEGIN Includes */
 #include "MESCbat.h"
 #include "MESCflash.h"
-#include "MESCmotor_state.h"
+#include "MESCprofile.h"
+#include "MESCmotor.h"
 #include "MESCspeed.h"
 #include "MESCtemp.h"
 #include "MESCuart.h"
 #include "MESCui.h"
+
+#include "MESCmotor_state.h"
 #include "MESC_Comms.h"
 /* USER CODE END Includes */
 
@@ -135,6 +138,7 @@ int main(void)
 
   // Initialise components
   bat_init( PROFILE_DEFAULT );
+  motor_init( PROFILE_DEFAULT );
   speed_init( PROFILE_DEFAULT );
   temp_init( PROFILE_DEFAULT );
   // Initialise user Interface

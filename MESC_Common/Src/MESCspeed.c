@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -29,125 +29,41 @@
 
 #include "MESCspeed.h"
 
-#include "MESCcli.h"
 #include "MESCprofile.h"
 
 #include "conversions.h"
 
-#include <stddef.h>
+#include <stdint.h>
 
-static SPEEDProfile road_profile = { .motor.Pmax =  250.0f };
-static SPEEDProfile diag_profile = { .motor.Pmax = 50.0f };
-SPEEDProfile const * speed_profile = &road_profile;
+SPEEDProfile const * speed_profile = NULL;
 
 static float rev_speed; // Speedometer units per motor revolution
 
 static float const * speed_drev = NULL; // Motor revolutions (i.e. 0..1 is 0..2Pi radians)
 static float const * speed_dt   = NULL; // time (seconds) // TODO
 
-static void speed_profile_diag( void )
-{
-/*
-NOTE
-
-The diagnostic profile is for hardware bring-up and debugging purposes only
-*/
-    uint32_t            diag_length = sizeof(diag_profile);
-
-    ProfileStatus const ret = profile_get_entry(
-        "SPDD", SPEED_PROFILE_SIGNATURE,
-        &diag_profile, &diag_length );
-
-    if (ret != PROFILE_STATUS_SUCCESS)
-    {
-        cli_reply( "SPDD FAILED\r\n" );
-        return;
-    }
-
-    speed_init( &diag_profile );
-    cli_reply( "SPDD LOADED\r\n" );
-}
-
-static void speed_profile_road( void )
-{
-/*
-NOTE
-
-This should be the default profile when actually using the system and match
-whatever local requirements there are.
-*/
-    uint32_t            road_length = sizeof(road_profile);
-
-    ProfileStatus const ret = profile_get_entry(
-        "SPDR", SPEED_PROFILE_SIGNATURE,
-        &road_profile, &road_length );
-
-    if (ret != PROFILE_STATUS_SUCCESS)
-    {
-        cli_reply( "SPDR FAILED\r\n" );
-        return;
-    }
-
-    speed_init( &road_profile );
-    cli_reply( "SPDR LOADED\r\n" );
-}
-
-static void speed_profile_toggle( void )
-{
-    if (speed_profile == NULL)
-    {
-        return;
-    }
-
-    if (speed_profile == &road_profile)
-    {
-        speed_profile_diag();
-    }
-    else if (speed_profile == &diag_profile)
-    {
-        speed_profile_road();
-    }
-}
-
-void speed_limiter( void )
-{
-	speed_profile = &diag_profile;
-}
-
-void speed_road( void )
-{
-	speed_profile = &road_profile;
-}
-
 void speed_init( SPEEDProfile const * const profile )
 {
-    // If initialising...
     if (profile == PROFILE_DEFAULT)
     {
-        // ...attempt to to load the road profile...
-        speed_profile_road();
-        // DANGER - This is re-entrant
+        static SPEEDProfile speed_profile_default;
+        uint32_t            speed_length = sizeof(speed_profile_default);
 
-        // ...otherwise fall back to diagnostic profile
-        if (speed_profile == NULL)
+        ProfileStatus const ret = profile_get_entry(
+            "SPD", SPEED_PROFILE_SIGNATURE,
+            &speed_profile_default, &speed_length );
+
+        speed_profile = &speed_profile_default;
+
+        if (ret != PROFILE_STATUS_SUCCESS)
         {
-			speed_profile_diag();
-			// DANGER - This is re-entrant
-
-			if (speed_profile == NULL)
-			{
-				speed_profile = &road_profile;
-			}
+            cli_reply( "SPD FAILED" "\r" "\n" );
         }
     }
     else
     {
     	speed_profile = profile;
     }
-
-    cli_register_function( "spd_diag"  , speed_profile_diag   );
-    cli_register_function( "spd_road"  , speed_profile_road   );
-    cli_register_function( "spd_toggle", speed_profile_toggle );
 
     float const gear_ratio          = (float)speed_profile->gear_ratio.motor
                                     / (float)speed_profile->gear_ratio.wheel;

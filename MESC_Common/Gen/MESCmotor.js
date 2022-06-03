@@ -27,53 +27,54 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MESC_SPEED_H
-#define MESC_SPEED_H
+const MOTOR_PROFILE_SIGNATURE = 'MMPE';
 
-#include <inttypes.h>
+const MOTOR_PROFILE_SIZE = 36;
 
-#define SPEED_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','S','P','E')
-
-#define NUM_HALL_STATES (UINT32_C(6))
-
-struct HallEntry
+// MOTORProfile
+function dump_MOTORProfile( profile )
 {
-    uint16_t min;
-    uint16_t max;
-};
+    console.log( "dump_MOTORProfile" );
+    var hex = '';
 
-typedef struct HallEntry HallEntry;
+    hex = hex + dump_c_float(    profile.Imax         );
+    hex = hex + dump_c_float(    profile.Vmax         );
+    hex = hex + dump_c_float(    profile.Pmax         );
+    hex = hex + dump_c_uint32_t( profile.RPMmax       );
+    hex = hex + dump_c_uint8_t(  profile.pole_pairs   );
+    hex = hex + dump_c_uint8_t(  profile.direction    );
+    hex = hex + dump_c_uint8_t( 0 );
+    hex = hex + dump_c_uint8_t( 0 );
+    hex = hex + dump_c_float(    profile.Z_D          );
+    hex = hex + dump_c_float(    profile.Z_Q          );
+    hex = hex + dump_c_float(    profile.R            );
+    hex = hex + dump_c_float(    profile.flux_linkage );
 
-struct SPEEDProfile
+    console.assert( hex.length == (NYBBLES_PER_BYTE * MOTOR_PROFILE_SIZE) );
+
+    return hex;
+}
+
+function MOTORProfile()
 {
-    struct
-    {
-    uint16_t    encoder_offset;
-    HallEntry   hall_states[NUM_HALL_STATES];
-    }           sensor;
+    this.Imax = undefined;
+    this.Vmax = undefined;
+    this.Pmax = undefined;
+    this.RPMmax = undefined;
+    this.pole_pairs = undefined;
+    this.direction = undefined;
+    this.Z_D = undefined;
+    this.Z_Q = undefined;
+    this.R = undefined;
+    this.flux_linkage = undefined;
+}
 
-    struct
-    {
-    uint32_t    motor;      // Teeth on motor
-    uint32_t    wheel;      // Teeth on wheel
-    }           gear_ratio; // Use 1:1 for no gear ratio
+MOTORProfile.prototype.size = function()
+{
+    return MOTOR_PROFILE_SIZE;
+}
 
-    struct
-    {
-    float       diameter;   // In wheel size units (inches/centimetres)
-    float       conversion; // Conversion from wheel size units to speedometer units (miles/kilometres per hour)
-    }           wheel;
-
-};
-
-typedef struct SPEEDProfile SPEEDProfile;
-
-extern SPEEDProfile const * speed_profile;
-
-void speed_init( SPEEDProfile const * const profile );
-
-void speed_register_vars( float const * const drev, float const * const dt );
-
-float speed_get( void );
-
-#endif
+MOTORProfile.prototype.dump = function()
+{
+    return dump_MOTORProfile( this );
+}

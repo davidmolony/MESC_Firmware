@@ -27,53 +27,32 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MESC_SPEED_H
-#define MESC_SPEED_H
+#ifndef MESC_MOTOR_H
+#define MESC_MOTOR_H
 
 #include <inttypes.h>
 
-#define SPEED_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','S','P','E')
+#define MOTOR_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','M','P','E')
 
-#define NUM_HALL_STATES (UINT32_C(6))
-
-struct HallEntry
+struct MOTORProfile
 {
-    uint16_t min;
-    uint16_t max;
+    float       Imax;       // Amp
+    float       Vmax;       // Volt
+    float       Pmax;       // Watt
+    uint32_t    RPMmax;
+    uint8_t     pole_pairs;
+    uint8_t     direction;
+    uint8_t     _[2];
+    float       Z_D;
+    float       Z_Q;
+    float       R;
+    float       flux_linkage;
 };
 
-typedef struct HallEntry HallEntry;
+typedef struct MOTORProfile MOTORProfile;
 
-struct SPEEDProfile
-{
-    struct
-    {
-    uint16_t    encoder_offset;
-    HallEntry   hall_states[NUM_HALL_STATES];
-    }           sensor;
+extern MOTORProfile const * motor_profile;
 
-    struct
-    {
-    uint32_t    motor;      // Teeth on motor
-    uint32_t    wheel;      // Teeth on wheel
-    }           gear_ratio; // Use 1:1 for no gear ratio
-
-    struct
-    {
-    float       diameter;   // In wheel size units (inches/centimetres)
-    float       conversion; // Conversion from wheel size units to speedometer units (miles/kilometres per hour)
-    }           wheel;
-
-};
-
-typedef struct SPEEDProfile SPEEDProfile;
-
-extern SPEEDProfile const * speed_profile;
-
-void speed_init( SPEEDProfile const * const profile );
-
-void speed_register_vars( float const * const drev, float const * const dt );
-
-float speed_get( void );
+void motor_init( MOTORProfile const * const profile );
 
 #endif

@@ -54,6 +54,7 @@ SET( ${PROJECT_NAME}_hdr
     ${CMAKE_CURRENT_LIST_DIR}/../Inc/MESCbat.h
     ${CMAKE_CURRENT_LIST_DIR}/../Inc/MESCcli.h
     ${CMAKE_CURRENT_LIST_DIR}/../Inc/MESCfnv.h
+    ${CMAKE_CURRENT_LIST_DIR}/../Inc/MESCmotor.h
     ${CMAKE_CURRENT_LIST_DIR}/../Inc/MESCprofile.h
     ${CMAKE_CURRENT_LIST_DIR}/../Inc/MESCspeed.h
     ${CMAKE_CURRENT_LIST_DIR}/../Inc/MESCtemp.h
@@ -71,6 +72,7 @@ SET( ${PROJECT_NAME}_src
     ${CMAKE_CURRENT_LIST_DIR}/../Src/MESCbat.c
     ${CMAKE_CURRENT_LIST_DIR}/../Src/MESCcli.c
     ${CMAKE_CURRENT_LIST_DIR}/../Src/MESCfnv.c
+    ${CMAKE_CURRENT_LIST_DIR}/../Src/MESCmotor.c
     ${CMAKE_CURRENT_LIST_DIR}/../Src/MESCprofile.c
     ${CMAKE_CURRENT_LIST_DIR}/../Src/MESCspeed.c
     ${CMAKE_CURRENT_LIST_DIR}/../Src/MESCtemp.c

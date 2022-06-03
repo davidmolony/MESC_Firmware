@@ -29,6 +29,7 @@
 #include "MESCbat.h"
 #include "MESCflash.h"
 #include "MESCprofile.h"
+#include "MESCmotor.h"
 #include "MESCspeed.h"
 #include "MESCtemp.h"
 #include "MESCuart.h"
@@ -188,6 +189,7 @@ int main(void)
 
     // Initialise components
     bat_init( PROFILE_DEFAULT );
+    motor_init( PROFILE_DEFAULT );
     speed_init( PROFILE_DEFAULT );
     temp_init( PROFILE_DEFAULT );
     // Initialise user Interface

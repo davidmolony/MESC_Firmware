@@ -45,20 +45,6 @@ void bist_speed( void )
 
     SPEEDProfile sp;
 
-    sp.motor.Imax         =  40.0f;
-    sp.motor.Vmax         = 100.0f;
-    sp.motor.Pmax         = 250.0f;
-
-    sp.motor.RPMmax       = 1000;
-
-    sp.motor.pole_pairs   = 6;
-    sp.motor.direction    = 0;
-
-    sp.motor.Z_D          = 0.0;
-    sp.motor.Z_Q          = 0.0;
-    sp.motor.R            = 0.0;
-    sp.motor.flux_linkage = 0.0;
-
     sp.sensor.encoder_offset = 0;
 
     for ( uint32_t h = 0; h < NUM_HALL_STATES; h++ )
@@ -80,24 +66,6 @@ void bist_speed( void )
     dt   = 1.0f;
 
     float const rev_speed = speed_get();
-
-    // Sweep rpm range
-    fprintf( stdout, "RPM sweep\n" );
-
-    dt = CONST_SECONDS_PER_MINUTE_F;
-
-    for ( uint32_t i = 1; i <= 10; ++i )
-    {
-        uint32_t rpm = (sp.motor.RPMmax * i) / 10;
-
-        rpm = ((rpm / 100) * 100);
-
-        drev = (float)rpm;
-
-        float const S = speed_get();
-
-        fprintf( stdout, "    %5" PRIu32 " rpm => %4.1f uph\n", rpm, S );
-    }
 
     // Sweep speed range
     fprintf( stdout, "Speed sweep\n" );

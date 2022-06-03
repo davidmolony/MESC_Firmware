@@ -30,6 +30,7 @@
 #include "MESCprofile.h"
 
 #include "MESCbat.h"
+#include "MESCmotor.h"
 #include "MESCspeed.h"
 #include "MESCtemp.h"
 #include "MESCui.h"
@@ -457,6 +458,40 @@ void bist_profile( void )
         fprintf( stdout, "INFO: Adding Battery entry\n" );
 
         ret = profile_put_entry( "MESC_BAT", BAT_PROFILE_SIGNATURE, &bp, &bp_size );
+
+        profile_get_last( &s, &h, &e, & o );
+        fprintf( stdout, "INFO: %d %s\n"
+                         "    S:%d %s\n"
+                         "    H:%d %s\n"
+                         "    E:%d %s\n"
+                         "    O:%d %s\n",
+            ret, getProfileStatusName(ret),
+            s, getProfileStatusName(s),
+            h, getProfileStatusName(h),
+            e, getProfileStatusName(e),
+            o, getProfileStatusName(o) );
+
+        profile_check_last(
+            PROFILE_STATUS_UNKNOWN,                 // No storage operation should be performed
+            PROFILE_STATUS_UNKNOWN,                 // No header operation should be performed
+            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC,     // A new entry should be allocated
+            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC );   // A new entry should be allocated
+    }
+
+    if (profile_get_entry( "MESC_MOTOR", MOTOR_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
+    {
+        MOTORProfile const * sp = (MOTORProfile *)buffer;
+        (void)sp;
+        fprintf( stdout, "INFO: Found Motor entry\n" );
+    }
+    else
+    {
+        static MOTORProfile sp;
+        static uint32_t sp_size = sizeof(sp);
+        (void)sp;
+        fprintf( stdout, "INFO: Adding Motor entry\n" );
+
+        ret = profile_put_entry( "MESC_MOTOR", MOTOR_PROFILE_SIGNATURE, &sp, &sp_size );
 
         profile_get_last( &s, &h, &e, & o );
         fprintf( stdout, "INFO: %d %s\n"
