@@ -1321,7 +1321,7 @@ static float obs_gain = NON_LINEAR_CENTERING_GAIN;
 
     foc_vars.ADC_duty_threshold = htim1.Instance->ARR * 0.85f;
 
-    foc_vars.Id_pgain = 2500.0f * motor.Lphase;  // 10000rads-1, hardcoded for now, * motorL
+    foc_vars.Id_pgain = 10000.0f * motor.Lphase;  // 10000rads-1, hardcoded for now, * motorL
 
     foc_vars.Id_igain = motor.Rphase / motor.Lphase;
     // Pole zero cancellation for series PI control
@@ -1662,7 +1662,7 @@ was_last_tracking = 1;
 
 	static uint16_t countdown = 10;
 
-	  		if(countdown == 0||((foc_vars.Iab[0]*foc_vars.Iab[0]+foc_vars.Iab[1]*foc_vars.Iab[1])>DEADSHORT_CURRENT*DEADSHORT_CURRENT))
+	  		if(countdown == 1||(((foc_vars.Iab[0]*foc_vars.Iab[0]+foc_vars.Iab[1]*foc_vars.Iab[1])>DEADSHORT_CURRENT*DEADSHORT_CURRENT)&&countdown<9))
 	  				{
 	  					//Need to collect the ADC currents here
 	  					generateBreak();
@@ -1672,9 +1672,12 @@ was_last_tracking = 1;
 	  					VacalcDS = -motor.Lphase*foc_vars.Iab[0]/((9.0f-(float)countdown)*foc_vars.pwm_period);
 	  					VbcalcDS = -motor.Lphase*foc_vars.Iab[1]/((9.0f-(float)countdown)*foc_vars.pwm_period);
 	  					//Calculate the phase angle
-	  					angleDS = (uint16_t)(32768.0f + 10430.0f * fast_atan2(VbcalcDS, VacalcDS)) - 32768 -16384;
-	  					//Shifting by 1/4 erev does not work for going backwards. Need to rethink.
+	  					//TEST LINE angleDS = (uint16_t)(32768.0f + 10430.0f * fast_atan2(VbcalcDS, VacalcDS)) - 32768;// +16384;
 
+	  					 angleDS = (uint16_t)(32768.0f + 10430.0f * fast_atan2(VbcalcDS, VacalcDS)) - 32768 -16384;
+	  					//Shifting by 1/4 erev does not work for going backwards. Need to rethink.
+	  					//Problem is, depending on motor direction, the sign of the voltage generated swaps for the same rotor position.
+	  					//The atan2(flux linkages) is stable under this regime, but the same for voltage is not.
 	  					foc_vars.FOCAngle = angleDS;//foc_vars.enc_angle;//
 	  					sin_cos_fast(foc_vars.FOCAngle, &foc_vars.sincosangle.sin, &foc_vars.sincosangle.cos);
 
@@ -1703,9 +1706,11 @@ was_last_tracking = 1;
 	  					foc_vars.Idq_int_err[1] = VqcalcDS;
 	  		//Next PWM cycle it  will jump to running state,
 	  					MESCFOC();
-	  					MotorState = MOTOR_STATE_RUN;
 	  					countdown_cycles = 9-countdown;
-	  					countdown = 10;
+	  					countdown = 1;
+
+
+
 	  		}
 	  		if(countdown > 10){
 	  			generateBreak();
@@ -1714,13 +1719,18 @@ was_last_tracking = 1;
 	  			htim1.Instance->CCR3 = 50;
 	  			//Preload the timer at mid
 	  		}
-	  		if(countdown <= 10 ){
+	  		if(countdown <= 10 && countdown>1 ){
 	  			htim1.Instance->CCR1 = 50;
 	  			htim1.Instance->CCR2 = 50;
 	  			htim1.Instance->CCR3 = 50;
 	  			generateEnable();
 	  		}
+	  		if(countdown == 1 ){
+					countdown = 15; //We need at least a few cycles for the current to relax
+									//to zero in case of rapid switching between states
+  					MotorState = MOTOR_STATE_RUN;
 
+	  		}
 	  		countdown--;
   }
 
