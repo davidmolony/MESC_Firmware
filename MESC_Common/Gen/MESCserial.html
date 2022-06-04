@@ -1,0 +1,203 @@
+<html>
+    <head>
+        <script>
+            var serial_io_port = undefined;
+            var serial_io_ports = [];
+
+            function loadKnownPorts()
+            {
+                navigator.serial.getPorts().then( (ports) => {
+                    ports.forEach( function ( port )
+                    {
+                        var o_sio_prt = document.getElementById( "sio_prt" );
+                        var o_opt = document.createElement( "option" );
+                        var index = serial_io_ports.length;
+                        o_opt.value = "" + index;
+                        o_opt.innerHTML = "" + port;
+                        serial_io_ports[index] = port;
+                        sio_prt.appendChild( o_opt );
+                    } )
+                } )
+            }
+
+            function init()
+            {
+                if ("serial" in navigator)
+                {
+                    console.log( "INFO: Serial API supported" );
+                    loadKnownPorts();
+                    var o_sio_add = document.getElementById( "sio_add" );
+                    o_sio_add.disabled = false;
+                }
+                else
+                {
+                    console.log( "ERROR: Serial API not supported" );
+                }
+            }
+
+            async function handleIO()
+            {
+                if (serial_io_port == undefined)
+                {
+                    return;
+                }
+
+                var o_sio_dis = document.getElementById( "sio_dis" );
+                o_sio_dis.disabled = false;
+
+                while (serial_io_port.readable)
+                {
+                    //const reader = port.readable.getReader();
+                    const textDecoder = new TextDecoderStream();
+                    const readableStreamClosed = serial_io_port.readable.pipeTo( textDecoder.writable );
+                    const reader = textDecoder.readable.getReader();
+
+                    try
+                    {
+                        while (true)
+                        {
+                            const { value, done } = await reader.read();
+                            if (done)
+                            {
+                                reader.releaseLock();
+                                break;
+                            }
+                            else if (value)
+                            {
+                                // value is Uint8Array
+                                console.log( "READ " + value );
+                            }
+                        }
+                    }
+                    catch (error)
+                    {
+                        console.log( "ERROR" );
+                        // ...
+                    }
+                }
+
+                // WRITE
+
+                //const writer = port.writable.getWriter();
+                const textEncoder = new TextEncoderStream();
+                const writableStreamClosed = textEncoder.readable.pipeTo( serial_io_port.writable );
+                const writer = textEncoder.writable.getWriter();
+
+                //const data = new Uint8Array([104, 101, 108, 108, 111]); // hello
+                //await writer.write(data);
+                var data = "text";
+                console.log( "WRITE " + data );
+                await writer.write( data );
+
+                // Allow the serial port to be closed later.
+                writer.releaseLock();
+
+                // CLOSE
+            }
+
+            async function open()
+            {
+                if (serial_io_port == undefined)
+                {
+                    return;
+                }
+
+                await serial_io_port.open(
+                    {
+                        baudRate    : 9600,   // or ...
+                        dataBits    : 8,      // or 7
+                        stopBits    : 1,      // or 2
+                        parity      : "none", // "even", "odd"
+                        bufferSize  : 4096,   // <16MiB
+                        flowControl : "none"  // or "hardware"
+                    }
+                );
+
+                handleIO();
+            }
+
+            function connect()
+            {
+                var o_ser_prt = document.getElementById( "ser_prt" );
+                var prt = o_ser_prt.value;
+
+                serial_io_port = undefined; // TODO
+
+                open();
+            }
+
+            async function add()
+            {
+                await navigator.serial.requestPort().then(
+                    (port) => {
+                        serial_io_port = port;
+                        var o_sio_new = document.getElementById( "sio_new" );
+                        o_sio_new.disabled = true;
+                        open();
+                    }
+                ).catch(
+                    (e) => {
+                        console.log( "WARNING: Add failed or aborted" );
+                    }
+                );
+                
+            }
+
+            async function disconnect()
+            {
+                if (serial_io_port == undefined)
+                {
+                    return;
+                }
+
+                await serial_io_port.close();
+
+                var o_sio_dis = document.getElementById( "sio_dis" );
+                o_sio_dis.disabled = true;
+
+                var o_sio_new = document.getElementById( "sio_new" );
+                o_sio_new.disabled = false;
+
+                if (serial_io_ports.length > 0)
+                {
+                    var o_sio_con = document.getElementById( "sio_con" );
+                    o_sio_con.disabled = false;
+                }
+            }
+
+            async function remove()
+            {
+                if (serial_io_port == undefined)
+                {
+                    return;
+                }
+
+                disconnect();
+
+                if ("forget" in SerialPort.prototype)
+                {
+                    await serial_io_port.forget();
+                }
+
+                serial_io_port = undefined;
+            }
+        </script>
+    </head>
+    <body onload="init()">
+        <div>
+            <noscript>
+                /!\ JavaScript is required for Serial IO
+            </noscript>
+            <div>
+                <select id="sio_prt">
+                </select>
+            </div>
+            <div>
+                <input type="button" id="sio_add" onclick="add()"        disabled value="New"/>
+                <input type="button" id="sio_rem" onclick="remove()"     disabled value="Remove"/>
+                <input type="button" id="sio_con" onclick="connect()"    disabled value="Connect"/>
+                <input type="button" id="sio_dis" onclick="disconnect()" disabled value="Disconnect"/>
+            </div>
+        </div>
+    </body>
+</html>
