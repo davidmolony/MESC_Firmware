@@ -287,6 +287,7 @@ void MESC_Slow_IRQ_handler(TIM_HandleTypeDef *htim); 	//This loop should run off
 														//If entered from update (reset, CC1) no data available for the PWM in. If entered from CC2, new PWM data available
 void slowLoop(TIM_HandleTypeDef *htim);
 void MESCTrack();
+void deadshort();
 void tle5012();
 
 #endif
