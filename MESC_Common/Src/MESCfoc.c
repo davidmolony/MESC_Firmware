@@ -209,9 +209,7 @@ void fastLoop() {
 		      MESCTrack();
 		      flux_observer();
 #endif
-//#ifdef USE_DEADSHORT
-//		      deadshort();
-//#endif
+
       break;
 
     case MOTOR_STATE_OPEN_LOOP_STARTUP:
@@ -257,8 +255,8 @@ void fastLoop() {
 
     case MOTOR_STATE_MEASURING:
 
-      if (motor.uncertainty ==
-          1) {  // Every PWM cycle we enter this function until
+//      if (motor.uncertainty ==
+//          1) {  // Every PWM cycle we enter this function until
                 // the resistance measurement has converged at a
                 // good value. Once the measurement is complete,
                 // Rphase is set, and this is no longer called
@@ -266,15 +264,16 @@ void fastLoop() {
           measureResistance();
         }
         break;
-      } else if (motor.Lphase == 0)  // This is currently rolled into measureResistance() since
-                     // it seemed pointless to re-write basically the same
-                     // function...
-      {
-        // As per resistance measurement, this will be called until an
-        // inductance measurement is converged.
-        // measureInductance();
-        break;
-      }
+//      }
+//        else if (motor.Lphase == 0)  // This is currently rolled into measureResistance() since
+//                     // it seemed pointless to re-write basically the same
+//                     // function...
+//      {
+//        // As per resistance measurement, this will be called until an
+//        // inductance measurement is converged.
+//        // measureInductance();
+//        break;
+//      }
 
       break;
 
@@ -1000,7 +999,7 @@ static float obs_gain = NON_LINEAR_CENTERING_GAIN;
     else if (PWM_cycles < 80001) {  // Collect Ld variable
       // generateBreak();
       foc_vars.inject = 1;  // flag to the SVPWM writer to inject at top
-      foc_vars.Vd_injectionV = 8.0f;
+      foc_vars.Vd_injectionV = 4.0f;
       foc_vars.Vq_injectionV = 0.0f;
       foc_vars.Vdq[0] = Vd_temp;
       foc_vars.Vdq[1] = 0;
@@ -1028,7 +1027,7 @@ static float obs_gain = NON_LINEAR_CENTERING_GAIN;
     } else if (PWM_cycles < 100003) {  // Collect Lq variable
       //			generateBreak();
       foc_vars.Vd_injectionV = 0.0f;
-      foc_vars.Vq_injectionV = 12.0f;
+      foc_vars.Vq_injectionV = 4.0f;
       foc_vars.inject = 1;  // flag to the SVPWM writer to update at top
       foc_vars.Vdq[0] = 0;  // Vd_temp;
       foc_vars.Vdq[1] = 0;
@@ -1056,6 +1055,7 @@ static float obs_gain = NON_LINEAR_CENTERING_GAIN;
       calculateGains();
       // MotorState = MOTOR_STATE_IDLE;  //
       MotorState = MOTOR_STATE_DETECTING;
+      PWM_cycles = 0;
       phU_Enable();
       phV_Enable();
       phW_Enable();
@@ -1411,9 +1411,9 @@ static float obs_gain = NON_LINEAR_CENTERING_GAIN;
     // for battery voltage change
 
 	  //Collect the requested throttle inputs
-		  //UART input
-	  if(input_vars.input_options & 0b1000){
-
+	  //UART input
+	  if(0 == (input_vars.input_options & 0b1000)){
+		  input_vars.Idq_req_UART[1] = 0;
 	  }
 
 	  //RCPWM input
@@ -1544,7 +1544,7 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
 
     //////Set tracking
 static int was_last_tracking;
-
+if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(MotorState==MOTOR_STATE_GET_KV))){
 if(fabs(foc_vars.Idq_req[1])>0.1f){
 	if(MotorState != MOTOR_STATE_ERROR){
 #ifdef HAS_PHASE_SENSORS //We can go straight to RUN if we have been tracking with phase sensors
@@ -1567,7 +1567,7 @@ if(MotorState==MOTOR_STATE_IDLE){
 #endif
 was_last_tracking = 1;
 }
-
+}
 //foc_vars.Idq_req[0] = 10; //for aligning encoder
 /////////////Set and reset the HFI////////////////////////
 #ifdef USE_HFI

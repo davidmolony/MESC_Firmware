@@ -1036,6 +1036,8 @@ MESC_INTERNAL_ALIAS(int,CLIState) cli_process( char const c )
     return cli_state;
 }
 
+extern void HAL_Delay( uint32_t );
+
 void cli_reply( char const * p, ... )
 {
     uint8_t buffer[256];
@@ -1049,6 +1051,7 @@ void cli_reply( char const * p, ... )
     {
         int const ret = cli_io_write( cli_io_handle, buffer, (uint16_t)len );
         (void)ret;
+        HAL_Delay( 1 + 100/*DMA*/ + (1000/*ms*/ * (len * 8) / 9600/*baud*/) );
     }
 
     va_end( va );

@@ -1,5 +1,15 @@
 #define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
 #define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!
+//#define USE_DEADSHORT //This can be used in place of the phase sensors for startup from running.
+#define DEADSHORT_CURRENT 30.0f	//When recovering from tracking phase without phase sensors, the
+							//deadshort function will short the phases
+							//until the current exceeds this value. At this point, it calculates the Vd Vq and phase angle
+							//Don't set too high, after 9PWM periods, it will run the calc and start the motor regardless.
+							//This seems to work best with a higher current bandwidth (~10krads-1) and using the non-linear observer centering.
+							//Broadly incompatible with the flux observer
+							//Only works for forward direction presently
+							//^^WIP, not completely stable yet
+
 
 #define SHUNT_POLARITY -1.0
 
@@ -40,7 +50,7 @@
 #define ADC1_POLARITY 1.0f
 #define ADC2_POLARITY -1.0f
 
-#define DEFAULT_INPUT	0b0110 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
+#define DEFAULT_INPUT	0b1110 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
 //////Motor parameters
 #define DEFAULT_FLUX_LINKAGE 0.0038f//Set this to the motor linkage in wB
@@ -48,7 +58,7 @@
 #define DEFAULT_MOTOR_Lq 0.000008f//Henries
 #define DEFAULT_MOTOR_R 0.0060f //Ohms
 //Use the Ebike Profile tool
-//#define USE_PROFILE
+#define USE_PROFILE
 
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f

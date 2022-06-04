@@ -105,6 +105,7 @@ static void cmd_test( void )
 
 void uart_init( void )
 {
+	cli_register_variable_rw( "Idq_req", &input_vars.Idq_req_UART[1], sizeof(input_vars.Idq_req_UART[1]), CLI_VARIABLE_FLOAT );
     cli_register_variable_rw( "Idc"       , &foc_vars.Idq_req[0]                   , sizeof(foc_vars.Idq_req[0]                   ), CLI_VARIABLE_FLOAT );
     cli_register_variable_rw( "Iq"        , &foc_vars.Idq_req[1]                   , sizeof(foc_vars.Idq_req[1]                   ), CLI_VARIABLE_FLOAT );
     cli_register_variable_ro( "Vbus"      , &measurement_buffers.ConvertedADC[0][1], sizeof(measurement_buffers.ConvertedADC[0][1]), CLI_VARIABLE_FLOAT );
