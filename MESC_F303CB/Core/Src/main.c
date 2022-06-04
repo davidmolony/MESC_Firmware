@@ -22,10 +22,20 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "flash_wrapper.h"
 
 //#include "usbd_cdc_if.c"
 //#include "usbd_cdc.h"
+
+#include "MESCbat.h"
+#include "MESCflash.h"
+#include "MESCprofile.h"
+#include "MESCspeed.h"
+#include "MESCtemp.h"
+#include "MESCuart.h"
+#include "MESCui.h"
+
+#include <stdio.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,7 +53,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;
+ ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 ADC_HandleTypeDef hadc3;
 ADC_HandleTypeDef hadc4;
@@ -76,7 +86,6 @@ DMA_HandleTypeDef hdma_usart3_tx;
 /* USER CODE BEGIN PV */
 // int initing = 1;
 char UART_buffer[12];
-extern char UART_rx_buffer[2];
 char USBRxBuffer[12];
 extern uint8_t b_write_flash;
 extern uint8_t b_read_flash;
@@ -163,54 +172,59 @@ int main(void)
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
+#if defined USE_PROFILE
+    /*
+    Starting System Initialisation
+    */
 
-    /* check if flash is empty and read data.
-     * This will populate the Halltable, Lphase, Rphase with values from flash.
-     * foc_vars.hall_table
-     * motor.Lphase
-     * motor.Rphase */
-    //    eraseData();
-    if (getStatus() == VALID)
-    {
-        b_read_flash = 1;
-        readData();
-    }
-    b_read_flash = 0;
+    // Initialise UART CLI IO
+    uart_init();
+    // NOTE - CLI messages are available after this point
+    
+    // Attach flash IO to profile
+    flash_register_profile_io();
+    // Load stored profile
+    profile_init();
+
+    // Initialise components
+    bat_init( PROFILE_DEFAULT );
+    speed_init( PROFILE_DEFAULT );
+    temp_init( PROFILE_DEFAULT );
+    // Initialise user Interface
+    ui_init( PROFILE_DEFAULT );
+
+    /*
+    Finished System Initialisation
+    */
+#endif
+
     motor.uncertainty = 1;
-
     // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
 
-    htim1.Instance->ARR = 1024; // PWM
-
-
+    //Set up the input capture for throttle
     HAL_TIM_IC_Start(&htim3, TIM_CHANNEL_1);
     HAL_TIM_IC_Start(&htim3, TIM_CHANNEL_2);
     __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
     // Here we can auto set the prescaler to get the us input regardless of the main clock
     __HAL_TIM_SET_PRESCALER(&htim3, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
-    // Place to mess about with PWM in
 
+    //Initialise MESC
     MESCInit();
     MotorState = MOTOR_STATE_MEASURING;
-    // MotorState = MOTOR_STATE_HALL_RUN;
     MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
-    motor.motor_flux = 350;
-    // 650 is the right number for a motor with 7PP and 50kV
-    // Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
+    motor_init();
+    calculateGains();
+    calculateVoltageGain();
 
-    // BLDCVars.BLDCduty = 70;
-    HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
-    HAL_UART_Transmit_DMA(&huart3, "startup!!\r", 10);
+    char message[20];
+    int length = sprintf( message, "%s", "startup!!\r\n" );
+    HAL_UART_Transmit_DMA(&huart3, (uint8_t *)message, length);
 
-    // Add a little area in which I can mess about without the RTOS
+  /* USER CODE END 2 */
 
-    HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_1);
-    //    HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_2);
-    //    HAL_TIM_IC_Start_IT(&htim4, TIM_CHANNEL_3);
-    __HAL_TIM_SET_PRESCALER(&htim4, 71);
-    __HAL_TIM_ENABLE_IT(&htim4, (TIM_IT_CC1 | TIM_IT_UPDATE));
-
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
     while (1)
     {
         // HAL_Delay(100);
@@ -220,34 +234,20 @@ int main(void)
          * 2. Write data to flash.
          * 3. Restore motor power.
          */
-        if (MotorState == MOTOR_STATE_ERROR)
+        if(MotorState==MOTOR_STATE_ERROR)
         {
-            char error_message[10];
-            sprintf(error_message,
-                    "%d%d%d%d",
-                    measurement_buffers.adc1,
-                    measurement_buffers.adc2,
-                    measurement_buffers.adc3,
-                    measurement_buffers.adc4);
-            HAL_UART_Transmit(&huart3, error_message, 10, 10);
+            char error_message[64];
+            int length = sprintf(error_message,
+            		"%" PRIu32
+					" %" PRIu32
+					" %" PRIu32
+					" %" PRIu32,
+					measurement_buffers.adc1,
+					measurement_buffers.adc2,
+					measurement_buffers.adc3,
+					measurement_buffers.adc4 );
+            HAL_UART_Transmit(&huart3, (uint8_t *)error_message, length, 100);
         }
-        if (b_write_flash)
-        {
-            __HAL_TIM_MOE_DISABLE(&htim1);
-            writeData();
-            __HAL_TIM_MOE_ENABLE(&htim1);
-            b_write_flash = 0;
-        }
-
-        //         sprintf(UART_buffer, "helloWorld/r");  //        HAL_UART_Transmit(&huart3, (uint8_t *)"HelloWorld\r", 12, 10);
-        //         HAL_UART_Transmit_DMA(&huart3, UART_buffer, 10);
-    }
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-    while (1)
-    {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -280,6 +280,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
   /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
@@ -337,6 +338,7 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 1 */
 
   /* USER CODE END ADC1_Init 1 */
+
   /** Common config
   */
   hadc1.Instance = ADC1;
@@ -357,6 +359,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure the ADC multi-mode
   */
   multimode.Mode = ADC_MODE_INDEPENDENT;
@@ -364,6 +367,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure Analog WatchDog 1
   */
   AnalogWDGConfig.WatchdogNumber = ADC_ANALOGWATCHDOG_1;
@@ -376,6 +380,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_3;
@@ -388,6 +393,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_1;
@@ -396,6 +402,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_4;
@@ -429,6 +436,7 @@ static void MX_ADC2_Init(void)
   /* USER CODE BEGIN ADC2_Init 1 */
 
   /* USER CODE END ADC2_Init 1 */
+
   /** Common config
   */
   hadc2.Instance = ADC2;
@@ -449,6 +457,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure Analog WatchDog 1
   */
   AnalogWDGConfig.WatchdogNumber = ADC_ANALOGWATCHDOG_1;
@@ -461,6 +470,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_3;
@@ -473,6 +483,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_1;
@@ -482,6 +493,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_2;
@@ -490,6 +502,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_12;
@@ -524,6 +537,7 @@ static void MX_ADC3_Init(void)
   /* USER CODE BEGIN ADC3_Init 1 */
 
   /* USER CODE END ADC3_Init 1 */
+
   /** Common config
   */
   hadc3.Instance = ADC3;
@@ -544,6 +558,7 @@ static void MX_ADC3_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure the ADC multi-mode
   */
   multimode.Mode = ADC_MODE_INDEPENDENT;
@@ -551,6 +566,7 @@ static void MX_ADC3_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure Analog WatchDog 1
   */
   AnalogWDGConfig.WatchdogNumber = ADC_ANALOGWATCHDOG_1;
@@ -563,6 +579,7 @@ static void MX_ADC3_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_1;
@@ -598,6 +615,7 @@ static void MX_ADC4_Init(void)
   /* USER CODE BEGIN ADC4_Init 1 */
 
   /* USER CODE END ADC4_Init 1 */
+
   /** Common config
   */
   hadc4.Instance = ADC4;
@@ -618,6 +636,7 @@ static void MX_ADC4_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure Regular Channel
   */
   sConfig.Channel = ADC_CHANNEL_3;
@@ -804,12 +823,14 @@ static void MX_I2C1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure Analogue filter
   */
   if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
   {
     Error_Handler();
   }
+
   /** Configure Digital filter
   */
   if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
@@ -1239,7 +1260,7 @@ static void MX_GPIO_Init(void)
 void HAL_ADC_ConvcpltCallback(ADC_HandleTypeDef *hadc) {}
 /* USER CODE END 4 */
 
- /**
+/**
   * @brief  Period elapsed callback in non blocking mode
   * @note   This function is called  when TIM7 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
@@ -1290,5 +1311,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

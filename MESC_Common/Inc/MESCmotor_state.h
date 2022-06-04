@@ -96,6 +96,7 @@ typedef enum {
   MOTOR_ERROR_OVER_LIMIT_CURR2,
   MOTOR_ERROR_OVER_LIMIT_CURR3,
   MOTOR_ERROR_OVER_LIMIT_VBUS,
+  MOTOR_ERROR_OVER_LIMIT_TEMP,
   MOTOR_ERROR_OTHER,
 } motor_error_type_e;
 
@@ -109,8 +110,8 @@ typedef enum {
 extern motor_direction_e MotorDirection;
 
 typedef enum {
-  MOTOR_CONTROL_TYPE_BLDC,
-  MOTOR_CONTROL_TYPE_FOC
+	MOTOR_CONTROL_TYPE_FOC,
+  MOTOR_CONTROL_TYPE_BLDC
 } motor_control_type_e;
 
 extern motor_control_type_e MotorControlType;

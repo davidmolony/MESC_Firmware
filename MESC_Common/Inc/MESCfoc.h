@@ -21,18 +21,25 @@
  *  Created on: 18 Jul 2020
  *      Author: David Molony
  */
+
+#ifndef MESC_FOC_H
+#define MESC_FOC_H
+
 #include "stm32fxxx_hal.h"
 
 #define FOC_SECTORS_PER_REVOLUTION (6)
-#define FOC_CONV_CHANNELS (4)
-#define FOC_TRANSFORMED_CHANNELS (2)
-#define FOC_NUM_ADC (4)
-#define FOC_PERIODS (1)
+#define FOC_CONV_CHANNELS          (4)
+#define FOC_TRANSFORMED_CHANNELS   (2)
+#define FOC_NUM_ADC                (4)
+#define FOC_PERIODS                (1)
 
-#define ADCIU (0)
-#define ADCIV (1)
-#define ADCIW (2)
-#define I_CONV_NO (0)
+enum MESCADC
+{
+    ADCIU,
+    ADCIV,
+    ADCIW,
+};
+
 #define MAX_MODULATION 0.95
 #define SVPWM_MULTIPLIER \
   1.1547  // 1/cos30 which comes from the maximum between two 120 degree apart
@@ -40,11 +47,14 @@
 #define Vd_MAX_PROPORTION 0.3
 #define Vq_MAX_PROPORTION 0.95
 
-// fixme: I think this type of stuff is causing confusion later on especially in
-// the code that strives for maintainability. What does an alias give you?
-typedef uint16_t foc_angle_t;
-typedef float current_amps_t;
-typedef float voltage_t;
+enum FOCChannels
+{
+    FOC_CHANNEL_PHASE_I,
+    FOC_CHANNEL_DC_V,
+    FOC_CHANNEL_PHASE_V,
+
+    FOC_CHANNELS
+};
 
 typedef struct {
 	float sin;
@@ -53,32 +63,33 @@ typedef struct {
 
 typedef struct {
   int initing;  // Flag to say we are initialising
-  uint16_t FOCError;
-  foc_angle_t RotorAngle;  // Rotor angle, either fetched from hall sensors or
-                           // from observer
-  foc_angle_t AngleStep;  // At startup, step angle is zero, zero speed. This is
-                          // the angle by which the inverter increments each PWM
-                          // cycle under open loop
-  foc_angle_t openloop_step;//The angle to increment by for openloop
-  foc_angle_t FOCAngle;  // Angle generated in the hall sensor estimator
 
+  uint16_t openloop_step;//The angle to increment by for openloop
+  uint16_t FOCAngle;    // Angle generated in the hall sensor estimator
+  uint16_t enc_angle;
+  uint16_t enc_offset;
+  int enc_obs_angle;
+  float FLAdiff;
   MESCsin_cos_s sincosangle;  // This variable carries the current sin and cosine of
                          	  // the angle being used for Park and Clark transforms,
                               // so they only need computing once per pwm cycle
-
   float Iab[FOC_TRANSFORMED_CHANNELS + 1];  // Float vector containing the Clark
                                             // transformed current in amps
   float Idq[FOC_TRANSFORMED_CHANNELS];      // Float vector containing the Park
                                             // transformed current in amps
-
+  float Vab[FOC_TRANSFORMED_CHANNELS + 1];
   float Vdq[FOC_TRANSFORMED_CHANNELS];
   float Vdq_smoothed[FOC_TRANSFORMED_CHANNELS];
-  float Vab[FOC_TRANSFORMED_CHANNELS + 1];
+  float Idq_smoothed[FOC_TRANSFORMED_CHANNELS];
+  float Idq_int_err[2];
+  float id_mtpa;
+  float iq_mtpa;
+
+
   float inverterVoltage[FOC_TRANSFORMED_CHANNELS + 1];
-  float smoothed_idq[2];
-  float Idq_req[2];
-  float rawThrottleVal[2];
-  float currentPower;
+  float Idq_req[2];							//The input to the PI controller. Load this with the values you want.
+  float currentPower[2];					//Power being consumed by the motor; this does not include steady state losses and losses to switching
+  float Ibus;
   float reqPower;
 
   uint16_t hall_table[6]
@@ -106,6 +117,7 @@ typedef struct {
   // Field weakenning
   float field_weakening_curr_max;
   float field_weakening_threshold;
+  float field_weakening_multiplier;
   int field_weakening_flag;
 
   float VBEMFintegral[2];
@@ -119,7 +131,11 @@ typedef struct {
   float Vd_injectionV;
   float Vq_injectionV;
   uint32_t FLrun, VFLrun;
-  uint16_t angle_error;
+  int angle_error;
+  float Ldq_now[2];
+  float Ldq_now_dboost[2];
+
+  float IIR[2];
 } MESCfoc_s;
 
 extern MESCfoc_s foc_vars;
@@ -150,6 +166,12 @@ typedef struct {
 
 extern foc_measurement_t measurement_buffers;  // fixme: floating function prototype
 
+enum RCPWMMode{
+	THROTTLE_ONLY,
+	THROTTLE_REVERSE,
+	THROTTLE_NO_REVERSE
+};
+
 typedef struct {
 
 	///////////////////RCPWM//////////////////////
@@ -164,12 +186,6 @@ typedef struct {
 	uint32_t IC_pulse_MID;
 	uint32_t IC_pulse_DEADZONE; //single sided; no response before MID +- this
 	float RCPWM_gain[2][2];
-
-	enum RCPWMMode{
-		THROTTLE_ONLY,
-		THROTTLE_REVERSE,
-		THROTTLE_NO_REVERSE
-	};
 
 	 uint32_t fCC1;
 	 uint32_t fUPD;
@@ -271,3 +287,7 @@ void MESC_Slow_IRQ_handler(TIM_HandleTypeDef *htim); 	//This loop should run off
 														//If entered from update (reset, CC1) no data available for the PWM in. If entered from CC2, new PWM data available
 void slowLoop(TIM_HandleTypeDef *htim);
 void MESCTrack();
+void deadshort();
+void tle5012();
+
+#endif

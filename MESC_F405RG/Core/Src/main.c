@@ -22,10 +22,14 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "MESCbat.h"
+#include "MESCflash.h"
 #include "MESCmotor_state.h"
-#include "flash_wrapper.h"
+#include "MESCspeed.h"
+#include "MESCtemp.h"
+#include "MESCuart.h"
+#include "MESCui.h"
 #include "MESC_Comms.h"
-extern char UART_rx_buffer[2];
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,9 +47,11 @@ extern char UART_rx_buffer[2];
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;
+ ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 ADC_HandleTypeDef hadc3;
+
+SPI_HandleTypeDef hspi3;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim4;
@@ -55,8 +61,6 @@ UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
-static int countdown = 2000000;
-static int answer;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,7 +74,9 @@ static void MX_TIM1_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_TIM7_Init(void);
+static void MX_SPI3_Init(void);
 /* USER CODE BEGIN PFP */
+
 
 /* USER CODE END PFP */
 
@@ -116,16 +122,58 @@ int main(void)
   MX_TIM4_Init();
   MX_USART3_UART_Init();
   MX_TIM7_Init();
+  MX_SPI3_Init();
   /* USER CODE BEGIN 2 */
+  HAL_SPI_Init(&hspi3);
 
-  if (getStatus() == VALID) {
-    b_read_flash = 1;
-    readData();
+  /*
+  Starting System Initialisation
+  */
+#if defined USE_PROFILE
+  // Initialise UART CLI IO
+  uart_init();
+  // NOTE - CLI messages are available after this point
+  
+  // Attach flash IO to profile
+  flash_register_profile_io();
+  // Load stored profile
+  ProfileStatus const sts = profile_init();
+
+  // Initialise components
+  bat_init( PROFILE_DEFAULT );
+  speed_init( PROFILE_DEFAULT );
+  temp_init( PROFILE_DEFAULT );
+  // Initialise user Interface
+  ui_init( PROFILE_DEFAULT );
+// HACK
+  // Example store for debugging
+  UIProfile up;
+  up.type = UI_PROFILE_BUTTON;
+  up.desc.button.address = 1;
+  up.desc.button.identifier = 2;
+  up.desc.button.interface = 3;
+  uint32_t len = sizeof(up);
+  ProfileStatus ret = profile_put_entry( "TEST", UI_PROFILE_SIGNATURE, &up, &len );
+  (void)ret;
+// HACK
+  // If a profile was:
+  // (1) Not loaded
+  // (2) Corrupt
+  // (3) Modified
+  if  (
+		  (sts != PROFILE_STATUS_INIT_SUCCESS_LOADED) // (1)
+	  ||  profile_get_modified() // (3)
+	  )
+  {
+	// (1) Create a new profile
+	// (2) Replace the corrupt profile
+	// (3) Update the existing profile
+    profile_commit();
   }
-  //Change this to hard code running detection
-  // on startup (0) or using presumed values (1)
-  b_read_flash = 1;
-
+#endif
+  /*
+  Finished System Initialisation
+  */
 
   HAL_TIM_IC_Start(&htim4, TIM_CHANNEL_1);
   HAL_TIM_IC_Start(&htim4, TIM_CHANNEL_2);
@@ -133,11 +181,13 @@ int main(void)
   // Here we can auto set the prescaler to get the us input regardless of the
   // main clock
  // __HAL_TIM_SET_PRESCALER(&htim4, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
+HAL_UART_Init(&huart3);
+foc_vars.FLAdiff = 0.004f;
 
   MESCInit();
   motor_init();
   // MESC_Init();
-  MotorControlType = MOTOR_CONTROL_TYPE_FOC;
+
 
   /* USER CODE END 2 */
 
@@ -145,20 +195,21 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
 
-//motor.motor_flux = 32.0f; //Propdrive 2826 1200kV
-//motor.motor_flux = 464.0f; //Red 70kV McMaster 8080 motor
-motor.motor_flux = 500.0f; //Alien 8080 50kV motor
-motor.motor_flux = 225.0f; //AT12070 62kV
-motor.motor_flux = 135.0f; //CA120 150kV
-motor.Lphase = 0.000006f;//CA120 150kV
-motor.Rphase = 0.006f;//CA120 150kV
+  motor.Lphase = DEFAULT_MOTOR_Ld;
+  motor.Rphase = DEFAULT_MOTOR_R;
+  motor.motor_flux = DEFAULT_FLUX_LINKAGE; //Set in header file
 
+  motor_init();
+
+calculateGains();
+calculateVoltageGain();
+  MotorControlType = MOTOR_CONTROL_TYPE_FOC;
+  HAL_Delay(1000);
+  //MotorState = MOTOR_STATE_RUN;
 //650 is the right number for a motor with 7PP and 50kV
   HAL_Delay(1000);
 
-HAL_UART_Receive_IT(&huart3, UART_rx_buffer, 1);
-//Scale for other motors by decreasing in proportion to increasing kV and decreasing in proportion to pole pairs
-MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
+
 #if 0                                  // INIT FLASH
   while (MotorState == MOTOR_STATE_MEASURING) {
     __NOP();
@@ -169,25 +220,16 @@ MotorState = MOTOR_STATE_MEASURING;  // Note fastloop transitions to RUN
   }
 #endif
   while (1) {
-    __NOP();
-    if (b_write_flash) {
-      __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(&htim1);
-      writeData();
-      __HAL_TIM_MOE_ENABLE(&htim1);
-      b_write_flash = 0;
-    }
-HAL_Delay(4000);
-    HAL_UART_Transmit_DMA(&huart3, "hello World \r\n", 13);
+		HAL_Delay(100);
+		static int a;
+		char transmit_buffer[100];
+		int sizebuff;
+		extern uint16_t enc_obs_angle;
+		sizebuff = sprintf(transmit_buffer,"%d,%0.2f,%0.2f,%0.2f,%0.2f\n",a,0.005493f*(float)foc_vars.enc_obs_angle,foc_vars.Vdq[1],1000.0f*motor.motor_flux,foc_vars.Idq_smoothed[1]);
+			HAL_UART_Transmit_DMA(&huart3, transmit_buffer, sizebuff);
+			a++;
 
-//if(countdown >= 0){
-//countdown--;
-//answer = (countdown+1)/countdown;
-//}
-//if(countdown==0){
-//	// /*This makes it crash into the hardfault handler, intentionally :D*/
-//
-//}
-    //HAL_UART_Transmit(&huart3, "hello World", 12, 10);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -208,6 +250,7 @@ void SystemClock_Config(void)
   */
   __HAL_RCC_PWR_CLK_ENABLE();
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
@@ -223,6 +266,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+
   /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
@@ -256,6 +300,7 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 1 */
 
   /* USER CODE END ADC1_Init 1 */
+
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
@@ -274,6 +319,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
   sConfig.Channel = ADC_CHANNEL_10;
@@ -283,6 +329,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_10;
@@ -298,6 +345,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_0;
@@ -306,6 +354,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_5;
@@ -338,6 +387,7 @@ static void MX_ADC2_Init(void)
   /* USER CODE BEGIN ADC2_Init 1 */
 
   /* USER CODE END ADC2_Init 1 */
+
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc2.Instance = ADC2;
@@ -356,6 +406,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
   sConfig.Channel = ADC_CHANNEL_11;
@@ -365,6 +416,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_11;
@@ -380,6 +432,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_14;
@@ -388,6 +441,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_1;
@@ -396,6 +450,7 @@ static void MX_ADC2_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_9;
@@ -428,6 +483,7 @@ static void MX_ADC3_Init(void)
   /* USER CODE BEGIN ADC3_Init 1 */
 
   /* USER CODE END ADC3_Init 1 */
+
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc3.Instance = ADC3;
@@ -446,6 +502,7 @@ static void MX_ADC3_Init(void)
   {
     Error_Handler();
   }
+
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
   sConfig.Channel = ADC_CHANNEL_12;
@@ -455,6 +512,7 @@ static void MX_ADC3_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_12;
@@ -470,6 +528,7 @@ static void MX_ADC3_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_13;
@@ -478,6 +537,7 @@ static void MX_ADC3_Init(void)
   {
     Error_Handler();
   }
+
   /** Configures for the selected ADC injected channel its corresponding rank in the sequencer and its sample time
   */
   sConfigInjected.InjectedChannel = ADC_CHANNEL_2;
@@ -489,6 +549,44 @@ static void MX_ADC3_Init(void)
   /* USER CODE BEGIN ADC3_Init 2 */
 
   /* USER CODE END ADC3_Init 2 */
+
+}
+
+/**
+  * @brief SPI3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI3_Init(void)
+{
+
+  /* USER CODE BEGIN SPI3_Init 0 */
+
+  /* USER CODE END SPI3_Init 0 */
+
+  /* USER CODE BEGIN SPI3_Init 1 */
+
+  /* USER CODE END SPI3_Init 1 */
+  /* SPI3 parameter configuration*/
+  hspi3.Instance = SPI3;
+  hspi3.Init.Mode = SPI_MODE_MASTER;
+  hspi3.Init.Direction = SPI_DIRECTION_1LINE;
+  hspi3.Init.DataSize = SPI_DATASIZE_16BIT;
+  hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi3.Init.CLKPhase = SPI_PHASE_2EDGE;
+  hspi3.Init.NSS = SPI_NSS_SOFT;
+  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi3.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi3.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi3.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi3.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI3_Init 2 */
+
+  /* USER CODE END SPI3_Init 2 */
 
 }
 
@@ -738,6 +836,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_2, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5|GPIO_PIN_7, GPIO_PIN_RESET);
@@ -747,6 +849,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PD2 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB5 PB7 */
   GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_7;
@@ -792,5 +901,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
