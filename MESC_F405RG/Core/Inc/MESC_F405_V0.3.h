@@ -1,6 +1,10 @@
 #define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
 #define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!
-#define USE_DEADSHORT //This can be used in place of the phase sensors for startup from running.
+//#define USE_DEADSHORT //This can be used in place of the phase sensors for startup from running.
+#define DEADSHORT_CURRENT 10.0f	//When recovering from tracking phase without phase sensors, the
+							//deadshort function will short the phases
+							//until the current exceeds this value. At this point, it calculates the Vd Vq and phase angle
+							//Don't set too high, after 4PWM periods, it will run the calc and start the motor regardless.
 //^^WIP, do not use yet
 
 #define SHUNT_POLARITY -1.0f
@@ -45,17 +49,17 @@
 #define DEFAULT_INPUT	0b0110 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
 //////Motor parameters
-#define DEFAULT_FLUX_LINKAGE 0.004f//Set this to the motor linkage in wB
-#define DEFAULT_MOTOR_Ld 0.000005f //Henries
-#define DEFAULT_MOTOR_Lq 0.0000080f//Henries
-#define DEFAULT_MOTOR_R 0.0060f //Ohms
+#define DEFAULT_FLUX_LINKAGE 0.011f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.0001f //Henries
+#define DEFAULT_MOTOR_Lq 0.0001080f//Henries
+#define DEFAULT_MOTOR_R 0.04260f //Ohms
 //Use the Ebike Profile tool
 //#define USE_PROFILE
 
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
+//#define USE_HFI
 
 #define USE_MTPA //Cannot currently use at the same time as field weakening...
 
@@ -65,7 +69,7 @@
 #define POLE_ANGLE (65536/POLE_PAIRS)
 
 /////Related to observer
-#define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
+//#define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
 #define MAX_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*2.0f //Sets the limits for tracking.
 #define MIN_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*0.7f//Faster convergence with closer start points
 #define FLUX_LINKAGE_GAIN 10.0f * sqrtf(DEFAULT_FLUX_LINKAGE)//*(DEFAULT_FLUX_LINKAGE*DEFAULT_FLUX_LINKAGE)*PWM_FREQUENCY

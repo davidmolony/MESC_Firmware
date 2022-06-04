@@ -170,8 +170,7 @@ void MESC_PWM_IRQ_handler() {
 // clock cycles (f303) to convert.
 
 static int current_hall_state;
-float IacalcDS, IbcalcDS, VacalcDS, VbcalcDS, VdcalcDS, VqcalcDS;
-uint16_t angleDS, angleErrorDS, angleErrorPhaseS;
+
 void fastLoop() {
   // Call this directly from the ADC callback IRQ
   current_hall_state = getHallState();
@@ -210,63 +209,9 @@ void fastLoop() {
 		      MESCTrack();
 		      flux_observer();
 #endif
-#ifdef USE_DEADSHORT
-// LICENCE NOTE:
-// This function deviates slightly from the BSD 3 clause licence.
-// The work here is entirely original to the MESC FOC project, and not based
-// on any appnotes, or borrowed from another project. This work is free to
-// use, as granted in BSD 3 clause, with the exception that this note must
-// be included in where this code is implemented/modified to use your
-// variable names, structures containing variables or other minor
-// rearrangements in place of the original names I have chosen, and credit
-// to David Molony as the original author must be noted.
-
-//This "deadshort " function is an original idea (who knows, someone may have had it before) for finding the rotor angle
-//Concept is that when starting from spinning with no phase sensors or encoder, you need to know the angle and the voltages.
-//To achieve this, we simply short out the motor for a PWM period and allow the current to build up.
-//We can then calculate the voltage from V=Ldi/dt in the alpha beta reference frame
-//We can calculate the angle from the atan2 of the alpha beta voltages
-//With this angle, we can get Vd and Vq for preloading the PI controllers
-//We can also preload the flux observer with motor.motorflux*sin and motor.motorflux*cos terms
-
-		static uint16_t countdown = 1000;
-		if(countdown > 2){
-			generateBreak();
-			htim1.Instance->CCR1 = 0;
-			htim1.Instance->CCR2 = 0;
-			htim1.Instance->CCR3 = 0;
-			//Preload the timer at mid
-		}
-		if(countdown == 2){
-			htim1.Instance->CCR1 = 0;
-			htim1.Instance->CCR2 = 0;
-			htim1.Instance->CCR3 = 0;
-			generateEnable();
-		}
-		if(countdown == 1){
-			generateEnable();
-		}
-		if(countdown == 0){
-			//Need to collect the ADC currents here
-			generateBreak();
-			//Calculate the voltages in the alpha beta phase...
-			IacalcDS = foc_vars.Iab[0];
-			IbcalcDS = foc_vars.Iab[1];
-			VacalcDS = motor.Lphase*foc_vars.Iab[0]/foc_vars.pwm_period;
-			VbcalcDS = motor.Lphase*foc_vars.Iab[1]/foc_vars.pwm_period;
-			angleDS= (uint16_t)(32768.0f + 10430.0f * fast_atan2(VbcalcDS, VacalcDS)) - 32768  -16384;
-			angleErrorDS = angleDS-foc_vars.enc_angle;
-			angleErrorPhaseS = foc_vars.FOCAngle-foc_vars.enc_angle;
-			//Park transform it to get VdVq
-			VdcalcDS = foc_vars.sincosangle.cos * VacalcDS +
-		                      foc_vars.sincosangle.sin * VbcalcDS;
-			VqcalcDS = foc_vars.sincosangle.cos * VbcalcDS -
-		                      foc_vars.sincosangle.sin * VacalcDS;
-
-			countdown = (uint16_t)PWM_FREQUENCY>>7;;
-		}
-		countdown--;
-#endif
+//#ifdef USE_DEADSHORT
+//		      deadshort();
+//#endif
       break;
 
     case MOTOR_STATE_OPEN_LOOP_STARTUP:
@@ -288,7 +233,6 @@ void fastLoop() {
     case MOTOR_STATE_IDLE:
         generateBreak();
       // Do basically nothing
-      // ToDo Set PWM to no output state
       break;
 
     case MOTOR_STATE_DETECTING:
@@ -355,9 +299,8 @@ void fastLoop() {
       break;
     case MOTOR_STATE_RECOVERING:
 
-      // No clue so far. Read the phase voltages and determine position
-      // and attempt to restart? Should already be in break state, and
-      // should stay there...
+	      deadshort(); //Function to startup motor from running without phase sensors
+
       break;
     default:
       MotorState = MOTOR_STATE_ERROR;
@@ -1600,26 +1543,32 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
     }
 
     //////Set tracking
-#if 1
 static int was_last_tracking;
 
 if(fabs(foc_vars.Idq_req[1])>0.1f){
 	if(MotorState != MOTOR_STATE_ERROR){
+#ifdef HAS_PHASE_SENSORS //We can go straight to RUN if we have been tracking with phase sensors
 	MotorState = MOTOR_STATE_RUN;
+#endif
+if(MotorState==MOTOR_STATE_IDLE){
+#ifdef USE_DEADSHORT
+	MotorState = MOTOR_STATE_RECOVERING;
+
+#endif
+		}
 	}
 }else{
 #ifdef HAS_PHASE_SENSORS
 	MotorState = MOTOR_STATE_TRACKING;
-	was_last_tracking = 1;
 #else
-	if(MotorState != MOTOR_STATE_ERROR){
-	MotorState = MOTOR_STATE_RUN;
-	}
+//	if(MotorState != MOTOR_STATE_ERROR){
+	MotorState = MOTOR_STATE_IDLE;
+//	}
 #endif
+was_last_tracking = 1;
 }
 
 //foc_vars.Idq_req[0] = 10; //for aligning encoder
-#endif
 /////////////Set and reset the HFI////////////////////////
 #ifdef USE_HFI
     if((foc_vars.Vdq[1] > 2.0f)||(foc_vars.Vdq[1] < -2.0f)){
@@ -1686,6 +1635,93 @@ if(fabs(foc_vars.Idq_req[1])>0.1f){
     foc_vars.Vdq[1] = foc_vars.sincosangle.cos * foc_vars.Vab[1] -
                       foc_vars.sincosangle.sin * foc_vars.Vab[0];
     foc_vars.Idq_int_err[1] = foc_vars.Vdq[1];
+  }
+
+
+  float IacalcDS, IbcalcDS, VacalcDS, VbcalcDS, VdcalcDS, VqcalcDS, FLaDS, FLbDS, FLaDSErr, FLbDSErr;
+  uint16_t angleDS, angleErrorDSENC, angleErrorPhaseSENC, angleErrorPhaseDS, countdown_cycles;
+
+  void deadshort(){
+	  // LICENCE NOTE:
+	  // This function deviates slightly from the BSD 3 clause licence.
+	  // The work here is entirely original to the MESC FOC project, and not based
+	  // on any appnotes, or borrowed from another project. This work is free to
+	  // use, as granted in BSD 3 clause, with the exception that this note must
+	  // be included in where this code is implemented/modified to use your
+	  // variable names, structures containing variables or other minor
+	  // rearrangements in place of the original names I have chosen, and credit
+	  // to David Molony as the original author must be noted.
+
+	  //This "deadshort " function is an original idea (who knows, someone may have had it before) for finding the rotor angle
+	  //Concept is that when starting from spinning with no phase sensors or encoder, you need to know the angle and the voltages.
+	  //To achieve this, we simply short out the motor for a PWM period and allow the current to build up.
+	  //We can then calculate the voltage from V=Ldi/dt in the alpha beta reference frame
+	  //We can calculate the angle from the atan2 of the alpha beta voltages
+	  //With this angle, we can get Vd and Vq for preloading the PI controllers
+	  //We can also preload the flux observer with motor.motorflux*sin and motor.motorflux*cos terms
+
+	static uint16_t countdown = 10;
+
+	  		if(countdown == 0||((foc_vars.Iab[0]*foc_vars.Iab[0]+foc_vars.Iab[1]*foc_vars.Iab[1])>DEADSHORT_CURRENT*DEADSHORT_CURRENT))
+	  				{
+	  					//Need to collect the ADC currents here
+	  					generateBreak();
+	  					//Calculate the voltages in the alpha beta phase...
+	  					IacalcDS = foc_vars.Iab[0];
+	  					IbcalcDS = foc_vars.Iab[1];
+	  					VacalcDS = -motor.Lphase*foc_vars.Iab[0]/((9.0f-(float)countdown)*foc_vars.pwm_period);
+	  					VbcalcDS = -motor.Lphase*foc_vars.Iab[1]/((9.0f-(float)countdown)*foc_vars.pwm_period);
+	  					//Calculate the phase angle
+	  					angleDS = (uint16_t)(32768.0f + 10430.0f * fast_atan2(VbcalcDS, VacalcDS)) - 32768 -16384;
+	  					//Shifting by 1/4 erev does not work for going backwards. Need to rethink.
+
+	  					foc_vars.FOCAngle = angleDS;//foc_vars.enc_angle;//
+	  					sin_cos_fast(foc_vars.FOCAngle, &foc_vars.sincosangle.sin, &foc_vars.sincosangle.cos);
+
+	  					//Park transform it to get VdVq
+	  					VdcalcDS = foc_vars.sincosangle.cos * VacalcDS +
+	  				                      foc_vars.sincosangle.sin * VbcalcDS;
+	  					VqcalcDS = foc_vars.sincosangle.cos * VbcalcDS -
+	  				                      foc_vars.sincosangle.sin * VacalcDS;
+	  					//Preloading the observer
+	  					FLaDS = motor.motor_flux*foc_vars.sincosangle.cos;
+	  					FLbDS = motor.motor_flux*foc_vars.sincosangle.sin;
+	  		//Angle Errors for debugging
+	  					angleErrorDSENC = angleDS-foc_vars.enc_angle;
+	  		//			angleErrorPhaseSENC = foc_vars.FOCAngle-foc_vars.enc_angle;
+	  		//			angleErrorPhaseDS = foc_vars.FOCAngle - angleDS;
+	  		//Variables for monitoring and debugging to see if the preload will work
+	  		//			FLaDSErr = 1000.0f*(FLaDS-flux_linked_alpha);
+	  		//			FLbDSErr = 1000.0f*(FLbDS-flux_linked_beta);
+
+	  		//Do actual preloading
+	  					flux_linked_alpha = FLaDS;
+	  					flux_linked_beta = FLbDS;
+	  					Ia_last = 0.0f;
+	  					Ib_last = 0.0f;
+	  					foc_vars.Idq_int_err[0] = VdcalcDS;
+	  					foc_vars.Idq_int_err[1] = VqcalcDS;
+	  		//Next PWM cycle it  will jump to running state,
+	  					MESCFOC();
+	  					MotorState = MOTOR_STATE_RUN;
+	  					countdown_cycles = 9-countdown;
+	  					countdown = 10;
+	  		}
+	  		if(countdown > 10){
+	  			generateBreak();
+	  			htim1.Instance->CCR1 = 50;
+	  			htim1.Instance->CCR2 = 50;
+	  			htim1.Instance->CCR3 = 50;
+	  			//Preload the timer at mid
+	  		}
+	  		if(countdown <= 10 ){
+	  			htim1.Instance->CCR1 = 50;
+	  			htim1.Instance->CCR2 = 50;
+	  			htim1.Instance->CCR3 = 50;
+	  			generateEnable();
+	  		}
+
+	  		countdown--;
   }
 
   uint16_t ang_reg_v = 0x8021, data_v;
