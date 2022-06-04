@@ -189,7 +189,7 @@ HAL_UART_Init(&huart3);
 foc_vars.FLAdiff = 0.004f;
 
   MESCInit();
-  motor_init();
+
   // MESC_Init();
 
 
@@ -197,13 +197,10 @@ foc_vars.FLAdiff = 0.004f;
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-
-  motor.Lphase = DEFAULT_MOTOR_Ld;
-  motor.Rphase = DEFAULT_MOTOR_R;
-  motor.motor_flux = DEFAULT_FLUX_LINKAGE; //Set in header file
-
-  motor_init();
+  motor.Rphase = motor_profile->R;
+  motor.Lphase = motor_profile->L_D;
+  motor.motor_flux = motor_profile->flux_linkage;
+  motor.uncertainty = 1;
 
 calculateGains();
 calculateVoltageGain();

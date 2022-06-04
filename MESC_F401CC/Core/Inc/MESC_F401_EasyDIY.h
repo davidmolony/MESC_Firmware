@@ -1,5 +1,14 @@
 #define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
 #define HAS_PHASE_SENSORS //This is not actually true. Really needs to have phase sensors... Leaving this in because it enables tracking and PWM disabling for debug.
+//#define USE_DEADSHORT //This can be used in place of the phase sensors for startup from running.
+#define DEADSHORT_CURRENT 30.0f	//When recovering from tracking phase without phase sensors, the
+							//deadshort function will short the phases
+							//until the current exceeds this value. At this point, it calculates the Vd Vq and phase angle
+							//Don't set too high, after 9PWM periods, it will run the calc and start the motor regardless.
+							//This seems to work best with a higher current bandwidth (~10krads-1) and using the non-linear observer centering.
+							//Broadly incompatible with the flux observer
+							//Only works for forward direction presently
+							//^^WIP, not completely stable yet
 
 #define SOFTWARE_ADC_REGULAR
 #define SHUNT_POLARITY -1.0f

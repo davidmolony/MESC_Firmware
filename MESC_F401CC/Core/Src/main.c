@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "MESCmotor.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -116,7 +116,10 @@ int main(void)
 
 //Initialise MESC
 MESCInit();
-motor_init();
+motor.Rphase = motor_profile->R;
+motor.Lphase = motor_profile->L_D;
+motor.motor_flux = motor_profile->flux_linkage;
+motor.uncertainty = 1;
 
 calculateGains();
 calculateVoltageGain();

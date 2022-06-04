@@ -43,10 +43,14 @@ struct MOTORProfile
     uint8_t     pole_pairs;
     uint8_t     direction;
     uint8_t     _[2];
-    float       Z_D;
-    float       Z_Q;
+    float       L_D;
+    float       L_Q;
     float       R;
     float       flux_linkage;
+    float       flux_linkage_min;
+    float       flux_linkage_max;
+    float       flux_linkage_gain;
+    float       non_linear_centering_gain;
 };
 
 typedef struct MOTORProfile MOTORProfile;

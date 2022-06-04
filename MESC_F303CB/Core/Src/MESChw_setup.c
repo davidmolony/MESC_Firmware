@@ -49,14 +49,6 @@ extern COMP_HandleTypeDef hcomp7;
 hw_setup_s g_hw_setup;
 motor_s motor;
 
-void motor_init()
-{
-    motor.Lphase = DEFAULT_MOTOR_Ld;
-    motor.Rphase = DEFAULT_MOTOR_R;
-    motor.motor_flux = DEFAULT_FLUX_LINKAGE; //Set in header file
-    motor.uncertainty = 1;
-}
-
 void hw_init()
 {
     g_hw_setup.Imax = ABS_MAX_PHASE_CURRENT;  // Imax is the current at which we are either no longer able to read it, or hardware "don't ever exceed to avoid breakage"
