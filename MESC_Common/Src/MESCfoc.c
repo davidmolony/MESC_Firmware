@@ -575,7 +575,6 @@ static int cyclescountacc = 0;
     float err = motor.motor_flux*motor.motor_flux-flux_linked_alpha*flux_linked_alpha-flux_linked_beta*flux_linked_beta;
     flux_linked_beta = flux_linked_beta+err*flux_linked_beta*motor_profile->non_linear_centering_gain;
     flux_linked_alpha = flux_linked_alpha+err*flux_linked_alpha*motor_profile->non_linear_centering_gain;
-
 #endif
 #ifdef USE_CLAMPED_OBSERVER_CENTERING
     if (flux_linked_alpha > motor.motor_flux) {
