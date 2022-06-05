@@ -149,6 +149,7 @@ int main(void)
   temp_init( PROFILE_DEFAULT );
   // Initialise user Interface
   ui_init( PROFILE_DEFAULT );
+#if 0
 // HACK
   // Example store for debugging
   UIProfile up;
@@ -175,6 +176,7 @@ int main(void)
     profile_commit();
   }
 #endif
+#endif
   /*
   Finished System Initialisation
   */
@@ -185,7 +187,7 @@ int main(void)
   // Here we can auto set the prescaler to get the us input regardless of the
   // main clock
  // __HAL_TIM_SET_PRESCALER(&htim4, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
-HAL_UART_Init(&huart3);
+//HAL_UART_Init(&huart3);
 foc_vars.FLAdiff = 0.004f;
 
   MESCInit();
@@ -225,9 +227,9 @@ calculateVoltageGain();
 		static int a;
 		char transmit_buffer[100];
 		int sizebuff;
-		extern uint16_t enc_obs_angle;
+		extern uint16_t enc_obs_angle;/*
 		sizebuff = sprintf(transmit_buffer,"%d,%0.2f,%0.2f,%0.2f,%0.2f\n",a,0.005493f*(float)foc_vars.enc_obs_angle,foc_vars.Vdq[1],1000.0f*motor.motor_flux,foc_vars.Idq_smoothed[1]);
-			HAL_UART_Transmit_DMA(&huart3, transmit_buffer, sizebuff);
+			HAL_UART_Transmit_DMA(&huart3, transmit_buffer, sizebuff);*/
 			a++;
 
 
