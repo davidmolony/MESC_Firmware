@@ -1,5 +1,5 @@
 /*
-* Copyright 2021-2022 cod3b453
+* Copyright 2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,95 +27,21 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-body {
-    font-family : monospace;
-    cursor      : default;
-}
+#include "MESCprofile.h"
 
-canvas {
-    border : 1px solid #000000;
-    display: block;
-    margin : 10px;
-}
+extern void          virt_flash_configure( bool const use_mem_not_fs, bool const read_zero_on_error );
 
-input {
-    margin-right : 10px;
-    width        : 100px;
-}
+extern void          virt_flash_apply_corruption( void );
+extern void          virt_flash_corrupt( char const * name, uint32_t const offset, uint32_t const length );
 
-input[type=button] {
-    cursor : pointer;
-}
+extern ProfileStatus virt_flash_read(  void       * data, uint32_t const address, uint32_t const length );
 
-input[type=number] {
-    text-align : right;
-}
+extern ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint32_t const length );
+extern ProfileStatus virt_flash_begin( void );
+extern ProfileStatus virt_flash_end(   void );
 
-input[type=text] {
-    text-align : right;
-}
+extern void          virt_flash_reset( void );
 
-input[type=text].command {
-    text-align : left;
-    width      : 200px;
-}
+extern void          virt_flash_init(  void );
 
-input[type=text].name {
-    text-align : left;
-}
-
-label {
-    display     : inline-block;
-    font-weight : bold;
-    width       : 100px;
-}
-
-select {
-    cursor       : pointer;
-    margin-right : 10px;
-    width        : 100px;
-}
-
-select[disabled] {
-    cursor : default;
-}
-
-div.screen table {
-    border: 1px solid #808080;
-}
-
-div.screen table td {
-    background-color : #C0C0C0;
-    border-collapse  : collapse;
-    border-spacing   : 0;
-    font-weight      : bold;
-    text-align       : center;
-}
-
-div.screen table td:hover {
-    background-color : #FFFFC0;
-}
-
-textarea {
-    height     : 400px;
-    width      : 800px;
-    min-width  : 400px;
-    min-height : 200px;
-}
-
-.action {
-    cursor : pointer;
-}
-
-.action:hover {
-    background-color : #FFFFE0;
-}
-
-.entrybox {
-    border         : 1px solid #000000;
-    display        : inline-block;
-    margin-bottom  : 10px;
-    margin-right   : 10px;
-    padding        : 10px;
-    vertical-align : top;
-}
+extern void          virt_flash_free(  void );

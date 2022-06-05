@@ -36,6 +36,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "virt_flash.h"
+#include "virt_uart.h"
+
 static char const * commands[] =
 {
     "",             // Empty line
@@ -77,18 +80,6 @@ static void reset( void )
     fprintf( stdout, ">>> RESET <<<\n" );
 }
 
-extern void          virt_flash_configure( bool const use_mem_not_fs, bool const read_zero_on_error );
-extern void          virt_flash_apply_corruption( void );
-extern void          virt_flash_corrupt( char const * name, uint32_t const offset, uint32_t const length );
-extern ProfileStatus virt_flash_read(  void       * data, uint32_t const address, uint32_t const length );
-extern ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint32_t const length );
-extern void          virt_flash_reset( void );
-extern void          virt_flash_init( void );
-extern void          virt_flash_free( void );
-
-extern MESC_STM_ALIAS(int,HAL_StatusTypeDef) virt_uart_write( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size );
-static void virt_uart_read( void ) {}
-
 void bist_cli( void )
 {
     fprintf( stdout, "Starting CLI BIST\n" );
@@ -97,7 +88,7 @@ void bist_cli( void )
 
     virt_flash_configure( true, true );
 
-    profile_configure_storage_io( virt_flash_read, virt_flash_write );
+    profile_configure_storage_io( virt_flash_read, virt_flash_write, virt_flash_begin, virt_flash_end );
 
     cli_register_variable_rw( "i", &i, sizeof(i), CLI_VARIABLE_INT   );
     cli_register_variable_rw( "u", &u, sizeof(u), CLI_VARIABLE_UINT  );

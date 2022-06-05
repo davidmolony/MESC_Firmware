@@ -30,6 +30,7 @@
 #include "MESCprofile.h"
 
 #include "MESCbat.h"
+#include "MESCmotor.h"
 #include "MESCspeed.h"
 #include "MESCtemp.h"
 #include "MESCui.h"
@@ -40,6 +41,8 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "virt_flash.h"
 
 extern char   const gen_profile[];
 extern size_t const gen_profile_size;
@@ -91,15 +94,6 @@ static ProfileStatus rom_flash_write( void const * data, uint32_t const address,
     (void)length;
 }
 
-extern void          virt_flash_configure( bool const use_mem_not_fs, bool const read_zero_on_error );
-extern void          virt_flash_apply_corruption( void );
-extern void          virt_flash_corrupt( char const * name, uint32_t const offset, uint32_t const length );
-extern ProfileStatus virt_flash_read(  void       * data, uint32_t const address, uint32_t const length );
-extern ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint32_t const length );
-extern void          virt_flash_reset( void );
-extern void          virt_flash_init( void );
-extern void          virt_flash_free( void );
-
 #define virt_flash_revoke_corruption virt_flash_apply_corruption
 
 
@@ -124,6 +118,8 @@ static char const * getProfileStatusName( ProfileStatus const ps )
 
         ID_ENTRY( PROFILE_STATUS_ERROR_STORAGE_READ     ),
         ID_ENTRY( PROFILE_STATUS_ERROR_STORAGE_WRITE    ),
+        ID_ENTRY( PROFILE_STATUS_ERROR_STORAGE_BEGIN    ),
+        ID_ENTRY( PROFILE_STATUS_ERROR_STORAGE_END      ),
 
         ID_ENTRY( PROFILE_STATUS_ERROR_ENTRY_ALLOC      ),
         ID_ENTRY( PROFILE_STATUS_ERROR_ENTRY_READONLY   ),
@@ -191,7 +187,7 @@ static char const * getProfileStatusName( ProfileStatus const ps )
 
         ID_ENTRY( PROFILE_STATUS_FAILURE_SCAN           ),
     };
-
+    static_assert( (sizeof(status_id) / sizeof(*status_id)) == (PROFILE_STATUS_FAILURE_SCAN + 1), "Malformed ProfileStatus list" );
     assert( status_id[ps].val == ps );
 
     return status_id[ps].str;
@@ -331,7 +327,7 @@ void bist_profile( void )
 
     virt_flash_configure( true, true );
 
-    profile_configure_storage_io( virt_flash_read, virt_flash_write );
+    profile_configure_storage_io( virt_flash_read, virt_flash_write, virt_flash_begin, virt_flash_end );
 
     fprintf( stdout, "INFO: Performing initial load & store\n" );
 
@@ -462,6 +458,40 @@ void bist_profile( void )
         fprintf( stdout, "INFO: Adding Battery entry\n" );
 
         ret = profile_put_entry( "MESC_BAT", BAT_PROFILE_SIGNATURE, &bp, &bp_size );
+
+        profile_get_last( &s, &h, &e, & o );
+        fprintf( stdout, "INFO: %d %s\n"
+                         "    S:%d %s\n"
+                         "    H:%d %s\n"
+                         "    E:%d %s\n"
+                         "    O:%d %s\n",
+            ret, getProfileStatusName(ret),
+            s, getProfileStatusName(s),
+            h, getProfileStatusName(h),
+            e, getProfileStatusName(e),
+            o, getProfileStatusName(o) );
+
+        profile_check_last(
+            PROFILE_STATUS_UNKNOWN,                 // No storage operation should be performed
+            PROFILE_STATUS_UNKNOWN,                 // No header operation should be performed
+            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC,     // A new entry should be allocated
+            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC );   // A new entry should be allocated
+    }
+
+    if (profile_get_entry( "MESC_MOTOR", MOTOR_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
+    {
+        MOTORProfile const * sp = (MOTORProfile *)buffer;
+        (void)sp;
+        fprintf( stdout, "INFO: Found Motor entry\n" );
+    }
+    else
+    {
+        static MOTORProfile sp;
+        static uint32_t sp_size = sizeof(sp);
+        (void)sp;
+        fprintf( stdout, "INFO: Adding Motor entry\n" );
+
+        ret = profile_put_entry( "MESC_MOTOR", MOTOR_PROFILE_SIGNATURE, &sp, &sp_size );
 
         profile_get_last( &s, &h, &e, & o );
         fprintf( stdout, "INFO: %d %s\n"
@@ -634,7 +664,7 @@ void bist_profile( void )
 
     fprintf( stdout, "INFO: Profile image\n" );
 
-    profile_configure_storage_io( rom_flash_read, rom_flash_write );
+    profile_configure_storage_io( rom_flash_read, rom_flash_write, virt_flash_begin, virt_flash_end );
 
     ret = profile_init();
 

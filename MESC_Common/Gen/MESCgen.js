@@ -116,7 +116,8 @@ function init() {
                   + '<h2>Generation</h2>'
                   + '<label>Version:</label> ' + '1' + '.' + '0' + '<br />'
                   + '<label>Timestamp:</label> ' + TIMESTAMP + '<br />'
-                  + '<label>git hash:</label> ' + GITHASH + '<br/>'
+                  + '<label>git hash:</label> ' + GITHASH + '<br />'
+                  + '<label>Command</label><input type="text" id="app-prf-cmd" class="command" disabled /> <input type="button" onclick=\"copy(\'app-prf-cmd\')\" value="Copy" /> <input type="button" onclick=\"copy(\'app-prf-dmp\')\" value="Copy Data" /><br />'
                   + '<textarea id="app-prf-dmp" readonly></textarea>';
 }
 
@@ -142,8 +143,8 @@ function add() {
 
     var s = document.createElement('select');
     s.id = 'e-' + entry_index + '-type';
-
-    let types = [ '- Select -', 'Battery', 'Speed', 'Temperature' ];
+// xref types (1)
+    let types = [ '- Select -', 'Battery', 'Motor', 'Speed', 'Temperature' ];
 
     for ( i=0; i < types.length; i++ ) {
         var o = document.createElement('option');
@@ -154,7 +155,7 @@ function add() {
 
     var og = document.createElement('optgroup');
     og.label = 'UI';
-
+// xref uitypes (2)
     let uitypes = [ 'Throttle', 'Brake', 'Button', 'Indicator', 'Screen' ];
 
     for ( i=0; i < uitypes.length; i++ ) {
@@ -598,6 +599,94 @@ function makeBattery(eN) {
     entry._profile = new BATProfile();
 
     plotBattery( c );
+}
+
+function plotMotor(obj) {
+    var entry_index = parseInt(obj.id.split('-')[1]);
+    var obj_name = window.document.getElementById('e-' + entry_index + '-name');
+    var obj_imax = window.document.getElementById('e-' + entry_index + '-mtr-imax');
+    var obj_vmax = window.document.getElementById('e-' + entry_index + '-mtr-vmax');
+    var obj_pmax = window.document.getElementById('e-' + entry_index + '-mtr-pmax');
+    var obj_rpmmax = window.document.getElementById('e-' + entry_index + '-mtr-rpmmax');
+    var obj_pp = window.document.getElementById('e-' + entry_index + '-mtr-pp');
+    var obj_dir = window.document.getElementById('e-' + entry_index + '-mtr-dir');
+    var obj_z_d = window.document.getElementById('e-' + entry_index + '-mtr-ind-d');
+    var obj_z_q = window.document.getElementById('e-' + entry_index + '-mtr-ind-q');
+    var obj_r = window.document.getElementById('e-' + entry_index + '-mtr-res');
+    var obj_fl = window.document.getElementById('e-' + entry_index + '-mtr-flxlnk');
+
+    updateName( obj_name );
+
+    var entry = header.getEntry( entry_index );
+
+    entry._profile.Imax = parseFloat(obj_imax.value);
+    entry._profile.Vmax = parseFloat(obj_vmax.value);
+    entry._profile.Pmax = parseFloat(obj_pmax.value);
+    entry._profile.RPMmax = parseInt(obj_rpmmax.value);
+    entry._profile.pole_pairs = parseInt(obj_pp.value);
+    entry._profile.direction = (obj_dir.checked ? 1 : 0);
+    entry._profile.Z_D = parseFloat(obj_z_d.value);
+    entry._profile.Z_Q = parseFloat(obj_z_q.value);
+    entry._profile.R = parseFloat(obj_r.value);
+    entry._profile.flux_linkage = parseFloat(obj_fl.value);
+}
+
+function makeMotor(eN) {
+    var entry_index = parseInt(eN.id.split('-')[1]);
+    var o = document.createElement('div');
+    o.id = 'e-' + entry_index + '-disp';
+
+    var inp = makeLabelledText( o, 'name', 'Name', 'Motor' );
+    inp.maxLength = PROFILE_ENTRY_MAX_NAME_LENGTH;
+
+    // Motor
+    var h3 = document.createElement('h3');
+    h3.innerHTML = 'Motor';
+    o.appendChild( h3 );
+
+    inp = makeLabelledNumber( o, 'mtr-imax', 'Imax', 60, function() { plotMotor(this) }, 'A' );
+    inp.min = 1;
+
+    inp = makeLabelledNumber( o, 'mtr-vmax', 'Vmax', 100, function() { plotMotor(this) }, 'V' );
+    inp.min = 1;
+
+    inp = makeLabelledNumber( o, 'mtr-pmax', 'Pmax', 250, function() { plotMotor(this) }, 'W' );
+    inp.min = 1;
+
+    inp = makeLabelledNumber( o, 'mtr-rpmmax', 'RPMmax', 250, function() { plotMotor(this) }, '' );
+    inp.min = 1;
+
+    inp = makeLabelledNumber( o, 'mtr-pp', 'Pole Pairs', 6, function() { plotMotor(this) }, '' );
+    inp.min = 4;
+
+    lbl = document.createElement('label');
+    lbl.innerHTML = 'Direction';
+    lbl.setAttribute( 'for', 'e-' + entry_index + '-mtr-dir' );
+    o.appendChild( lbl );
+    inp = document.createElement('input');
+    inp.id = 'e-' + entry_index + '-mtr-dir';
+    inp.type = 'checkbox';
+    o.appendChild( inp );
+    o.appendChild( document.createElement('br') );
+
+    inp = makeLabelledNumber( o, 'mtr-ind-d', 'Inductance D', 0.0, function() { plotMotor(this) }, '' );
+    inp.min = 0;
+
+    inp = makeLabelledNumber( o, 'mtr-ind-q', 'Inductance Q', 0.0, function() { plotMotor(this) }, '' );
+    inp.min = 0;
+
+    inp = makeLabelledNumber( o, 'mtr-res', 'Resistance', 0.0, function() { plotMotor(this) }, '&Omega;' );
+    inp.min = 0;
+
+    inp = makeLabelledNumber( o, 'mtr-flxlnk', 'Flux Linkage', 1000.0, function() { plotMotor(this) }, 'Wb' );
+    inp.min = 0;
+
+    eN.appendChild( o );
+
+    entry = header.addEntry( entry_index, MOTOR_PROFILE_SIGNATURE );
+    entry._profile = new MOTORProfile();
+
+    plotMotor( inp );
 }
 
 function plotSpeed(obj) {
@@ -1335,28 +1424,33 @@ function setType(obj) {
     var entry_index = parseInt(obj.id.split('-')[1]);
 
     switch (obj.value) {
+// see types (1)
         case '1':
             makeBattery( eN );
             break;
         case '2':
-            makeSpeed( eN );
+            makeMotor( eN );
             break;
         case '3':
-            makeTemperature( eN );
+            makeSpeed( eN );
             break;
         case '4':
+            makeTemperature( eN );
+            break;
+// see uitypes (2)
+        case '5':
             makeThrottle( eN );
             break;
-        case '5':
+        case '6':
             makeBrake( eN );
             break;
-        case '6':
+        case '7':
             makeButton( eN );
             break;
-        case '7':
+        case '8':
             makeIndicator( eN );
             break;
-        case '8':
+        case '9':
             makeScreen( eN );
             break;
     }
@@ -1374,9 +1468,40 @@ function rem(obj) {
 function gen()
 {
     console.clear();
+    
+    var prf_cmd = window.document.getElementById('app-prf-cmd');
     var prf_dmp = window.document.getElementById('app-prf-dmp');
 
-    // TODO populate header
+    var image_data   = dump_ProfileHeader( header );
+    var image_length = image_data.length / 2;
+    var image_hash   = fnv1a_process_hex( image_data );
 
-    prf_dmp.value = dump_ProfileHeader( header );
+    prf_cmd.value = 'F ' + toHex( image_length, 2 ) + ' ' + toHex( image_hash, 4 );
+    prf_dmp.value = image_data;
+}
+
+function copy(name)
+{
+    var obj = document.getElementById( name );
+
+    if (obj == undefined) {
+        return;
+    }
+
+    obj.select();
+
+    var text = obj.value;
+    var len  = text.length;
+
+    if (len == 0) {
+        return;
+    }
+
+    obj.setSelectionRange( 0, len ); // Required for mobile
+
+    if ("clipboard" in navigator)
+    {
+        navigator.clipboard.writeText( text );
+        console.log( "COPIED " + text );
+    }
 }

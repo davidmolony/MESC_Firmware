@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "MESCmotor.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -106,7 +106,6 @@ int main(void)
   MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
 
-
   //Set up the input capture for throttle
   HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1);
   HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_2);
@@ -116,7 +115,10 @@ int main(void)
 
 //Initialise MESC
 MESCInit();
-motor_init();
+motor.Rphase = motor_profile->R;
+motor.Lphase = motor_profile->L_D;
+motor.motor_flux = motor_profile->flux_linkage;
+motor.uncertainty = 1;
 
 calculateGains();
 calculateVoltageGain();

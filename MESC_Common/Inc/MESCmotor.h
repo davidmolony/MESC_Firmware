@@ -27,95 +27,36 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-body {
-    font-family : monospace;
-    cursor      : default;
-}
+#ifndef MESC_MOTOR_H
+#define MESC_MOTOR_H
 
-canvas {
-    border : 1px solid #000000;
-    display: block;
-    margin : 10px;
-}
+#include <inttypes.h>
 
-input {
-    margin-right : 10px;
-    width        : 100px;
-}
+#define MOTOR_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','M','P','E')
 
-input[type=button] {
-    cursor : pointer;
-}
+struct MOTORProfile
+{
+    float       Imax;       // Amp
+    float       Vmax;       // Volt
+    float       Pmax;       // Watt
+    uint32_t    RPMmax;
+    uint8_t     pole_pairs;
+    uint8_t     direction;
+    uint8_t     _[2];
+    float       L_D;
+    float       L_Q;
+    float       R;
+    float       flux_linkage;
+    float       flux_linkage_min;
+    float       flux_linkage_max;
+    float       flux_linkage_gain;
+    float       non_linear_centering_gain;
+};
 
-input[type=number] {
-    text-align : right;
-}
+typedef struct MOTORProfile MOTORProfile;
 
-input[type=text] {
-    text-align : right;
-}
+extern MOTORProfile const * motor_profile;
 
-input[type=text].command {
-    text-align : left;
-    width      : 200px;
-}
+void motor_init( MOTORProfile const * const profile );
 
-input[type=text].name {
-    text-align : left;
-}
-
-label {
-    display     : inline-block;
-    font-weight : bold;
-    width       : 100px;
-}
-
-select {
-    cursor       : pointer;
-    margin-right : 10px;
-    width        : 100px;
-}
-
-select[disabled] {
-    cursor : default;
-}
-
-div.screen table {
-    border: 1px solid #808080;
-}
-
-div.screen table td {
-    background-color : #C0C0C0;
-    border-collapse  : collapse;
-    border-spacing   : 0;
-    font-weight      : bold;
-    text-align       : center;
-}
-
-div.screen table td:hover {
-    background-color : #FFFFC0;
-}
-
-textarea {
-    height     : 400px;
-    width      : 800px;
-    min-width  : 400px;
-    min-height : 200px;
-}
-
-.action {
-    cursor : pointer;
-}
-
-.action:hover {
-    background-color : #FFFFE0;
-}
-
-.entrybox {
-    border         : 1px solid #000000;
-    display        : inline-block;
-    margin-bottom  : 10px;
-    margin-right   : 10px;
-    padding        : 10px;
-    vertical-align : top;
-}
+#endif

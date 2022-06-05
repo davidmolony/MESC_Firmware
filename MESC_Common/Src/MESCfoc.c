@@ -29,7 +29,7 @@
 #include "MESChw_setup.h"
 #include "MESCmotor_state.h"
 #include "MESCsin_lut.h"
-#include "MESCspeed.h"
+#include "MESCmotor.h"
 #include "MESCtemp.h"
 
 #include <math.h>
@@ -513,7 +513,6 @@ void VICheck() {  // Check currents, voltages are within panic limits
   volatile static float FLAdiff = 0.0f;
 static int cyclescount = 0;
 static int cyclescountacc = 0;
-static float obs_gain = NON_LINEAR_CENTERING_GAIN;
 
   void flux_observer() {
     // LICENCE NOTE:
@@ -555,9 +554,9 @@ static float obs_gain = NON_LINEAR_CENTERING_GAIN;
 	  //changes the flux limits accordingly, ignoring using a sqrt for computational efficiency
 	  float flux_linked_norm = flux_linked_alpha*flux_linked_alpha+flux_linked_beta*flux_linked_beta;
 	  float flux_err = flux_linked_norm-motor.motor_flux*motor.motor_flux;
-	  motor.motor_flux = motor.motor_flux+FLUX_LINKAGE_GAIN*flux_err;
-	  if(motor.motor_flux>MAX_FLUX_LINKAGE){motor.motor_flux = MAX_FLUX_LINKAGE;}
-	  if(motor.motor_flux<MIN_FLUX_LINKAGE){motor.motor_flux = MIN_FLUX_LINKAGE;}
+	  motor.motor_flux = motor.motor_flux+ motor_profile->flux_linkage_gain*flux_err;
+	  if(motor.motor_flux>motor_profile->flux_linkage_max){motor.motor_flux = motor_profile->flux_linkage_max;}
+	  if(motor.motor_flux<motor_profile->flux_linkage_min){motor.motor_flux = motor_profile->flux_linkage_min;}
 #endif
 	// This is the actual observer function.
 	// We are going to integrate Va-Ri and clamp it positively and negatively
@@ -574,9 +573,8 @@ static float obs_gain = NON_LINEAR_CENTERING_GAIN;
 #ifdef USE_NONLINEAR_OBSERVER_CENTERING
 ///Try directly applying the centering using the same method as the flux linkage observer
     float err = motor.motor_flux*motor.motor_flux-flux_linked_alpha*flux_linked_alpha-flux_linked_beta*flux_linked_beta;
-    flux_linked_beta = flux_linked_beta+err*flux_linked_beta*obs_gain;
-    flux_linked_alpha = flux_linked_alpha+err*flux_linked_alpha*obs_gain;
-
+    flux_linked_beta = flux_linked_beta+err*flux_linked_beta*motor_profile->non_linear_centering_gain;
+    flux_linked_alpha = flux_linked_alpha+err*flux_linked_alpha*motor_profile->non_linear_centering_gain;
 #endif
 #ifdef USE_CLAMPED_OBSERVER_CENTERING
     if (flux_linked_alpha > motor.motor_flux) {
@@ -1503,14 +1501,14 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
 
     if(getHallState()==0){//This happens when the hall sensors overheat it seems.
   	  if (MotorError == MOTOR_ERROR_NONE) {
-  		  speed_limiter();
+  		  // TODO speed_limiter();
   	  }
   	  MotorError = MOTOR_ERROR_HALL0;
     }else /*if(getHallState()==7){
   	  MotorError = MOTOR_ERROR_HALL7;
     } else */{
   	  if (MotorError != MOTOR_ERROR_NONE) {
-  		  speed_road();
+  		  // TODO speed_road();
   	  }
   	  MotorError = MOTOR_ERROR_NONE;
     }
@@ -1523,11 +1521,11 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
     }
 /////// Clamp the max power taken from the battery
     foc_vars.reqPower = 1.5f*fabs(foc_vars.Vdq_smoothed[1] * foc_vars.Idq_req[1]);
-    if (foc_vars.reqPower > speed_profile->motor.Pmax) {
+    if (foc_vars.reqPower > motor_profile->Pmax) {
     	if(foc_vars.Idq_req[1] > 0.0f){
-    		foc_vars.Idq_req[1] = speed_profile->motor.Pmax / (fabs(foc_vars.Vdq_smoothed[1])*1.5f);
+    		foc_vars.Idq_req[1] = motor_profile->Pmax / (fabs(foc_vars.Vdq_smoothed[1])*1.5f);
     	}else{
-    		foc_vars.Idq_req[1] = -speed_profile->motor.Pmax / (fabs(foc_vars.Vdq_smoothed[1])*1.5f);
+    		foc_vars.Idq_req[1] = -motor_profile->Pmax / (fabs(foc_vars.Vdq_smoothed[1])*1.5f);
     	}
     }
 

@@ -27,95 +27,46 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-body {
-    font-family : monospace;
-    cursor      : default;
-}
+#include "MESCmotor.h"
 
-canvas {
-    border : 1px solid #000000;
-    display: block;
-    margin : 10px;
-}
+#include "MESCcli.h"
+#include "MESCprofile.h"
 
-input {
-    margin-right : 10px;
-    width        : 100px;
-}
+#include "stm32fxxx_hal.h"
 
-input[type=button] {
-    cursor : pointer;
-}
+#include <stdint.h>
 
-input[type=number] {
-    text-align : right;
-}
+MOTORProfile const * motor_profile = NULL;
 
-input[type=text] {
-    text-align : right;
-}
+void motor_init( MOTORProfile const * const profile )
+{
+    if (profile == PROFILE_DEFAULT)
+    {
+        static MOTORProfile motor_profile_default;
+        motor_profile_default.Pmax = 50.0f;
+        motor_profile_default.L_D = DEFAULT_MOTOR_Ld;
+        motor_profile_default.L_Q = DEFAULT_MOTOR_Lq;
+        motor_profile_default.R = DEFAULT_MOTOR_R;
+		motor_profile_default.flux_linkage = DEFAULT_FLUX_LINKAGE;
+		motor_profile_default.flux_linkage_min = MIN_FLUX_LINKAGE;
+		motor_profile_default.flux_linkage_max = MAX_FLUX_LINKAGE;
+		motor_profile_default.flux_linkage_gain = FLUX_LINKAGE_GAIN;
+		motor_profile_default.non_linear_centering_gain = NON_LINEAR_CENTERING_GAIN;
+        uint32_t            motor_length = sizeof(motor_profile_default);
 
-input[type=text].command {
-    text-align : left;
-    width      : 200px;
-}
+        ProfileStatus const ret = profile_get_entry(
+            "MTR", MOTOR_PROFILE_SIGNATURE,
+            &motor_profile_default, &motor_length );
 
-input[type=text].name {
-    text-align : left;
-}
+        motor_profile = &motor_profile_default;
 
-label {
-    display     : inline-block;
-    font-weight : bold;
-    width       : 100px;
-}
-
-select {
-    cursor       : pointer;
-    margin-right : 10px;
-    width        : 100px;
-}
-
-select[disabled] {
-    cursor : default;
-}
-
-div.screen table {
-    border: 1px solid #808080;
-}
-
-div.screen table td {
-    background-color : #C0C0C0;
-    border-collapse  : collapse;
-    border-spacing   : 0;
-    font-weight      : bold;
-    text-align       : center;
-}
-
-div.screen table td:hover {
-    background-color : #FFFFC0;
-}
-
-textarea {
-    height     : 400px;
-    width      : 800px;
-    min-width  : 400px;
-    min-height : 200px;
-}
-
-.action {
-    cursor : pointer;
-}
-
-.action:hover {
-    background-color : #FFFFE0;
-}
-
-.entrybox {
-    border         : 1px solid #000000;
-    display        : inline-block;
-    margin-bottom  : 10px;
-    margin-right   : 10px;
-    padding        : 10px;
-    vertical-align : top;
+        if (ret != PROFILE_STATUS_SUCCESS)
+        {
+            cli_reply( "MTR FAILED" "\r" "\n" );
+        }
+    }
+    else
+    {
+    	motor_profile = profile;
+    }
 }

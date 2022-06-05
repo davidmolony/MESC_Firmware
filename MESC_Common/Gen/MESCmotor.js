@@ -27,95 +27,54 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-body {
-    font-family : monospace;
-    cursor      : default;
+const MOTOR_PROFILE_SIGNATURE = 'MMPE';
+
+const MOTOR_PROFILE_SIZE = 36;
+
+// MOTORProfile
+function dump_MOTORProfile( profile )
+{
+    console.log( "dump_MOTORProfile" );
+    var hex = '';
+
+    hex = hex + dump_c_float(    profile.Imax         );
+    hex = hex + dump_c_float(    profile.Vmax         );
+    hex = hex + dump_c_float(    profile.Pmax         );
+    hex = hex + dump_c_uint32_t( profile.RPMmax       );
+    hex = hex + dump_c_uint8_t(  profile.pole_pairs   );
+    hex = hex + dump_c_uint8_t(  profile.direction    );
+    hex = hex + dump_c_uint8_t( 0 );
+    hex = hex + dump_c_uint8_t( 0 );
+    hex = hex + dump_c_float(    profile.Z_D          );
+    hex = hex + dump_c_float(    profile.Z_Q          );
+    hex = hex + dump_c_float(    profile.R            );
+    hex = hex + dump_c_float(    profile.flux_linkage );
+
+    console.assert( hex.length == (NYBBLES_PER_BYTE * MOTOR_PROFILE_SIZE) );
+
+    return hex;
 }
 
-canvas {
-    border : 1px solid #000000;
-    display: block;
-    margin : 10px;
+function MOTORProfile()
+{
+    this.Imax = undefined;
+    this.Vmax = undefined;
+    this.Pmax = undefined;
+    this.RPMmax = undefined;
+    this.pole_pairs = undefined;
+    this.direction = undefined;
+    this.Z_D = undefined;
+    this.Z_Q = undefined;
+    this.R = undefined;
+    this.flux_linkage = undefined;
 }
 
-input {
-    margin-right : 10px;
-    width        : 100px;
+MOTORProfile.prototype.size = function()
+{
+    return MOTOR_PROFILE_SIZE;
 }
 
-input[type=button] {
-    cursor : pointer;
-}
-
-input[type=number] {
-    text-align : right;
-}
-
-input[type=text] {
-    text-align : right;
-}
-
-input[type=text].command {
-    text-align : left;
-    width      : 200px;
-}
-
-input[type=text].name {
-    text-align : left;
-}
-
-label {
-    display     : inline-block;
-    font-weight : bold;
-    width       : 100px;
-}
-
-select {
-    cursor       : pointer;
-    margin-right : 10px;
-    width        : 100px;
-}
-
-select[disabled] {
-    cursor : default;
-}
-
-div.screen table {
-    border: 1px solid #808080;
-}
-
-div.screen table td {
-    background-color : #C0C0C0;
-    border-collapse  : collapse;
-    border-spacing   : 0;
-    font-weight      : bold;
-    text-align       : center;
-}
-
-div.screen table td:hover {
-    background-color : #FFFFC0;
-}
-
-textarea {
-    height     : 400px;
-    width      : 800px;
-    min-width  : 400px;
-    min-height : 200px;
-}
-
-.action {
-    cursor : pointer;
-}
-
-.action:hover {
-    background-color : #FFFFE0;
-}
-
-.entrybox {
-    border         : 1px solid #000000;
-    display        : inline-block;
-    margin-bottom  : 10px;
-    margin-right   : 10px;
-    padding        : 10px;
-    vertical-align : top;
+MOTORProfile.prototype.dump = function()
+{
+    return dump_MOTORProfile( this );
 }

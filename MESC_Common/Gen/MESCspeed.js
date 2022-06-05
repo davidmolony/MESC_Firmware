@@ -37,19 +37,6 @@ function dump_SPEEDProfile( profile )
     console.log( "dump_SPEEDProfile" );
     var hex = '';
 
-    hex = hex + dump_c_float( profile.motor_Imax );
-    hex = hex + dump_c_float( profile.motor_Vmax );
-    hex = hex + dump_c_float( profile.motor_Pmax );
-    hex = hex + dump_c_uint32_t( profile.motor_RPMmax );
-    hex = hex + dump_c_uint8_t( profile.motor_pole_pairs );
-    hex = hex + dump_c_uint8_t( profile.motor_direction );
-    hex = hex + dump_c_uint8_t( 0 );
-    hex = hex + dump_c_uint8_t( 0 );
-    hex = hex + dump_c_float( profile.motor_Z_D );
-    hex = hex + dump_c_float( profile.motor_Z_Q );
-    hex = hex + dump_c_float( profile.motor_R );
-    hex = hex + dump_c_float( profile.motor_flux_linkage );
-
     hex = hex + dump_c_uint16_t( profile.sensor_encoder_offset );
     hex = hex + dump_c_uint16_t( 0 );
     for ( let h = 0; h < 6; h++ )
@@ -77,17 +64,6 @@ function HallEntry()
 
 function SPEEDProfile()
 {
-    this.motor_Imax = undefined;
-    this.motor_Vmax = undefined;
-    this.motor_Pmax = undefined;
-    this.motor_RPMmax = undefined;
-    this.motor_pole_pairs = undefined;
-    this.motor_direction = undefined;
-    this.motor_Z_D = undefined;
-    this.motor_Z_Q = undefined;
-    this.motor_R = undefined;
-    this.motor_flux_linkage = undefined;
-
     this.sensor_encoder_offset = undefined;
     this.sensor_hall_states = new Array(6);
     for ( let h = 0; h < 6; h++ )

@@ -29,6 +29,7 @@
 #include "MESCbat.h"
 #include "MESCflash.h"
 #include "MESCprofile.h"
+#include "MESCmotor.h"
 #include "MESCspeed.h"
 #include "MESCtemp.h"
 #include "MESCuart.h"
@@ -188,6 +189,7 @@ int main(void)
 
     // Initialise components
     bat_init( PROFILE_DEFAULT );
+    motor_init( PROFILE_DEFAULT );
     speed_init( PROFILE_DEFAULT );
     temp_init( PROFILE_DEFAULT );
     // Initialise user Interface
@@ -197,7 +199,9 @@ int main(void)
     Finished System Initialisation
     */
 #endif
-
+    motor.Rphase = motor_profile->R;
+    motor.Lphase = motor_profile->L_D;
+    motor.motor_flux = motor_profile->flux_linkage;
     motor.uncertainty = 1;
     // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
 
@@ -213,7 +217,6 @@ int main(void)
     MotorState = MOTOR_STATE_MEASURING;
     MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
-    motor_init();
     calculateGains();
     calculateVoltageGain();
 

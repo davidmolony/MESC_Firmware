@@ -24,11 +24,14 @@
 /* USER CODE BEGIN Includes */
 #include "MESCbat.h"
 #include "MESCflash.h"
-#include "MESCmotor_state.h"
+#include "MESCprofile.h"
+#include "MESCmotor.h"
 #include "MESCspeed.h"
 #include "MESCtemp.h"
 #include "MESCuart.h"
 #include "MESCui.h"
+
+#include "MESCmotor_state.h"
 #include "MESC_Comms.h"
 /* USER CODE END Includes */
 
@@ -141,10 +144,12 @@ int main(void)
 
   // Initialise components
   bat_init( PROFILE_DEFAULT );
+  motor_init( PROFILE_DEFAULT );
   speed_init( PROFILE_DEFAULT );
   temp_init( PROFILE_DEFAULT );
   // Initialise user Interface
   ui_init( PROFILE_DEFAULT );
+#if 0
 // HACK
   // Example store for debugging
   UIProfile up;
@@ -171,6 +176,7 @@ int main(void)
     profile_commit();
   }
 #endif
+#endif
   /*
   Finished System Initialisation
   */
@@ -181,11 +187,11 @@ int main(void)
   // Here we can auto set the prescaler to get the us input regardless of the
   // main clock
  // __HAL_TIM_SET_PRESCALER(&htim4, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
-HAL_UART_Init(&huart3);
+//HAL_UART_Init(&huart3);
 foc_vars.FLAdiff = 0.004f;
 
   MESCInit();
-  motor_init();
+
   // MESC_Init();
 
 
@@ -193,13 +199,10 @@ foc_vars.FLAdiff = 0.004f;
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-
-  motor.Lphase = DEFAULT_MOTOR_Ld;
-  motor.Rphase = DEFAULT_MOTOR_R;
-  motor.motor_flux = DEFAULT_FLUX_LINKAGE; //Set in header file
-
-  motor_init();
+  motor.Rphase = motor_profile->R;
+  motor.Lphase = motor_profile->L_D;
+  motor.motor_flux = motor_profile->flux_linkage;
+  motor.uncertainty = 1;
 
 calculateGains();
 calculateVoltageGain();
@@ -224,9 +227,9 @@ calculateVoltageGain();
 		static int a;
 		char transmit_buffer[100];
 		int sizebuff;
-		extern uint16_t enc_obs_angle;
+		extern uint16_t enc_obs_angle;/*
 		sizebuff = sprintf(transmit_buffer,"%d,%0.2f,%0.2f,%0.2f,%0.2f\n",a,0.005493f*(float)foc_vars.enc_obs_angle,foc_vars.Vdq[1],1000.0f*motor.motor_flux,foc_vars.Idq_smoothed[1]);
-			HAL_UART_Transmit_DMA(&huart3, transmit_buffer, sizebuff);
+			HAL_UART_Transmit_DMA(&huart3, transmit_buffer, sizebuff);*/
 			a++;
 
 

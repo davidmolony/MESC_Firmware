@@ -32,6 +32,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "MESCprofile.h"
+
+#include "MESCbat.h"
+#include "MESCfnv.h"
+#include "MESCspeed.h"
+#include "MESCtemp.h"
+#include "MESCui.h"
+
+#include "virt_flash.h"
+
 extern FILE * popen( char const *, char const * );
 extern int pclose( FILE * );
 
@@ -42,26 +52,12 @@ extern void bist_profile( void );
 extern void bist_speed( void );
 extern void bist_temp( void );
 
-#include "MESCprofile.h"
-
-#include "MESCbat.h"
-#include "MESCfnv.h"
-#include "MESCspeed.h"
-#include "MESCtemp.h"
-#include "MESCui.h"
-
-extern void          virt_flash_configure( bool const use_mem_not_fs, bool const read_zero_on_error );
-extern ProfileStatus virt_flash_read(  void       * data, uint32_t const address, uint32_t const length );
-extern ProfileStatus virt_flash_write( void const * data, uint32_t const address, uint32_t const length );
-extern void          virt_flash_init( void );
-extern void          virt_flash_free( void );
-
 static void flash_register_profile_io( void )
 {
     virt_flash_init();
     virt_flash_configure( true, true );
 
-    profile_configure_storage_io( virt_flash_read, virt_flash_write );
+    profile_configure_storage_io( virt_flash_read, virt_flash_write, virt_flash_begin, virt_flash_end );
 }
 
 static int bist_main( void )

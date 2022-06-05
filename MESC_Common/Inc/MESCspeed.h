@@ -1,5 +1,5 @@
 /*
-* Copyright 2021 cod3b453
+* Copyright 2021-2022 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -48,23 +48,7 @@ struct SPEEDProfile
 {
     struct
     {
-    float       Imax;       // Amp
-    float       Vmax;       // Volt
-    float       Pmax;       // Watt
-    uint32_t    RPMmax;
-    uint8_t     pole_pairs;
-    uint8_t     direction;
-    uint8_t     _[2];
-    float       Z_D;
-    float       Z_Q;
-    float       R;
-    float       flux_linkage;
-    }           motor;
-
-    struct
-    {
     uint16_t    encoder_offset;
-    uint16_t    _;
     HallEntry   hall_states[NUM_HALL_STATES];
     }           sensor;
 
@@ -85,9 +69,6 @@ struct SPEEDProfile
 typedef struct SPEEDProfile SPEEDProfile;
 
 extern SPEEDProfile const * speed_profile;
-
-void speed_limiter( void );
-void speed_road( void );
 
 void speed_init( SPEEDProfile const * const profile );
 
