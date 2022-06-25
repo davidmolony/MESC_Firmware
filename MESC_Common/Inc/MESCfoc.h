@@ -40,12 +40,12 @@ enum MESCADC
     ADCIW,
 };
 
-#define MAX_MODULATION 0.95
+#define MAX_MODULATION 0.95f
 #define SVPWM_MULTIPLIER \
-  1.1547  // 1/cos30 which comes from the maximum between two 120 degree apart
+  1.1547f  // 1/cos30 which comes from the maximum between two 120 degree apart
           // sin waves being at the
-#define Vd_MAX_PROPORTION 0.3
-#define Vq_MAX_PROPORTION 0.95
+#define Vd_MAX_PROPORTION 0.3f
+#define Vq_MAX_PROPORTION 0.95f
 
 enum FOCChannels
 {
