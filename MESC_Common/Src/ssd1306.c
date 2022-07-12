@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2016 Olivier Van den Eede - ovde.be
+Copyright (c) 2016-2021 Olivier Van den Eede - ovde.be
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
