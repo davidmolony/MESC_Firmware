@@ -35,6 +35,9 @@
 #include "MESCuart.h"
 #include "MESCui.h"
 
+#include "ssd1306.h"
+#include "fonts.h"
+
 #include <stdio.h>
 
 /* USER CODE END Includes */
@@ -173,6 +176,19 @@ int main(void)
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
+	ssd1306_Init( &hi2c1 );
+	HAL_Delay( 1000 );
+	ssd1306_Fill( White );
+	ssd1306_UpdateScreen( &hi2c1 );
+
+    ssd1306_SetCursor(23,4);
+    ssd1306_WriteString("Hello!",Font_7x10,Black);
+    ssd1306_SetCursor(23,15);
+	ssd1306_WriteString("MESC!",Font_11x18,Black);
+    ssd1306_SetCursor(23,35);
+    ssd1306_WriteString("World!",Font_16x26,Black);
+
+	ssd1306_UpdateScreen( &hi2c1 );
 #if defined USE_PROFILE
     /*
     Starting System Initialisation
@@ -228,6 +244,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+    uint32_t i = 0;
     while (1)
     {
         // HAL_Delay(100);
@@ -237,6 +254,23 @@ int main(void)
          * 2. Write data to flash.
          * 3. Restore motor power.
          */
+#if 1
+        char buf[16];
+        ssd1306_SetCursor(23,15);
+
+        sprintf( buf, "%" PRIu32, i );
+    	ssd1306_WriteString( buf, Font_11x18,Black);
+#else
+    	if (i & 1)
+    	{
+    		ssd1306_Fill(White);
+    	} else {
+    		ssd1306_Fill(Black);
+    	}
+#endif
+    	i = i + 1;
+    	ssd1306_UpdateScreen( &hi2c1 );
+
         if(MotorState==MOTOR_STATE_ERROR)
         {
             char error_message[64];
