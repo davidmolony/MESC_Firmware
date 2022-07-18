@@ -131,7 +131,7 @@ typedef struct {
   float Vd_injectionV;
   float Vq_injectionV;
   uint32_t FLrun, VFLrun;
-  int32_t angle_error;
+  float angle_error;
   int increment_count;
   float eHz;
   float Ldq_now[2];

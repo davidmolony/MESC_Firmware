@@ -211,6 +211,8 @@ int main(void)
     // Initialise user Interface
     ui_init( PROFILE_DEFAULT );
 
+    static uint8_t const pole_pairs = 6;
+    speed_register_vars( &foc_vars.eHz, &pole_pairs );
     /*
     Finished System Initialisation
     */
@@ -258,7 +260,7 @@ int main(void)
         char buf[16];
         ssd1306_SetCursor(23,15);
 
-        sprintf( buf, "%f", foc_vars.eHz );
+        sprintf( buf, "%f", speed_get() );
     	ssd1306_WriteString( buf, Font_11x18,Black);
 #else
     	if (i & 1)

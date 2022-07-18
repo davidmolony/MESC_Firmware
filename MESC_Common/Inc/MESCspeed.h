@@ -72,7 +72,7 @@ extern SPEEDProfile const * speed_profile;
 
 void speed_init( SPEEDProfile const * const profile );
 
-void speed_register_vars( float const * const drev, float const * const dt );
+void speed_register_vars( float const * const eHz, uint8_t const * const pp );
 
 float speed_get( void );
 
