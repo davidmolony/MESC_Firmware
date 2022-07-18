@@ -258,7 +258,7 @@ int main(void)
         char buf[16];
         ssd1306_SetCursor(23,15);
 
-        sprintf( buf, "%" PRIu32, i );
+        sprintf( buf, "%f", foc_vars.eHz );
     	ssd1306_WriteString( buf, Font_11x18,Black);
 #else
     	if (i & 1)

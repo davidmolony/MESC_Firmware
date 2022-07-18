@@ -53,17 +53,17 @@
 #define DEFAULT_INPUT	0b1110 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
 //////Motor parameters
-#define DEFAULT_FLUX_LINKAGE 0.0038f//Set this to the motor linkage in wB
-#define DEFAULT_MOTOR_Ld 0.000004f //Henries
-#define DEFAULT_MOTOR_Lq 0.000008f//Henries
-#define DEFAULT_MOTOR_R 0.0060f //Ohms
+#define DEFAULT_FLUX_LINKAGE 0.00078f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000015f //Henries
+#define DEFAULT_MOTOR_Lq 0.000016f//Henries
+#define DEFAULT_MOTOR_R 0.0180f //Ohms
 //Use the Ebike Profile tool
 #define USE_PROFILE
 
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
+//#define USE_HFI
 
 //#define USE_MTPA
 

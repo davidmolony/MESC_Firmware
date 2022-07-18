@@ -588,9 +588,15 @@ static int cyclescountacc = 0;
 #endif
     angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta, flux_linked_alpha)) - 32768;
     //foc_vars.angle_error = (15*foc_vars.angle_error + angle-foc_vars.FOCAngle)/16;//Currently this does not work well with the rollover and returns erroneous values
+foc_vars.angle_error = foc_vars.angle_error + (int16_t)(angle-foc_vars.FOCAngle);
+foc_vars.increment_count++;
+    //Run PLL for speed
+    //foc_vars.angle_error = foc_vars.angle_error-0.01*((foc_vars.angle_error+foc_vars.FOCAngle) - angle);
+
     if(foc_vars.inject==0){
     foc_vars.FOCAngle = angle;
     }
+
 #ifdef USE_ENCODER
     foc_vars.enc_obs_angle = foc_vars.enc_angle-foc_vars.FOCAngle;
     //foc_vars.FOCAngle = foc_vars.enc_angle;
@@ -1606,6 +1612,13 @@ was_last_tracking = 1;
 	    if(no_q){foc_vars.Idq_req[1]=0.0f;}
     }
 #endif
+
+    //Speed tracker
+    if(foc_vars.increment_count>0){
+    foc_vars.eHz = ((foc_vars.angle_error*foc_vars.pwm_frequency)/(65536.0f*foc_vars.increment_count));
+    foc_vars.increment_count = 0;
+    foc_vars.angle_error = 0;
+    }
   }
 
 
