@@ -49,6 +49,10 @@ function dump_MOTORProfile( profile )
     hex = hex + dump_c_float(    profile.Z_Q          );
     hex = hex + dump_c_float(    profile.R            );
     hex = hex + dump_c_float(    profile.flux_linkage );
+    hex = hex + dump_c_float(    profile.flux_linkage_min );
+    hex = hex + dump_c_float(    profile.flux_linkage_max );
+    hex = hex + dump_c_float(    profile.flux_linkage_gain );
+    hex = hex + dump_c_float(    profile.non_linear_centering_gain );
 
     console.assert( hex.length == (NYBBLES_PER_BYTE * MOTOR_PROFILE_SIZE) );
 
@@ -67,6 +71,10 @@ function MOTORProfile()
     this.Z_Q = undefined;
     this.R = undefined;
     this.flux_linkage = undefined;
+    this.flux_linkage_min = undefined;
+    this.flux_linkage_max = undefined;
+    this.flux_linkage_gain = undefined;
+    this.non_linear_centering_gain = undefined;
 }
 
 MOTORProfile.prototype.size = function()

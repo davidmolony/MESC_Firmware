@@ -36,17 +36,17 @@
 
 struct MOTORProfile
 {
-    float       Imax;       // Amp
-    float       Vmax;       // Volt
-    float       Pmax;       // Watt
-    uint32_t    RPMmax;
+    float       Imax;         // Amp
+    float       Vmax;         // Volt
+    float       Pmax;         // Watt
+    uint32_t    RPMmax;       // 1/seconds
     uint8_t     pole_pairs;
     uint8_t     direction;
     uint8_t     _[2];
-    float       L_D;
-    float       L_Q;
-    float       R;
-    float       flux_linkage;
+    float       L_D;          // Henry
+    float       L_Q;          // Henry
+    float       R;            // Ohm
+    float       flux_linkage; // Weber
     float       flux_linkage_min;
     float       flux_linkage_max;
     float       flux_linkage_gain;

@@ -97,12 +97,89 @@ function updateFavIcon() {
     document.head.appendChild( link );
 }
 
+async function send() {
+    port = undefined;
+
+    // TODO port from select option
+
+    if (port == undefined) {
+        await navigator.serial.requestPort().then( (p) => { port = p; } );
+    }
+
+    if (port == undefined) {
+        return;
+    }
+    // Connect
+    await port.open(
+        {
+            baudRate    : 9600,   // or ...
+            dataBits    : 8,      // or 7
+            stopBits    : 1,      // or 2
+            parity      : "none", // "even", "odd"
+            bufferSize  : 16,     // <16MiB
+            flowControl : "none"  // or "hardware"
+        } );
+
+    // TODO ? await port.setSignals( {break|dataTerminalReady|requestToSend} )
+
+    const textEncoder = new TextEncoder();
+    const writableStreamClosed = textEncoder.readable.pipeTo( port.writable );
+    const writer = textEncoder.writable.getWriter();
+
+    var prf_cmd = window.document.getElementById('app-prf-cmd');
+    var prf_dmp = window.document.getElementById('app-prf-dmp');
+    // Send
+    await writer.write( prf_cmd.value );
+    await writer.write( prf_dmp.value );
+
+    writer.releaseLock();
+    // Disconnect
+    await port.close();
+}
+
 function init() {
     var app = window.document.getElementById('app');
 
     if (app == undefined) {
         alert('Failed to initialise');
         return;
+    }
+
+    var serial_io = ' (SerialAPI not supported)';
+
+    if ("serial" in navigator) {
+        // "forget" in SerialPort.prototype implies await port.forget() is available
+        navigator.serial.addEventListener( "connect"   , (event) => { /*TODO ? */ } );
+        navigator.serial.addEventListener( "disconnect", (event) => { /*TODO ? */ } );
+
+        serial_io = ' <input type="button" onclick="send()" value="Send" />'
+                  + '<select id="port">';
+
+        var addPort = function( port ) {
+            const info = port.getInfo();
+
+            // IFF USB else undefined
+            const vendor  = info.usbVendorId;
+            const product = info.usbProductId;
+
+            serial_io = serial_io + '<option value="">' + port + '</option>';
+        }
+
+        navigator.serial.getPorts().forEach( addPort );
+
+        serial_io = serial_io + '</select>'
+                  + '<label>Baud</label><input type="text" value="9600"/>'
+                  + '<label>Data bits</label><select><option>7</option><option>8</option></select>'
+                  + '<label>Stop bits</label><select><option>1</option><option>1</option></select>'
+                  + '<label>Parity</label><select><option>none</option><option>even</option><option>odd</option></select>'
+
+                  + '<label>Flow control</label><select><option>none</option><option>hardware</option></select>';
+
+        // TODO baud ...
+        // TODO data bits {7|8}
+        // TODO flow control {none|hardware}
+        // TODO parity {none|even|odd}
+        // TODO stop biots {1|2}
     }
 
     app.innerHTML = '<div id="app-cmd">'
@@ -117,7 +194,11 @@ function init() {
                   + '<label>Version:</label> ' + '1' + '.' + '0' + '<br />'
                   + '<label>Timestamp:</label> ' + TIMESTAMP + '<br />'
                   + '<label>git hash:</label> ' + GITHASH + '<br />'
-                  + '<label>Command</label><input type="text" id="app-prf-cmd" class="command" disabled /> <input type="button" onclick=\"copy(\'app-prf-cmd\')\" value="Copy" /> <input type="button" onclick=\"copy(\'app-prf-dmp\')\" value="Copy Data" /><br />'
+                  + '<label>Command</label><input type="text" id="app-prf-cmd" class="command" disabled />'
+                  + ' <input type="button" onclick="copy(\'app-prf-cmd\')" value="Copy" />'
+                  + ' <input type="button" onclick="copy(\'app-prf-dmp\')" value="Copy Data" />'
+                  + serial_io
+                  + '<br />'
                   + '<textarea id="app-prf-dmp" readonly></textarea>';
 }
 
@@ -472,12 +553,12 @@ function plotBattery(obj) {
         pnom = (pnom).toFixed(0);
     }
 
-    obj_ctx.fillText( 'Vmax ' + (vmax * s) + ' V' ,  300, 10 );
-    obj_ctx.fillText( 'Vnom ' +  vnom      + ' V' ,  300, 20 );
-    obj_ctx.fillText( 'Vlow ' + (vlow * s) + ' V' ,  300, 30 );
-    obj_ctx.fillText( 'Vmin ' + (vmin * s) + ' V' ,  300, 40 );
-    obj_ctx.fillText( 'Cnom ' +  cnom      + ' Ah',  300, 50 );
-    obj_ctx.fillText( 'Pnom ' +  pnom + ' ' + suffix + 'Wh',  300, 60 );
+    obj_ctx.fillText( 'Vmax ' + (vmax * s).toFixed(1) + ' V' ,  300, 10 );
+    obj_ctx.fillText( 'Vnom ' +  vnom                 + ' V' ,  300, 20 );
+    obj_ctx.fillText( 'Vlow ' + (vlow * s).toFixed(1) + ' V' ,  300, 30 );
+    obj_ctx.fillText( 'Vmin ' + (vmin * s).toFixed(1) + ' V' ,  300, 40 );
+    obj_ctx.fillText( 'Cnom ' + (cnom    ).toFixed(1) + ' Ah',  300, 50 );
+    obj_ctx.fillText( 'Pnom ' +  pnom + ' ' + suffix  +  'Wh',  300, 60 );
 
     var obj_i = window.document.getElementById('e-' + entry_index + '-bat-imax');
 
@@ -540,31 +621,31 @@ function makeBattery(eN) {
     h3.innerHTML = 'Cell';
     o.appendChild( h3 );
 
-    inp = makeLabelledNumber( o, 'cell-imax', 'Imax', 30, function() { plotBattery(this) }, 'A' );
+    inp = makeLabelledNumber( o, 'cell-imax', 'I<sub>MAX</sub>', 30, function() { plotBattery(this) }, 'A' );
     inp.min = 1;
 
-    inp = makeLabelledNumber( o, 'cell-vmax', 'Vmax', 4.20, function() { plotBattery(this) }, 'V' );
-    inp.min = 1;
-    inp.step = 0.01;
-
-    inp = makeLabelledNumber( o, 'cell-cmax', 'Cmax', 4200, function() { plotBattery(this) }, 'mAh' );
-    inp.min = 1;
-
-    inp = makeLabelledNumber( o, 'cell-vmid', 'Vmid', 3.4, function() { plotBattery(this) }, 'V' );
+    inp = makeLabelledNumber( o, 'cell-vmax', 'V<sub>MAX</sub>', 4.20, function() { plotBattery(this) }, 'V' );
     inp.min = 1;
     inp.step = 0.01;
 
-    inp = makeLabelledNumber( o, 'cell-cmid', 'Cmid', 700, function() { plotBattery(this) }, 'mAh' );
+    inp = makeLabelledNumber( o, 'cell-cmax', 'C<sub>MAX</sub>', 4200, function() { plotBattery(this) }, 'mAh' );
     inp.min = 1;
 
-    inp = makeLabelledNumber( o, 'cell-vlow', 'Vlow', 3.2, function() { plotBattery(this) }, 'V' );
+    inp = makeLabelledNumber( o, 'cell-vmid', 'V<sub>MID</sub>', 3.4, function() { plotBattery(this) }, 'V' );
     inp.min = 1;
     inp.step = 0.01;
 
-    inp = makeLabelledNumber( o, 'cell-clow', 'Clow', 500, function() { plotBattery(this) }, 'mAh' );
+    inp = makeLabelledNumber( o, 'cell-cmid', 'C<sub>MID</sub>', 700, function() { plotBattery(this) }, 'mAh' );
     inp.min = 1;
 
-    inp = makeLabelledNumber( o, 'cell-vmin', 'Vmin', 2.8, function() { plotBattery(this) }, 'V' );
+    inp = makeLabelledNumber( o, 'cell-vlow', 'V<sub>LOW</sub>', 3.2, function() { plotBattery(this) }, 'V' );
+    inp.min = 1;
+    inp.step = 0.01;
+
+    inp = makeLabelledNumber( o, 'cell-clow', 'C<sub>LOW</sub>', 500, function() { plotBattery(this) }, 'mAh' );
+    inp.min = 1;
+
+    inp = makeLabelledNumber( o, 'cell-vmin', 'V<sub>MIN</sub>', 2.8, function() { plotBattery(this) }, 'V' );
     inp.min = 0;
     inp.step = 0.01;
 
@@ -573,10 +654,10 @@ function makeBattery(eN) {
     h3.innerHTML = 'Battery';
     o.appendChild( h3 );
 
-    inp = makeLabelledNumber( o, 'bat-imax', 'Imax', 50, function() { plotBattery(this) }, 'A' );
+    inp = makeLabelledNumber( o, 'bat-imax', 'I<sub>MAX</sub>', 50, function() { plotBattery(this) }, 'A' );
     inp.min = 1;
 
-    inp = makeLabelledNumber( o, 'bat-pmax', 'Pmax', 250, function() { plotBattery(this) }, 'W' );
+    inp = makeLabelledNumber( o, 'bat-pmax', 'P<sub>MAX</sub>', 250, function() { plotBattery(this) }, 'W' );
 
     inp = makeLabelledNumber( o, 'bat-esr', 'ESR', 100, function() { plotBattery(this) }, 'm&Omega;' );
 
@@ -603,32 +684,40 @@ function makeBattery(eN) {
 
 function plotMotor(obj) {
     var entry_index = parseInt(obj.id.split('-')[1]);
-    var obj_name = window.document.getElementById('e-' + entry_index + '-name');
-    var obj_imax = window.document.getElementById('e-' + entry_index + '-mtr-imax');
-    var obj_vmax = window.document.getElementById('e-' + entry_index + '-mtr-vmax');
-    var obj_pmax = window.document.getElementById('e-' + entry_index + '-mtr-pmax');
-    var obj_rpmmax = window.document.getElementById('e-' + entry_index + '-mtr-rpmmax');
-    var obj_pp = window.document.getElementById('e-' + entry_index + '-mtr-pp');
-    var obj_dir = window.document.getElementById('e-' + entry_index + '-mtr-dir');
-    var obj_z_d = window.document.getElementById('e-' + entry_index + '-mtr-ind-d');
-    var obj_z_q = window.document.getElementById('e-' + entry_index + '-mtr-ind-q');
-    var obj_r = window.document.getElementById('e-' + entry_index + '-mtr-res');
-    var obj_fl = window.document.getElementById('e-' + entry_index + '-mtr-flxlnk');
+    var obj_name    = window.document.getElementById('e-' + entry_index + '-name'           );
+    var obj_imax    = window.document.getElementById('e-' + entry_index + '-mtr-imax'       );
+    var obj_vmax    = window.document.getElementById('e-' + entry_index + '-mtr-vmax'       );
+    var obj_pmax    = window.document.getElementById('e-' + entry_index + '-mtr-pmax'       );
+    var obj_rpmmax  = window.document.getElementById('e-' + entry_index + '-mtr-rpmmax'     );
+    var obj_pp      = window.document.getElementById('e-' + entry_index + '-mtr-pp'         );
+    var obj_dir     = window.document.getElementById('e-' + entry_index + '-mtr-dir'        );
+    var obj_z_d     = window.document.getElementById('e-' + entry_index + '-mtr-ind-d'      );
+    var obj_z_q     = window.document.getElementById('e-' + entry_index + '-mtr-ind-q'      );
+    var obj_r       = window.document.getElementById('e-' + entry_index + '-mtr-res'        );
+    var obj_fl      = window.document.getElementById('e-' + entry_index + '-mtr-flxlnk'     );
+    var obj_fl_min  = window.document.getElementById('e-' + entry_index + '-mtr-flxlnk-min' );
+    var obj_fl_max  = window.document.getElementById('e-' + entry_index + '-mtr-flxlnk-max' );
+    var obj_fl_gain = window.document.getElementById('e-' + entry_index + '-mtr-flxlnk-gain');
+    var obj_nlcg    = window.document.getElementById('e-' + entry_index + '-mtr-nlcg'       );
 
     updateName( obj_name );
 
     var entry = header.getEntry( entry_index );
 
-    entry._profile.Imax = parseFloat(obj_imax.value);
-    entry._profile.Vmax = parseFloat(obj_vmax.value);
-    entry._profile.Pmax = parseFloat(obj_pmax.value);
-    entry._profile.RPMmax = parseInt(obj_rpmmax.value);
-    entry._profile.pole_pairs = parseInt(obj_pp.value);
-    entry._profile.direction = (obj_dir.checked ? 1 : 0);
-    entry._profile.Z_D = parseFloat(obj_z_d.value);
-    entry._profile.Z_Q = parseFloat(obj_z_q.value);
-    entry._profile.R = parseFloat(obj_r.value);
-    entry._profile.flux_linkage = parseFloat(obj_fl.value);
+    entry._profile.Imax                      = parseFloat(obj_imax.value);
+    entry._profile.Vmax                      = parseFloat(obj_vmax.value);
+    entry._profile.Pmax                      = parseFloat(obj_pmax.value);
+    entry._profile.RPMmax                    = parseInt(  obj_rpmmax.value);
+    entry._profile.pole_pairs                = parseInt(  obj_pp.value);
+    entry._profile.direction                 =           (obj_dir.checked ? 1 : 0);
+    entry._profile.Z_D                       = parseFloat(obj_z_d.value) / 1000.0;
+    entry._profile.Z_Q                       = parseFloat(obj_z_q.value) / 1000.0;
+    entry._profile.R                         = parseFloat(obj_r.value) / 1000.0;
+    entry._profile.flux_linkage              = parseFloat(obj_fl.value);
+    entry._profile.flux_linkage_min          = parseFloat(obj_fl_min.value);
+    entry._profile.flux_linkage_max          = parseFloat(obj_fl_max.value);
+    entry._profile.flux_linkage_gain         = parseFloat(obj_fl_gain.value);
+    entry._profile.non_linear_centering_gain = parseFloat(obj_nlcg.value);
 }
 
 function makeMotor(eN) {
@@ -644,16 +733,16 @@ function makeMotor(eN) {
     h3.innerHTML = 'Motor';
     o.appendChild( h3 );
 
-    inp = makeLabelledNumber( o, 'mtr-imax', 'Imax', 60, function() { plotMotor(this) }, 'A' );
+    inp = makeLabelledNumber( o, 'mtr-imax', 'I<sub>MAX</sub>', 60, function() { plotMotor(this) }, 'A' );
     inp.min = 1;
 
-    inp = makeLabelledNumber( o, 'mtr-vmax', 'Vmax', 100, function() { plotMotor(this) }, 'V' );
+    inp = makeLabelledNumber( o, 'mtr-vmax', 'V<sub>MAX</sub>', 100, function() { plotMotor(this) }, 'V' );
     inp.min = 1;
 
-    inp = makeLabelledNumber( o, 'mtr-pmax', 'Pmax', 250, function() { plotMotor(this) }, 'W' );
+    inp = makeLabelledNumber( o, 'mtr-pmax', 'P<sub>MAX</sub>', 250, function() { plotMotor(this) }, 'W' );
     inp.min = 1;
 
-    inp = makeLabelledNumber( o, 'mtr-rpmmax', 'RPMmax', 250, function() { plotMotor(this) }, '' );
+    inp = makeLabelledNumber( o, 'mtr-rpmmax', 'RPM<sub>MAX</sub>', 250, function() { plotMotor(this) }, 's<sup>-1</sup>' );
     inp.min = 1;
 
     inp = makeLabelledNumber( o, 'mtr-pp', 'Pole Pairs', 6, function() { plotMotor(this) }, '' );
@@ -669,16 +758,28 @@ function makeMotor(eN) {
     o.appendChild( inp );
     o.appendChild( document.createElement('br') );
 
-    inp = makeLabelledNumber( o, 'mtr-ind-d', 'Inductance D', 0.0, function() { plotMotor(this) }, '' );
+    inp = makeLabelledNumber( o, 'mtr-ind-d', 'Inductance D', 0.0, function() { plotMotor(this) }, 'mH' );
     inp.min = 0;
 
-    inp = makeLabelledNumber( o, 'mtr-ind-q', 'Inductance Q', 0.0, function() { plotMotor(this) }, '' );
+    inp = makeLabelledNumber( o, 'mtr-ind-q', 'Inductance Q', 0.0, function() { plotMotor(this) }, 'mH' );
     inp.min = 0;
 
-    inp = makeLabelledNumber( o, 'mtr-res', 'Resistance', 0.0, function() { plotMotor(this) }, '&Omega;' );
+    inp = makeLabelledNumber( o, 'mtr-res', 'Resistance', 0.0, function() { plotMotor(this) }, 'm&Omega;' );
     inp.min = 0;
 
     inp = makeLabelledNumber( o, 'mtr-flxlnk', 'Flux Linkage', 1000.0, function() { plotMotor(this) }, 'Wb' );
+    inp.min = 0;
+
+    inp = makeLabelledNumber( o, 'mtr-flxlnk-min', 'Flux Linkage (min)', 100.0, function() { plotMotor(this) }, 'Wb' );
+    inp.min = 0;
+
+    inp = makeLabelledNumber( o, 'mtr-flxlnk-max', 'Flux Linkage (max)', 5000.0, function() { plotMotor(this) }, 'Wb' );
+    inp.min = 0;
+
+    inp = makeLabelledNumber( o, 'mtr-flxlnk-gain', 'Flux Linkage gain', 1.0, function() { plotMotor(this) }, 'Wb' );
+    inp.min = 0;
+
+    inp = makeLabelledNumber( o, 'mtr-nlcg', 'Non-linear centering gain', 1.0, function() { plotMotor(this) }, '' );
     inp.min = 0;
 
     eN.appendChild( o );
@@ -692,16 +793,6 @@ function makeMotor(eN) {
 function plotSpeed(obj) {
     var entry_index = parseInt(obj.id.split('-')[1]);
     var obj_name = window.document.getElementById('e-' + entry_index + '-name');
-    var obj_imax = window.document.getElementById('e-' + entry_index + '-spd-imax');
-    var obj_vmax = window.document.getElementById('e-' + entry_index + '-spd-vmax');
-    var obj_pmax = window.document.getElementById('e-' + entry_index + '-spd-pmax');
-    var obj_rpmmax = window.document.getElementById('e-' + entry_index + '-spd-rpmmax');
-    var obj_pp = window.document.getElementById('e-' + entry_index + '-spd-pp');
-    var obj_dir = window.document.getElementById('e-' + entry_index + '-spd-dir');
-    var obj_z_d = window.document.getElementById('e-' + entry_index + '-spd-ind-d');
-    var obj_z_q = window.document.getElementById('e-' + entry_index + '-spd-ind-q');
-    var obj_r = window.document.getElementById('e-' + entry_index + '-spd-res');
-    var obj_fl = window.document.getElementById('e-' + entry_index + '-spd-flxlnk');
     var obj_eo = window.document.getElementById('e-' + entry_index + '-spd-enc-off');
     var obj_hall_min = new Array(6);
     var obj_hall_max = new Array(6);
@@ -717,17 +808,6 @@ function plotSpeed(obj) {
     updateName( obj_name );
 
     var entry = header.getEntry( entry_index );
-
-    entry._profile.motor_Imax = parseFloat(obj_imax.value);
-    entry._profile.motor_Vmax = parseFloat(obj_vmax.value);
-    entry._profile.motor_Pmax = parseFloat(obj_pmax.value);
-    entry._profile.motor_RPMmax = parseInt(obj_rpmmax.value);
-    entry._profile.motor_pole_pairs = parseInt(obj_pp.value);
-    entry._profile.motor_direction = (obj_dir.checked ? 1 : 0);
-    entry._profile.motor_Z_D = parseFloat(obj_z_d.value);
-    entry._profile.motor_Z_Q = parseFloat(obj_z_q.value);
-    entry._profile.motor_R = parseFloat(obj_r.value);
-    entry._profile.motor_flux_linkage = parseFloat(obj_fl.value);
 
     entry._profile.sensor_encoder_offset = parseFloat(obj_eo.value);
     for ( var h = 0; h < 6; h++ ) {
@@ -749,57 +829,10 @@ function makeSpeed(eN) {
     var inp = makeLabelledText( o, 'name', 'Name', 'Speed' );
     inp.maxLength = PROFILE_ENTRY_MAX_NAME_LENGTH;
 
-    // Motor
+    // Speed
     var h3 = document.createElement('h3');
-    h3.innerHTML = 'Motor';
+    h3.innerHTML = 'Speed';
     o.appendChild( h3 );
-
-    inp = makeLabelledNumber( o, 'spd-imax', 'Imax', 60, function() { plotSpeed(this) }, 'A' );
-    inp.min = 1;
-
-    inp = makeLabelledNumber( o, 'spd-vmax', 'Vmax', 100, function() { plotSpeed(this) }, 'V' );
-    inp.min = 1;
-
-    inp = makeLabelledNumber( o, 'spd-pmax', 'Pmax', 250, function() { plotSpeed(this) }, 'W' );
-    inp.min = 1;
-
-    inp = makeLabelledNumber( o, 'spd-rpmmax', 'RPMmax', 250, function() { plotSpeed(this) }, '' );
-    inp.min = 1;
-
-    inp = makeLabelledNumber( o, 'spd-pp', 'Pole Pairs', 6, function() { plotSpeed(this) }, '' );
-    inp.min = 4;
-
-    inp = makeLabelledNumber( o, 'spd-ind-d', 'Inductance D', 0.0, function() { plotSpeed(this) }, '' );
-    inp.min = 0;
-
-    inp = makeLabelledNumber( o, 'spd-ind-q', 'Inductance Q', 0.0, function() { plotSpeed(this) }, '' );
-    inp.min = 0;
-
-    inp = makeLabelledNumber( o, 'spd-res', 'Resistance', 0.0, function() { plotSpeed(this) }, '&Omega;' );
-    inp.min = 0;
-
-    inp = makeLabelledNumber( o, 'spd-flxlnk', 'Flux Linkage', 1000.0, function() { plotSpeed(this) }, 'Wb' );
-    inp.min = 0;
-
-    lbl = document.createElement('label');
-    lbl.innerHTML = 'Direction';
-    lbl.setAttribute( 'for', 'e-' + entry_index + '-spd-dir' );
-    o.appendChild( lbl );
-    inp = document.createElement('input');
-    inp.id = 'e-' + entry_index + '-spd-dir';
-    inp.type = 'checkbox';
-    o.appendChild( inp );
-    o.appendChild( document.createElement('br') );
-
-    lbl = document.createElement('label');
-    lbl.innerHTML = 'Regeneration';
-    lbl.setAttribute( 'for', 'e-' + entry_index + '-spd-regen' );
-    o.appendChild( lbl );
-    inp = document.createElement('input');
-    inp.id = 'e-' + entry_index + '-spd-regen';
-    inp.type = 'checkbox';
-    o.appendChild( inp );
-    o.appendChild( document.createElement('br') );
 
     // Sensor
     h3 = document.createElement('h3');
@@ -883,11 +916,11 @@ function plotTemperature(obj) {
     var obj_rd   = window.document.getElementById('e-' + entry_index + '-temp-rd');
     var obj_v    = window.document.getElementById('e-' + entry_index + '-temp-v');
     var obj_rf   = window.document.getElementById('e-' + entry_index + '-temp-rf');
-    
+
     var obj_adcr = window.document.getElementById('e-' + entry_index + '-temp-adcrng');
-    
+
     var obj_sch  = window.document.getElementById('e-' + entry_index + '-temp-schema');
-    
+
     var obj_beta = window.document.getElementById('e-' + entry_index + '-temp-beta');
     var obj_r    = window.document.getElementById('e-' + entry_index + '-temp-r');
 
@@ -901,11 +934,11 @@ function plotTemperature(obj) {
 
     var V         = parseFloat(obj_v.value);
     var R_F       = parseFloat(obj_rf.value);
-    
+
     var adc_range = parseInt(  obj_adcr.value);
-    
+
     var schema    = parseInt(  obj_sch.value);
-    
+
     var beta      = parseFloat(obj_beta.value);
     var r         = parseFloat(obj_r.value);
 
@@ -1020,7 +1053,7 @@ function plotTemperature(obj) {
     entry._profile.reading = rd;
     entry._profile.V = V;
     entry._profile.R_F = R_F;
-    
+
     entry._profile.adc_range = adc_range;
 
     entry._profile.method = TEMP_METHOD_STEINHART_HART_BETA_R;
@@ -1071,7 +1104,7 @@ function makeTemperature(eN) {
     inp.min = 1.0;
     inp.step = 0.1;
 
-    inp = makeLabelledNumber( o, 'temp-rf', 'R_F', 4700, function() { plotTemperature(this) }, '&Omega;' );
+    inp = makeLabelledNumber( o, 'temp-rf', 'R<sub>F</sub>', 4700, function() { plotTemperature(this) }, '&Omega;' );
     inp.min = 1;
 
     inp = makeLabelledNumber( o, 'temp-adc', 'ADC', 3, function() { plotTemperature(this) }, '' );
@@ -1080,7 +1113,7 @@ function makeTemperature(eN) {
     inp.max = 4;
 
     inp = makeLabelledNumber( o, 'temp-adcrng', 'ADC Range', 4096, function() { plotTemperature(this) }, '' );
-    
+
     inp = makeOptions( o, 'temp-schema', 'Schematic', 0, ['R_F on R_T','R_T on R_F'], function() { plotTemperature(this) } );
 
     inp = makeLabelledNumber( o, 'temp-beta', 'Beta', 3438, function() { plotTemperature(this) }, '&Omega;' );
@@ -1088,20 +1121,20 @@ function makeTemperature(eN) {
 
     inp = makeLabelledNumber( o, 'temp-r', 'r', 0.0982, function() { plotTemperature(this) }, '' );
 
-    inp = makeLabelledNumber( o, 'temp-t0', 'T0', 25, function() { plotTemperature(this) }, '&deg;C' );
+    inp = makeLabelledNumber( o, 'temp-t0', 'T<sub>0</sub>', 25, function() { plotTemperature(this) }, '&deg;C' );
 
-    inp = makeLabelledNumber( o, 'temp-r0', 'R0', 10000, function() { plotTemperature(this) }, '&Omega;' );
+    inp = makeLabelledNumber( o, 'temp-r0', 'R<sub>0</sub>', 10000, function() { plotTemperature(this) }, '&Omega;' );
 
     // Limit
     h3 = document.createElement('h3');
     h3.innerHTML = 'Limit';
     o.appendChild( h3 );
 
-    inp = makeLabelledNumber( o, 'temp-min', 'Tmin', 10, function() { plotTemperature(this) }, '&deg;C' );
+    inp = makeLabelledNumber( o, 'temp-min', 'T<sub>MIN</sub>', 10, function() { plotTemperature(this) }, '&deg;C' );
     inp.min = 0;
     inp.max = 20;
 
-    inp = makeLabelledNumber( o, 'temp-max', 'Tmax', 50, function() { plotTemperature(this) }, '&deg;C' );
+    inp = makeLabelledNumber( o, 'temp-max', 'T<sub>MAX</sub>', 50, function() { plotTemperature(this) }, '&deg;C' );
     inp.min = 20;
     inp.max = 100;
 
@@ -1115,14 +1148,14 @@ function makeTemperature(eN) {
 
 function plotThrottle(obj) {
     var entry_index = parseInt(obj.id.split('-')[1]);
-    var obj_name = window.document.getElementById('e-' + entry_index + '-name');
-    var obj_adc_min  = window.document.getElementById('e-' + entry_index + '-thr-adc-min');
-    var obj_adc_max  = window.document.getElementById('e-' + entry_index + '-thr-adc-max');
-    var obj_resp = window.document.getElementById('e-' + entry_index + '-thr-rsp');
-    var obj_adc_trig  = window.document.getElementById('e-' + entry_index + '-thr-adc-trig');
-    var obj_imax  = window.document.getElementById('e-' + entry_index + '-thr-imax');
-    var obj_rcpwm_t_min  = window.document.getElementById('e-' + entry_index + '-thr-rcpwm-t-min');
-    var obj_rcpwm_t_max  = window.document.getElementById('e-' + entry_index + '-thr-rcpwm-t-max');
+    var obj_name        = window.document.getElementById('e-' + entry_index + '-name');
+    var obj_adc_min     = window.document.getElementById('e-' + entry_index + '-thr-adc-min');
+    var obj_adc_max     = window.document.getElementById('e-' + entry_index + '-thr-adc-max');
+    var obj_resp        = window.document.getElementById('e-' + entry_index + '-thr-rsp');
+    var obj_adc_trig    = window.document.getElementById('e-' + entry_index + '-thr-adc-trig');
+    var obj_imax        = window.document.getElementById('e-' + entry_index + '-thr-imax');
+    var obj_rcpwm_t_min = window.document.getElementById('e-' + entry_index + '-thr-rcpwm-t-min');
+    var obj_rcpwm_t_max = window.document.getElementById('e-' + entry_index + '-thr-rcpwm-t-max');
 
     updateName( obj_name );
 
@@ -1152,24 +1185,24 @@ function makeThrottle(eN) {
 
     inp = makeOptions( o, 'thr-if', 'Interface', 0, ['RCPWM','UART'], function() { plotThrottle(this) } );
 
-    inp = makeLabelledNumber( o, 'thr-rcpwm-t-min', 'RCPWM t min', 1000, function() { plotThrottle(this) }, '' );
+    inp = makeLabelledNumber( o, 'thr-rcpwm-t-min', 'RCPWM t<sub>MIN</sub>', 1000, function() { plotThrottle(this) }, '' );
     inp.min = 0;
 
-    inp = makeLabelledNumber( o, 'thr-rcpwm-t-max', 'RCPWM t max', 2000, function() { plotThrottle(this) }, '' );
+    inp = makeLabelledNumber( o, 'thr-rcpwm-t-max', 'RCPWM t<sub>MAX</sub>', 2000, function() { plotThrottle(this) }, '' );
     inp.min = 0;
 
-    inp = makeLabelledNumber( o, 'thr-adc-min', 'ADC min', 100, function() { plotThrottle(this) }, '' );
+    inp = makeLabelledNumber( o, 'thr-adc-min', 'ADC<sub>MIN</sub>', 100, function() { plotThrottle(this) }, '' );
     inp.min = 0;
 
-    inp = makeLabelledNumber( o, 'thr-adc-max', 'ADC max', 2047, function() { plotThrottle(this) }, '' );
+    inp = makeLabelledNumber( o, 'thr-adc-max', 'ADC<sub>MAX</sub>', 2047, function() { plotThrottle(this) }, '' );
     inp.min = 0;
 
     inp = makeOptions( o, 'thr-rsp', 'Response', 0, ['Linear','Logarithmic'], function() { plotThrottle(this) } );
 
-    inp = makeLabelledNumber( o, 'thr-adc-trig', 'ADC trigger', 300, function() { plotThrottle(this) }, '' );
+    inp = makeLabelledNumber( o, 'thr-adc-trig', 'ADC<sub>TRIGGER</sub>', 300, function() { plotThrottle(this) }, '' );
     inp.min = 0;
 
-    inp = makeLabelledNumber( o, 'thr-imax', 'Imax', 20.0, function() { plotThrottle(this) }, '' );
+    inp = makeLabelledNumber( o, 'thr-imax', 'I<sub>MAX</sub>', 20.0, function() { plotThrottle(this) }, '' );
     inp.min = 0;
 
     eN.appendChild( o );
@@ -1213,18 +1246,18 @@ function makeBrake(eN) {
     h3.innerHTML = 'Sensor';
     o.appendChild( h3 );
 
-    inp = makeLabelledNumber( o, 'brk-adc-min', 'ADC min', 100, function() { plotBrake(this) }, '' );
+    inp = makeLabelledNumber( o, 'brk-adc-min', 'ADC<sub>MIN</sub>', 100, function() { plotBrake(this) }, '' );
     inp.min = 0;
 
-    inp = makeLabelledNumber( o, 'brk-adc-max', 'ADC max', 2047, function() { plotBrake(this) }, '' );
+    inp = makeLabelledNumber( o, 'brk-adc-max', 'ADC<sub>MAX</sub>', 2047, function() { plotBrake(this) }, '' );
     inp.min = 0;
 
     inp = makeOptions( o, 'brk-rsp', 'Response', 0, ['Linear','Logarithmic'], function() { plotBrake(this) } );
 
-    inp = makeLabelledNumber( o, 'brk-adc-trig', 'ADC max', 2047, function() { plotBrake(this) }, '' );
+    inp = makeLabelledNumber( o, 'brk-adc-trig', 'ADC<sub>TRIGGER</sub>', 2047, function() { plotBrake(this) }, '' );
     inp.min = 0;
 
-    inp = makeLabelledNumber( o, 'brk-imax', 'Imax', 10.0, function() { plotBrake(this) }, '' );
+    inp = makeLabelledNumber( o, 'brk-imax', 'I<sub>MAX</sub>', 10.0, function() { plotBrake(this) }, '' );
     inp.min = 0;
 
     eN.appendChild( o );
@@ -1468,7 +1501,7 @@ function rem(obj) {
 function gen()
 {
     console.clear();
-    
+
     var prf_cmd = window.document.getElementById('app-prf-cmd');
     var prf_dmp = window.document.getElementById('app-prf-dmp');
 
