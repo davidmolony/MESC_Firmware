@@ -193,7 +193,6 @@ int main(void)
   // main clock
  // __HAL_TIM_SET_PRESCALER(&htim4, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
 //HAL_UART_Init(&huart3);
-foc_vars.FLAdiff = 0.004f;
 
   MESCInit();
 
@@ -206,6 +205,7 @@ foc_vars.FLAdiff = 0.004f;
   /* USER CODE BEGIN WHILE */
   motor.Rphase = motor_profile->R;
   motor.Lphase = motor_profile->L_D;
+  motor.Lqphase = motor_profile->L_Q;
   motor.motor_flux = motor_profile->flux_linkage;
   motor.uncertainty = 1;
 

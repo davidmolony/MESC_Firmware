@@ -172,7 +172,7 @@ void MESC_PWM_IRQ_handler() {
 static int current_hall_state;
 
 void fastLoop() {
-  // Call this directly from the ADC callback IRQ
+  // Call this directly from the TIM top IRQ
   current_hall_state = getHallState();
   // First thing we ever want to do is convert the ADC values
   // to real, useable numbers.
