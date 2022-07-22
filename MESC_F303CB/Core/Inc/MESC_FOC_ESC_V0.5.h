@@ -53,6 +53,7 @@
 #define DEFAULT_INPUT	0b1110 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
 //////Motor parameters
+#define DEFAULT_MOTOR_POWER 250.0f
 #define DEFAULT_FLUX_LINKAGE 0.00078f//Set this to the motor linkage in wB
 #define DEFAULT_MOTOR_Ld 0.000015f //Henries
 #define DEFAULT_MOTOR_Lq 0.000016f//Henries
