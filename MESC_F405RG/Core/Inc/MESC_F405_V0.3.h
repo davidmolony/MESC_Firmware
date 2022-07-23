@@ -30,7 +30,8 @@
 #define MAX_ID_REQUEST 100.0f
 #define MAX_IQ_REQUEST 40.0f
 
-
+#define I_MEASURE 30.0f //Higher setpoint for resistance measurement
+#define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
 
 ////////////////////USER DEFINES//////////////////
 	///////////////////RCPWM//////////////////////
@@ -67,7 +68,8 @@
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-//#define USE_HFI
+#define USE_HFI
+#define HFI_VOLTAGE 4.0f
 
 #define USE_SQRT_CIRCLE_LIM
 
