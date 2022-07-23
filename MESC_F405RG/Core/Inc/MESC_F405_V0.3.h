@@ -10,6 +10,10 @@
 							//Only works for forward direction presently
 							//^^WIP, not completely stable yet
 
+//#define MISSING_UCURRSENSOR //You can run two current sensors ONLY if they are phase sensors.
+//#define MISSING_VCURRSENSOR //Running this with low side sensors may result in fire.
+//#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
+
 #define SHUNT_POLARITY -1.0f
 
 #define ABS_MAX_PHASE_CURRENT 100.0f

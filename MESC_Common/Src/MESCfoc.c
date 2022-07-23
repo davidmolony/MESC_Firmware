@@ -435,7 +435,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
         foc_vars.initing = 0;
       }
     }
-
+//Convert the currents to real amps in SI units
     measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I] =
         (float)(measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I] -
                 measurement_buffers.ADCOffset[0]) *
@@ -448,7 +448,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
         (float)(measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] -
                 measurement_buffers.ADCOffset[2]) *
         g_hw_setup.Igain;
-    // Currents
+//Convert the voltages to volts in real SI units
     measurement_buffers.ConvertedADC[0][1] =
         (float)measurement_buffers.RawADC[0][1] * g_hw_setup.VBGain;  // Vbus
     measurement_buffers.ConvertedADC[0][2] =
@@ -458,6 +458,20 @@ void VICheck() {  // Check currents, voltages are within panic limits
     measurement_buffers.ConvertedADC[1][2] =
         (float)measurement_buffers.RawADC[1][2] * g_hw_setup.VBGain;  // Wsw
 
+//Deal with terrible hardware choice of only having two current sensors
+//Based on Iu+Iv+Iw = 0
+#ifdef MISSING_UCURRSENSOR
+    measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I] =
+    		-measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I] - measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
+#endif
+#ifdef MISSING_VCURRSENSOR
+    measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I] =
+    		-measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I] - measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
+#endif
+#ifdef MISSING_WCURRSENSOR
+    measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I] =
+    		-measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I] - measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
+#endif
     // Power Variant Clark transform
     // Here we select the phases that have the lowest duty cycle to us, since
     // they should have the best current measurements
