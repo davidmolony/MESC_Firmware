@@ -799,6 +799,16 @@ static int cyclescountacc = 0;
       foc_vars.Vdq[1] = Idq_err[1] + foc_vars.Idq_int_err[1];
 
       // Bounding final output
+
+#ifdef USE_SQRT_CIRCLE_LIM
+      float Vnow2 = foc_vars.Vdq[0]*foc_vars.Vdq[0]+foc_vars.Vdq[1]*foc_vars.Vdq[1];
+      if(Vnow2>foc_vars.Vmag_max2){
+      float Vnow = sqrtf(Vnow2);
+      float one_on_Vnow = 1/Vnow;
+      foc_vars.Vdq[0] = foc_vars.Vdq[0]*foc_vars.Vmag_max*one_on_Vnow;
+      foc_vars.Vdq[1] = foc_vars.Vdq[1]*foc_vars.Vmag_max*one_on_Vnow;
+      }
+#else
       // These limits are experimental, but result in close to 100% modulation.
       // Since Vd and Vq are orthogonal, limiting Vd is not especially helpful
       // in reducing overall voltage magnitude, since the relation
@@ -815,7 +825,7 @@ static int cyclescountacc = 0;
         (foc_vars.Vdq[1] = foc_vars.Vq_max);
       if (foc_vars.Vdq[1] < -foc_vars.Vq_max)
         (foc_vars.Vdq[1] = -foc_vars.Vq_max);
-
+#endif
       i = FOC_PERIODS;
 
 
@@ -1343,10 +1353,18 @@ static int cyclescountacc = 0;
     // We also need a number to set the maximum voltage that can be effectively
     // used by the SVPWM This is equal to
     // 0.5*Vbus*MAX_MODULATION*SVPWM_MULTIPLIER*Vd_MAX_PROPORTION
+    foc_vars.Vmag_max = 0.5f * measurement_buffers.ConvertedADC[0][1] *
+            MAX_MODULATION * SVPWM_MULTIPLIER;
+    foc_vars.Vmag_max2 = foc_vars.Vmag_max*foc_vars.Vmag_max;
     foc_vars.Vd_max = 0.5f * measurement_buffers.ConvertedADC[0][1] *
                       MAX_MODULATION * SVPWM_MULTIPLIER * Vd_MAX_PROPORTION;
     foc_vars.Vq_max = 0.5f * measurement_buffers.ConvertedADC[0][1] *
                       MAX_MODULATION * SVPWM_MULTIPLIER * Vq_MAX_PROPORTION;
+#ifdef USE_SQRT_CIRCLE_LIM
+    foc_vars.Vd_max = foc_vars.Vmag_max;
+    foc_vars.Vq_max = foc_vars.Vmag_max;
+
+#endif
 
     foc_vars.Vdint_max = foc_vars.Vd_max * 0.9f; //ToDo unvoodoo, logic in this is to always ensure headroom for the P term
     foc_vars.Vqint_max = foc_vars.Vq_max * 0.9f;

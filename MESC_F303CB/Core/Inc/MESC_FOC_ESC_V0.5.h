@@ -66,6 +66,8 @@
 #define FIELD_WEAKENING_THRESHOLD 0.8f
 //#define USE_HFI
 
+#define USE_SQRT_CIRCLE_LIM
+
 //#define USE_MTPA
 
 /////Related to observer

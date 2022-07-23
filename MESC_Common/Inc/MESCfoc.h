@@ -108,6 +108,8 @@ typedef struct {
   float Iq_igain;
   float Vdqres_to_Vdq;
   float Vab_to_PWM;
+  float Vmag_max;
+  float Vmag_max2;
   float Vd_max;
   float Vq_max;
   float Vdint_max;
