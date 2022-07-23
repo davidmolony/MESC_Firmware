@@ -801,12 +801,13 @@ static int cyclescountacc = 0;
       // Bounding final output
 
 #ifdef USE_SQRT_CIRCLE_LIM
-      float Vnow2 = foc_vars.Vdq[0]*foc_vars.Vdq[0]+foc_vars.Vdq[1]*foc_vars.Vdq[1];
-      if(Vnow2>foc_vars.Vmag_max2){
-      float Vnow = sqrtf(Vnow2);
-      float one_on_Vnow = 1/Vnow;
-      foc_vars.Vdq[0] = foc_vars.Vdq[0]*foc_vars.Vmag_max*one_on_Vnow;
-      foc_vars.Vdq[1] = foc_vars.Vdq[1]*foc_vars.Vmag_max*one_on_Vnow;
+      float Vmagnow2 = foc_vars.Vdq[0]*foc_vars.Vdq[0]+foc_vars.Vdq[1]*foc_vars.Vdq[1];
+      //Check if the vector length is greater than the available voltage
+      if(Vmagnow2>foc_vars.Vmag_max2){
+      float Vmagnow = sqrtf(Vmagnow2);
+      float one_on_Vmagnow = 1/Vmagnow;
+      foc_vars.Vdq[0] = foc_vars.Vdq[0]*foc_vars.Vmag_max*one_on_Vmagnow;
+      foc_vars.Vdq[1] = foc_vars.Vdq[1]*foc_vars.Vmag_max*one_on_Vmagnow;
       }
 #else
       // These limits are experimental, but result in close to 100% modulation.
