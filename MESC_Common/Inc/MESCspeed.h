@@ -76,4 +76,6 @@ void speed_register_vars( float const * const drev, float const * const dt );
 
 float speed_get( void );
 
+void speed_motor_limiter( void );
+
 #endif

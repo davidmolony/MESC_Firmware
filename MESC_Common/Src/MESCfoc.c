@@ -1501,7 +1501,7 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
 
     if(getHallState()==0){//This happens when the hall sensors overheat it seems.
   	  if (MotorError == MOTOR_ERROR_NONE) {
-  		  // TODO speed_limiter();
+  		    speed_motor_limiter();
   	  }
   	  MotorError = MOTOR_ERROR_HALL0;
     }else /*if(getHallState()==7){
