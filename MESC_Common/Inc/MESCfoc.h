@@ -44,7 +44,7 @@ enum MESCADC
 #define SVPWM_MULTIPLIER \
   1.1547f  // 1/cos30 which comes from the maximum between two 120 degree apart
           // sin waves being at the
-#define Vd_MAX_PROPORTION 0.3f
+#define Vd_MAX_PROPORTION 0.3f //These are only used when hard clamping limits are enabled, not when SQRT circle limitation used
 #define Vq_MAX_PROPORTION 0.95f
 
 enum FOCChannels

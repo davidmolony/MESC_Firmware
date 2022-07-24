@@ -153,7 +153,7 @@ int main(void)
   speed_init( PROFILE_DEFAULT );
   temp_init( PROFILE_DEFAULT );
   // Initialise user Interface
-  ui_init( PROFILE_DEFAULT );
+  //ui_init( PROFILE_DEFAULT );
 #if 0
 // HACK
   // Example store for debugging
@@ -227,14 +227,15 @@ calculateVoltageGain();
     __NOP();
   }
 #endif
+
   while (1) {
 		HAL_Delay(100);
 		static int a;
 		char transmit_buffer[100];
 		int sizebuff;
-		extern uint16_t enc_obs_angle;/*
-		sizebuff = sprintf(transmit_buffer,"%d,%0.2f,%0.2f,%0.2f,%0.2f\n",a,0.005493f*(float)foc_vars.enc_obs_angle,foc_vars.Vdq[1],1000.0f*motor.motor_flux,foc_vars.Idq_smoothed[1]);
-			HAL_UART_Transmit_DMA(&huart3, transmit_buffer, sizebuff);*/
+		extern uint16_t enc_obs_angle;
+//		sizebuff = sprintf(transmit_buffer,"%d,%0.2f,%0.2f,%0.2f,%0.2f\n",a,0.005493f*(float)foc_vars.enc_obs_angle,foc_vars.Vdq[1],1000.0f*motor.motor_flux,foc_vars.Idq_smoothed[1]);
+//			HAL_UART_Transmit_DMA(&huart3, transmit_buffer, sizebuff);
 			a++;
 
 

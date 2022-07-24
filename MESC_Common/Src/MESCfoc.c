@@ -1652,7 +1652,7 @@ was_last_tracking = 1;
 			foc_vars.Ldq_now[0] = foc_vars.IIR[0];//foc_vars.Vd_injectionV;
 			foc_vars.Idq_req[0] = 1.0f;
 		if(foc_vars.Ldq_now[0]>foc_vars.Ldq_now_dboost[0]){foc_vars.FOCAngle+=32768;}
-		HFI_countdown = 20;
+		HFI_countdown = 200;
 		no_q = 0;
 		}else{
 			foc_vars.Idq_req[0] = 0.0f;
