@@ -887,8 +887,28 @@ static uint32_t byte_swap(uint32_t const value)
         )   ;
 }
 
+static uint8_t  cli_reply_buffer[256] = {0};
+static uint16_t cli_reply_buffer_offset = UINT16_C(0);
+
+static void cli_reply_begin( void )
+{
+    cli_reply_buffer[0] = '\'0';
+    cli_reply_buffer_offset = 0;
+}
+
+static void cli_reply_close( void )
+{
+    if (cli_reply_buffer_offset > 0)
+    {
+        int const ret = cli_io_write( cli_io_handle, cli_reply_buffer, cli_reply_buffer_offset );
+        (void)ret;
+    }
+}
+
 MESC_INTERNAL_ALIAS(int,CLIState) cli_process( char const c )
 {
+    cli_reply_begin();
+
     if (c == '\n')
     {
         cli_reply( "%s", "\r\n" );
@@ -1067,6 +1087,8 @@ MESC_INTERNAL_ALIAS(int,CLIState) cli_process( char const c )
 
             break;
     }
+    
+    cli_reply_close();
 
     // Required to allow subsequent receive
     cli_io_read();
@@ -1074,23 +1096,15 @@ MESC_INTERNAL_ALIAS(int,CLIState) cli_process( char const c )
     return cli_state;
 }
 
-extern void HAL_Delay( uint32_t );
-
 void cli_reply( char const * p, ... )
 {
-    uint8_t buffer[256];
     va_list va;
 
     va_start( va, p );
 
-    int const len = vsprintf( (char *)buffer, p, va );
+    int const len = vsprintf( (char *)&cli_reply_buffer[cli_reply_buffer_offset], p, va );
 
-    if (len > 0)
-    {
-        int const ret = cli_io_write( cli_io_handle, buffer, (uint16_t)len );
-        (void)ret;
-        HAL_Delay( 1 + 100/*DMA*/ + (1000/*ms*/ * (len * 8) / 9600/*baud*/) );
-    }
+    cli_reply_buffer_offset = cli_reply_buffer_offset + len;
 
     va_end( va );
 }

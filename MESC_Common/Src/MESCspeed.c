@@ -29,6 +29,7 @@
 
 #include "MESCspeed.h"
 
+#include "MESCmotor.h"
 #include "MESCprofile.h"
 
 #include "conversions.h"
@@ -87,4 +88,12 @@ void speed_register_vars( float const * const eHz, uint8_t const * const pp )
 float speed_get( void )
 {
     return ((*speed_eHz * rev_speed) / *speed_pp);
+}
+
+void speed_motor_limiter( void )
+{
+	static MOTORProfile profile;
+	profile = *motor_profile;
+	profile.Pmax = 50.0f; // W
+	motor_init( &profile );
 }
