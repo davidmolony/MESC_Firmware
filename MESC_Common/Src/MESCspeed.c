@@ -40,14 +40,19 @@ SPEEDProfile const * speed_profile = NULL;
 
 static float rev_speed; // Speedometer units per motor revolution
 
-static float const * speed_drev = NULL; // Motor revolutions (i.e. 0..1 is 0..2Pi radians)
-static float const * speed_dt   = NULL; // time (seconds) // TODO
+static float   const * speed_eHz  = NULL; // Motor revolutions
+static uint8_t const * speed_pp   = NULL; // pole pairs
 
 void speed_init( SPEEDProfile const * const profile )
 {
     if (profile == PROFILE_DEFAULT)
     {
-        static SPEEDProfile speed_profile_default;
+        static SPEEDProfile speed_profile_default =
+		{
+        	{},
+			{1,1},
+			{26.0f,CONST_INCHES_PER_MILE_F}
+		};
         uint32_t            speed_length = sizeof(speed_profile_default);
 
         ProfileStatus const ret = profile_get_entry(
@@ -74,15 +79,15 @@ void speed_init( SPEEDProfile const * const profile )
               / speed_profile->wheel.conversion;
 }
 
-void speed_register_vars( float const * const drev, float const * const dt )
+void speed_register_vars( float const * const eHz, uint8_t const * const pp )
 {
-    speed_drev = drev;
-    speed_dt   = dt;
+    speed_eHz = eHz;
+    speed_pp  = pp;
 }
 
 float speed_get( void )
 {
-    return ((*speed_drev * rev_speed) / *speed_dt);
+    return ((*speed_eHz * rev_speed) / *speed_pp);
 }
 
 void speed_motor_limiter( void )

@@ -44,7 +44,7 @@ enum MESCADC
 #define SVPWM_MULTIPLIER \
   1.1547f  // 1/cos30 which comes from the maximum between two 120 degree apart
           // sin waves being at the
-#define Vd_MAX_PROPORTION 0.3f
+#define Vd_MAX_PROPORTION 0.3f //These are only used when hard clamping limits are enabled, not when SQRT circle limitation used
 #define Vq_MAX_PROPORTION 0.95f
 
 enum FOCChannels
@@ -108,6 +108,8 @@ typedef struct {
   float Iq_igain;
   float Vdqres_to_Vdq;
   float Vab_to_PWM;
+  float Vmag_max;
+  float Vmag_max2;
   float Vd_max;
   float Vq_max;
   float Vdint_max;
@@ -131,7 +133,9 @@ typedef struct {
   float Vd_injectionV;
   float Vq_injectionV;
   uint32_t FLrun, VFLrun;
-  int angle_error;
+  float angle_error;
+  int increment_count;
+  float eHz;
   float Ldq_now[2];
   float Ldq_now_dboost[2];
 
