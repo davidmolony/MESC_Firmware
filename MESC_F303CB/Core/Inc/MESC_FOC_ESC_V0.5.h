@@ -11,6 +11,10 @@
 							//^^WIP, not completely stable yet
 
 
+//#define MISSING_UCURRSENSOR //You can run two current sensors ONLY if they are phase sensors.
+//#define MISSING_VCURRSENSOR //Running this with low side sensors may result in fire.
+//#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
+
 #define SHUNT_POLARITY -1.0
 
 #define ABS_MAX_PHASE_CURRENT 130.0f
@@ -28,6 +32,8 @@
 #define MAX_ID_REQUEST 100.0f
 #define MAX_IQ_REQUEST 20.0f
 
+#define I_MEASURE 30.0f //Higher setpoint for resistance measurement
+#define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
 
 ////////////////////USER DEFINES//////////////////
 	///////////////////RCPWM//////////////////////
@@ -53,17 +59,22 @@
 #define DEFAULT_INPUT	0b1110 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
 //////Motor parameters
-#define DEFAULT_FLUX_LINKAGE 0.0038f//Set this to the motor linkage in wB
-#define DEFAULT_MOTOR_Ld 0.000004f //Henries
-#define DEFAULT_MOTOR_Lq 0.000008f//Henries
-#define DEFAULT_MOTOR_R 0.0060f //Ohms
+#define DEFAULT_MOTOR_POWER 250.0f
+#define DEFAULT_FLUX_LINKAGE 0.00078f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000015f //Henries
+#define DEFAULT_MOTOR_Lq 0.000016f//Henries
+#define DEFAULT_MOTOR_R 0.0180f //Ohms
 //Use the Ebike Profile tool
 #define USE_PROFILE
 
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
+//#define USE_HFI
+#define HFI_VOLTAGE 4.0f
+
+
+#define USE_SQRT_CIRCLE_LIM
 
 //#define USE_MTPA
 

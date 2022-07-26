@@ -43,7 +43,7 @@ void motor_init( MOTORProfile const * const profile )
     if (profile == PROFILE_DEFAULT)
     {
         static MOTORProfile motor_profile_default;
-        motor_profile_default.Pmax = 50.0f;
+        motor_profile_default.Pmax = DEFAULT_MOTOR_POWER;
         motor_profile_default.L_D = DEFAULT_MOTOR_Ld;
         motor_profile_default.L_Q = DEFAULT_MOTOR_Lq;
         motor_profile_default.R = DEFAULT_MOTOR_R;

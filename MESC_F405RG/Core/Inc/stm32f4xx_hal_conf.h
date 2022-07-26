@@ -18,6 +18,7 @@
   *
   ******************************************************************************
   */
+#define HAL_I2C_MODULE_ENABLED
 /* USER CODE END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/

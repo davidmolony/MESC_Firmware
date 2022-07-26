@@ -64,6 +64,8 @@ UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
+I2C_HandleTypeDef hi2c2;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -79,6 +81,7 @@ static void MX_USART3_UART_Init(void);
 static void MX_TIM7_Init(void);
 static void MX_SPI3_Init(void);
 /* USER CODE BEGIN PFP */
+static void MX_I2C2_Init(void);
 
 
 /* USER CODE END PFP */
@@ -127,6 +130,8 @@ int main(void)
   MX_TIM7_Init();
   MX_SPI3_Init();
   /* USER CODE BEGIN 2 */
+  //MX_I2C2_Init();
+
   HAL_SPI_Init(&hspi3);
 
   /*
@@ -148,7 +153,7 @@ int main(void)
   speed_init( PROFILE_DEFAULT );
   temp_init( PROFILE_DEFAULT );
   // Initialise user Interface
-  ui_init( PROFILE_DEFAULT );
+  //ui_init( PROFILE_DEFAULT );
 #if 0
 // HACK
   // Example store for debugging
@@ -188,7 +193,6 @@ int main(void)
   // main clock
  // __HAL_TIM_SET_PRESCALER(&htim4, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
 //HAL_UART_Init(&huart3);
-foc_vars.FLAdiff = 0.004f;
 
   MESCInit();
 
@@ -201,6 +205,7 @@ foc_vars.FLAdiff = 0.004f;
   /* USER CODE BEGIN WHILE */
   motor.Rphase = motor_profile->R;
   motor.Lphase = motor_profile->L_D;
+  motor.Lqphase = motor_profile->L_Q;
   motor.motor_flux = motor_profile->flux_linkage;
   motor.uncertainty = 1;
 
@@ -222,14 +227,15 @@ calculateVoltageGain();
     __NOP();
   }
 #endif
+
   while (1) {
 		HAL_Delay(100);
 		static int a;
 		char transmit_buffer[100];
 		int sizebuff;
-		extern uint16_t enc_obs_angle;/*
-		sizebuff = sprintf(transmit_buffer,"%d,%0.2f,%0.2f,%0.2f,%0.2f\n",a,0.005493f*(float)foc_vars.enc_obs_angle,foc_vars.Vdq[1],1000.0f*motor.motor_flux,foc_vars.Idq_smoothed[1]);
-			HAL_UART_Transmit_DMA(&huart3, transmit_buffer, sizebuff);*/
+		extern uint16_t enc_obs_angle;
+//		sizebuff = sprintf(transmit_buffer,"%d,%0.2f,%0.2f,%0.2f,%0.2f\n",a,0.005493f*(float)foc_vars.enc_obs_angle,foc_vars.Vdq[1],1000.0f*motor.motor_flux,foc_vars.Idq_smoothed[1]);
+//			HAL_UART_Transmit_DMA(&huart3, transmit_buffer, sizebuff);
 			a++;
 
 
@@ -871,6 +877,39 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+/**
+  * @brief I2C2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C2_Init(void)
+{
+
+  /* USER CODE BEGIN I2C2_Init 0 */
+
+  /* USER CODE END I2C2_Init 0 */
+
+  /* USER CODE BEGIN I2C2_Init 1 */
+
+  /* USER CODE END I2C2_Init 1 */
+  hi2c2.Instance = I2C2;
+  hi2c2.Init.ClockSpeed = 100000;
+  hi2c2.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c2.Init.OwnAddress2 = 0;
+  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C2_Init 2 */
+
+  /* USER CODE END I2C2_Init 2 */
+
+}
 /* USER CODE END 4 */
 
 /**
