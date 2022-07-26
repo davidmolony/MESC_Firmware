@@ -1537,7 +1537,7 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
 
     if(motor.Lqd_diff>0){
     	foc_vars.id_mtpa = motor.motor_flux/(4.0f*motor.Lqd_diff) - sqrtf((motor.motor_flux*motor.motor_flux/(16.0f*motor.Lqd_diff*motor.Lqd_diff))+foc_vars.Idq_req[1]*foc_vars.Idq_req[1]*0.5f);
-    	if(foc_vars.Idq_req[1]>foc_vars.id_mtpa){
+    	if(fabs(foc_vars.Idq_req[1])>fabs(foc_vars.id_mtpa)){
     	foc_vars.iq_mtpa = sqrtf(foc_vars.Idq_req[1]*foc_vars.Idq_req[1]-foc_vars.id_mtpa*foc_vars.id_mtpa);
     	}
     	else{

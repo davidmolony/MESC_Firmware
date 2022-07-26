@@ -855,8 +855,8 @@ static void cli_process_variable( const char c )
             else
             {
                 if  (
-                        (('A' < c ) && (c < 'Z'))
-                    ||  (('a' < c ) && (c < 'z'))
+                        (('A' <= c ) && (c <= 'Z'))
+                    ||  (('a' <= c ) && (c <= 'z'))
                     )
                 {
                     cli_hash = fnv1a_init();

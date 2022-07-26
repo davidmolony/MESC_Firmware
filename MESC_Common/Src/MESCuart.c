@@ -102,11 +102,26 @@ static void cmd_test( void )
     phV_Enable();
     phW_Enable();
 }
+static void cmd_iqup( void )
+{
+	input_vars.Idq_req_UART[1] = input_vars.Idq_req_UART[1]+1.0f;
+cli_reply( "%s%f" "\r" "\n", "Iq",foc_vars.Idq_req[1] );
+}
+static void cmd_iqdown( void )
+{
+input_vars.Idq_req_UART[1] = input_vars.Idq_req_UART[1]-1.0f;
+cli_reply( "%s%f" "\r" "\n", "Iq",foc_vars.Idq_req[1] );
+}
+static void cmd_measure( void )
+{
+    MotorState = MOTOR_STATE_MEASURING;
+}
+
 
 void uart_init( void )
 {
 	cli_register_variable_rw( "Idq_req", &input_vars.Idq_req_UART[1], sizeof(input_vars.Idq_req_UART[1]), CLI_VARIABLE_FLOAT );
-    cli_register_variable_rw( "Idc"       , &foc_vars.Idq_req[0]                   , sizeof(foc_vars.Idq_req[0]                   ), CLI_VARIABLE_FLOAT );
+    cli_register_variable_rw( "Id"       , &foc_vars.Idq_req[0]                   , sizeof(foc_vars.Idq_req[0]                   ), CLI_VARIABLE_FLOAT );
     cli_register_variable_rw( "Iq"        , &foc_vars.Idq_req[1]                   , sizeof(foc_vars.Idq_req[1]                   ), CLI_VARIABLE_FLOAT );
     cli_register_variable_ro( "Vbus"      , &measurement_buffers.ConvertedADC[0][1], sizeof(measurement_buffers.ConvertedADC[0][1]), CLI_VARIABLE_FLOAT );
 
@@ -116,6 +131,10 @@ void uart_init( void )
     cli_register_function( "param_setup"  , cmd_parameter_setup );
     cli_register_function( "reset"        , cmd_reset           );
     cli_register_function( "test"         , cmd_test            );
+    cli_register_function( "q"         , cmd_iqup            	);
+    cli_register_function( "a"         , cmd_iqdown            	);
+    cli_register_function( "Measure"   , cmd_measure            );
+
 
     cli_register_io( &huart3, (int(*)(void *,void *,uint16_t))HAL_UART_Transmit_DMA, uart_ack );
     // Required to allow initial receive
