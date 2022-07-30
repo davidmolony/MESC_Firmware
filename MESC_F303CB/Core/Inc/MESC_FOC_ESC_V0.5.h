@@ -72,6 +72,7 @@
 #define FIELD_WEAKENING_THRESHOLD 0.8f
 //#define USE_HFI
 #define HFI_VOLTAGE 4.0f
+#define HFI_TEST_CURRENT 20.0f
 
 
 #define USE_SQRT_CIRCLE_LIM

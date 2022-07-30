@@ -602,16 +602,17 @@ static int cyclescountacc = 0;
 #endif
     angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta, flux_linked_alpha)) - 32768;
 
-    //Run PLL for speed
-    foc_vars.angle_error = foc_vars.angle_error-0.1f*(int16_t)((foc_vars.angle_error+(int)(foc_vars.FOCAngle - angle)));
-    foc_vars.eHz = foc_vars.angle_error * foc_vars.pwm_frequency/65536.0f;
+
     if(foc_vars.inject==0){
+        //Run PLL for speed
+    	foc_vars.angle_error = foc_vars.angle_error-0.1f*(int16_t)((foc_vars.angle_error+(int)(foc_vars.FOCAngle - angle)));
+    	foc_vars.eHz = foc_vars.angle_error * foc_vars.pwm_frequency/65536.0f;
     foc_vars.FOCAngle = angle;
     }
 
 #ifdef USE_ENCODER
-    foc_vars.enc_obs_angle = foc_vars.enc_angle-foc_vars.FOCAngle;
-    //foc_vars.FOCAngle = foc_vars.enc_angle;
+    foc_vars.enc_obs_angle = angle - foc_vars.enc_angle;
+    foc_vars.FOCAngle = foc_vars.enc_angle;
     //foc_vars.FOCAngle = 0; //for aligning encoder for testing
 #endif
   }
@@ -1642,7 +1643,7 @@ was_last_tracking = 1;
     		was_last_tracking = 0;
     	}
 		if(HFI_countdown==3){
-			foc_vars.Idq_req[0] = 50.0f;
+			foc_vars.Idq_req[0] = HFI_TEST_CURRENT;
 		}else if(HFI_countdown==2){
 			foc_vars.Ldq_now_dboost[0] = foc_vars.IIR[0]; //Find the effect of d-axis current
 			foc_vars.Idq_req[0] = 1.0f;
