@@ -213,7 +213,8 @@ void SysTick_Handler(void)
 void ADC_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC_IRQn 0 */
-	//ToDo implement break if we get here
+	//Implement break if we get here
+	  generateBreak();
     __HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_AWD));
     //HAL_ADC_IRQHandler(&hadc1);
 
