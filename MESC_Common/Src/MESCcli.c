@@ -231,6 +231,8 @@ static void cli_noop_read( void )
 
 static void (* cli_process_read_value)( void ) = cli_noop_read;
 
+static void cli_process_write_float( char const c ); // Forward declare
+
 static void cli_execute( void )
 {
     switch (cli_cmd)
@@ -239,6 +241,10 @@ static void cli_execute( void )
             cli_process_read_value();
             break;
         case CLI_COMMAND_WRITE:
+            if (cli_lut_entry->type == CLI_VARIABLE_FLOAT)
+            {
+                cli_process_write_float( '\0' );
+            }
             memcpy( cli_lut_entry->var.w, &cli_var.var, cli_lut_entry->size );
             break;
         case CLI_COMMAND_EXECUTE:
@@ -326,6 +332,7 @@ static void cli_execute( void )
                     }
                     break;
                 case MAKE_TYPE_SIZE_CASE( FLOAT, sizeof(float) ):
+                    cli_process_write_float( '\0' );
                     if (cli_cmd == CLI_COMMAND_INCREASE)
                     {
                         tmp->f32 += (float)cli_var.var.f;
@@ -539,6 +546,15 @@ static void cli_process_read_float( void )
 
 static void cli_process_write_float( char const c )
 {
+    static float sgn = 0.0f;
+
+    if (c == '\0')
+    {
+        cli_var.var.f *= sgn;
+        sgn = 0.0f;
+        return;
+    }
+
     switch (cli_var.state)
     {
         case CLI_VAR_STATE_IDLE:
@@ -546,10 +562,7 @@ static void cli_process_write_float( char const c )
             switch (c)
             {
                 case '-':
-                    cli_var.var.f = -1.0f;
-                    break;
-                case '+':
-                    cli_var.var.f = +1.0f;
+                    sgn = -1.0f;
                     break;
                 default:
                     if (('0' <= c) && (c <= '9'))
@@ -561,6 +574,9 @@ static void cli_process_write_float( char const c )
                     {
                         cli_abort();
                     }
+                    // fallthrough
+                case '+':
+                    sgn = +1.0f;
                     break;
             }
             break;
@@ -568,7 +584,7 @@ static void cli_process_write_float( char const c )
             cli_var.state = CLI_VAR_STATE_FLOAT_INT;
             if (('0' <= c) && (c <= '9'))
             {
-                cli_var.var.f *= ((float)(c - '0'));
+                cli_var.var.f = ((float)(c - '0'));
             }
             else
             {
@@ -578,9 +594,8 @@ static void cli_process_write_float( char const c )
         case CLI_VAR_STATE_FLOAT_INT:
             if (('0' <= c) && (c <= '9'))
             {
-                float const sgn = (cli_var.var.f < 0.0f) ? -1.0f : 1.0f;
                 cli_var.var.f *= 10.0f;
-                cli_var.var.f += sgn * ((float)(c - '0'));
+                cli_var.var.f += ((float)(c - '0'));
             }
             else if (c == '.')
             {
@@ -595,8 +610,7 @@ static void cli_process_write_float( char const c )
         default:
             if (('0' <= c) && (c <= '9'))
             {
-                float const sgn = (cli_var.var.f < 0.0f) ? -1.0f : 1.0f;
-                cli_var.var.f += (sgn * ((float)(c - '0'))) / (float)pow( 10.0f, (float)(cli_var.state - CLI_VAR_STATE_FLOAT_INT)  );
+                cli_var.var.f += ((float)(c - '0')) / powf( 10.0f, (float)(cli_var.state - CLI_VAR_STATE_FLOAT_INT)  );
                 cli_var.state++;
             }
             else
@@ -855,8 +869,8 @@ static void cli_process_variable( const char c )
             else
             {
                 if  (
-                        (('A' < c ) && (c < 'Z'))
-                    ||  (('a' < c ) && (c < 'z'))
+                        (('A' <= c ) && (c <= 'Z'))
+                    ||  (('a' <= c ) && (c <= 'z'))
                     )
                 {
                     cli_hash = fnv1a_init();
@@ -892,7 +906,7 @@ static uint16_t cli_reply_buffer_offset = UINT16_C(0);
 
 static void cli_reply_begin( void )
 {
-    cli_reply_buffer[0] = '\'0';
+    cli_reply_buffer[0] = '\0';
     cli_reply_buffer_offset = 0;
 }
 

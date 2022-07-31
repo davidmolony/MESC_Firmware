@@ -29,6 +29,7 @@
 
 #include "MESCspeed.h"
 
+#include "MESCcli.h"
 #include "MESCmotor.h"
 #include "MESCprofile.h"
 

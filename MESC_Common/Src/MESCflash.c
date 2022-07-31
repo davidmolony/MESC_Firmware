@@ -43,7 +43,18 @@ static ProfileStatus writeFlash( void const * const buffer, uint32_t const addre
     uint32_t const * src   = (uint32_t const *)buffer;
     ProfileStatus    ret   = PROFILE_STATUS_SUCCESS;
 
-	for ( uint32_t i = 0, j = 0; i < length; i = i + 4, j = j + 1 )
+	for (
+		uint32_t i = 0, j = 0;
+		i < length;
+#if defined FLASH_TYPEPROGRAM_WORD
+		i = i + 4, j = j + 1
+#elif defined FLASH_TYPEPROGRAM_DOUBLEWORD
+		i = i + 8, j = j + 2
+#else
+#error Unhandled FLASH_TYPEPROGRAM_
+#endif
+		i = i + 4, j = j + 1
+		)
 	{
 		HAL_StatusTypeDef sts = HAL_FLASH_Unlock();
 
@@ -51,9 +62,13 @@ static ProfileStatus writeFlash( void const * const buffer, uint32_t const addre
 		{
 			return PROFILE_STATUS_ERROR_STORAGE_WRITE;
 		}
-
+#if defined FLASH_TYPEPROGRAM_WORD
 		sts = HAL_FLASH_Program( FLASH_TYPEPROGRAM_WORD, (addr + i), src[j] );
-
+#elif defined FLASH_TYPEPROGRAM_DOUBLEWORD
+		sts = HAL_FLASH_Program( FLASH_TYPEPROGRAM_DOUBLEWORD, (addr + i), src[j] );
+#else
+#error Unhandled FLASH_TYPEPROGRAM_
+#endif
 		switch (sts)
 		{
 			case HAL_OK:

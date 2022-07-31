@@ -31,6 +31,16 @@
 Profile defaults
 */
 
+/* Motor parameters */
+#define DEFAULT_MOTOR_Ld          0.0f
+#define DEFAULT_MOTOR_Lq          0.0f
+#define DEFAULT_MOTOR_R           0.0f
+#define DEFAULT_FLUX_LINKAGE      0.0f
+#define MIN_FLUX_LINKAGE          0.0f
+#define MAX_FLUX_LINKAGE          0.0f
+#define FLUX_LINKAGE_GAIN         0.0f
+#define NON_LINEAR_CENTERING_GAIN 0.0f
+
 /* Temperature parameters */
 #define MESC_PROFILE_TEMP_R_F     4700.0f                   // R_F 4k7
 #define MESC_PROFILE_TEMP_SCHEMA  TEMP_SCHEMA_R_F_ON_R_T
