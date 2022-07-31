@@ -596,7 +596,7 @@ static void cli_process_write_float( char const c )
             if (('0' <= c) && (c <= '9'))
             {
                 float const sgn = (cli_var.var.f < 0.0f) ? -1.0f : 1.0f;
-                cli_var.var.f += (sgn * ((float)(c - '0'))) / (float)pow( 10.0f, (float)(cli_var.state - CLI_VAR_STATE_FLOAT_INT)  );
+                cli_var.var.f += (sgn * ((float)(c - '0'))) / (float)powf( 10.0f, (float)(cli_var.state - CLI_VAR_STATE_FLOAT_INT)  );
                 cli_var.state++;
             }
             else

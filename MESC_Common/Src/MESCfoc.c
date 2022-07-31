@@ -628,8 +628,8 @@ static int cyclescountacc = 0;
 
   float fast_atan2(float y, float x) {
     // a := min (|x|, |y|) / max (|x|, |y|)
-    float abs_y = fabs(y);
-    float abs_x = fabs(x);
+    float abs_y = fabsf(y);
+    float abs_x = fabsf(x);
     // inject FLT_MIN in denominator to avoid division by zero
     float a = min(abs_x, abs_y) / (max(abs_x, abs_y));
     // s := a * a
@@ -708,13 +708,13 @@ static int cyclescountacc = 0;
     if (foc_vars.hall_update == 1) {
       foc_vars.hall_update = 0;
       last_observer_period = ticks_since_last_observer_change;
-      float one_on_ticks = (1.0 / ticks_since_last_observer_change);
+      float one_on_ticks = (1.0f / ticks_since_last_observer_change);
       one_on_last_observer_period =
-          (4 * one_on_last_observer_period + (one_on_ticks)) * 0.2;  // ;
+          (4.0f * one_on_last_observer_period + (one_on_ticks)) * 0.2f;  // ;
       angle_step =
-          (4 * angle_step +
+          (4.0f * angle_step +
            (one_on_ticks)*foc_vars.hall_table[last_hall_state - 1][3]) *
-          0.2;
+          0.2f;
 
       // Reset the counters, track the previous state
       last_hall_state = current_hall_state;
@@ -725,7 +725,7 @@ static int cyclescountacc = 0;
     // Run the counter
     ticks_since_last_observer_change = ticks_since_last_observer_change + 1;
 
-    if (ticks_since_last_observer_change <= 2.0 * last_observer_period) {
+    if (ticks_since_last_observer_change <= 2.0f * last_observer_period) {
       /*      foc_vars.FOCAngle = foc_vars.FOCAngle + (uint16_t)(dir*angle_step
          + one_on_last_observer_period * (-0.9 * hall_error)); //Does not
          work...
@@ -738,17 +738,17 @@ static int cyclescountacc = 0;
             foc_vars.FOCAngle +
             (uint16_t)(angle_step - one_on_last_observer_period * hall_error);
         // one_on_last_observer_period * (-0.2 * hall_error));
-      } else if (dir < 0) {
+      } else if (dir < 0.0f) {
         foc_vars.FOCAngle =
             foc_vars.FOCAngle +
             (uint16_t)(-angle_step +
-                       one_on_last_observer_period * (-0.9 * hall_error));
+                       one_on_last_observer_period * (-0.9f * hall_error));
         // Also does not work,
         // Why??
         foc_vars.FOCAngle =
             foc_vars.FOCAngle -
             (uint16_t)(angle_step +
-                       one_on_last_observer_period * (0.2 * hall_error));
+                       one_on_last_observer_period * (0.2f * hall_error));
       }
     }
     if (ticks_since_last_observer_change > 1500.0f) {
@@ -772,10 +772,10 @@ static int cyclescountacc = 0;
 
   void MESCFOC() {
 #ifdef USE_FIELD_WEAKENING
-	    if (fabs(foc_vars.Vdq[1]) > foc_vars.field_weakening_threshold) {
+	    if (fabsf(foc_vars.Vdq[1]) > foc_vars.field_weakening_threshold) {
 	      foc_vars.Idq_req[0] =
 	          foc_vars.field_weakening_curr_max *foc_vars.field_weakening_multiplier*
-	          (foc_vars.field_weakening_threshold - fabs(foc_vars.Vdq_smoothed[1]));
+	          (foc_vars.field_weakening_threshold - fabsf(foc_vars.Vdq_smoothed[1]));
 	      foc_vars.field_weakening_flag = 1;
 	    } else {
 	    	//if(!foc_vars.inject){
@@ -1056,7 +1056,7 @@ static int cyclescountacc = 0;
     else if (PWM_cycles < 80002) {
       generateBreak();
       motor.Lphase =
-          fabs((foc_vars.Vd_injectionV) /
+          fabsf((foc_vars.Vd_injectionV) /
           ((top_I_L - bottom_I_L) / (count_top * foc_vars.pwm_period)));
       top_I_Lq = 0;
       bottom_I_Lq = 0;
@@ -1089,7 +1089,7 @@ static int cyclescountacc = 0;
     else {
       generateBreak();
       motor.Lqphase =
-          fabs((foc_vars.Vq_injectionV) /
+          fabsf((foc_vars.Vq_injectionV) /
           ((top_I_Lq - bottom_I_Lq) / (count_top * foc_vars.pwm_period)));
 
       MotorState = MOTOR_STATE_IDLE;
@@ -1467,7 +1467,7 @@ if(MotorState != MOTOR_STATE_MEASURING){
 	  //Collect the requested throttle inputs
 	  //UART input
 	  if(0 == (input_vars.input_options & 0b1000)){
-		  input_vars.Idq_req_UART[1] = 0;
+		  input_vars.Idq_req_UART[1] = 0.0f;
 	  }
 
 	  //RCPWM input
@@ -1475,38 +1475,38 @@ if(MotorState != MOTOR_STATE_MEASURING){
 		  if(input_vars.pulse_recieved){
 			  if((input_vars.IC_duration > input_vars.IC_duration_MIN) && (input_vars.IC_duration < input_vars.IC_duration_MAX)){
 				  if(input_vars.IC_pulse>(input_vars.IC_pulse_MID + input_vars.IC_pulse_DEADZONE)){
-					  input_vars.Idq_req_RCPWM[0] = 0;
+					  input_vars.Idq_req_RCPWM[0] = 0.0f;
 					  input_vars.Idq_req_RCPWM[1] = (float)(input_vars.IC_pulse - (input_vars.IC_pulse_MID + input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
 				  }
 				  else if(input_vars.IC_pulse<(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE)){
-					  input_vars.Idq_req_RCPWM[0] = 0;
+					  input_vars.Idq_req_RCPWM[0] = 0.0f;
 					  input_vars.Idq_req_RCPWM[1] = ((float)input_vars.IC_pulse - (float)(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
 				  }
 				  else{
-					  input_vars.Idq_req_RCPWM[0] = 0;
-					  input_vars.Idq_req_RCPWM[1] = 0;
+					  input_vars.Idq_req_RCPWM[0] = 0.0f;
+					  input_vars.Idq_req_RCPWM[1] = 0.0f;
 				  }
 			  }	else {//The duration of the IC was wrong; trap it and write no current request
 				  //Todo maybe want to implement a timeout on this, allowing spurious pulses to not wiggle the current?
-				  input_vars.Idq_req_RCPWM[0] = 0;
-				  input_vars.Idq_req_RCPWM[1] = 0;
+				  input_vars.Idq_req_RCPWM[0] = 0.0f;
+				  input_vars.Idq_req_RCPWM[1] = 0.0f;
 			  }
 		  }
 		  else {//No pulse received flag
-			  input_vars.Idq_req_RCPWM[0] = 0;
-			  input_vars.Idq_req_RCPWM[1] = 0;
+			  input_vars.Idq_req_RCPWM[0] = 0.0f;
+			  input_vars.Idq_req_RCPWM[1] = 0.0f;
 		  }
 	  }
 
 	  //ADC1 input
 	  if(input_vars.input_options & 0b0010){
 		  if(measurement_buffers.RawADC[1][3]>input_vars.adc1_MIN){
-			  input_vars.Idq_req_ADC1[0] = 0;
+			  input_vars.Idq_req_ADC1[0] = 0.0f;
 			  input_vars.Idq_req_ADC1[1] = ((float)measurement_buffers.RawADC[1][3]-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
 		  }
 		  else{
-			  input_vars.Idq_req_ADC1[0] = 0;
-			  input_vars.Idq_req_ADC1[1] = 0;
+			  input_vars.Idq_req_ADC1[0] = 0.0f;
+			  input_vars.Idq_req_ADC1[1] = 0.0f;
 		  }
 	  }
 	  if(input_vars.input_options & 0b0001){
@@ -1538,7 +1538,7 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
 
     if(motor.Lqd_diff>0){
     	foc_vars.id_mtpa = motor.motor_flux/(4.0f*motor.Lqd_diff) - sqrtf((motor.motor_flux*motor.motor_flux/(16.0f*motor.Lqd_diff*motor.Lqd_diff))+foc_vars.Idq_req[1]*foc_vars.Idq_req[1]*0.5f);
-    	if(fabs(foc_vars.Idq_req[1])>fabs(foc_vars.id_mtpa)){
+    	if(fabsf(foc_vars.Idq_req[1])>fabsf(foc_vars.id_mtpa)){
     	foc_vars.iq_mtpa = sqrtf(foc_vars.Idq_req[1]*foc_vars.Idq_req[1]-foc_vars.id_mtpa*foc_vars.id_mtpa);
     	}
     	else{
@@ -1576,12 +1576,12 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
     	}
     }
 /////// Clamp the max power taken from the battery
-    foc_vars.reqPower = 1.5f*fabs(foc_vars.Vdq_smoothed[1] * foc_vars.Idq_req[1]);
+    foc_vars.reqPower = 1.5f*fabsf(foc_vars.Vdq_smoothed[1] * foc_vars.Idq_req[1]);
     if (foc_vars.reqPower > motor_profile->Pmax) {
     	if(foc_vars.Idq_req[1] > 0.0f){
-    		foc_vars.Idq_req[1] = motor_profile->Pmax / (fabs(foc_vars.Vdq_smoothed[1])*1.5f);
+    		foc_vars.Idq_req[1] = motor_profile->Pmax / (fabsf(foc_vars.Vdq_smoothed[1])*1.5f);
     	}else{
-    		foc_vars.Idq_req[1] = -motor_profile->Pmax / (fabs(foc_vars.Vdq_smoothed[1])*1.5f);
+    		foc_vars.Idq_req[1] = -motor_profile->Pmax / (fabsf(foc_vars.Vdq_smoothed[1])*1.5f);
     	}
     }
 
@@ -1599,7 +1599,7 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
     //////Set tracking
 static int was_last_tracking;
 if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(MotorState==MOTOR_STATE_GET_KV))){
-if(fabs(foc_vars.Idq_req[1])>0.1f){
+if(fabsf(foc_vars.Idq_req[1])>0.1f){
 	if(MotorState != MOTOR_STATE_ERROR){
 #ifdef HAS_PHASE_SENSORS //We can go straight to RUN if we have been tracking with phase sensors
 	MotorState = MOTOR_STATE_RUN;
