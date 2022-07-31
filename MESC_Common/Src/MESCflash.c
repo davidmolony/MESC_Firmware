@@ -51,9 +51,11 @@ static ProfileStatus writeFlash( void const * const buffer, uint32_t const addre
 		{
 			return PROFILE_STATUS_ERROR_STORAGE_WRITE;
 		}
-
+#ifndef STM32L4xx_HAL_H //ToDo FIX THIS HACK... L4 series cannot use FLASH_TYPEPROGRAM_WORD... only DOUBLEWORD
 		sts = HAL_FLASH_Program( FLASH_TYPEPROGRAM_WORD, (addr + i), src[j] );
-
+#else
+		sts = HAL_ERROR;
+#endif
 		switch (sts)
 		{
 			case HAL_OK:
