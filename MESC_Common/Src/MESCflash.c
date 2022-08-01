@@ -53,7 +53,6 @@ static ProfileStatus writeFlash( void const * const buffer, uint32_t const addre
 #else
 #error Unhandled FLASH_TYPEPROGRAM_
 #endif
-		i = i + 4, j = j + 1
 		)
 	{
 		HAL_StatusTypeDef sts = HAL_FLASH_Unlock();
