@@ -21,7 +21,14 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "MESCbat.h"
+#include "MESCflash.h"
+#include "MESCprofile.h"
 #include "MESCmotor.h"
+#include "MESCspeed.h"
+#include "MESCtemp.h"
+#include "MESCuart.h"
+#include "MESCui.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -105,7 +112,39 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
+#if defined USE_PROFILE
+    /*
+    Starting System Initialisation
+    */
 
+    // Initialise UART CLI IO
+    uart_init();
+    // NOTE - CLI messages are available after this point
+    
+    // Attach flash IO to profile
+    flash_register_profile_io();
+    // Load stored profile
+    ProfileStatus const sts = profile_init();
+
+    // Initialise components
+    bat_init(   PROFILE_DEFAULT );
+    motor_init( PROFILE_DEFAULT );
+    speed_init( PROFILE_DEFAULT );
+    temp_init(  PROFILE_DEFAULT );
+    // Initialise user Interface
+    ui_init(    PROFILE_DEFAULT );
+    
+    if (sts != PROFILE_STATUS_INIT_SUCCESS_LOADED)
+    {
+        profile_commit( true );
+    }
+
+    static uint8_t const pole_pairs = 6;
+    speed_register_vars( &foc_vars.eHz, &pole_pairs );
+    /*
+    Finished System Initialisation
+    */
+#endif
   //Set up the input capture for throttle
   HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1);
   HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_2);

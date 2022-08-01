@@ -186,7 +186,7 @@ typedef enum ProfileStatus ProfileStatus;
 static_assert( ((PROFILE_MAX_SIZE % 2048/*FLASH_BLOCK_SIZE*/) == 0), "PROFILE_MAX_SIZE must be flash block aligned" );
 
 void profile_configure_storage_io(
-    ProfileStatus (* const read)(  void       * buffer, uint32_t const address, uint32_t const length ),
+    ProfileStatus (* const read )( void       * buffer, uint32_t const address, uint32_t const length ),
     ProfileStatus (* const write)( void const * buffer, uint32_t const address, uint32_t const length ),
 	ProfileStatus (* const begin)( void ),
 	ProfileStatus (* const end  )( void ) );
@@ -222,7 +222,7 @@ ProfileStatus profile_put_entry(
 ProfileStatus profile_del_entry(
     char const * name, uint32_t const signature );
 
-ProfileStatus profile_commit( void );
+ProfileStatus profile_commit( bool const force );
 
 bool profile_get_modified( void );
 

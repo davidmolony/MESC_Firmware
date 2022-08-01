@@ -350,7 +350,7 @@ void bist_profile( void )
         PROFILE_STATUS_UNKNOWN,
         PROFILE_STATUS_INIT_SUCCESS_DEFAULT );
 
-    ret = profile_commit();
+    ret = profile_commit( false );
     profile_get_last( &s, &h, &e, & o );
     fprintf( stdout, "INFO: Store (no update) %d %s\n"
                      "    S:%d %s\n"
@@ -371,7 +371,7 @@ void bist_profile( void )
 
     profile_put_entry( "demo_entry", 0x12345678, &demo_entry, &demo_entry_size );
 
-    ret = profile_commit();
+    ret = profile_commit( false );
     profile_get_last( &s, &h, &e, & o );
     fprintf( stdout, "INFO: Store (update) %d %s\n"
                      "    S:%d %s\n"
@@ -616,7 +616,7 @@ void bist_profile( void )
 
     fprintf( stdout, "INFO: Commit image\n" );
 
-    ret = profile_commit();
+    ret = profile_commit( false );
 
     profile_get_last( &s, &h, &e, & o );
         fprintf( stdout, "INFO: %d %s\n"

@@ -774,11 +774,13 @@ ProfileStatus profile_del_entry(
     return profile_get_entry( name, signature, NULL, NULL );
 }
 
-ProfileStatus profile_commit( void )
+ProfileStatus profile_commit( bool const force )
 {
     profile_status_header  = PROFILE_STATUS_UNKNOWN;
     profile_status_entry   = PROFILE_STATUS_UNKNOWN;
     profile_status_other   = PROFILE_STATUS_UNKNOWN;
+
+    profile_modified |= force;
 
     if (profile_modified == false)
     {

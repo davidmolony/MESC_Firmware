@@ -201,15 +201,20 @@ int main(void)
     // Attach flash IO to profile
     flash_register_profile_io();
     // Load stored profile
-    profile_init();
+    ProfileStatus const sts = profile_init();
 
     // Initialise components
-    bat_init( PROFILE_DEFAULT );
+    bat_init(   PROFILE_DEFAULT );
     motor_init( PROFILE_DEFAULT );
     speed_init( PROFILE_DEFAULT );
-    temp_init( PROFILE_DEFAULT );
+    temp_init(  PROFILE_DEFAULT );
     // Initialise user Interface
-    ui_init( PROFILE_DEFAULT );
+    ui_init(    PROFILE_DEFAULT );
+    
+    if (sts != PROFILE_STATUS_INIT_SUCCESS_LOADED)
+    {
+        profile_commit( true );
+    }
 
     static uint8_t const pole_pairs = 6;
     speed_register_vars( &foc_vars.eHz, &pole_pairs );
