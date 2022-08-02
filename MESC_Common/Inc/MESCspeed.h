@@ -34,24 +34,8 @@
 
 #define SPEED_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','S','P','E')
 
-#define NUM_HALL_STATES (UINT32_C(6))
-
-struct HallEntry
-{
-    uint16_t min;
-    uint16_t max;
-};
-
-typedef struct HallEntry HallEntry;
-
 struct SPEEDProfile
 {
-    struct
-    {
-    uint16_t    encoder_offset;
-    HallEntry   hall_states[NUM_HALL_STATES];
-    }           sensor;
-
     struct
     {
     uint32_t    motor;      // Teeth on motor

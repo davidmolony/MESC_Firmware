@@ -34,6 +34,18 @@
 
 #define MOTOR_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','M','P','E')
 
+#define NUM_HALL_STATES (UINT32_C(6))
+
+struct HallEntry
+{
+    uint16_t min;
+    uint16_t max;
+    uint16_t mid;
+    uint16_t width;
+};
+
+typedef struct HallEntry HallEntry;
+
 struct MOTORProfile
 {
     float       Imax;         // Amp
@@ -51,11 +63,17 @@ struct MOTORProfile
     float       flux_linkage_max;
     float       flux_linkage_gain;
     float       non_linear_centering_gain;
+
+    struct
+    {
+    uint16_t    encoder_offset;
+    HallEntry   hall_states[NUM_HALL_STATES];
+    }           sensor;
 };
 
 typedef struct MOTORProfile MOTORProfile;
 
-extern MOTORProfile const * motor_profile;
+extern MOTORProfile * motor_profile;
 
 void motor_init( MOTORProfile const * const profile );
 

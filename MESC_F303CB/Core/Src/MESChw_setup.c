@@ -47,7 +47,6 @@ extern COMP_HandleTypeDef hcomp4;
 extern COMP_HandleTypeDef hcomp7;
 
 hw_setup_s g_hw_setup;
-motor_s motor;
 
 void hw_init()
 {
@@ -152,7 +151,7 @@ static uint32_t getFlashPageAddress( uint32_t const index )
 
 static uint32_t getFlashPageIndex( uint32_t const address )
 {
-    return (address / FLASH_PAGE_SIZE);
+    return ((address - getFlashBaseAddress()) / FLASH_PAGE_SIZE);
 }
 
 ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
@@ -178,11 +177,11 @@ ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
     page_erase.PageAddress = getFlashPageAddress( spage );
     page_erase.NbPages     = (epage - spage + 1);
 
-    uint32_t result = 0;
+    uint32_t pageerror = 0;
 
-    HAL_FLASHEx_Erase( &page_erase, &result );
+    HAL_StatusTypeDef const ret = HAL_FLASHEx_Erase( &page_erase, &pageerror );
 
-    switch (result)
+    switch (ret)
     {
         case HAL_OK:
             return PROFILE_STATUS_SUCCESS;

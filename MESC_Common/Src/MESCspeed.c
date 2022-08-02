@@ -50,11 +50,10 @@ void speed_init( SPEEDProfile const * const profile )
     {
         static SPEEDProfile speed_profile_default =
 		{
-        	{},
 			{1,1},
 			{26.0f,CONST_INCHES_PER_MILE_F}
 		};
-        uint32_t            speed_length = sizeof(speed_profile_default);
+        static uint32_t speed_length = sizeof(speed_profile_default);
 
         ProfileStatus const ret = profile_get_entry(
             "SPD", SPEED_PROFILE_SIGNATURE,
@@ -65,6 +64,8 @@ void speed_init( SPEEDProfile const * const profile )
         if (ret != PROFILE_STATUS_SUCCESS)
         {
             cli_reply( "SPD FAILED" "\r" "\n" );
+
+            profile_alloc_entry( "SPD", SPEED_PROFILE_SIGNATURE, &speed_profile_default, &speed_length );
         }
     }
     else

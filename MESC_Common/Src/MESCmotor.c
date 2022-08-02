@@ -36,23 +36,74 @@
 
 #include <stdint.h>
 
-MOTORProfile const * motor_profile = NULL;
+MOTORProfile * motor_profile = NULL;
 
 void motor_init( MOTORProfile const * const profile )
 {
     if (profile == PROFILE_DEFAULT)
     {
-        static MOTORProfile motor_profile_default;
-        motor_profile_default.Pmax = DEFAULT_MOTOR_POWER;
-        motor_profile_default.L_D = DEFAULT_MOTOR_Ld;
-        motor_profile_default.L_Q = DEFAULT_MOTOR_Lq;
-        motor_profile_default.R = DEFAULT_MOTOR_R;
-		motor_profile_default.flux_linkage = DEFAULT_FLUX_LINKAGE;
-		motor_profile_default.flux_linkage_min = MIN_FLUX_LINKAGE;
-		motor_profile_default.flux_linkage_max = MAX_FLUX_LINKAGE;
-		motor_profile_default.flux_linkage_gain = FLUX_LINKAGE_GAIN;
-		motor_profile_default.non_linear_centering_gain = NON_LINEAR_CENTERING_GAIN;
-        uint32_t            motor_length = sizeof(motor_profile_default);
+        static MOTORProfile motor_profile_default =
+        {
+        	.Imax = MAX_IQ_REQUEST, // A
+        	.Vmax =  88.0f, // V
+			.Pmax = DEFAULT_MOTOR_POWER, // W
+			.RPMmax = 100000, // eRPM
+			.pole_pairs = POLE_PAIRS,//7
+			.direction = 0,
+			.L_D = DEFAULT_FLUX_LINKAGE,
+			.L_Q = DEFAULT_MOTOR_Lq,
+			.R   = DEFAULT_MOTOR_R,
+			.flux_linkage = DEFAULT_FLUX_LINKAGE,
+			.flux_linkage_min = MAX_FLUX_LINKAGE,
+			.flux_linkage_max = MIN_FLUX_LINKAGE,
+			.flux_linkage_gain = FLUX_LINKAGE_GAIN,
+			.non_linear_centering_gain = NON_LINEAR_CENTERING_GAIN,
+
+			.sensor =
+			{
+				.encoder_offset = ENCODER_E_OFFSET,
+				.hall_states =
+				{
+					{
+						.min   = 10922,
+						.max   = 21845,
+						.mid   = 16384,
+						.width = 10922,
+					},
+					{
+						.min   = 32768,
+						.max   = 43690,
+						.mid   = 38229,
+						.width = 10922,
+					},
+					{
+						.min   = 21845,
+						.max   = 32768,
+						.mid   = 27307,
+						.width = 10922,
+					},
+					{
+						.min   = 54613,
+						.max   = 65535,
+						.mid   = 60075,
+						.width = 10922,
+					},
+					{
+						.min   =     0,
+						.max   = 10922,
+						.mid   =  5461,
+						.width = 10922,
+					},
+					{
+						.min   = 43691,
+						.max   = 54613,
+						.mid   = 49152,
+						.width = 10922,
+					},
+				},
+			},
+        };
+        static uint32_t motor_length = sizeof(motor_profile_default);
 
         ProfileStatus const ret = profile_get_entry(
             "MTR", MOTOR_PROFILE_SIGNATURE,
@@ -63,6 +114,8 @@ void motor_init( MOTORProfile const * const profile )
         if (ret != PROFILE_STATUS_SUCCESS)
         {
             cli_reply( "MTR FAILED" "\r" "\n" );
+
+            profile_alloc_entry( "MTR", MOTOR_PROFILE_SIGNATURE, &motor_profile_default, &motor_length );
         }
     }
     else

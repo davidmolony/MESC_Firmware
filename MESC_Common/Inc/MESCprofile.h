@@ -181,7 +181,7 @@ typedef enum ProfileStatus ProfileStatus;
 #define PROFILE_STATUS_ERROR_ENTRY(e) ((ProfileStatus)(PROFILE_STATUS_ERROR_ENTRY_0 + (e)))
 
 #define PROFILE_MIN_SIZE (PROFILE_HEADER_SIZE + (PROFILE_HEADER_ENTRIES * PROFILE_ENTRY_SIZE))
-#define PROFILE_MAX_SIZE UINT32_C(4096)
+#define PROFILE_MAX_SIZE UINT32_C(2048)
 
 static_assert( ((PROFILE_MAX_SIZE % 2048/*FLASH_BLOCK_SIZE*/) == 0), "PROFILE_MAX_SIZE must be flash block aligned" );
 

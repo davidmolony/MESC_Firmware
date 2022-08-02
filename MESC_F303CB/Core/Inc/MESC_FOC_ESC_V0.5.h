@@ -32,7 +32,7 @@
 #define MAX_ID_REQUEST 100.0f
 #define MAX_IQ_REQUEST 20.0f
 
-#define I_MEASURE 30.0f //Higher setpoint for resistance measurement
+#define I_MEASURE 15.0f //Higher setpoint for resistance measurement
 #define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
 
 ////////////////////USER DEFINES//////////////////
@@ -77,6 +77,11 @@
 #define USE_SQRT_CIRCLE_LIM
 
 //#define USE_MTPA
+
+//#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
+#define POLE_PAIRS 7
+#define ENCODER_E_OFFSET 0
+#define POLE_ANGLE (65536/POLE_PAIRS)
 
 /////Related to observer
 #define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,

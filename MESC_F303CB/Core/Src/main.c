@@ -93,6 +93,7 @@ char UART_buffer[12];
 char USBRxBuffer[12];
 extern uint8_t b_write_flash;
 extern uint8_t b_read_flash;
+static bool bash_da_flash = false;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -221,13 +222,9 @@ int main(void)
     /*
     Finished System Initialisation
     */
+#else
+    motor_init( PROFILE_DEFAULT );
 #endif
-    motor.Rphase = motor_profile->R;
-    motor.Lphase = motor_profile->L_D;
-    motor.motor_flux = motor_profile->flux_linkage;
-    motor.uncertainty = 1;
-    // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
-
     //Set up the input capture for throttle
     HAL_TIM_IC_Start(&htim3, TIM_CHANNEL_1);
     HAL_TIM_IC_Start(&htim3, TIM_CHANNEL_2);
@@ -256,6 +253,13 @@ int main(void)
     {
         // HAL_Delay(100);
         HAL_Delay(1000);
+
+        if (bash_da_flash)
+        {
+        	profile_commit( true );
+        	bash_da_flash = false;
+        }
+
         /* flash management
          * 1. Ensure power to motor is off.
          * 2. Write data to flash.

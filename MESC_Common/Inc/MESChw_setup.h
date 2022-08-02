@@ -74,22 +74,6 @@ extern hw_setup_s g_hw_setup; // TODO PROFILE
 // _OR_
 // void hw_setup_init( hw_setp_s * hw_setup );
 
-typedef struct {
-  hardware_vars_t Rphase;  // float containing phase resistance in mOhms,
-                           // populated by MEASURING if not already known;
-  hardware_vars_t Lphase;  // float containing phase inductance in uH,
-  hardware_vars_t Lqphase;  // range from very very low inductance high kV strong
-                           // magnet BLDC motors to low kV weak magnet ones;
-  hardware_vars_t Lqd_diff; //Lq-Ld for using MTPA
-      uint8_t uncertainty;
-  float motor_flux;
-} motor_s;
-
-extern motor_s motor; // TODO PROFILE
-// _OR_
-// void motor_init( struct motor_s *motor);	//Rob created prototype init,
-// unused for now
-
 /*
 Hardware-specific implementation
 

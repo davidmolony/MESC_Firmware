@@ -34,7 +34,7 @@
 
 #include <stddef.h>
 
-static BATProfile const * bat_profile = NULL;
+BATProfile const * bat_profile = NULL;
 
 static float grad_upper;    // Amp Hour per Volt
 static float grad_lower;    // Amp Hour per Volt
@@ -44,8 +44,35 @@ void bat_init( BATProfile const * const profile )
 {
     if (profile == PROFILE_DEFAULT)
     {
-        static BATProfile bat_profile_default;
-        uint32_t          bat_length = sizeof(bat_profile_default);
+        static BATProfile bat_profile_default =
+        {
+        	.cell =
+        	{
+        		.Imax = 30.0f, // A
+				.Vmax = 4.20f, // V
+				.Cmax = 4.20f, // Ah
+
+				.Vmid = 3.40f, // V
+				.Cmid = 0.70f, // Ah
+
+				.Vlow = 3.20f, // V
+				.Clow = 0.50f, // Ah
+
+				.Vmin = 2.80f, // V
+        	},
+        	.battery =
+        	{
+        		.Imax     =  40.0f, //  40A
+				.Pmax     = 250.0f, // 250W
+
+				.ESR      = 0.100f, // Ohm
+
+        		.parallel =  2,     // 2P
+				.series   = 20,     // 20S
+        	},
+			.display = BAT_DISPLAY_PERCENT,
+        };
+        static uint32_t bat_length = sizeof(bat_profile_default);
 
         ProfileStatus const ret = profile_get_entry(
             "BAT", BAT_PROFILE_SIGNATURE,
@@ -56,6 +83,8 @@ void bat_init( BATProfile const * const profile )
         if (ret != PROFILE_STATUS_SUCCESS)
         {
             cli_reply( "BAT FAILED" "\r" "\n" );
+
+            profile_alloc_entry( "BAT", BAT_PROFILE_SIGNATURE, &bat_profile_default, &bat_length );
         }
     }
     else

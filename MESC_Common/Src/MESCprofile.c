@@ -581,10 +581,7 @@ ProfileStatus profile_get_entry(
                         ret = PROFILE_STATUS_ERROR_ENTRY_READONLY;
                     }
                 }
-                else if (
-                            (profile_entry[i].buffer == NULL)
-                        &&  (profile_entry[i].length == NULL)
-                        )
+                else
                 {
                     if (*length != profile_stub.entry[i].data_length)
                     {

@@ -60,22 +60,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     */
 }
 
-static void cmd_hall_dec( void )
-{
-    for (int i = 0; i < 6; i++)
-    {
-        foc_vars.hall_table[i][2] -= 100;
-    }
-}
-
-static void cmd_hall_inc( void )
-{
-    for (int i = 0; i < 6; i++)
-    {
-        foc_vars.hall_table[i][2] += 100;
-    }
-}
-
 static void cmd_hello( void )
 {
     cli_reply( "%s" "\r" "\n", "HELLO" );
@@ -117,8 +101,6 @@ void uart_init( void )
     cli_register_variable_rw( "Iq"        , &foc_vars.Idq_req[1]                   , sizeof(foc_vars.Idq_req[1]                   ), CLI_VARIABLE_FLOAT );
     cli_register_variable_ro( "Vbus"      , &measurement_buffers.ConvertedADC[0][1], sizeof(measurement_buffers.ConvertedADC[0][1]), CLI_VARIABLE_FLOAT );
 
-    cli_register_function( "hall_dec"     , cmd_hall_dec        );
-    cli_register_function( "hall_inc"     , cmd_hall_inc        );
     cli_register_function( "hello"        , cmd_hello           );
     cli_register_function( "param_setup"  , cmd_parameter_setup );
     cli_register_function( "reset"        , cmd_reset           );
