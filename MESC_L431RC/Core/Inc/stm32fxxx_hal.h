@@ -17,7 +17,7 @@
 /*
 Hardware identifiers
 */
-
+#define SINGLE_ADC
 #define MESC_GPIO_HALL GPIOC
 
 extern TIM_HandleTypeDef htim7;

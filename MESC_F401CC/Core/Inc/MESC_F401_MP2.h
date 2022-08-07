@@ -1,5 +1,5 @@
-#define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
-#define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!
+#define PWM_FREQUENCY 25000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
+#define HAS_PHASE_SENSORS //This is not actually true. Really needs to have phase sensors... Leaving this in because it enables tracking and PWM disabling for debug.
 //#define USE_DEADSHORT //This can be used in place of the phase sensors for startup from running.
 #define DEADSHORT_CURRENT 30.0f	//When recovering from tracking phase without phase sensors, the
 							//deadshort function will short the phases
@@ -10,27 +10,26 @@
 							//Only works for forward direction presently
 							//^^WIP, not completely stable yet
 
-
 //#define MISSING_UCURRSENSOR //You can run two current sensors ONLY if they are phase sensors.
 //#define MISSING_VCURRSENSOR //Running this with low side sensors may result in fire.
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
 
-#define SHUNT_POLARITY -1.0
+#define SOFTWARE_ADC_REGULAR
+#define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 130.0f
-#define ABS_MAX_BUS_VOLTAGE 45.0f
-#define ABS_MIN_BUS_VOLTAGE 12.0f
-#define R_SHUNT 0.0005f
+#define ABS_MAX_PHASE_CURRENT 60.0f
+#define ABS_MAX_BUS_VOLTAGE 32.0f
+#define ABS_MIN_BUS_VOLTAGE 10.0f
+#define R_SHUNT 0.00033f
 //ToDo need to define using a discrete opamp with resistors to set gain vs using one with a specified gain
-#define R_SHUNT_PULLUP 4700.0f //For discrete opamps
-#define R_SHUNT_SERIES_RESISTANCE 150.0f //For discrete opamps
-#define R_VBUS_BOTTOM 1500.0f //Phase and Vbus voltage sensors
-#define R_VBUS_TOP 82000.0f
-#define OPGAIN 16.0f
+
+#define R_VBUS_BOTTOM 33000.0f //Phase and Vbus voltage sensors
+#define R_VBUS_TOP 1000000.0f
+#define OPGAIN 10.0f
 
 
-#define MAX_ID_REQUEST 100.0f
-#define MAX_IQ_REQUEST 100.0f
+#define MAX_ID_REQUEST 10.0f
+#define MAX_IQ_REQUEST 50.0f
 
 #define I_MEASURE 30.0f //Higher setpoint for resistance measurement
 #define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
@@ -60,13 +59,12 @@
 
 //////Motor parameters
 #define DEFAULT_MOTOR_POWER 250.0f
-#define DEFAULT_FLUX_LINKAGE 0.0040f//Set this to the motor linkage in wB
-#define DEFAULT_MOTOR_Ld 0.0000004f //Henries
-#define DEFAULT_MOTOR_Lq 0.00000075f//Henries
-#define DEFAULT_MOTOR_R 0.0050f //Ohms
+#define DEFAULT_FLUX_LINKAGE 0.0038f //mWb
+#define DEFAULT_MOTOR_Ld 0.000005f //Henries
+#define DEFAULT_MOTOR_Lq 0.000005f//Henries
+#define DEFAULT_MOTOR_R 0.005f //Ohms
 //Use the Ebike Profile tool
-#define USE_PROFILE
-
+//#define USE_PROFILE
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
@@ -75,7 +73,7 @@
 #define HFI_TEST_CURRENT 20.0f
 
 
-#define USE_SQRT_CIRCLE_LIM
+//#define USE_SQRT_CIRCLE_LIM
 
 //#define USE_MTPA
 

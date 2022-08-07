@@ -1361,8 +1361,10 @@ static int cyclescountacc = 0;
     foc_vars.pwm_frequency =PWM_FREQUENCY;
     foc_vars.pwm_period = 1.0f/foc_vars.pwm_frequency;
     htim1.Instance->ARR = HAL_RCC_GetHCLKFreq()/(((float)htim1.Instance->PSC + 1.0f) * 2*foc_vars.pwm_frequency);
-    htim1.Instance->CCR4 = htim1.Instance->ARR-1;
-
+    htim1.Instance->CCR4 = htim1.Instance->ARR-2; //Just short of dead center (dead center will not actually trigger the conversion)
+    #ifdef SINGLE_ADC
+    htim1.Instance->CCR4 = htim1.Instance->ARR-50; //If we only have one ADC, we need to convert early otherwise the data will not be ready in time
+    #endif
     foc_vars.PWMmid = htim1.Instance->ARR * 0.5f;
 
     foc_vars.ADC_duty_threshold = htim1.Instance->ARR * 0.85f;
