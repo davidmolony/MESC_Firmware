@@ -799,12 +799,7 @@ static int cyclescountacc = 0;
     static int i = 0;
     if (i == 0) {  // set or release the PID controller; may want to do this for
                    // cycle skipping, which may help for high inductance motors
-      // Bounding
 
-        if (foc_vars.Idq_int_err[0] > foc_vars.Vdint_max){foc_vars.Idq_int_err[0] = foc_vars.Vdint_max;}
-        if (foc_vars.Idq_int_err[0] < -foc_vars.Vdint_max){foc_vars.Idq_int_err[0] = -foc_vars.Vdint_max;}
-        if (foc_vars.Idq_int_err[1] > foc_vars.Vqint_max){foc_vars.Idq_int_err[1] = foc_vars.Vqint_max;}
-        if (foc_vars.Idq_int_err[1] < -foc_vars.Vqint_max){foc_vars.Idq_int_err[1] = -foc_vars.Vqint_max;}
 
         // Apply the PID, and potentially smooth the output for noise - sudden
       // changes in VDVQ may be undesirable for some motors. Integral error is
@@ -819,11 +814,14 @@ static int cyclescountacc = 0;
       float Vmagnow2 = foc_vars.Vdq[0]*foc_vars.Vdq[0]+foc_vars.Vdq[1]*foc_vars.Vdq[1];
       //Check if the vector length is greater than the available voltage
       if(Vmagnow2>foc_vars.Vmag_max2){
-      float Vmagnow = sqrtf(Vmagnow2);
-      float one_on_Vmagnow = 1/Vmagnow;
-      foc_vars.Vdq[0] = foc_vars.Vdq[0]*foc_vars.Vmag_max*one_on_Vmagnow;
-      foc_vars.Vdq[1] = foc_vars.Vdq[1]*foc_vars.Vmag_max*one_on_Vmagnow;
-      }
+		  float Vmagnow = sqrtf(Vmagnow2);
+		  float one_on_Vmagnow = 1/Vmagnow;
+		  float one_on_VmagnowxVmagmax = foc_vars.Vmag_max*one_on_Vmagnow;
+		  foc_vars.Vdq[0] = foc_vars.Vdq[0]*one_on_VmagnowxVmagmax;
+		  foc_vars.Vdq[1] = foc_vars.Vdq[1]*one_on_VmagnowxVmagmax;
+		  foc_vars.Idq_int_err[0] = foc_vars.Idq_int_err[0]*one_on_VmagnowxVmagmax;
+		  foc_vars.Idq_int_err[1] = foc_vars.Idq_int_err[1]*one_on_VmagnowxVmagmax;
+}
 #else
       // These limits are experimental, but result in close to 100% modulation.
       // Since Vd and Vq are orthogonal, limiting Vd is not especially helpful
@@ -833,6 +831,12 @@ static int cyclescountacc = 0;
       // BEMF pushing against Vd and so it does not scale with RPM (except for
       // cross coupling).
 
+      // Bounding integral
+        if (foc_vars.Idq_int_err[0] > foc_vars.Vdint_max){foc_vars.Idq_int_err[0] = foc_vars.Vdint_max;}
+        if (foc_vars.Idq_int_err[0] < -foc_vars.Vdint_max){foc_vars.Idq_int_err[0] = -foc_vars.Vdint_max;}
+        if (foc_vars.Idq_int_err[1] > foc_vars.Vqint_max){foc_vars.Idq_int_err[1] = foc_vars.Vqint_max;}
+        if (foc_vars.Idq_int_err[1] < -foc_vars.Vqint_max){foc_vars.Idq_int_err[1] = -foc_vars.Vqint_max;}
+      //Bounding output
       if (foc_vars.Vdq[0] > foc_vars.Vd_max)
         (foc_vars.Vdq[0] = foc_vars.Vd_max);
       if (foc_vars.Vdq[0] < -foc_vars.Vd_max)
@@ -847,19 +851,6 @@ static int cyclescountacc = 0;
 
     }
     i = i - 1;
-//    if (foc_vars.inject) {
-//      if (foc_vars.inject_high_low_now == 0) {
-//        foc_vars.Vdq[0] = foc_vars.Vdq[0] + foc_vars.Vd_injectionV;
-//        foc_vars.Vdq[1] = foc_vars.Vdq[1] + foc_vars.Vq_injectionV;
-//        Idq[0][0] = foc_vars.Idq[0];
-//        Idq[0][1] = foc_vars.Idq[1];
-//      } else if (foc_vars.inject_high_low_now == 1) {
-//        foc_vars.Vdq[0] = foc_vars.Vdq[0] - foc_vars.Vd_injectionV;
-//        foc_vars.Vdq[1] = foc_vars.Vdq[1] - foc_vars.Vq_injectionV;
-//        Idq[1][0] = foc_vars.Idq[0];
-//        Idq[1][1] = foc_vars.Idq[1];
-//      }
-//    }
   }
 
   static float mid_value = 0;
