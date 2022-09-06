@@ -1348,6 +1348,9 @@ static int cyclescountacc = 0;
     htim1.Instance->CCER |= TIM_CCER_CC3NE;  // enable
   }
 
+#ifndef CURRENT_BANDWIDTH
+#define CURRENT_BANDWIDTH 5000.0f
+#endif
   void calculateGains() {
     foc_vars.pwm_frequency =PWM_FREQUENCY;
     foc_vars.pwm_period = 1.0f/foc_vars.pwm_frequency;
@@ -1360,14 +1363,13 @@ static int cyclescountacc = 0;
 
     foc_vars.ADC_duty_threshold = htim1.Instance->ARR * 0.85f;
 
-    foc_vars.Id_pgain = 10000.0f * motor.Lphase;  // 10000rads-1, hardcoded for now, * motorL
+    foc_vars.Id_pgain = CURRENT_BANDWIDTH * motor.Lphase;
 
     foc_vars.Id_igain = motor.Rphase / motor.Lphase;
     // Pole zero cancellation for series PI control
 
     foc_vars.Iq_pgain = foc_vars.Id_pgain;
     foc_vars.Iq_igain = foc_vars.Id_igain;
-//    foc_vars.Vdqres_to_Vdq = 0.333f * measurement_buffers.ConvertedADC[0][1] / 677.0f; //ToDo delete. Dud, old, I think?
     foc_vars.field_weakening_curr_max = FIELD_WEAKENING_CURRENT;  // test number, to be stored in user settings
   motor.Lqd_diff = motor.Lqphase-motor.Lphase;
   }

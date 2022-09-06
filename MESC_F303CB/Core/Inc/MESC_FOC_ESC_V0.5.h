@@ -17,8 +17,8 @@
 
 #define SHUNT_POLARITY -1.0
 
-#define ABS_MAX_PHASE_CURRENT 130.0f
-#define ABS_MAX_BUS_VOLTAGE 45.0f
+#define ABS_MAX_PHASE_CURRENT 150.0f
+#define ABS_MAX_BUS_VOLTAGE 88.0f
 #define ABS_MIN_BUS_VOLTAGE 12.0f
 #define R_SHUNT 0.0005f
 //ToDo need to define using a discrete opamp with resistors to set gain vs using one with a specified gain
@@ -30,7 +30,7 @@
 
 
 #define MAX_ID_REQUEST 100.0f
-#define MAX_IQ_REQUEST 100.0f
+#define MAX_IQ_REQUEST 120.0f
 
 #define I_MEASURE 30.0f //Higher setpoint for resistance measurement
 #define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
@@ -48,8 +48,8 @@
 
 
 	/////////////////ADC///////////////
-#define  ADC1MIN 1200
-#define  ADC1MAX 2700
+#define  ADC1MIN 800
+#define  ADC1MAX 2500
 #define  ADC2MIN 1200
 #define  ADC2MAX 4095
 
@@ -60,19 +60,25 @@
 
 //////Motor parameters
 #define DEFAULT_MOTOR_POWER 250.0f
-#define DEFAULT_FLUX_LINKAGE 0.0040f//Set this to the motor linkage in wB
-#define DEFAULT_MOTOR_Ld 0.0000004f //Henries
-#define DEFAULT_MOTOR_Lq 0.00000075f//Henries
-#define DEFAULT_MOTOR_R 0.0050f //Ohms
+#define DEFAULT_FLUX_LINKAGE 0.0260f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000131f //Henries
+#define DEFAULT_MOTOR_Lq 0.000160f//Henries
+#define DEFAULT_MOTOR_R 0.051f //Ohms
 //Use the Ebike Profile tool
 #define USE_PROFILE
 
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
+//#define USE_HFI
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 20.0f
+
+#ifdef USE_HFI
+#define CURRENT_BANDWIDTH 1000.0f //HFI does not work if the current controller is strong enough to squash the HFI
+#else
+#define CURRENT_BANDWIDTH 5000.0f
+#endif
 
 
 #define USE_SQRT_CIRCLE_LIM

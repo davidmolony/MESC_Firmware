@@ -72,6 +72,11 @@
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 20.0f
 
+#ifdef USE_HFI
+#define CURRENT_BANDWIDTH 1000.0f //HFI does not work if the current controller is strong enough to squash the HFI
+#else
+#define CURRENT_BANDWIDTH 5000.0f
+#endif
 
 //#define USE_SQRT_CIRCLE_LIM
 
