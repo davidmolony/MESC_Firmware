@@ -78,7 +78,7 @@
 #define CURRENT_BANDWIDTH 5000.0f
 #endif
 
-#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
+//#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
 
 #define USE_SQRT_CIRCLE_LIM
 
