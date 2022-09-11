@@ -17,8 +17,8 @@
 #define SOFTWARE_ADC_REGULAR
 #define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 60.0f
-#define ABS_MAX_BUS_VOLTAGE 32.0f
+#define ABS_MAX_PHASE_CURRENT 220.0f
+#define ABS_MAX_BUS_VOLTAGE 76.0f
 #define ABS_MIN_BUS_VOLTAGE 10.0f
 #define R_SHUNT 0.00033f
 //ToDo need to define using a discrete opamp with resistors to set gain vs using one with a specified gain
@@ -29,7 +29,7 @@
 
 
 #define MAX_ID_REQUEST 10.0f
-#define MAX_IQ_REQUEST 50.0f
+#define MAX_IQ_REQUEST 200.0f
 
 #define I_MEASURE 30.0f //Higher setpoint for resistance measurement
 #define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
@@ -68,7 +68,7 @@
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
+//#define USE_HFI
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 20.0f
 
@@ -78,6 +78,7 @@
 #define CURRENT_BANDWIDTH 5000.0f
 #endif
 
+#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
 
 #define USE_SQRT_CIRCLE_LIM
 

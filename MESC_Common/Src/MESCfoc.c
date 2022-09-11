@@ -607,7 +607,11 @@ static int cyclescountacc = 0;
         //Run PLL for speed
     	foc_vars.angle_error = foc_vars.angle_error-0.1f*(int16_t)((foc_vars.angle_error+(int)(foc_vars.FOCAngle - angle)));
     	foc_vars.eHz = foc_vars.angle_error * foc_vars.pwm_frequency/65536.0f;
+#ifdef DO_OPENLOOP
+    foc_vars.FOCAngle = foc_vars.FOCAngle+60;
+#else
     foc_vars.FOCAngle = angle;
+#endif
     }
 
 #ifdef USE_ENCODER
