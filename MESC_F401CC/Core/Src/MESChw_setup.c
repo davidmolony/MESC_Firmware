@@ -206,7 +206,7 @@ void mesc_init_3( void )
 	
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-	
+	generateBreak(); //avoid a spurious pulse on startup
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 
 	HAL_ADCEx_InjectedStart(&hadc1);

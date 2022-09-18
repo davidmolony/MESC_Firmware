@@ -1,4 +1,4 @@
-#define PWM_FREQUENCY 25000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
+#define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
 #define HAS_PHASE_SENSORS //This is not actually true. Really needs to have phase sensors... Leaving this in because it enables tracking and PWM disabling for debug.
 //#define USE_DEADSHORT //This can be used in place of the phase sensors for startup from running.
 #define DEADSHORT_CURRENT 30.0f	//When recovering from tracking phase without phase sensors, the
@@ -14,6 +14,12 @@
 //#define MISSING_VCURRSENSOR //Running this with low side sensors may result in fire.
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
 
+#define DEADTIME_COMP
+#define DEADTIME_COMP_V 18 	//Arbitrary value for now, needs parametising.
+							//Basically this is half the time between MOSoff and MOSon
+							//and needs dtermining experimentally, either with openloop
+							//sin wave drawing or by finding the zero current switching "power knee point"
+
 #define SOFTWARE_ADC_REGULAR
 #define SHUNT_POLARITY -1.0f
 
@@ -25,11 +31,11 @@
 
 #define R_VBUS_BOTTOM 33000.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 1000000.0f
-#define OPGAIN 10.0f
+#define OPGAIN 10.5f
 
 
 #define MAX_ID_REQUEST 10.0f
-#define MAX_IQ_REQUEST 200.0f
+#define MAX_IQ_REQUEST 100.0f
 
 #define I_MEASURE 30.0f //Higher setpoint for resistance measurement
 #define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
@@ -75,7 +81,7 @@
 #ifdef USE_HFI
 #define CURRENT_BANDWIDTH 1000.0f //HFI does not work if the current controller is strong enough to squash the HFI
 #else
-#define CURRENT_BANDWIDTH 5000.0f
+#define CURRENT_BANDWIDTH 10000.0f
 #endif
 
 //#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
@@ -86,7 +92,7 @@
 
 /////Related to observer
 #define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
-#define MAX_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*2.0f //Sets the limits for tracking.
+#define MAX_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*1.20f //Sets the limits for tracking.
 #define MIN_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*0.7f//Faster convergence with closer start points
 #define FLUX_LINKAGE_GAIN 10.0f * sqrtf(DEFAULT_FLUX_LINKAGE)//*(DEFAULT_FLUX_LINKAGE*DEFAULT_FLUX_LINKAGE)*PWM_FREQUENCY
 

@@ -508,6 +508,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
       foc_vars.Iab[1] =
           one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][FOC_CHANNEL_PHASE_I] -
           one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][FOC_CHANNEL_PHASE_I];
+      foc_vars.Iab[2] = measurement_buffers.ConvertedADC[ADCIU][FOC_CHANNEL_PHASE_I] +measurement_buffers.ConvertedADC[ADCIV][FOC_CHANNEL_PHASE_I]+measurement_buffers.ConvertedADC[ADCIW][FOC_CHANNEL_PHASE_I];
     }
 
     // Park
@@ -858,11 +859,11 @@ static int cyclescountacc = 0;
   }
 
   static float mid_value = 0;
-
   float top_value;
   float bottom_value;
+ uint16_t deadtime_comp = DEADTIME_COMP_V;
 
-  void writePWM() {
+ void writePWM() {
     // Now we update the sin and cos values, since when we do the inverse
     // transforms, we would like to use the most up to date versions(or even the
     // next predicted version...)
@@ -912,6 +913,27 @@ static int cyclescountacc = 0;
         foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[1] + mid_value);
     htim1.Instance->CCR3 = (uint16_t)(
         foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[2] + mid_value);
+
+    //Dead time compensation
+#ifdef DEADTIME_COMP
+    // LICENCE NOTE:
+    	  // This function deviates slightly from the BSD 3 clause licence.
+    	  // The work here is entirely original to the MESC FOC project, and not based
+    	  // on any appnotes, or borrowed from another project. This work is free to
+    	  // use, as granted in BSD 3 clause, with the exception that this note must
+    	  // be included in where this code is implemented/modified to use your
+    	  // variable names, structures containing variables or other minor
+    	  // rearrangements in place of the original names I have chosen, and credit
+    	  // to David Molony as the original author must be noted.
+
+    if(measurement_buffers.ConvertedADC[0][0] < -0.30f){htim1.Instance->CCR1 = htim1.Instance->CCR1-deadtime_comp;}
+    if(measurement_buffers.ConvertedADC[1][0] < -0.30f){htim1.Instance->CCR2 = htim1.Instance->CCR2-deadtime_comp;}
+    if(measurement_buffers.ConvertedADC[2][0] < -0.30f){htim1.Instance->CCR3 = htim1.Instance->CCR3-deadtime_comp;}
+    if(measurement_buffers.ConvertedADC[0][0] > 0.30f){htim1.Instance->CCR1 = htim1.Instance->CCR1+deadtime_comp;}
+    if(measurement_buffers.ConvertedADC[1][0] > 0.30f){htim1.Instance->CCR2 = htim1.Instance->CCR2+deadtime_comp;}
+    if(measurement_buffers.ConvertedADC[2][0] > 0.30f){htim1.Instance->CCR3 = htim1.Instance->CCR3+deadtime_comp;}
+
+#endif
   }
 
   // Here we set all the PWMoutputs to LOW, without triggering the timerBRK,
