@@ -15,7 +15,7 @@
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
 
 #define DEADTIME_COMP
-#define DEADTIME_COMP_V 18 	//Arbitrary value for now, needs parametising.
+#define DEADTIME_COMP_V 40 	//Arbitrary value for now, needs parametising.
 							//Basically this is half the time between MOSoff and MOSon
 							//and needs dtermining experimentally, either with openloop
 							//sin wave drawing or by finding the zero current switching "power knee point"

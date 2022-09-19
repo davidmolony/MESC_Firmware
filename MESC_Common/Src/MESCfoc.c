@@ -283,9 +283,7 @@ void fastLoop() {
       break;
 
     case MOTOR_STATE_ERROR:
-      generateBreak();  // Generate a break state (software disabling all PWM
-                        // phases, hardware OVCP reserved for fatal situations
-                        // requiring reset)
+      generateBreak();  // Generate a break state (software disabling all PWM)
                         // Now panic and freak out
       break;
 
@@ -293,9 +291,20 @@ void fastLoop() {
       // Turn on at a given voltage at electricalangle0;
       break;
     case MOTOR_STATE_TEST:
+    	if(TestMode == TEST_TYPE_DOUBLE_PULSE){
       // Double pulse test
       doublePulseTest();
+    	}else if(TestMode == TEST_TYPE_DEAD_TIME_IDENT){
+    	//Here we are going to pull all phases low, and then increase the duty on one phase until we register a current response.
+    	//This duty represents the dead time during which there is no current response
+    		getDeadtime();
+    	}else if(TestMode == TEST_TYPE_HARDWARE_VERIFICATION){
+    		//Here we want a function that pulls all phases low, then all high and verifies a response
+    		//Then we want to show a current response with increasing phase duty
+
+    	}
       break;
+
     case MOTOR_STATE_RECOVERING:
 
 	      deadshort(); //Function to startup motor from running without phase sensors
@@ -1619,7 +1628,7 @@ if(foc_vars.Idq_req[1]<input_vars.min_request_Idq[1]){foc_vars.Idq_req[1] = inpu
 
     //////Set tracking
 static int was_last_tracking;
-if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(MotorState==MOTOR_STATE_GET_KV))){
+if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(MotorState==MOTOR_STATE_GET_KV)||(MotorState==MOTOR_STATE_TEST))){
 if(fabsf(foc_vars.Idq_req[1])>0.1f){
 	if(MotorState != MOTOR_STATE_ERROR){
 #ifdef HAS_PHASE_SENSORS //We can go straight to RUN if we have been tracking with phase sensors
@@ -1838,4 +1847,52 @@ was_last_tracking = 1;
   //    HAL_Delay(500);
 #endif
   }
+uint16_t test_on_time;
+uint16_t test_on_time_acc[3];
+uint16_t test_counts;
+  void getDeadtime(){
+	  static int use_phase = 0;
+
+	  if(measurement_buffers.ConvertedADC[use_phase][0]<1.0f){ test_on_time=test_on_time+1;}
+	  if(measurement_buffers.ConvertedADC[use_phase][0]>1.0f){ test_on_time=test_on_time-1;}
+	  if(test_on_time<1){test_on_time = 1;}
+
+		if(use_phase==0){
+		htim1.Instance->CCR1 = test_on_time;
+		htim1.Instance->CCR2 = 0;
+		htim1.Instance->CCR3 = 0;
+		generateEnable();
+		test_on_time_acc[0] = test_on_time_acc[0]+test_on_time;
+		}
+		if(use_phase==1){
+			htim1.Instance->CCR1 = 0;
+			htim1.Instance->CCR2 = test_on_time;
+			htim1.Instance->CCR3 = 0;
+			generateEnable();
+			test_on_time_acc[1] = test_on_time_acc[1]+test_on_time;
+		}
+		if(use_phase==2){
+			htim1.Instance->CCR1 = 0;
+			htim1.Instance->CCR2 = 0;
+			htim1.Instance->CCR3 = test_on_time;
+			generateEnable();
+			test_on_time_acc[2] = test_on_time_acc[2]+test_on_time;
+		}
+		if(use_phase>2){
+			generateBreak();
+			MotorState = MOTOR_STATE_TRACKING;
+			use_phase = 0;
+			test_on_time_acc[0] = test_on_time_acc[0]>>10;
+			test_on_time_acc[1] = test_on_time_acc[1]>>10;
+			test_on_time_acc[2] = test_on_time_acc[2]>>10;
+			deadtime_comp = test_on_time_acc[0];
+		}
+		test_counts++;
+
+	if(test_counts>511){
+		use_phase++;
+	test_counts = 0;
+	}
+  }
+
   // clang-format on

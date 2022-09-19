@@ -293,5 +293,5 @@ void slowLoop(TIM_HandleTypeDef *htim);
 void MESCTrack();
 void deadshort();
 void tle5012();
-
+void getDeadtime();
 #endif

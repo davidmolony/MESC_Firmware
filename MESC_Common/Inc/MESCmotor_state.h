@@ -28,7 +28,6 @@
 #include "stm32fxxx_hal.h"
 
 typedef enum {
-  // fixme: why do you assign enum values explicitly? Do they have meaning?
   MOTOR_STATE_IDLE = 0,
   // All PWM should be off state, nothing happening. Motor may be spinning
   // freely
@@ -86,6 +85,13 @@ typedef enum {
 } motor_sensor_mode_e;
 
 extern motor_sensor_mode_e MotorSensorMode;
+
+typedef enum {
+TEST_TYPE_DEAD_TIME_IDENT,
+TEST_TYPE_DOUBLE_PULSE,
+TEST_TYPE_HARDWARE_VERIFICATION,
+} test_mode_e;
+extern test_mode_e TestMode;
 
 typedef enum {
   MOTOR_ERROR_NONE,
