@@ -45,8 +45,8 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
     // Target is 20000 guard is +-10000
     if ((ICVals[0] < 10000) || (30000 < ICVals[0])) {
       BLDCVars.ReqCurrent = 0;
-      foc_vars.Idq_req[0] = 0;
-      foc_vars.Idq_req[1] = 0;
+      foc_vars.Idq_req.d = 0;
+      foc_vars.Idq_req.q = 0;
     }
 
     else if (ICVals[0] != 0) {
@@ -63,23 +63,23 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
       if (1) {  // Current control, ToDo convert to Enum
         if (ICVals[1] > 1600) {
           BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 5.0;
-          foc_vars.Idq_req[0] = 0;
-          foc_vars.Idq_req[1] = ((float)ICVals[1] - 1600) / 5.0;
+          foc_vars.Idq_req.d = 0;
+          foc_vars.Idq_req.q = ((float)ICVals[1] - 1600) / 5.0;
         }
         // Crude hack, which gets current scaled to +/-80A
         // based on 1000-2000us PWM in
         else if (ICVals[1] < 1400) {
           BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 5.0;
-          foc_vars.Idq_req[0] = 0;
-          foc_vars.Idq_req[1] = ((float)ICVals[1] - 1400) / 5.0;
+          foc_vars.Idq_req.d = 0;
+          foc_vars.Idq_req.q = ((float)ICVals[1] - 1400) / 5.0;
         }
         // Crude hack, which gets current scaled to +/-80A
         // based on 1000-2000us PWM in
         else {
           static float currentset = 0;
           BLDCVars.ReqCurrent = 0;
-          foc_vars.Idq_req[0] = 0;
-          foc_vars.Idq_req[1] = currentset;
+          foc_vars.Idq_req.d = 0;
+          foc_vars.Idq_req.q = currentset;
         }
       }
     }

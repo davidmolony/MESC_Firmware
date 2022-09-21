@@ -104,13 +104,13 @@ static void cmd_test( void )
 }
 static void cmd_iqup( void )
 {
-	input_vars.Idq_req_UART[1] = input_vars.Idq_req_UART[1]+1.0f;
-cli_reply( "%s%f" "\r" "\n", "Iq",foc_vars.Idq_req[1] );
+	input_vars.Idq_req_UART.q = input_vars.Idq_req_UART.q+1.0f;
+cli_reply( "%s%f" "\r" "\n", "Iq",foc_vars.Idq_req.q );
 }
 static void cmd_iqdown( void )
 {
-input_vars.Idq_req_UART[1] = input_vars.Idq_req_UART[1]-1.0f;
-cli_reply( "%s%f" "\r" "\n", "Iq",foc_vars.Idq_req[1] );
+input_vars.Idq_req_UART.q = input_vars.Idq_req_UART.q-1.0f;
+cli_reply( "%s%f" "\r" "\n", "Iq",foc_vars.Idq_req.q );
 }
 static void cmd_measure( void )
 {
@@ -120,9 +120,9 @@ static void cmd_measure( void )
 
 void uart_init( void )
 {
-	cli_register_variable_rw( "Idq_req", &input_vars.Idq_req_UART[1], sizeof(input_vars.Idq_req_UART[1]), CLI_VARIABLE_FLOAT );
-    cli_register_variable_rw( "Id"       , &foc_vars.Idq_req[0]                   , sizeof(foc_vars.Idq_req[0]                   ), CLI_VARIABLE_FLOAT );
-    cli_register_variable_rw( "Iq"        , &foc_vars.Idq_req[1]                   , sizeof(foc_vars.Idq_req[1]                   ), CLI_VARIABLE_FLOAT );
+	cli_register_variable_rw( "Idq_req", &input_vars.Idq_req_UART.q, sizeof(input_vars.Idq_req_UART.q), CLI_VARIABLE_FLOAT );
+    cli_register_variable_rw( "Id"       , &foc_vars.Idq_req.d                   , sizeof(foc_vars.Idq_req.d                   ), CLI_VARIABLE_FLOAT );
+    cli_register_variable_rw( "Iq"        , &foc_vars.Idq_req.q                   , sizeof(foc_vars.Idq_req.q                   ), CLI_VARIABLE_FLOAT );
     cli_register_variable_ro( "Vbus"      , &measurement_buffers.ConvertedADC[0][1], sizeof(measurement_buffers.ConvertedADC[0][1]), CLI_VARIABLE_FLOAT );
 
     cli_register_function( "hall_dec"     , cmd_hall_dec        );
