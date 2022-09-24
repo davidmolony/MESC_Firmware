@@ -1,5 +1,6 @@
+
 /*
-* Copyright 2021-2022 cod3b453
+* Copyright 2021-2022 David Molony
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -26,37 +27,50 @@
 * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#ifndef INC_MESCERROR_H_
+#define INC_MESCERROR_H_
 
-#ifndef MESC_MOTOR_H
-#define MESC_MOTOR_H
+//Includes
+#include "stm32fxxx_hal.h"
 
-#include <inttypes.h>
+//Variables
 
-#define MOTOR_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','M','P','E')
-
-struct MOTORProfile
+struct MESC_log_vars
 {
-    float       Imax;         // Amp
-    float       Vmax;         // Volt
-    float       Pmax;         // Watt
-    uint32_t    RPMmax;       // 1/seconds
-    uint8_t     pole_pairs;
-    uint8_t     direction;
-    uint8_t     _[2];
-    float       L_D;          // Henry
-    float       L_Q;          // Henry
-    float       R;            // Ohm
-    float       flux_linkage; // Weber
-    float       flux_linkage_min;
-    float       flux_linkage_max;
-    float       flux_linkage_gain;
-    float       non_linear_centering_gain;
+	float current_A;
+	float current_C;
+	float current_B;
+	float voltage;
+	int count;
 };
 
-typedef struct MOTORProfile MOTORProfile;
 
-extern MOTORProfile  * motor_profile;
 
-void motor_init( MOTORProfile const * const profile );
+//Define anticipated errors possible, not all will be implemented
+#define ERROR_OVERCURRENT_PHA 1
+#define ERROR_OVERCURRENT_PHB 2
+#define ERROR_OVERCURRENT_PHC 3
+#define ERROR_OVERVOLTAGE 4
+#define ERROR_UNDERVOLTAGE 5
+#define ERROR_BRK 6
+#define ERROR_OVERTEMPA 7
+#define ERROR_OVERTEMPB 8
+#define ERROR_OVERTEMPC 9
+#define ERROR_OVERTEMP_MOTOR 10
+#define ERROR_HARDFAULT 11
+#define ERROR_BUSFAULT 12
+#define ERROR_NMI 13
+#define ERROR_MEMFAULT 14
+#define ERROR_USAGE 15
+#define ERROR_ADC_OUT_OF_RANGE_IA 16
+#define ERROR_ADC_OUT_OF_RANGE_IB 17
+#define ERROR_ADC_OUT_OF_RANGE_IC 18
+#define ERROR_ADC_OUT_OF_RANGE_VBUS 19
+#define ERROR_WDG 20
+#define ERROR_UNBALANCED_CURRENT 21
+#define ERROR_MEASUREMENT_FAIL 22
+#define ERROR_DETECTION_FAIL 23
+#define ERROR_HALL0 24
+#define ERROR_HALL7 25
 
-#endif
+#endif /* INC_MESCERROR_H_ */

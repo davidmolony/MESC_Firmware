@@ -36,7 +36,7 @@
 
 #include <stdint.h>
 
-MOTORProfile const * motor_profile = NULL;
+MOTORProfile  * motor_profile = NULL;
 
 void motor_init( MOTORProfile const * const profile )
 {
