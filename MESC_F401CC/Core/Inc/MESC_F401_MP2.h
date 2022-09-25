@@ -15,7 +15,7 @@
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
 
 #define DEADTIME_COMP
-#define DEADTIME_COMP_V 40 	//Arbitrary value for now, needs parametising.
+#define DEADTIME_COMP_V 20 	//Arbitrary value for now, needs parametising.
 							//Basically this is half the time between MOSoff and MOSon
 							//and needs dtermining experimentally, either with openloop
 							//sin wave drawing or by finding the zero current switching "power knee point"
@@ -39,6 +39,7 @@
 
 #define I_MEASURE 30.0f //Higher setpoint for resistance measurement
 #define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
+#define ERPM_MEASURE 5000
 
 ////////////////////USER DEFINES//////////////////
 	///////////////////RCPWM//////////////////////
@@ -84,7 +85,7 @@
 #define CURRENT_BANDWIDTH 10000.0f
 #endif
 
-//#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
+#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
 
 #define USE_SQRT_CIRCLE_LIM
 

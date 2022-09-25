@@ -1,5 +1,6 @@
+
 /*
-* Copyright 2021-2022 cod3b453
+* Copyright 2021-2022 David Molony
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -27,36 +28,44 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MESC_MOTOR_H
-#define MESC_MOTOR_H
+#include "MESCerror.h"
+#include "MESCfoc.h"
+#include "MESCmotor_state.h"
 
-#include <inttypes.h>
+//externs
+extern TIM_HandleTypeDef htim1;
 
-#define MOTOR_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','M','P','E')
+//Variables
+ struct MESC_log_vars error_log;
+ uint32_t MESC_errors; //This is a bitwise uint32_t representation of the errors that have occurred.
 
-struct MOTORProfile
-{
-    float       Imax;         // Amp
-    float       Vmax;         // Volt
-    float       Pmax;         // Watt
-    uint32_t    RPMmax;       // 1/seconds
-    uint8_t     pole_pairs;
-    uint8_t     direction;
-    uint8_t     _[2];
-    float       L_D;          // Henry
-    float       L_Q;          // Henry
-    float       R;            // Ohm
-    float       flux_linkage; // Weber
-    float       flux_linkage_min;
-    float       flux_linkage_max;
-    float       flux_linkage_gain;
-    float       non_linear_centering_gain;
-};
+void handleError(uint32_t error_code){
+	generateBreak(); //Always generate a break when something bad happens
+	MotorState = MOTOR_STATE_ERROR;
+	//Log the nature of the fault
+	MESC_errors|= (0b01<<(error_code-1));
+	if(error_log.count<1){ //only log the first error
+	error_log.current_A = measurement_buffers.ConvertedADC[0][0];
+	error_log.current_B = measurement_buffers.ConvertedADC[1][0];
+	error_log.current_C = measurement_buffers.ConvertedADC[2][0];
+	error_log.voltage = measurement_buffers.ConvertedADC[0][1];
+	}
+	error_log.count += 1;
+}
 
-typedef struct MOTORProfile MOTORProfile;
+void clearErrors(){
+	MESC_errors = 0;
+}
 
-extern MOTORProfile  * motor_profile;
+//Observe caution when using this function, BRK hypothetically occurs after a disastrous error.
+void clearBRK(){
+	//If the requested current is zero then sensible to proceed
+	if((foc_vars.Idq_req.q+foc_vars.Idq_req.d)==0.0f){
+	//Generate a break, and set the mode to tracking to enable a chance of safe restart and recovery
+		generateBreak();
+		//Need to set the MOE bit high to re-enable the timer
+		htim1.Instance->BDTR |= (0b01);
+		MotorState = MOTOR_STATE_TRACKING;
+	}
 
-void motor_init( MOTORProfile const * const profile );
-
-#endif
+}

@@ -229,6 +229,8 @@ extern input_vars_t input_vars;
 
 void MESCInit();
 void InputInit();
+void initialiseInverter();
+
 void MESC_PWM_IRQ_handler(); //Put this into the PWM interrupt,
 							//(or less optimally) ADC conversion complete interrupt
 							//If using ADC interrupt, may want to get ADC to convert on top and bottom of PWM
