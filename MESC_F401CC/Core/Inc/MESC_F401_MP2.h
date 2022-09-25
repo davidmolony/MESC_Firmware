@@ -105,5 +105,5 @@
 #define USE_CLAMPED_OBSERVER_CENTERING //Pick one of the two centering methods... preferably this one
 
 
-#define USB
+#define MESC_UART_USB 		MESC_USB
 #define HW_UART huart1

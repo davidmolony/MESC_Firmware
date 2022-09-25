@@ -896,7 +896,7 @@ static void cli_reply_begin( void )
     cli_reply_buffer_offset = 0;
 }
 
-void cli_reply_close( void )
+static void cli_reply_close( void )
 {
     if (cli_reply_buffer_offset > 0)
     {

@@ -34,22 +34,30 @@
 #include "MESCfoc.h"
 #include "MESCmotor_state.h"
 
-#ifdef USB
+#if MESC_UART_USB
 #include "usbd_cdc_if.h"
+#else
+extern UART_HandleTypeDef HW_UART;
 #endif
 
-extern UART_HandleTypeDef HW_UART;
+
 extern TIM_HandleTypeDef  htim1;
 
 static uint8_t UART_rx_buffer[2];
 
 extern uint8_t b_read_flash;
 
-#ifdef USB
-static void uart_ack( void )
+#if MESC_UART_USB
+static void usb_ack( void )
 {
 
 }
+
+HAL_StatusTypeDef HAL_USB_Transmit(UART_HandleTypeDef *husb, const uint8_t *pData, uint16_t Size){
+	CDC_Transmit_FS((uint8_t*)pData, Size);
+	return HAL_OK;
+}
+
 #else
 static void uart_ack( void )
 {
@@ -81,10 +89,6 @@ void USB_CDC_Callback(uint8_t *buffer, uint32_t len){
 		cli_process( buffer[i] );
 	}
 
-}
-
-HAL_StatusTypeDef HAL_USB_Transmit(UART_HandleTypeDef *husb, const uint8_t *pData, uint16_t Size){
-	CDC_Transmit_FS((uint8_t*)pData, Size);
 }
 
 static void cmd_hall_dec( void )
@@ -162,8 +166,8 @@ void uart_init( void )
     cli_register_function( "a"         , cmd_iqdown            	);
     cli_register_function( "Measure"   , cmd_measure            );
 
-#ifdef USB
-    cli_register_io( NULL, (int(*)(void *,void *,uint16_t))HAL_USB_Transmit, uart_ack );
+#if MESC_UART_USB
+    cli_register_io( NULL, (int(*)(void *,void *,uint16_t))HAL_USB_Transmit, usb_ack );
 
 #else
     cli_register_io( &HW_UART, (int(*)(void *,void *,uint16_t))HAL_UART_Transmit_DMA, uart_ack );
