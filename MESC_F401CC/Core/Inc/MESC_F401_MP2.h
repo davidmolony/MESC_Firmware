@@ -1,7 +1,7 @@
-#define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
+#define PWM_FREQUENCY 30000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
 #define HAS_PHASE_SENSORS //This is not actually true. Really needs to have phase sensors... Leaving this in because it enables tracking and PWM disabling for debug.
 //#define USE_DEADSHORT //This can be used in place of the phase sensors for startup from running.
-#define DEADSHORT_CURRENT 30.0f	//When recovering from tracking phase without phase sensors, the
+#define DEADSHORT_CURRENT 10.0f	//When recovering from tracking phase without phase sensors, the
 							//deadshort function will short the phases
 							//until the current exceeds this value. At this point, it calculates the Vd Vq and phase angle
 							//Don't set too high, after 9PWM periods, it will run the calc and start the motor regardless.
@@ -34,12 +34,11 @@
 #define OPGAIN 10.5f
 
 
-#define MAX_ID_REQUEST 10.0f
-#define MAX_IQ_REQUEST 100.0f
+#define MAX_ID_REQUEST 20.0f
+#define MAX_IQ_REQUEST 20.0f
 
-#define I_MEASURE 30.0f //Higher setpoint for resistance measurement
+#define I_MEASURE 5.0f //Higher setpoint for resistance measurement
 #define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
-#define ERPM_MEASURE 5000
 
 ////////////////////USER DEFINES//////////////////
 	///////////////////RCPWM//////////////////////
@@ -66,26 +65,28 @@
 
 //////Motor parameters
 #define DEFAULT_MOTOR_POWER 250.0f
-#define DEFAULT_FLUX_LINKAGE 0.0038f //mWb
-#define DEFAULT_MOTOR_Ld 0.000005f //Henries
-#define DEFAULT_MOTOR_Lq 0.000005f//Henries
-#define DEFAULT_MOTOR_R 0.005f //Ohms
+#define DEFAULT_FLUX_LINKAGE 0.038f //mWb
+#define DEFAULT_MOTOR_Ld 0.000677797361f //Henries
+#define DEFAULT_MOTOR_Lq 0.00625222269f//Henries
+#define DEFAULT_MOTOR_R 0.859184325f //Ohms
 //Use the Ebike Profile tool
 //#define USE_PROFILE
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-//#define USE_HFI
-#define HFI_VOLTAGE 4.0f
-#define HFI_TEST_CURRENT 20.0f
+#define USE_HFI
+#define HFI_VOLTAGE 8.0f
+#define HFI_TEST_CURRENT 10.0f
+
+#define ERPM_MEASURE 3000
 
 #ifdef USE_HFI
 #define CURRENT_BANDWIDTH 1000.0f //HFI does not work if the current controller is strong enough to squash the HFI
 #else
-#define CURRENT_BANDWIDTH 10000.0f
+#define CURRENT_BANDWIDTH 1000.0f
 #endif
 
-#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
+//#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
 
 #define USE_SQRT_CIRCLE_LIM
 
@@ -102,3 +103,7 @@
 										//Also, incompatible with flux linkage observer for now...
 #define NON_LINEAR_CENTERING_GAIN 5000.0f
 #define USE_CLAMPED_OBSERVER_CENTERING //Pick one of the two centering methods... preferably this one
+
+
+#define USB
+#define HW_UART huart1

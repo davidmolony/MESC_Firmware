@@ -34,18 +34,29 @@
 #include "MESCfoc.h"
 #include "MESCmotor_state.h"
 
-extern UART_HandleTypeDef huart3;
+#ifdef USB
+#include "usbd_cdc_if.h"
+#endif
+
+extern UART_HandleTypeDef HW_UART;
 extern TIM_HandleTypeDef  htim1;
 
 static uint8_t UART_rx_buffer[2];
 
 extern uint8_t b_read_flash;
 
+#ifdef USB
+static void uart_ack( void )
+{
+
+}
+#else
 static void uart_ack( void )
 {
     // Required to allow next receive
-    HAL_UART_Receive_IT( &huart3, UART_rx_buffer, 1 );
+    HAL_UART_Receive_IT( &HW_UART, UART_rx_buffer, 1 );
 }
+#endif
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -58,6 +69,22 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     /*
     Commands may be executed here
     */
+}
+
+void USB_CDC_Callback(uint8_t *buffer, uint32_t len){
+
+	for(int i = 0; i<len; i++){
+		if (buffer[i] == '\r') // Treat CR...
+		{
+			buffer[i] = '\n'; // ...as LF
+		}
+		cli_process( buffer[i] );
+	}
+
+}
+
+HAL_StatusTypeDef HAL_USB_Transmit(UART_HandleTypeDef *husb, const uint8_t *pData, uint16_t Size){
+	CDC_Transmit_FS((uint8_t*)pData, Size);
 }
 
 static void cmd_hall_dec( void )
@@ -135,8 +162,12 @@ void uart_init( void )
     cli_register_function( "a"         , cmd_iqdown            	);
     cli_register_function( "Measure"   , cmd_measure            );
 
+#ifdef USB
+    cli_register_io( NULL, (int(*)(void *,void *,uint16_t))HAL_USB_Transmit, uart_ack );
 
-    cli_register_io( &huart3, (int(*)(void *,void *,uint16_t))HAL_UART_Transmit_DMA, uart_ack );
+#else
+    cli_register_io( &HW_UART, (int(*)(void *,void *,uint16_t))HAL_UART_Transmit_DMA, uart_ack );
     // Required to allow initial receive
     uart_ack();
+#endif
 }

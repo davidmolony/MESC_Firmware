@@ -33,6 +33,7 @@
 #include "stm32fxxx_hal.h"
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
+void USB_CDC_Callback(uint8_t *buffer, uint32_t len);
 
 void uart_init( void );
 
