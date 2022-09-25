@@ -1262,10 +1262,9 @@ static int cyclescountacc = 0;
   int angle_delta;
   static volatile float temp_flux;
   void getkV() {
-
+  	foc_vars.inject = 0;
     static int cycles = 0;
-    foc_vars.Idq_req.d = I_MEASURE*0.5f;  //
-    foc_vars.Idq_req.q = 0.0f;   // 10A for the openloop spin
+
     if (cycles < 2) {
     	motor_profile->flux_linkage_max = 0.1f;
     	motor_profile->flux_linkage_min = 0.00001f;//Set really wide limits
@@ -1279,6 +1278,8 @@ static int cyclescountacc = 0;
     static int count = 0;
     static uint16_t temp_angle;
     if (cycles < 65000) {
+        foc_vars.Idq_req.d = I_MEASURE*0.5f;  //
+        foc_vars.Idq_req.q = 0.0f;   // 10A for the openloop spin
     	angle_delta = temp_angle-foc_vars.FOCAngle;
     	foc_vars.openloop_step = (uint16_t)(ERPM_MEASURE*65536.0f/(foc_vars.pwm_frequency*60.0f)*(float)cycles/65000.0f);
     	foc_vars.FOCAngle = temp_angle;
@@ -1289,11 +1290,20 @@ static int cyclescountacc = 0;
         	motor.motor_flux  = temp_flux;
         }
     }
-
+    else if (cycles < 70000) {
+    	generateBreak();
+    	MESCTrack();
+    }
+    else if (cycles < 70001) {
+    	generateEnable();
+      count++;
+      foc_vars.Idq_req.d = 0.0f;
+      foc_vars.Idq_req.q = 10.0f;
+    }
     else if (cycles < 128000) {
       count++;
       foc_vars.Idq_req.d = 0.0f;
-      foc_vars.Idq_req.q = 5.0f;
+      foc_vars.Idq_req.q = 10.0f;
     } else {
        generateBreak();
     	motor_profile->flux_linkage_max = 1.3f*motor.motor_flux;

@@ -24,9 +24,6 @@
 /* USER CODE BEGIN Includes */
 #include "MESCmotor.h"
 
-#ifdef USB
-#include "usbd_cdc_if.h"
-#endif
 #include "MESCuart.h"
 /* USER CODE END Includes */
 

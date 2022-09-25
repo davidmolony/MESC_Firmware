@@ -38,8 +38,8 @@
 struct MESC_log_vars
 {
 	float current_A;
-	float current_C;
 	float current_B;
+	float current_C;
 	float voltage;
 	int count;
 };
