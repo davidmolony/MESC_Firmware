@@ -60,7 +60,7 @@ void clearErrors(){
 //Observe caution when using this function, BRK hypothetically occurs after a disastrous error.
 void clearBRK(){
 	//If the requested current is zero then sensible to proceed
-	if((foc_vars.Idq_req[1]+foc_vars.Idq_req[0])==0.0f){
+	if((foc_vars.Idq_req.q+foc_vars.Idq_req.d)==0.0f){
 	//Generate a break, and set the mode to tracking to enable a chance of safe restart and recovery
 		generateBreak();
 		//Need to set the MOE bit high to re-enable the timer

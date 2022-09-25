@@ -62,6 +62,11 @@ typedef struct {
 }MESCsin_cos_s;
 
 typedef struct {
+  float d;
+  float q;
+} MESCiq_s;
+
+typedef struct {
   int initing;  // Flag to say we are initialising
 
   uint16_t openloop_step;//The angle to increment by for openloop
@@ -75,20 +80,21 @@ typedef struct {
                               // so they only need computing once per pwm cycle
   float Iab[FOC_TRANSFORMED_CHANNELS + 1];  // Float vector containing the Clark
                                             // transformed current in amps
-  float Idq[FOC_TRANSFORMED_CHANNELS];      // Float vector containing the Park
-                                            // transformed current in amps
+  MESCiq_s Idq;      						// Float vector containing the Park
+
+  	  	  	  	  	  	  	  	  	  	  	  // transformed current in amps
   float Vab[FOC_TRANSFORMED_CHANNELS + 1];
-  float Vdq[FOC_TRANSFORMED_CHANNELS];
-  float Vdq_smoothed[FOC_TRANSFORMED_CHANNELS];
-  float Idq_smoothed[FOC_TRANSFORMED_CHANNELS];
-  float Idq_int_err[2];
+  MESCiq_s Vdq;
+  MESCiq_s Vdq_smoothed;
+  MESCiq_s Idq_smoothed;
+  MESCiq_s Idq_int_err;
   float id_mtpa;
   float iq_mtpa;
 
 
   float inverterVoltage[FOC_TRANSFORMED_CHANNELS + 1];
-  float Idq_req[2];							//The input to the PI controller. Load this with the values you want.
-  float currentPower[2];					//Power being consumed by the motor; this does not include steady state losses and losses to switching
+  MESCiq_s Idq_req;							//The input to the PI controller. Load this with the values you want.
+  MESCiq_s currentPower;					//Power being consumed by the motor; this does not include steady state losses and losses to switching
   float Ibus;
   float reqPower;
 
@@ -206,15 +212,15 @@ typedef struct {
 	float ADC1_polarity;
 	float ADC2_polarity;
 
-	float Idq_req_UART[2];
-	float Idq_req_RCPWM[2];
-	float Idq_req_ADC1[2];
-	float Idq_req_ADC2[2];
+	MESCiq_s Idq_req_UART;
+	MESCiq_s Idq_req_RCPWM;
+	MESCiq_s Idq_req_ADC1;
+	MESCiq_s Idq_req_ADC2;
 
 	uint32_t input_options; //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
-float max_request_Idq[2];
-float  min_request_Idq[2];
+	MESCiq_s max_request_Idq;
+	MESCiq_s min_request_Idq;
 } input_vars_t;
 
 extern input_vars_t input_vars;

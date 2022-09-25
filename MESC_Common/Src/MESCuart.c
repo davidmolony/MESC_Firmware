@@ -34,18 +34,37 @@
 #include "MESCfoc.h"
 #include "MESCmotor_state.h"
 
-extern UART_HandleTypeDef huart3;
+#if MESC_UART_USB
+#include "usbd_cdc_if.h"
+#else
+extern UART_HandleTypeDef HW_UART;
+#endif
+
+
 extern TIM_HandleTypeDef  htim1;
 
 static uint8_t UART_rx_buffer[2];
 
 extern uint8_t b_read_flash;
 
+#if MESC_UART_USB
+static void usb_ack( void )
+{
+
+}
+
+HAL_StatusTypeDef HAL_USB_Transmit(UART_HandleTypeDef *husb, const uint8_t *pData, uint16_t Size){
+	CDC_Transmit_FS((uint8_t*)pData, Size);
+	return HAL_OK;
+}
+
+#else
 static void uart_ack( void )
 {
     // Required to allow next receive
-    HAL_UART_Receive_IT( &huart3, UART_rx_buffer, 1 );
+    HAL_UART_Receive_IT( &HW_UART, UART_rx_buffer, 1 );
 }
+#endif
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -58,6 +77,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     /*
     Commands may be executed here
     */
+}
+
+void USB_CDC_Callback(uint8_t *buffer, uint32_t len){
+
+	for(int i = 0; i<len; i++){
+		if (buffer[i] == '\r') // Treat CR...
+		{
+			buffer[i] = '\n'; // ...as LF
+		}
+		cli_process( buffer[i] );
+	}
+
 }
 
 static void cmd_hall_dec( void )
@@ -104,13 +135,13 @@ static void cmd_test( void )
 }
 static void cmd_iqup( void )
 {
-	input_vars.Idq_req_UART[1] = input_vars.Idq_req_UART[1]+1.0f;
-cli_reply( "%s%f" "\r" "\n", "Iq",foc_vars.Idq_req[1] );
+	input_vars.Idq_req_UART.q = input_vars.Idq_req_UART.q+1.0f;
+cli_reply( "%s%f" "\r" "\n", "Iq",foc_vars.Idq_req.q );
 }
 static void cmd_iqdown( void )
 {
-input_vars.Idq_req_UART[1] = input_vars.Idq_req_UART[1]-1.0f;
-cli_reply( "%s%f" "\r" "\n", "Iq",foc_vars.Idq_req[1] );
+input_vars.Idq_req_UART.q = input_vars.Idq_req_UART.q-1.0f;
+cli_reply( "%s%f" "\r" "\n", "Iq",foc_vars.Idq_req.q );
 }
 static void cmd_measure( void )
 {
@@ -120,9 +151,9 @@ static void cmd_measure( void )
 
 void uart_init( void )
 {
-	cli_register_variable_rw( "Idq_req", &input_vars.Idq_req_UART[1], sizeof(input_vars.Idq_req_UART[1]), CLI_VARIABLE_FLOAT );
-    cli_register_variable_rw( "Id"       , &foc_vars.Idq_req[0]                   , sizeof(foc_vars.Idq_req[0]                   ), CLI_VARIABLE_FLOAT );
-    cli_register_variable_rw( "Iq"        , &foc_vars.Idq_req[1]                   , sizeof(foc_vars.Idq_req[1]                   ), CLI_VARIABLE_FLOAT );
+	cli_register_variable_rw( "Idq_req", &input_vars.Idq_req_UART.q, sizeof(input_vars.Idq_req_UART.q), CLI_VARIABLE_FLOAT );
+    cli_register_variable_rw( "Id"       , &foc_vars.Idq_req.d                   , sizeof(foc_vars.Idq_req.d                   ), CLI_VARIABLE_FLOAT );
+    cli_register_variable_rw( "Iq"        , &foc_vars.Idq_req.q                   , sizeof(foc_vars.Idq_req.q                   ), CLI_VARIABLE_FLOAT );
     cli_register_variable_ro( "Vbus"      , &measurement_buffers.ConvertedADC[0][1], sizeof(measurement_buffers.ConvertedADC[0][1]), CLI_VARIABLE_FLOAT );
 
     cli_register_function( "hall_dec"     , cmd_hall_dec        );
@@ -135,8 +166,12 @@ void uart_init( void )
     cli_register_function( "a"         , cmd_iqdown            	);
     cli_register_function( "Measure"   , cmd_measure            );
 
+#if MESC_UART_USB
+    cli_register_io( NULL, (int(*)(void *,void *,uint16_t))HAL_USB_Transmit, usb_ack );
 
-    cli_register_io( &huart3, (int(*)(void *,void *,uint16_t))HAL_UART_Transmit_DMA, uart_ack );
+#else
+    cli_register_io( &HW_UART, (int(*)(void *,void *,uint16_t))HAL_UART_Transmit_DMA, uart_ack );
     // Required to allow initial receive
     uart_ack();
+#endif
 }
