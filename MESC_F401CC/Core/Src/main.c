@@ -143,7 +143,6 @@ MotorControlType = MOTOR_CONTROL_TYPE_FOC;
   {
     /* USER CODE END WHILE */
 
-
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

@@ -1,4 +1,4 @@
-#define PWM_FREQUENCY 25000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
+#define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
 #define HAS_PHASE_SENSORS //This is not actually true. Really needs to have phase sensors... Leaving this in because it enables tracking and PWM disabling for debug.
 //#define USE_DEADSHORT //This can be used in place of the phase sensors for startup from running.
 #define DEADSHORT_CURRENT 10.0f	//When recovering from tracking phase without phase sensors, the
@@ -78,7 +78,7 @@
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 10.0f
 
-#define ERPM_MEASURE 7000
+#define ERPM_MEASURE 10000
 
 #ifdef USE_HFI
 #define CURRENT_BANDWIDTH 1000.0f //HFI does not work if the current controller is strong enough to squash the HFI
@@ -96,7 +96,7 @@
 #define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
 #define MAX_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*1.20f //Sets the limits for tracking.
 #define MIN_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*0.7f//Faster convergence with closer start points
-#define FLUX_LINKAGE_GAIN 10.0f * sqrtf(DEFAULT_FLUX_LINKAGE)//*(DEFAULT_FLUX_LINKAGE*DEFAULT_FLUX_LINKAGE)*PWM_FREQUENCY
+#define FLUX_LINKAGE_GAIN 1.0f * sqrtf(DEFAULT_FLUX_LINKAGE)//*(DEFAULT_FLUX_LINKAGE*DEFAULT_FLUX_LINKAGE)*PWM_FREQUENCY
 
 //#define USE_NONLINEAR_OBSERVER_CENTERING //This is not a preferred option, since it relies on gain tuning and instability,
 										//which is precisely what the original observer intended to avoid.

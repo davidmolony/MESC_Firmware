@@ -31,6 +31,8 @@
 #include "MESCerror.h"
 #include "MESCfoc.h"
 #include "MESCmotor_state.h"
+#include "MESChw_setup.h"
+
 
 //externs
 extern TIM_HandleTypeDef htim1;
@@ -49,6 +51,9 @@ void handleError(uint32_t error_code){
 	error_log.current_B = measurement_buffers.ConvertedADC[1][0];
 	error_log.current_C = measurement_buffers.ConvertedADC[2][0];
 	error_log.voltage = measurement_buffers.ConvertedADC[0][1];
+	error_log.motor_flux = motor.motor_flux;
+	error_log.flux_linked_alpha = foc_vars.flux_linked_alpha;
+	error_log.flux_linked_beta = foc_vars.flux_linked_beta;
 	}
 	error_log.count += 1;
 }

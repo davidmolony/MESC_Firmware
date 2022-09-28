@@ -129,6 +129,8 @@ typedef struct {
   int field_weakening_flag;
 
   float VBEMFintegral[2];
+  float flux_linked_alpha;
+  float flux_linked_beta;
   uint16_t state[4];  // current state, last state, angle change occurred
   uint16_t hall_update;
   uint16_t BEMF_update;

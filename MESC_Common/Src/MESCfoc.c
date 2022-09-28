@@ -50,8 +50,8 @@ float sqrt1_2 = 0.707107f;
 float sqrt3_on_2 = 0.866025f;
 float two_on_sqrt3 = 1.73205f;
 int adc_conv_end;
-static float flux_linked_alpha = 0.00501f;
-static float flux_linked_beta = 0.00511f;
+//static float flux_linked_alpha = 0.00501f;
+//static float flux_linked_beta = 0.00511f;
 
 MESCfoc_s foc_vars;
 MESCtest_s test_vals;
@@ -150,8 +150,8 @@ void initialiseInverter(){
       if (initcycles == 1000) {
         calculateGains();
         calculateVoltageGain();
-        flux_linked_beta = 0.001f;
-        flux_linked_alpha = 0.001f;
+        foc_vars.flux_linked_beta = 0.001f;
+        foc_vars.flux_linked_alpha = 0.001f;
         for (uint32_t i = 0; i < 3; i++) {
           measurement_buffers.ADCOffset[i] /= 1000;
         }
@@ -465,14 +465,13 @@ void VICheck() {  // Check currents, voltages are within panic limits
     measurement_buffers.ConvertedADC[0][1] =
         (float)measurement_buffers.RawADC[0][1] * g_hw_setup.VBGain;  // Vbus
 //Convert the voltages to volts in real SI units
-    if(MotorState == MOTOR_STATE_TRACKING){
     measurement_buffers.ConvertedADC[0][2] =
         (float)measurement_buffers.RawADC[0][2] * g_hw_setup.VBGain;  // Usw
     measurement_buffers.ConvertedADC[1][1] =
         (float)measurement_buffers.RawADC[1][1] * g_hw_setup.VBGain;  // Vsw
     measurement_buffers.ConvertedADC[1][2] =
         (float)measurement_buffers.RawADC[1][2] * g_hw_setup.VBGain;  // Wsw
-    }
+
 
     //Check for over limit conditions
     VICheck();
@@ -572,7 +571,7 @@ static int cyclescountacc = 0;
 	  //definitely makes setup less critical.
 	  //It basically takes the normal of the flux linkage at any time and
 	  //changes the flux limits accordingly, ignoring using a sqrt for computational efficiency
-	  float flux_linked_norm = flux_linked_alpha*flux_linked_alpha+flux_linked_beta*flux_linked_beta;
+	  float flux_linked_norm = foc_vars.flux_linked_alpha*foc_vars.flux_linked_alpha+foc_vars.flux_linked_beta*foc_vars.flux_linked_beta;
 	  float flux_err = flux_linked_norm-motor.motor_flux*motor.motor_flux;
 	  motor.motor_flux = motor.motor_flux+ motor_profile->flux_linkage_gain*flux_err;
 	  if(motor.motor_flux>motor_profile->flux_linkage_max){motor.motor_flux = motor_profile->flux_linkage_max;}
@@ -581,32 +580,32 @@ static int cyclescountacc = 0;
 	// This is the actual observer function.
 	// We are going to integrate Va-Ri and clamp it positively and negatively
 	// the angle is then the arctangent of the integrals shifted 180 degrees
-    flux_linked_alpha =
-        flux_linked_alpha + (foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0])*foc_vars.pwm_period-
+	  foc_vars.flux_linked_alpha =
+			  foc_vars.flux_linked_alpha + (foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0])*foc_vars.pwm_period-
         motor.Lphase * (foc_vars.Iab[0] - Ia_last);
-    flux_linked_beta =
-        flux_linked_beta + (foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1])*foc_vars.pwm_period -
+	  foc_vars.flux_linked_beta =
+			  foc_vars.flux_linked_beta + (foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1])*foc_vars.pwm_period -
         motor.Lphase * (foc_vars.Iab[1] - Ib_last);
     Ia_last = foc_vars.Iab[0];
     Ib_last = foc_vars.Iab[1];
 
 #ifdef USE_NONLINEAR_OBSERVER_CENTERING
 ///Try directly applying the centering using the same method as the flux linkage observer
-    float err = motor.motor_flux*motor.motor_flux-flux_linked_alpha*flux_linked_alpha-flux_linked_beta*flux_linked_beta;
-    flux_linked_beta = flux_linked_beta+err*flux_linked_beta*motor_profile->non_linear_centering_gain;
-    flux_linked_alpha = flux_linked_alpha+err*flux_linked_alpha*motor_profile->non_linear_centering_gain;
+    float err = motor.motor_flux*motor.motor_flux-foc_vars.flux_linked_alpha*foc_vars.flux_linked_alpha-foc_vars.flux_linked_beta*foc_vars.flux_linked_beta;
+    foc_vars.flux_linked_beta = foc_vars.flux_linked_beta+err*foc_vars.flux_linked_beta*motor_profile->non_linear_centering_gain;
+    foc_vars.flux_linked_alpha = foc_vars.flux_linked_alpha+err*foc_vars.flux_linked_alpha*motor_profile->non_linear_centering_gain;
 #endif
 #ifdef USE_CLAMPED_OBSERVER_CENTERING
-    if (flux_linked_alpha > motor.motor_flux) {
-      flux_linked_alpha = motor.motor_flux;}
-    if (flux_linked_alpha < -motor.motor_flux) {
-      flux_linked_alpha = -motor.motor_flux;}
-    if (flux_linked_beta > motor.motor_flux) {
-      flux_linked_beta = motor.motor_flux;}
-    if (flux_linked_beta < -motor.motor_flux) {
-      flux_linked_beta = -motor.motor_flux;}
+    if (foc_vars.flux_linked_alpha > motor.motor_flux) {
+    	foc_vars.flux_linked_alpha = motor.motor_flux;}
+    if (foc_vars.flux_linked_alpha < -motor.motor_flux) {
+    	foc_vars.flux_linked_alpha = -motor.motor_flux;}
+    if (foc_vars.flux_linked_beta > motor.motor_flux) {
+    	foc_vars.flux_linked_beta = motor.motor_flux;}
+    if (foc_vars.flux_linked_beta < -motor.motor_flux) {
+    	foc_vars.flux_linked_beta = -motor.motor_flux;}
 #endif
-    angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(flux_linked_beta, flux_linked_alpha)) - 32768;
+    angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(foc_vars.flux_linked_beta, foc_vars.flux_linked_alpha)) - 32768;
 
 
     if(foc_vars.inject==0){
@@ -1127,7 +1126,8 @@ static int cyclescountacc = 0;
       foc_vars.Vq_injectionV = 0.0f;
       calculateGains();
       // MotorState = MOTOR_STATE_IDLE;  //
-      MotorState = MOTOR_STATE_DETECTING;
+      MotorState = MOTOR_STATE_TRACKING;
+      //MotorState = MOTOR_STATE_DETECTING;
       PWM_cycles = 0;
       phU_Enable();
       phV_Enable();
@@ -1261,6 +1261,9 @@ static int cyclescountacc = 0;
   static float db;
   int angle_delta;
   static volatile float temp_flux;
+  static volatile float temp_FLA;
+  static volatile float temp_FLB;
+
   void getkV() {
   	foc_vars.inject = 0;
     static int cycles = 0;
@@ -1270,16 +1273,18 @@ static int cyclescountacc = 0;
     	motor_profile->flux_linkage_min = 0.00001f;//Set really wide limits
     	foc_vars.openloop_step = 0;
     	motor.motor_flux = motor_profile->flux_linkage_max;
-
+        phU_Enable();
+        phV_Enable();
+        phW_Enable();
     }
 
-
     flux_observer();//We run the flux observer during this, and if the flag to track flux linkage is set, it will lock on
+
     static int count = 0;
     static uint16_t temp_angle;
-    if (cycles < 65000) {
+    if (cycles < 60002) {
         foc_vars.Idq_req.d = I_MEASURE*0.5f;  //
-        foc_vars.Idq_req.q = 0.0f;   // 10A for the openloop spin
+        foc_vars.Idq_req.q = 0.0f;
     	angle_delta = temp_angle-foc_vars.FOCAngle;
     	foc_vars.openloop_step = (uint16_t)(ERPM_MEASURE*65536.0f/(foc_vars.pwm_frequency*60.0f)*(float)cycles/65000.0f);
     	foc_vars.FOCAngle = temp_angle;
@@ -1288,14 +1293,24 @@ static int cyclescountacc = 0;
         if(cycles==60001){
         	temp_flux = sqrtf(foc_vars.Vdq.d*foc_vars.Vdq.d+foc_vars.Vdq.q*foc_vars.Vdq.q)/(6.28f * (float)foc_vars.openloop_step * (float)foc_vars.pwm_frequency/65536.0f);
         	motor.motor_flux  = temp_flux;
+        	foc_vars.flux_linked_alpha = foc_vars.sincosangle.cos*motor.motor_flux;
+        	foc_vars.flux_linked_beta = foc_vars.sincosangle.sin*motor.motor_flux;
+        	motor_profile->flux_linkage_max = 1.7f*motor.motor_flux;
+        	motor_profile->flux_linkage_min = 0.5f*motor.motor_flux;
+        	temp_FLA = foc_vars.flux_linked_alpha;
+        	temp_FLB = foc_vars.flux_linked_beta;
         }
+        MESCFOC();
     }
-    else if (cycles < 70000) {
+    else if (cycles < 65000) {
     	generateBreak();
     	MESCTrack();
     }
     else if (cycles < 70001) {
     	generateEnable();
+        foc_vars.Idq_int_err.d = 0.0f;
+        MESCFOC();
+
       count++;
       foc_vars.Idq_req.d = 0.0f;
       foc_vars.Idq_req.q = 10.0f;
@@ -1304,6 +1319,7 @@ static int cyclescountacc = 0;
       count++;
       foc_vars.Idq_req.d = 0.0f;
       foc_vars.Idq_req.q = 10.0f;
+      MESCFOC();
     } else {
        generateBreak();
     	motor_profile->flux_linkage_max = 1.3f*motor.motor_flux;
@@ -1319,7 +1335,6 @@ static int cyclescountacc = 0;
         generateBreak();
       }
     }
-    MESCFOC();
     writePWM();
 
     cycles++;
@@ -1627,10 +1642,10 @@ if(foc_vars.Idq_req.q<input_vars.min_request_Idq.q){foc_vars.Idq_req.q = input_v
 // flux linked = 0 for both accumuators, the angle rapidly changes
 // as it oscillates around zero. Solution... just kludge it back out.
 // This only happens at stationary when it is useless anyway.
-    if ((flux_linked_alpha * flux_linked_alpha + flux_linked_beta * flux_linked_beta) <
+    if ((foc_vars.flux_linked_alpha * foc_vars.flux_linked_alpha + foc_vars.flux_linked_beta * foc_vars.flux_linked_beta) <
         0.25f * motor.motor_flux * motor.motor_flux) {
-      flux_linked_alpha = 0.5f * motor.motor_flux;
-      flux_linked_beta = 0.5f * motor.motor_flux;
+    	foc_vars.flux_linked_alpha = 0.5f * motor.motor_flux;
+    	foc_vars.flux_linked_beta = 0.5f * motor.motor_flux;
     }
 
     //////Set tracking
@@ -1793,12 +1808,12 @@ was_last_tracking = 1;
 	  		//			angleErrorPhaseSENC = foc_vars.FOCAngle-foc_vars.enc_angle;
 	  		//			angleErrorPhaseDS = foc_vars.FOCAngle - angleDS;
 	  		//Variables for monitoring and debugging to see if the preload will work
-	  		//			FLaDSErr = 1000.0f*(FLaDS-flux_linked_alpha);
-	  		//			FLbDSErr = 1000.0f*(FLbDS-flux_linked_beta);
+	  		//			FLaDSErr = 1000.0f*(FLaDS-foc_vars.flux_linked_alpha);
+	  		//			FLbDSErr = 1000.0f*(FLbDS-foc_vars.flux_linked_beta);
 
 	  		//Do actual preloading
-	  					flux_linked_alpha = FLaDS;
-	  					flux_linked_beta = FLbDS;
+	  					foc_vars.flux_linked_alpha = FLaDS;
+	  					foc_vars.flux_linked_beta = FLbDS;
 	  					Ia_last = 0.0f;
 	  					Ib_last = 0.0f;
 	  					foc_vars.Idq_int_err.d = VdcalcDS;

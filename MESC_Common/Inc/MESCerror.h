@@ -41,6 +41,9 @@ struct MESC_log_vars
 	float current_B;
 	float current_C;
 	float voltage;
+	float motor_flux;
+	float flux_linked_alpha;
+	float flux_linked_beta;
 	int count;
 };
 
