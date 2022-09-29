@@ -1302,7 +1302,7 @@ static int cyclescountacc = 0;
         }
         MESCFOC();
     }
-    else if (cycles < 65000) {
+    else if (cycles < 61000) {
     	generateBreak();
     	MESCTrack();
     }
@@ -1313,12 +1313,12 @@ static int cyclescountacc = 0;
 
       count++;
       foc_vars.Idq_req.d = 0.0f;
-      foc_vars.Idq_req.q = 10.0f;
+      foc_vars.Idq_req.q = IMEASURE_CLOSEDLOOP;
     }
     else if (cycles < 128000) {
       count++;
       foc_vars.Idq_req.d = 0.0f;
-      foc_vars.Idq_req.q = 10.0f;
+      foc_vars.Idq_req.q = IMEASURE_CLOSEDLOOP;
       MESCFOC();
     } else {
        generateBreak();

@@ -34,11 +34,15 @@
 #define OPGAIN 10.5f
 
 
-#define MAX_ID_REQUEST 20.0f
-#define MAX_IQ_REQUEST 20.0f
+#define MAX_ID_REQUEST 2.0f
+#define MAX_IQ_REQUEST 4.0f
 
-#define I_MEASURE 30.0f //Higher setpoint for resistance measurement
-#define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
+#define I_MEASURE 3.0f 			//Higher setpoint for resistance measurement, half this used for OL spin up
+#define IMEASURE_CLOSEDLOOP 0.4f 	//After spinning up openloop and getting an approximation,
+									//this current is used to driver the motor and collect a refined flux linkage
+#define V_MEASURE 16.0f 	//Voltage injected for measuring inductance
+#define ERPM_MEASURE 1000.0f
+
 
 ////////////////////USER DEFINES//////////////////
 	///////////////////RCPWM//////////////////////
@@ -65,20 +69,19 @@
 
 //////Motor parameters
 #define DEFAULT_MOTOR_POWER 250.0f
-#define DEFAULT_FLUX_LINKAGE 0.0038f //mWb
-#define DEFAULT_MOTOR_Ld 0.00000577797361f //Henries
-#define DEFAULT_MOTOR_Lq 0.00000625222269f//Henries
-#define DEFAULT_MOTOR_R 0.00859184325f //Ohms
+#define DEFAULT_FLUX_LINKAGE 0.000707f //mWb
+#define DEFAULT_MOTOR_Ld 0.00000257797361f //Henries
+#define DEFAULT_MOTOR_Lq 0.00000535222269f//Henries
+#define DEFAULT_MOTOR_R 0.03159184325f //Ohms
 //Use the Ebike Profile tool
 //#define USE_PROFILE
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
 #define USE_HFI
-#define HFI_VOLTAGE 4.0f
-#define HFI_TEST_CURRENT 10.0f
+#define HFI_VOLTAGE 12.0f
+#define HFI_TEST_CURRENT 2.0f
 
-#define ERPM_MEASURE 10000
 
 #ifdef USE_HFI
 #define CURRENT_BANDWIDTH 1000.0f //HFI does not work if the current controller is strong enough to squash the HFI
