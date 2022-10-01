@@ -35,7 +35,7 @@
 
 
 #define MAX_ID_REQUEST 2.0f
-#define MAX_IQ_REQUEST 4.0f
+#define MAX_IQ_REQUEST 60.0f
 
 #define I_MEASURE 3.0f 			//Higher setpoint for resistance measurement, half this used for OL spin up
 #define IMEASURE_CLOSEDLOOP 0.4f 	//After spinning up openloop and getting an approximation,
@@ -68,26 +68,29 @@
 #define DEFAULT_INPUT	0b1110 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
 //////Motor parameters
-#define DEFAULT_MOTOR_POWER 250.0f
-#define DEFAULT_FLUX_LINKAGE 0.000707f //mWb
-#define DEFAULT_MOTOR_Ld 0.00000257797361f //Henries
-#define DEFAULT_MOTOR_Lq 0.00000535222269f//Henries
-#define DEFAULT_MOTOR_R 0.03159184325f //Ohms
+#define DEFAULT_MOTOR_POWER 2000.0f
+#define DEFAULT_FLUX_LINKAGE 0.01207f //Wb
+#define DEFAULT_MOTOR_Ld 0.00007257797361f //Henries
+#define DEFAULT_MOTOR_Lq 0.0001535222269f//Henries
+#define DEFAULT_MOTOR_R 0.04159184325f //Ohms
 //Use the Ebike Profile tool
 //#define USE_PROFILE
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
-#define HFI_VOLTAGE 12.0f
+//#define USE_HFI
+#define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 2.0f
 
 
 #ifdef USE_HFI
 #define CURRENT_BANDWIDTH 1000.0f //HFI does not work if the current controller is strong enough to squash the HFI
 #else
-#define CURRENT_BANDWIDTH 1000.0f
+#define CURRENT_BANDWIDTH 5000.0f
 #endif
+//Highhopes Phase Balancing
+//Preliminary, not sure if this is effective yet, based on discussion https://endless-sphere.com/forums/viewtopic.php?f=30&t=89056&sid=2c5e2c887b59df4b41bc293b388dfaf3&start=600#p1731139
+#define USE_HIGHHOPES_PHASE BALANCING
 
 //#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
 
