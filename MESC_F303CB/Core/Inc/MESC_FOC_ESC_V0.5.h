@@ -15,10 +15,16 @@
 //#define MISSING_VCURRSENSOR //Running this with low side sensors may result in fire.
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
 
+#define DEADTIME_COMP
+#define DEADTIME_COMP_V 5 	//Arbitrary value for now, needs parametising.
+							//Basically this is half the time between MOSoff and MOSon
+							//and needs dtermining experimentally, either with openloop
+							//sin wave drawing or by finding the zero current switching "power knee point"
+							
 #define SHUNT_POLARITY -1.0
 
-#define ABS_MAX_PHASE_CURRENT 150.0f
-#define ABS_MAX_BUS_VOLTAGE 88.0f
+#define ABS_MAX_PHASE_CURRENT 90.0f
+#define ABS_MAX_BUS_VOLTAGE 50.0f
 #define ABS_MIN_BUS_VOLTAGE 12.0f
 #define R_SHUNT 0.0005f
 //ToDo need to define using a discrete opamp with resistors to set gain vs using one with a specified gain
@@ -34,6 +40,10 @@
 
 #define I_MEASURE 30.0f //Higher setpoint for resistance measurement
 #define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
+#define IMEASURE_CLOSEDLOOP 3.0f 	//After spinning up openloop and getting an approximation,
+									//this current is used to driver the motor and collect a refined flux linkage
+#define ERPM_MEASURE 3000.0f
+
 
 ////////////////////USER DEFINES//////////////////
 	///////////////////RCPWM//////////////////////
@@ -70,7 +80,7 @@
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-//#define USE_HFI
+#define USE_HFI
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 20.0f
 
@@ -96,3 +106,7 @@
 										//Also, incompatible with flux linkage observer for now...
 #define NON_LINEAR_CENTERING_GAIN 5000.0f
 #define USE_CLAMPED_OBSERVER_CENTERING //Pick one of the two centering methods... preferably this one
+
+
+#define MESC_UART_USB 		MESC_USB
+#define HW_UART huart3
