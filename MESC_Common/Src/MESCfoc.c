@@ -444,7 +444,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
 //      }
 
   }
-
+float maxIgamma;
+uint16_t phasebalance;
   void ADCConversion() {
 	  foc_vars.Vdq_smoothed.d = (foc_vars.Vdq_smoothed.d*99.0f + foc_vars.Vdq.d)*0.01f;
 	  foc_vars.Vdq_smoothed.q = (foc_vars.Vdq_smoothed.q*99.0f + foc_vars.Vdq.q)*0.01f;
@@ -492,6 +493,8 @@ void VICheck() {  // Check currents, voltages are within panic limits
     measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I] =
     		-measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I] - measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
 #endif
+
+
     // Power Variant Clark transform
     // Here we select the phases that have the lowest duty cycle to us, since
     // they should have the best current measurements
@@ -520,6 +523,20 @@ void VICheck() {  // Check currents, voltages are within panic limits
           one_on_sqrt3 * two_on_sqrt3 *
               measurement_buffers.ConvertedADC[ADCIU][FOC_CHANNEL_PHASE_I];
     } else {
+#ifdef USE_HIGHHOPES_PHASE BALANCING
+		foc_vars.Iab[2] = measurement_buffers.ConvertedADC[ADCIU][FOC_CHANNEL_PHASE_I] +measurement_buffers.ConvertedADC[ADCIV][FOC_CHANNEL_PHASE_I]+measurement_buffers.ConvertedADC[ADCIW][FOC_CHANNEL_PHASE_I];
+if(phasebalance){
+		measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I] = measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I] + foc_vars.Iab[2];
+		measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I] = measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I] + foc_vars.Iab[2];
+		measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I] = measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I] + foc_vars.Iab[2];
+		}
+		if(fabs(foc_vars.Iab[2])>fabs(maxIgamma)){
+			maxIgamma = foc_vars.Iab[2];
+		}
+		if(foc_vars.Vdq.q<2.0f){ //Reset it to reject accumulated random noise and enable multiple goes
+			maxIgamma = 0.0f;
+		}
+#endif
       // Do the full transform
       foc_vars.Iab[0] =
           0.66666f * measurement_buffers.ConvertedADC[ADCIU][FOC_CHANNEL_PHASE_I] -
@@ -528,7 +545,6 @@ void VICheck() {  // Check currents, voltages are within panic limits
       foc_vars.Iab[1] =
           one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIV][FOC_CHANNEL_PHASE_I] -
           one_on_sqrt3 * measurement_buffers.ConvertedADC[ADCIW][FOC_CHANNEL_PHASE_I];
-      foc_vars.Iab[2] = measurement_buffers.ConvertedADC[ADCIU][FOC_CHANNEL_PHASE_I] +measurement_buffers.ConvertedADC[ADCIV][FOC_CHANNEL_PHASE_I]+measurement_buffers.ConvertedADC[ADCIW][FOC_CHANNEL_PHASE_I];
     }
 
     // Park
