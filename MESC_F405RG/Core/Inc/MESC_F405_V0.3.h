@@ -35,10 +35,12 @@
 #define OPGAIN 10.0f
 
 
-#define MAX_ID_REQUEST 100.0f
+#define MAX_ID_REQUEST 10.0f
 #define MAX_IQ_REQUEST 30.0f
 
-#define I_MEASURE 30.0f //Higher setpoint for resistance measurement
+#define I_MEASURE 15.0f //Higher setpoint for resistance measurement
+#define IMEASURE_CLOSEDLOOP 1.5f 	//After spinning up openloop and getting an approximation,
+									//this current is used to driver the motor and collect a refined flux linkage
 #define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
 #define ERPM_MEASURE 7000.0f//Speed to do the flux linkage measurement at
 
@@ -109,6 +111,8 @@
 										//Also, incompatible with flux linkage observer for now...
 #define NON_LINEAR_CENTERING_GAIN 5000.0f
 #define USE_CLAMPED_OBSERVER_CENTERING //Pick one of the two centering methods... preferably this one
+
+#define MESC_UART_USB 		MESC_USB
 
 
 
