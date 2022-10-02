@@ -116,9 +116,13 @@ static void cmd_hello( void )
 static void cmd_stop( void )
 {
     cli_reply( "%s" "\r" "\n", "STOP" );
-    input_vars.Idq_req_UART.d = 0;
-    input_vars.Idq_req_UART.q = 0;
+    input_vars.Idq_req_UART.d = 0.0f;
+    input_vars.Idq_req_UART.q = 0.0f;
+    foc_vars.Idq_req.d = 0.0f;
+    foc_vars.Idq_req.q = 0.0f;
+
 generateBreak();
+MotorState = MOTOR_STATE_TRACKING;
 }
 
 static void cmd_parameter_setup( void )
