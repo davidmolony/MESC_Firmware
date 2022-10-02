@@ -178,9 +178,17 @@ typedef struct CLIEntry CLIEntry;
 
 #define MAX_CLI_LUT_ENTRIES UINT32_C(32)
 
-static CLIEntry   cli_lut[MAX_CLI_LUT_ENTRIES];
-static uint32_t   cli_lut_entries = 0;
-static CLIEntry * cli_lut_entry = NULL;
+struct CLIlut_s
+{
+	CLIEntry 		entries[MAX_CLI_LUT_ENTRIES];
+	uint32_t   		entries_n;
+	CLIEntry * 		entry_ptr;
+};
+
+typedef struct CLIlut_s CLIlut_s;
+
+static CLIlut_s CLIlut;
+
 
 static MESC_STM_ALIAS(int,UART_HandleTypeDef) cli_io_write_noop( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size )
 {
@@ -239,16 +247,16 @@ static void cli_execute( void )
             cli_process_read_value();
             break;
         case CLI_COMMAND_WRITE:
-            memcpy( cli_lut_entry->var.w, &cli_var.var, cli_lut_entry->size );
+            memcpy( CLIlut.entry_ptr->var.w, &cli_var.var, CLIlut.entry_ptr->size );
             break;
         case CLI_COMMAND_EXECUTE:
-            cli_lut_entry->var.x();
+        	CLIlut.entry_ptr->var.x();
             break;
         case CLI_COMMAND_INCREASE:
         case CLI_COMMAND_DECREASE:
         {
-            CLIVariableType const type = cli_lut_entry->type;
-            uint32_t        const size = cli_lut_entry->size;
+            CLIVariableType const type = CLIlut.entry_ptr->type;
+            uint32_t        const size = CLIlut.entry_ptr->size;
             union
             {
                 int8_t   i8;
@@ -261,7 +269,7 @@ static void cli_execute( void )
                 uint32_t u32;
 
                 float    f32;
-            } * tmp = cli_lut_entry->var.w;
+            } * tmp = CLIlut.entry_ptr->var.w;
 
             switch (MAKE_TYPE_SIZE( type, size ))
             {
@@ -353,23 +361,23 @@ static void cli_execute( void )
 
 static CLIEntry * cli_lut_alloc( char const * name )
 {
-    if (cli_lut_entries >= MAX_CLI_LUT_ENTRIES)
+    if (CLIlut.entries_n >= MAX_CLI_LUT_ENTRIES)
     {
         return NULL;
     }
 
     uint32_t const hash = fnv1a_str( name );
 
-    for ( uint32_t i = 0; i < cli_lut_entries; ++i)
+    for ( uint32_t i = 0; i < CLIlut.entries_n; ++i)
     {
-        if (cli_lut[i].hash == hash)
+        if (CLIlut.entries[i].hash == hash)
         {
             // ERROR
             return NULL;
         }
     }
 
-    CLIEntry * entry = &cli_lut[cli_lut_entries];
+    CLIEntry * entry = &CLIlut.entries[CLIlut.entries_n];
     entry->hash = hash;
 
     return entry;
@@ -379,10 +387,10 @@ static void cli_process_read_xint( void )
 {
     char cli_buffer[32];
 
-    if (cli_lut_entry != NULL)
+    if (CLIlut.entry_ptr != NULL)
     {
-        CLIVariableType const type = cli_lut_entry->type;
-        uint32_t        const size = cli_lut_entry->size;
+        CLIVariableType const type = CLIlut.entry_ptr->type;
+        uint32_t        const size = CLIlut.entry_ptr->size;
         char * fmt_10 = NULL;
         char * fmt_16 = NULL;
 
@@ -419,7 +427,7 @@ static void cli_process_read_xint( void )
         uint32_t const nybbles = NYBBLES_PER_BYTE * size;
         uint32_t v = UINT32_C(0);
 
-        memcpy( &v, cli_lut_entry->var.r, size );
+        memcpy( &v, CLIlut.entry_ptr->var.r, size );
 
         if (cli_cmd == CLI_COMMAND_PROBE)
         {
@@ -520,10 +528,10 @@ static void cli_process_write_hex( char const c )
 
 static void cli_process_read_float( void )
 {
-    if (cli_lut_entry != NULL)
+    if (CLIlut.entry_ptr != NULL)
     {
-        CLIVariableType const type = cli_lut_entry->type;
-        uint32_t        const size = cli_lut_entry->size;
+        CLIVariableType const type = CLIlut.entry_ptr->type;
+        uint32_t        const size = CLIlut.entry_ptr->size;
 
         switch (MAKE_TYPE_SIZE( type, size ))
         {
@@ -533,7 +541,7 @@ static void cli_process_read_float( void )
                 return;
         }
 
-        cli_reply( "%f" "\r" "\n", *((float const *)cli_lut_entry->var.r) );
+        cli_reply( "%f" "\r" "\n", *((float const *)CLIlut.entry_ptr->var.r) );
     }
 }
 
@@ -631,7 +639,7 @@ void cli_register_variable_ro(
         entry->access = CLI_ACCESS_RO;
         entry->type   = type;
 
-        cli_lut_entries++;
+        CLIlut.entries_n++;
     }
 }
 
@@ -649,7 +657,7 @@ void cli_register_variable_rw(
         entry->access = CLI_ACCESS_RW;
         entry->type   = type;
 
-        cli_lut_entries++;
+        CLIlut.entries_n++;
     }
 }
 
@@ -667,7 +675,7 @@ void cli_register_variable_wo(
         entry->access = CLI_ACCESS_WO;
         entry->type   = type;
 
-        cli_lut_entries++;
+        CLIlut.entries_n++;
     }
 }
 
@@ -684,7 +692,7 @@ void cli_register_function(
         entry->access = CLI_ACCESS_X;
         entry->type   = (CLIVariableType)INT_MAX;
 
-        cli_lut_entries++;
+        CLIlut.entries_n++;
     }
 }
 
@@ -702,11 +710,11 @@ static uint32_t cli_lookup_index;
 
 static CLIEntry * cli_lookup( uint32_t const hash )
 {
-    for ( cli_lookup_index = 0; cli_lookup_index < cli_lut_entries; ++cli_lookup_index )
+    for ( cli_lookup_index = 0; cli_lookup_index < CLIlut.entries_n; ++cli_lookup_index )
     {
-        if (cli_lut[cli_lookup_index].hash == hash)
+        if (CLIlut.entries[cli_lookup_index].hash == hash)
         {
-            return &cli_lut[cli_lookup_index];
+            return &CLIlut.entries[cli_lookup_index];
         }
     }
 
@@ -774,11 +782,11 @@ static void cli_process_variable( const char c )
                     break;
             }
 
-            cli_lut_entry = cli_lookup( cli_hash );
+            CLIlut.entry_ptr = cli_lookup( cli_hash );
 
             if  (
-                    (cli_lut_entry == NULL)
-                ||  ((cli_lut_entry->access & access) != access)
+                    (CLIlut.entry_ptr == NULL)
+                ||  ((CLIlut.entry_ptr->access & access) != access)
                 )
             {
                 cli_abort();
@@ -788,7 +796,7 @@ static void cli_process_variable( const char c )
             switch (cli_cmd)
             {
                 case CLI_COMMAND_READ:
-                    cli_process_read_value = cli_process_read_type( cli_lut_entry->type );
+                    cli_process_read_value = cli_process_read_type( CLIlut.entry_ptr->type );
                     // fallthrough
                 case CLI_COMMAND_EXECUTE:
                     cli_state = CLI_STATE_EXECUTE;
@@ -807,7 +815,7 @@ static void cli_process_variable( const char c )
 
                     break;
                 case CLI_COMMAND_WRITE:
-                    cli_process_write_value = cli_process_write_type( cli_lut_entry->type );
+                    cli_process_write_value = cli_process_write_type( CLIlut.entry_ptr->type );
 
                     cli_state = CLI_STATE_VALUE;
                     cli_hash_valid = false;
@@ -816,8 +824,8 @@ static void cli_process_variable( const char c )
                     break;
                 case CLI_COMMAND_INCREASE:
                 case CLI_COMMAND_DECREASE:
-                    cli_process_write_value = cli_process_write_type( cli_lut_entry->type );
-                    cli_process_read_value  = cli_process_read_type(  cli_lut_entry->type );
+                    cli_process_write_value = cli_process_write_type( CLIlut.entry_ptr->type );
+                    cli_process_read_value  = cli_process_read_type(  CLIlut.entry_ptr->type );
 
                     cli_state = CLI_STATE_VALUE;
                     cli_hash_valid = false;
@@ -825,7 +833,7 @@ static void cli_process_variable( const char c )
 
                     break;
                 case CLI_COMMAND_PROBE:
-                    cli_lut_entry->access |= CLI_ACCESS_PROBE;
+                	CLIlut.entry_ptr->access |= CLI_ACCESS_PROBE;
                     cli_reply( "%" PRIu32 , cli_lookup_index );
                     break;
                 default:
@@ -1111,14 +1119,14 @@ void cli_reply( char const * p, ... )
 
 void cli_reply_scope( void )
 {
-    cli_lut_entry = cli_lut;
+	CLIlut.entry_ptr = CLIlut.entries;
     cli_cmd = CLI_COMMAND_PROBE;
 
-    for ( uint32_t i = 0; i < cli_lut_entries; ++i, ++cli_lut_entry )
+    for ( uint32_t i = 0; i < CLIlut.entries_n; ++i, ++CLIlut.entry_ptr )
     {
-        if ((cli_lut_entry->access & CLI_ACCESS_PROBE) == CLI_ACCESS_PROBE)
+        if ((CLIlut.entry_ptr->access & CLI_ACCESS_PROBE) == CLI_ACCESS_PROBE)
         {
-            cli_process_read_value = cli_process_read_type( cli_lut_entry->type );
+            cli_process_read_value = cli_process_read_type( CLIlut.entry_ptr->type );
             cli_process_read_value();
         }
     }

@@ -35,6 +35,7 @@
 #include "MESCerror.h"
 
 #include <math.h>
+#include <stdlib.h>
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
@@ -404,7 +405,7 @@ if(MotorState==MOTOR_STATE_RUN||MotorState==MOTOR_STATE_MEASURING){
 
 // TODO: refactor this function. Is this function called by DMA interrupt?
 void VICheck() {  // Check currents, voltages are within panic limits
-  static int errorCount = 0;
+
 
   if (measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim){
 	  handleError(ERROR_OVERCURRENT_PHA);
@@ -418,6 +419,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   if (measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V] > g_hw_setup.RawVoltLim){
 	  handleError(ERROR_OVERVOLTAGE);
   }
+//  static int errorCount = 0;
 //  if ((measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
 //      (measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
 //      (measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
@@ -544,8 +546,6 @@ void VICheck() {  // Check currents, voltages are within panic limits
   volatile static float FLAmax = 0.0f;
   volatile static float FLAmin = 0.0f;
   volatile static float FLAdiff = 0.0f;
-static int cyclescount = 0;
-static int cyclescountacc = 0;
 
   void flux_observer() {
     // LICENCE NOTE:
@@ -1255,10 +1255,6 @@ static int cyclescountacc = 0;
      * direct and quadrature inductances for MTPA in future?
      */
   }
-  static float acc_da = 0.0f;
-  static float acc_db = 0.0f;
-  static float da;
-  static float db;
   int angle_delta;
   static volatile float temp_flux;
   static volatile float temp_FLA;

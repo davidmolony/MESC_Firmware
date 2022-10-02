@@ -76,4 +76,7 @@ struct MESC_log_vars
 #define ERROR_HALL0 24
 #define ERROR_HALL7 25
 
+
+void handleError(uint32_t error_code);
+
 #endif /* INC_MESCERROR_H_ */
