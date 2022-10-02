@@ -887,8 +887,9 @@ static uint32_t byte_swap(uint32_t const value)
         )   ;
 }
 
+static uint8_t cli_reply_buffer_offset = UINT8_C(0); // ...to here but change to 8 bit
 static uint8_t  cli_reply_buffer[256] = {0};
-static uint16_t cli_reply_buffer_offset = UINT16_C(0);
+//static uint16_t cli_reply_buffer_offset = UINT16_C(0);
 
 static void cli_reply_begin( void )
 {

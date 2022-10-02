@@ -84,7 +84,7 @@ void USB_CDC_Callback(uint8_t *buffer, uint32_t len){
 	for(int i = 0; i<len; i++){
 		if (buffer[i] == '\r') // Treat CR...
 		{
-			buffer[i] = '\n'; // ...as LF
+			continue;//buffer[i] = '\n'; // ...as LF
 		}
 		cli_process( buffer[i] );
 	}
@@ -110,6 +110,14 @@ static void cmd_hall_inc( void )
 static void cmd_hello( void )
 {
     cli_reply( "%s" "\r" "\n", "HELLO" );
+}
+
+static void cmd_stop( void )
+{
+    cli_reply( "%s" "\r" "\n", "STOP" );
+    input_vars.Idq_req_UART.d = 0;
+    input_vars.Idq_req_UART.q = 0;
+generateBreak();
 }
 
 static void cmd_parameter_setup( void )
@@ -147,7 +155,14 @@ static void cmd_measure( void )
 {
     MotorState = MOTOR_STATE_MEASURING;
 }
-
+static void cmd_getkV( void )
+{
+    MotorState = MOTOR_STATE_GET_KV;
+}
+static void cmd_detect( void )
+{
+    MotorState = MOTOR_STATE_DETECTING;
+}
 
 void uart_init( void )
 {
@@ -159,12 +174,16 @@ void uart_init( void )
     cli_register_function( "hall_dec"     , cmd_hall_dec        );
     cli_register_function( "hall_inc"     , cmd_hall_inc        );
     cli_register_function( "hello"        , cmd_hello           );
+    cli_register_function( "stop"         , cmd_stop           	);
     cli_register_function( "param_setup"  , cmd_parameter_setup );
     cli_register_function( "reset"        , cmd_reset           );
     cli_register_function( "test"         , cmd_test            );
-    cli_register_function( "q"         , cmd_iqup            	);
-    cli_register_function( "a"         , cmd_iqdown            	);
-    cli_register_function( "Measure"   , cmd_measure            );
+    cli_register_function( "q"         	, cmd_iqup            	);
+    cli_register_function( "a"         	, cmd_iqdown            );
+    cli_register_function( "measure"   	, cmd_measure           );
+    cli_register_function( "getkV"   	, cmd_getkV            	);
+    cli_register_function( "detect"   , cmd_detect           	);
+
 
 #if MESC_UART_USB
     cli_register_io( NULL, (int(*)(void *,void *,uint16_t))HAL_USB_Transmit, usb_ack );

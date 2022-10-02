@@ -531,6 +531,9 @@ if(phasebalance){
 		if(fabs(foc_vars.Iab[2])>fabs(maxIgamma)){
 			maxIgamma = foc_vars.Iab[2];
 		}
+		if(foc_vars.Vdq.q<2.0f){ //Reset it to reject accumulated random noise and enable multiple goes
+			maxIgamma = 0.0f;
+		}
 #endif
       // Do the full transform
       foc_vars.Iab[0] =
