@@ -84,7 +84,8 @@ void USB_CDC_Callback(uint8_t *buffer, uint32_t len){
 	for(int i = 0; i<len; i++){
 		if (buffer[i] == '\r') // Treat CR...
 		{
-			continue;//buffer[i] = '\n'; // ...as LF
+			//continue;
+			buffer[i] = '\n'; // ...as LF
 		}
 		cli_process( buffer[i] );
 	}
