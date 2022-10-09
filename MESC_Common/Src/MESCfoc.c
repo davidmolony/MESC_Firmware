@@ -60,6 +60,7 @@ foc_measurement_t measurement_buffers;
 input_vars_t input_vars;
 
 void MESCInit() {
+DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP;
 MotorState = MOTOR_STATE_IDLE;
 
   mesc_init_1();
@@ -212,6 +213,7 @@ void fastLoop() {
       //      }//For now we are going to not support BLDC mode
     	generateEnable();
       if (MotorSensorMode == MOTOR_SENSOR_MODE_HALL) {
+    	foc_vars.inject = 0;
         hallAngleEstimator();
         angleObserver();
         MESCFOC();
@@ -228,7 +230,12 @@ void fastLoop() {
 			  // Track using BEMF from phase sensors
 			  generateBreak();
 		      MESCTrack();
-		      flux_observer();
+		      if (MotorSensorMode == MOTOR_SENSOR_MODE_HALL) {
+		          hallAngleEstimator();
+		          angleObserver();
+		      } else if (MotorSensorMode == MOTOR_SENSOR_MODE_SENSORLESS) {
+		    	  flux_observer();
+		      }
 #endif
 
       break;
@@ -1164,6 +1171,7 @@ if(phasebalance){
     static int rollover;
     hallstate = current_hall_state;
     if (firstturn) {
+    	generateEnable();
       lasthallstate = hallstate;
       (void)lasthallstate;
       firstturn = 0;
@@ -1173,14 +1181,14 @@ if(phasebalance){
     static uint16_t a = 65535;
     if (a)  // Align time
     {
-      foc_vars.Idq_req.d = 10;
-      foc_vars.Idq_req.q = 0;
+      foc_vars.Idq_req.d = 10.0f;
+      foc_vars.Idq_req.q = 0.0f;
 
-      foc_vars.FOCAngle = 0;
+      foc_vars.FOCAngle = 0.0f;
       a = a - 1;
     } else {
-      foc_vars.Idq_req.d = 10;
-      foc_vars.Idq_req.q = 0;
+      foc_vars.Idq_req.d = 10.0f;
+      foc_vars.Idq_req.q = 0.0f;
       static int dir = 1;
       if (pwm_count < 65534) {
         if (foc_vars.FOCAngle < (anglestep)) {
@@ -1691,7 +1699,7 @@ was_last_tracking = 1;
 //foc_vars.Idq_req[0] = 10; //for aligning encoder
 /////////////Set and reset the HFI////////////////////////
 #ifdef USE_HFI
-    if((foc_vars.Vdq.q > 2.0f)||(foc_vars.Vdq.q < -2.0f)){
+    if((foc_vars.Vdq.q > 2.0f)||(foc_vars.Vdq.q < -2.0f)||(MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
     	foc_vars.inject = 0;
     } else if((foc_vars.Vdq.q < 1.0f)&&(foc_vars.Vdq.q > -1.0f)){
     	foc_vars.inject = 1;

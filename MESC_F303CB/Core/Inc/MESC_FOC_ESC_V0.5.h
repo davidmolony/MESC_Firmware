@@ -70,8 +70,8 @@
 
 //////Motor parameters
 #define DEFAULT_MOTOR_POWER 250.0f
-#define DEFAULT_FLUX_LINKAGE 0.0260f//Set this to the motor linkage in wB
-#define DEFAULT_MOTOR_Ld 0.000131f //Henries
+#define DEFAULT_FLUX_LINKAGE 0.0120f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000061f //Henries
 #define DEFAULT_MOTOR_Lq 0.000160f//Henries
 #define DEFAULT_MOTOR_R 0.051f //Ohms
 //Use the Ebike Profile tool
@@ -80,7 +80,7 @@
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
+//#define USE_HFI
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 20.0f
 

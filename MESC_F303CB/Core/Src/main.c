@@ -236,7 +236,6 @@ int main(void)
 
     //Initialise MESC
     MESCInit();
-    MotorState = MOTOR_STATE_MEASURING;
     MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
     calculateGains();
