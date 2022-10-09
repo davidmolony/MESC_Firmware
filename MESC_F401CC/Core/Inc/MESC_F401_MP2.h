@@ -37,8 +37,8 @@
 #define MAX_ID_REQUEST 2.0f
 #define MAX_IQ_REQUEST 40.0f
 
-#define I_MEASURE 5.0f 			//Higher setpoint for resistance measurement, half this used for OL spin up
-#define IMEASURE_CLOSEDLOOP 1.5f 	//After spinning up openloop and getting an approximation,
+#define I_MEASURE 30.0f 			//Higher setpoint for resistance measurement, half this used for OL spin up
+#define IMEASURE_CLOSEDLOOP 4.5f 	//After spinning up openloop and getting an approximation,
 									//this current is used to driver the motor and collect a refined flux linkage
 #define V_MEASURE 4.0f 	//Voltage injected for measuring inductance
 #define ERPM_MEASURE 3000.0f
@@ -80,7 +80,7 @@
 #define FIELD_WEAKENING_THRESHOLD 0.8f
 #define USE_HFI
 #define HFI_VOLTAGE 4.0f
-#define HFI_TEST_CURRENT 2.0f
+#define HFI_TEST_CURRENT 20.0f
 
 
 #ifdef USE_HFI

@@ -357,6 +357,7 @@ static MESCiq_s dIdq = {.d = 0.0f, .q = 0.0f};
 static MESCiq_s intdidq;
 static volatile float nrm;
 static volatile float nrm_avg;
+static uint16_t last_angle;
 
 void hyperLoop() {
 #ifdef USE_HFI
@@ -402,6 +403,11 @@ void hyperLoop() {
 #ifdef USE_ENCODER
 tle5012();
 #endif
+//RunPLL for all angle options
+foc_vars.angle_error = foc_vars.angle_error-0.02f*(int16_t)((foc_vars.angle_error+(int)(last_angle - foc_vars.FOCAngle)));
+foc_vars.eHz = foc_vars.angle_error * foc_vars.pwm_frequency/65536.0f;
+last_angle = foc_vars.FOCAngle;
+
  // foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.angle_error;
 if(MotorState==MOTOR_STATE_RUN||MotorState==MOTOR_STATE_MEASURING){
 	writePWM();
@@ -632,9 +638,6 @@ if(phasebalance){
 
 
     if(foc_vars.inject==0){
-        //Run PLL for speed
-    	foc_vars.angle_error = foc_vars.angle_error-0.1f*(int16_t)((foc_vars.angle_error+(int)(foc_vars.FOCAngle - angle)));
-    	foc_vars.eHz = foc_vars.angle_error * foc_vars.pwm_frequency/65536.0f;
 #ifdef DO_OPENLOOP
     foc_vars.FOCAngle = foc_vars.FOCAngle+60;
 #else
