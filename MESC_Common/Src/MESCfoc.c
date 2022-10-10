@@ -407,7 +407,14 @@ tle5012();
 foc_vars.angle_error = foc_vars.angle_error-0.02f*(int16_t)((foc_vars.angle_error+(int)(last_angle - foc_vars.FOCAngle)));
 foc_vars.eHz = foc_vars.angle_error * foc_vars.pwm_frequency/65536.0f;
 last_angle = foc_vars.FOCAngle;
-
+#ifdef INTERPOLATE_V7_ANGLE
+if(fabs(foc_vars.eHz)>0.005*foc_vars.pwm_frequency){
+	//Only run it when there is likely to be good speed measurement stability and
+	//actual utility in doing it. At low speed, there is minimal benefit, and
+	//unstable speed estimation could make it worse.
+foc_vars.FOCAngle = foc_vars.FOCAngle + 0.5f*foc_vars.angle_error;
+}
+#endif
  // foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.angle_error;
 if(MotorState==MOTOR_STATE_RUN||MotorState==MOTOR_STATE_MEASURING){
 	writePWM();

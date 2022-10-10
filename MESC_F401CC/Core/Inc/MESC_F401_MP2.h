@@ -69,10 +69,10 @@
 
 //////Motor parameters
 #define DEFAULT_MOTOR_POWER 2000.0f
-#define DEFAULT_FLUX_LINKAGE 0.01207f //Wb
-#define DEFAULT_MOTOR_Ld 0.00006257797361f //Henries
-#define DEFAULT_MOTOR_Lq 0.0001535222269f//Henries
-#define DEFAULT_MOTOR_R 0.04159184325f //Ohms
+#define DEFAULT_FLUX_LINKAGE 0.00387f //Wb
+#define DEFAULT_MOTOR_Ld 0.000005257797361f //Henries
+#define DEFAULT_MOTOR_Lq 0.000008535222269f//Henries
+#define DEFAULT_MOTOR_R 0.0104325f //Ohms
 //Use the Ebike Profile tool
 //#define USE_PROFILE
 //#define USE_FIELD_WEAKENING
@@ -95,7 +95,7 @@
 //#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
 
 #define USE_SQRT_CIRCLE_LIM
-
+#define INTERPOLATE_V7_ANGLE
 //#define USE_MTPA
 
 /////Related to observer
