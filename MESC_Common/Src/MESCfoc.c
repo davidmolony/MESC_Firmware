@@ -1539,7 +1539,6 @@ if(phasebalance){
 	    }
   }
   extern uint32_t ADC_buffer[6];
-
   float Vd_obs_high, Vd_obs_low, R_observer, Vq_obs_high, Vq_obs_low, L_observer, Last_eHz;
 
   void slowLoop(TIM_HandleTypeDef * htim) {
@@ -1682,39 +1681,40 @@ if(foc_vars.Idq_req.q<input_vars.min_request_Idq.q){foc_vars.Idq_req.q = input_v
 
 //////////////////////Run the LR observer
 #ifdef USE_LR_OBSERVER
-if((fabs(foc_vars.eHz)>0.005*foc_vars.pwm_frequency)&&(foc_vars.inject ==0)){
-	static int plusminus = 1;
-	if(plusminus==1){
-		plusminus = -1;
-		Vd_obs_low = 0.9f*Vd_obs_low+0.1f*foc_vars.Vdq.d;
-		Vq_obs_low = 0.9f*Vq_obs_low+0.1f*foc_vars.Vdq.q;
-		foc_vars.Idq_req.d = foc_vars.Idq_req.d+LR_OBS_CURRENT;
-	}else if(plusminus == -1){
-		plusminus = 1;
-		Vd_obs_high = 0.9f*Vd_obs_high+0.1f*foc_vars.Vdq.d;
-		Vq_obs_high = 0.9f*Vq_obs_high+0.1f*foc_vars.Vdq.q;
-		foc_vars.Idq_req.d = foc_vars.Idq_req.d-LR_OBS_CURRENT;
-	}
+//    LRObserver();
+	  if((fabs(foc_vars.eHz)>0.005*foc_vars.pwm_frequency)&&(foc_vars.inject ==0)){
+	  	static int plusminus = 1;
+	  	if(plusminus==1){
+	  		plusminus = -1;
+	  		Vd_obs_low = 0.9f*Vd_obs_low+0.1f*foc_vars.Vdq.d;
+	  		Vq_obs_low = 0.9f*Vq_obs_low+0.1f*foc_vars.Vdq.q;
+	  		foc_vars.Idq_req.d = foc_vars.Idq_req.d+LR_OBS_CURRENT;
+	  	}else if(plusminus == -1){
+	  		plusminus = 1;
+	  		Vd_obs_high = 0.9f*Vd_obs_high+0.1f*foc_vars.Vdq.d;
+	  		Vq_obs_high = 0.9f*Vq_obs_high+0.1f*foc_vars.Vdq.q;
+	  		foc_vars.Idq_req.d = foc_vars.Idq_req.d-LR_OBS_CURRENT;
+	  	}
 
-	R_observer = (Vd_obs_high-Vd_obs_low)/(2.0f*LR_OBS_CURRENT);
-	L_observer = (Vq_obs_high-Vq_obs_low-6.28f*(foc_vars.eHz-Last_eHz)*motor.motor_flux)/(2.0f*LR_OBS_CURRENT*6.28f*foc_vars.eHz);
-	Last_eHz = foc_vars.eHz;
-	float Rerror = R_observer-motor.Rphase;
-	float Lerror = L_observer-motor.Lphase;
-	//Apply the correction excluding large changes
-	if(fabs(Rerror)<0.1f*motor.Rphase){
-		motor.Rphase = motor.Rphase+0.1f*Rerror;
-	}else if(fabs(Rerror)<0.5f*motor.Rphase){
-		motor.Rphase = motor.Rphase+0.001f*Rerror;
-	}
-	if(fabs(Lerror)<0.1f*motor.Lphase){
-		motor.Lphase = motor.Lphase+0.1f*Lerror;
-		motor.Lqphase = motor.Lqphase +0.1f*Lerror;
-	}else if(fabs(Lerror)<0.5f*motor.Lphase){
-		motor.Lphase = motor.Lphase+0.001f*Lerror;
-		motor.Lqphase = motor.Lqphase +0.001f*Lerror;
-	}
-}
+	  	R_observer = (Vd_obs_high-Vd_obs_low)/(2.0f*LR_OBS_CURRENT);
+	  	L_observer = (Vq_obs_high-Vq_obs_low-6.28f*(foc_vars.eHz-Last_eHz)*motor.motor_flux)/(2.0f*LR_OBS_CURRENT*6.28f*foc_vars.eHz);
+	  	Last_eHz = foc_vars.eHz;
+	  	float Rerror = R_observer-motor.Rphase;
+	  	float Lerror = L_observer-motor.Lphase;
+	  	//Apply the correction excluding large changes
+	  	if(fabs(Rerror)<0.1f*motor.Rphase){
+	  		motor.Rphase = motor.Rphase+0.1f*Rerror;
+	  	}else if(fabs(Rerror)<0.5f*motor.Rphase){
+	  		motor.Rphase = motor.Rphase+0.001f*Rerror;
+	  	}
+	  	if(fabs(Lerror)<0.1f*motor.Lphase){
+	  		motor.Lphase = motor.Lphase+0.1f*Lerror;
+	  		motor.Lqphase = motor.Lqphase +0.1f*Lerror;
+	  	}else if(fabs(Lerror)<0.5f*motor.Lphase){
+	  		motor.Lphase = motor.Lphase+0.001f*Lerror;
+	  		motor.Lqphase = motor.Lqphase +0.001f*Lerror;
+	  	}
+	  }
 #endif
     //////Set tracking
 static int was_last_tracking;
@@ -1985,4 +1985,44 @@ uint16_t test_counts;
 	}
   }
 
+  //LR observer. WIP function that works by injecting a
+  //low frequency Id signal into the PID input and observing the change in Vd and Vq
+  //Does not work too well, requires some care in use.
+  //Original work to MESC project.
+//  float Vd_obs_high, Vd_obs_low, R_observer, Vq_obs_high, Vq_obs_low, L_observer, Last_eHz;
+  void LRObserver(){
+//	  if((fabs(foc_vars.eHz)>0.005*foc_vars.pwm_frequency)&&(foc_vars.inject ==0)){
+//	  	static int plusminus = 1;
+//	  	if(plusminus==1){
+//	  		plusminus = -1;
+//	  		Vd_obs_low = 0.9f*Vd_obs_low+0.1f*foc_vars.Vdq.d;
+//	  		Vq_obs_low = 0.9f*Vq_obs_low+0.1f*foc_vars.Vdq.q;
+//	  		foc_vars.Idq_req.d = foc_vars.Idq_req.d+LR_OBS_CURRENT;
+//	  	}else if(plusminus == -1){
+//	  		plusminus = 1;
+//	  		Vd_obs_high = 0.9f*Vd_obs_high+0.1f*foc_vars.Vdq.d;
+//	  		Vq_obs_high = 0.9f*Vq_obs_high+0.1f*foc_vars.Vdq.q;
+//	  		foc_vars.Idq_req.d = foc_vars.Idq_req.d-LR_OBS_CURRENT;
+//	  	}
+//
+//	  	R_observer = (Vd_obs_high-Vd_obs_low)/(2.0f*LR_OBS_CURRENT);
+//	  	L_observer = (Vq_obs_high-Vq_obs_low-6.28f*(foc_vars.eHz-Last_eHz)*motor.motor_flux)/(2.0f*LR_OBS_CURRENT*6.28f*foc_vars.eHz);
+//	  	Last_eHz = foc_vars.eHz;
+//	  	float Rerror = R_observer-motor.Rphase;
+//	  	float Lerror = L_observer-motor.Lphase;
+//	  	//Apply the correction excluding large changes
+//	  	if(fabs(Rerror)<0.1f*motor.Rphase){
+//	  		motor.Rphase = motor.Rphase+0.1f*Rerror;
+//	  	}else if(fabs(Rerror)<0.5f*motor.Rphase){
+//	  		motor.Rphase = motor.Rphase+0.001f*Rerror;
+//	  	}
+//	  	if(fabs(Lerror)<0.1f*motor.Lphase){
+//	  		motor.Lphase = motor.Lphase+0.1f*Lerror;
+//	  		motor.Lqphase = motor.Lqphase +0.1f*Lerror;
+//	  	}else if(fabs(Lerror)<0.5f*motor.Lphase){
+//	  		motor.Lphase = motor.Lphase+0.001f*Lerror;
+//	  		motor.Lqphase = motor.Lqphase +0.001f*Lerror;
+//	  	}
+//	  }
+  }
   // clang-format on

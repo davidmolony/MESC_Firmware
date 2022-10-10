@@ -96,7 +96,7 @@
 
 #define USE_SQRT_CIRCLE_LIM
 #define INTERPOLATE_V7_ANGLE
-#define USE_LR_OBSERVER
+//#define USE_LR_OBSERVER
 #define LR_OBS_CURRENT 8.0f 	//Inject this much current into the d-axis at the slowloop frequency and observe the change in Vd and Vq
 								//Needs to be a small current that does not have much effect on the running parameters.
 //#define USE_MTPA
