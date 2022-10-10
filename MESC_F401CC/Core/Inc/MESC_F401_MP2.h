@@ -15,7 +15,7 @@
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
 
 #define DEADTIME_COMP
-#define DEADTIME_COMP_V 20 	//Arbitrary value for now, needs parametising.
+#define DEADTIME_COMP_V 10 	//Arbitrary value for now, needs parametising.
 							//Basically this is half the time between MOSoff and MOSon
 							//and needs dtermining experimentally, either with openloop
 							//sin wave drawing or by finding the zero current switching "power knee point"
@@ -78,7 +78,7 @@
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
+//#define USE_HFI
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 20.0f
 
@@ -96,6 +96,9 @@
 
 #define USE_SQRT_CIRCLE_LIM
 #define INTERPOLATE_V7_ANGLE
+#define USE_LR_OBSERVER
+#define LR_OBS_CURRENT 8.0f 	//Inject this much current into the d-axis at the slowloop frequency and observe the change in Vd and Vq
+								//Needs to be a small current that does not have much effect on the running parameters.
 //#define USE_MTPA
 
 /////Related to observer
