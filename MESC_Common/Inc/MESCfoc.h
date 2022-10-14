@@ -305,4 +305,5 @@ void deadshort();
 void tle5012();
 void getDeadtime();
 void LRObserver();
+void LRObserverCollect();
 #endif

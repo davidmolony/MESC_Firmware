@@ -69,10 +69,10 @@
 
 //////Motor parameters
 #define DEFAULT_MOTOR_POWER 2000.0f
-#define DEFAULT_FLUX_LINKAGE 0.00387f //Wb
-#define DEFAULT_MOTOR_Ld 0.000005257797361f //Henries
-#define DEFAULT_MOTOR_Lq 0.000008535222269f//Henries
-#define DEFAULT_MOTOR_R 0.0104325f //Ohms
+#define DEFAULT_FLUX_LINKAGE 0.0038387f //Wb
+#define DEFAULT_MOTOR_Ld 0.000006257797361f //Henries
+#define DEFAULT_MOTOR_Lq 0.000015535222269f//Henries
+#define DEFAULT_MOTOR_R 0.010504325f //Ohms
 //Use the Ebike Profile tool
 //#define USE_PROFILE
 //#define USE_FIELD_WEAKENING
@@ -97,7 +97,7 @@
 #define USE_SQRT_CIRCLE_LIM
 #define INTERPOLATE_V7_ANGLE
 #define USE_LR_OBSERVER
-#define LR_OBS_CURRENT 8.0f 	//Inject this much current into the d-axis at the slowloop frequency and observe the change in Vd and Vq
+#define LR_OBS_CURRENT 0.1*MAX_IQ_REQUEST	//Inject this much current into the d-axis at the slowloop frequency and observe the change in Vd and Vq
 								//Needs to be a small current that does not have much effect on the running parameters.
 //#define USE_MTPA
 

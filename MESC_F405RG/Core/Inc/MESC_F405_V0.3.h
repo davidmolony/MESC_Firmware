@@ -69,10 +69,10 @@
 
 //////Motor parameters
 #define DEFAULT_MOTOR_POWER 250.0f
-#define DEFAULT_FLUX_LINKAGE 0.0110f//Set this to the motor linkage in wB
-#define DEFAULT_MOTOR_Ld 0.00006f //Henries
-#define DEFAULT_MOTOR_Lq 0.000150f//Henries
-#define DEFAULT_MOTOR_R 0.05260f //Ohms
+#define DEFAULT_FLUX_LINKAGE 0.00380f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000006f //Henries
+#define DEFAULT_MOTOR_Lq 0.0000120f//Henries
+#define DEFAULT_MOTOR_R 0.0105260f //Ohms
 //Use the Ebike Profile tool
 #define USE_PROFILE
 
@@ -92,7 +92,10 @@
 //#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
 
 #define USE_SQRT_CIRCLE_LIM
-
+#define USE_LR_OBSERVER
+#define LR_OBS_CURRENT 0.1*MAX_IQ_REQUEST 	//Inject this much current into the d-axis at the slowloop frequency and observe the change in Vd and Vq
+								//Needs to be a small current that does not have much effect on the running parameters.
+								
 //#define USE_MTPA //Cannot currently use at the same time as field weakening...
 
 //#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
