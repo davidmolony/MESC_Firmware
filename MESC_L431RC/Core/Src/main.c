@@ -116,13 +116,11 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
-
-  //Start the input capture timer for slowloop
-  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1);
-  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_2);
-  __HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
-
   MESCInit();
+  motor_init(NULL);
+
+
+
 
   motor.Rphase = motor_profile->R;
   motor.Lphase = motor_profile->L_D;
@@ -133,6 +131,11 @@ int main(void)
   calculateGains();
   calculateVoltageGain();
   MotorControlType = MOTOR_CONTROL_TYPE_FOC;
+
+  //Start the input capture timer for slowloop
+  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_2);
+  __HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
   /* USER CODE END 2 */
 
   /* Infinite loop */

@@ -210,10 +210,13 @@ void mesc_init_3( void )
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
 	
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+    generateBreak();//We have started the timers, but we really do not want them PWMing yet
 
 	HAL_ADCEx_InjectedStart(&hadc1);
 	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD);
 	__HAL_TIM_ENABLE_IT(&htim1,TIM_IT_UPDATE);
+
+	HAL_Delay(100);
 //	hadc1.Instance->LTR = 4001; //default for AWD
 //	hadc1.Instance->LTR = 100;
 

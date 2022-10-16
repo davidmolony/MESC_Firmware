@@ -60,7 +60,11 @@ foc_measurement_t measurement_buffers;
 input_vars_t input_vars;
 
 void MESCInit() {
+#ifdef STM32L4 // For some reason, ST have decided to have a different name for the L4 timer DBG freeze...
+DBGMCU->APB2FZ |= DBGMCU_APB2FZ_DBG_TIM1_STOP;
+#else
 DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP;
+#endif
 MotorState = MOTOR_STATE_IDLE;
 
   mesc_init_1();
@@ -776,7 +780,7 @@ if(phasebalance){
          work...
            //Why?
  */
-      if (dir > 0) {  // Apply a gain to the error as well as the feed forward
+      if (dir > 0.0f) {  // Apply a gain to the error as well as the feed forward
         // from the last hall period. Gain of 0.9-1.1 seems to work
         // well when using corrected hall positions and spacings
         foc_vars.FOCAngle =

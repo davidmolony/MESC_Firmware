@@ -14,13 +14,19 @@
 //#define MISSING_VCURRSENSOR //Running this with low side sensors may result in fire.
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
 
+#define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
+#define DEADTIME_COMP_V 5 	//Arbitrary value for starting, needs determining through TEST_TYP_DEAD_TIME_IDENT.
+							//Basically this is half the time between MOSoff and MOSon
+							//and needs dtermining experimentally, either with openloop
+							//sin wave drawing or by finding the zero current switching "power knee point"
+							
 #define SOFTWARE_ADC_REGULAR
 #define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 60.0f
-#define ABS_MAX_BUS_VOLTAGE 32.0f
+#define ABS_MAX_PHASE_CURRENT 50.0f
+#define ABS_MAX_BUS_VOLTAGE 45.0f
 #define ABS_MIN_BUS_VOLTAGE 10.0f
-#define R_SHUNT 0.001f
+#define R_SHUNT 0.00033f
 //ToDo need to define using a discrete opamp with resistors to set gain vs using one with a specified gain
 
 #define R_VBUS_BOTTOM 33000.0f //Phase and Vbus voltage sensors
@@ -29,11 +35,14 @@
 
 
 #define MAX_ID_REQUEST 10.0f
-#define MAX_IQ_REQUEST 50.0f
+#define MAX_IQ_REQUEST 20.0f
 
-#define I_MEASURE 30.0f //Higher setpoint for resistance measurement
+
+#define I_MEASURE 15.0f //Higher setpoint for resistance measurement
+#define IMEASURE_CLOSEDLOOP 1.5f 	//After spinning up openloop and getting an approximation,
+									//this current is used to driver the motor and collect a refined flux linkage
 #define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
-
+#define ERPM_MEASURE 7000.0f//Speed to do the flux linkage measurement at
 ////////////////////USER DEFINES//////////////////
 	///////////////////RCPWM//////////////////////
 #define IC_DURATION_MAX 25000
@@ -68,7 +77,7 @@
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-//#define USE_HFI
+#define USE_HFI
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 20.0f
 
@@ -78,8 +87,11 @@
 #define CURRENT_BANDWIDTH 5000.0f
 #endif
 
-//#define USE_SQRT_CIRCLE_LIM
-
+#define USE_SQRT_CIRCLE_LIM
+//#define USE_LR_OBSERVER
+#define LR_OBS_CURRENT 0.1*MAX_IQ_REQUEST 	//Inject this much current into the d-axis at the slowloop frequency and observe the change in Vd and Vq
+								//Needs to be a small current that does not have much effect on the running parameters.
+							
 //#define USE_MTPA
 
 /////Related to observer

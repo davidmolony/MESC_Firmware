@@ -22,7 +22,7 @@
 
 #define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 100.0f
+#define ABS_MAX_PHASE_CURRENT 250.0f
 #define ABS_MAX_BUS_VOLTAGE 45.0f
 #define ABS_MIN_BUS_VOLTAGE 24.0f
 #define R_SHUNT 0.000333f
@@ -30,13 +30,15 @@
 
 //#define R_VBUS_BOTTOM 1500.0f //Phase and Vbus voltage sensors
 //#define R_VBUS_TOP 82000.0f
-#define R_VBUS_BOTTOM 3300.0f //Phase and Vbus voltage sensors
+//#define R_VBUS_BOTTOM 3300.0f //Phase and Vbus voltage sensors
+//#define R_VBUS_TOP 100000.0f
+#define R_VBUS_BOTTOM 2700.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 100000.0f
 #define OPGAIN 10.0f
 
 
 #define MAX_ID_REQUEST 10.0f
-#define MAX_IQ_REQUEST 30.0f
+#define MAX_IQ_REQUEST 200.0f
 
 #define I_MEASURE 15.0f //Higher setpoint for resistance measurement
 #define IMEASURE_CLOSEDLOOP 1.5f 	//After spinning up openloop and getting an approximation,
@@ -79,7 +81,7 @@
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
+//#define USE_HFI
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 10.0f
 
@@ -89,10 +91,10 @@
 #define CURRENT_BANDWIDTH 5000.0f
 #endif
 
-//#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
+#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
 
 #define USE_SQRT_CIRCLE_LIM
-#define USE_LR_OBSERVER
+//#define USE_LR_OBSERVER
 #define LR_OBS_CURRENT 0.1*MAX_IQ_REQUEST 	//Inject this much current into the d-axis at the slowloop frequency and observe the change in Vd and Vq
 								//Needs to be a small current that does not have much effect on the running parameters.
 								
