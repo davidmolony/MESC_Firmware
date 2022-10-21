@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -172,6 +173,7 @@ int main(void)
   MX_USART3_UART_Init();
   MX_ADC4_Init();
   MX_TIM17_Init();
+  MX_USB_DEVICE_Init();
 
   /* Initialize interrupts */
   MX_NVIC_Init();
@@ -219,6 +221,8 @@ int main(void)
 #endif
     motor.Rphase = motor_profile->R;
     motor.Lphase = motor_profile->L_D;
+    motor.Lqphase = motor_profile->L_Q;
+
     motor.motor_flux = motor_profile->flux_linkage;
     motor.uncertainty = 1;
     // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
@@ -232,7 +236,6 @@ int main(void)
 
     //Initialise MESC
     MESCInit();
-    MotorState = MOTOR_STATE_MEASURING;
     MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
     calculateGains();
@@ -333,13 +336,14 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART3|RCC_PERIPHCLK_I2C1
-                              |RCC_PERIPHCLK_TIM1|RCC_PERIPHCLK_ADC12
-                              |RCC_PERIPHCLK_ADC34;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB|RCC_PERIPHCLK_USART3
+                              |RCC_PERIPHCLK_I2C1|RCC_PERIPHCLK_TIM1
+                              |RCC_PERIPHCLK_ADC12|RCC_PERIPHCLK_ADC34;
   PeriphClkInit.Usart3ClockSelection = RCC_USART3CLKSOURCE_PCLK1;
   PeriphClkInit.Adc12ClockSelection = RCC_ADC12PLLCLK_DIV1;
   PeriphClkInit.Adc34ClockSelection = RCC_ADC34PLLCLK_DIV1;
   PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_HSI;
+  PeriphClkInit.USBClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
   PeriphClkInit.Tim1ClockSelection = RCC_TIM1CLK_HCLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {

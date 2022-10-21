@@ -1,4 +1,4 @@
-#define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
+#define PWM_FREQUENCY 25000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
 #define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!
 //#define USE_DEADSHORT //This can be used in place of the phase sensors for startup from running.
 #define DEADSHORT_CURRENT 30.0f	//When recovering from tracking phase without phase sensors, the
@@ -14,24 +14,37 @@
 //#define MISSING_VCURRSENSOR //Running this with low side sensors may result in fire.
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
 
+#define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
+#define DEADTIME_COMP_V 5 	//Arbitrary value for starting, needs determining through TEST_TYP_DEAD_TIME_IDENT.
+							//Basically this is half the time between MOSoff and MOSon
+							//and needs dtermining experimentally, either with openloop
+							//sin wave drawing or by finding the zero current switching "power knee point"
+
 #define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 100.0f
-#define ABS_MAX_BUS_VOLTAGE 55.0f
+#define ABS_MAX_PHASE_CURRENT 250.0f
+#define ABS_MAX_BUS_VOLTAGE 45.0f
 #define ABS_MIN_BUS_VOLTAGE 24.0f
 #define R_SHUNT 0.000333f
 //ToDo need to define using a discrete opamp with resistors to set gain vs using one with a specified gain
 
-#define R_VBUS_BOTTOM 1500.0f //Phase and Vbus voltage sensors
-#define R_VBUS_TOP 82000.0f
+//#define R_VBUS_BOTTOM 1500.0f //Phase and Vbus voltage sensors
+//#define R_VBUS_TOP 82000.0f
+//#define R_VBUS_BOTTOM 3300.0f //Phase and Vbus voltage sensors
+//#define R_VBUS_TOP 100000.0f
+#define R_VBUS_BOTTOM 2700.0f //Phase and Vbus voltage sensors
+#define R_VBUS_TOP 100000.0f
 #define OPGAIN 10.0f
 
 
-#define MAX_ID_REQUEST 100.0f
-#define MAX_IQ_REQUEST 40.0f
+#define MAX_ID_REQUEST 10.0f
+#define MAX_IQ_REQUEST 200.0f
 
-#define I_MEASURE 30.0f //Higher setpoint for resistance measurement
+#define I_MEASURE 15.0f //Higher setpoint for resistance measurement
+#define IMEASURE_CLOSEDLOOP 1.5f 	//After spinning up openloop and getting an approximation,
+									//this current is used to driver the motor and collect a refined flux linkage
 #define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
+#define ERPM_MEASURE 7000.0f//Speed to do the flux linkage measurement at
 
 ////////////////////USER DEFINES//////////////////
 	///////////////////RCPWM//////////////////////
@@ -58,23 +71,34 @@
 
 //////Motor parameters
 #define DEFAULT_MOTOR_POWER 250.0f
-#define DEFAULT_FLUX_LINKAGE 0.0040f//Set this to the motor linkage in wB
+#define DEFAULT_FLUX_LINKAGE 0.00380f//Set this to the motor linkage in wB
 #define DEFAULT_MOTOR_Ld 0.000006f //Henries
-#define DEFAULT_MOTOR_Lq 0.0000080f//Henries
-#define DEFAULT_MOTOR_R 0.005260f //Ohms
+#define DEFAULT_MOTOR_Lq 0.0000120f//Henries
+#define DEFAULT_MOTOR_R 0.0105260f //Ohms
 //Use the Ebike Profile tool
 #define USE_PROFILE
 
 //#define USE_FIELD_WEAKENING
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
+//#define USE_HFI
 #define HFI_VOLTAGE 4.0f
-#define HFI_TEST_CURRENT 50.0f
+#define HFI_TEST_CURRENT 10.0f
+
+#ifdef USE_HFI
+#define CURRENT_BANDWIDTH 1000.0f //HFI does not work if the current controller is strong enough to squash the HFI
+#else
+#define CURRENT_BANDWIDTH 5000.0f
+#endif
+
+#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
 
 #define USE_SQRT_CIRCLE_LIM
-
-#define USE_MTPA //Cannot currently use at the same time as field weakening...
+//#define USE_LR_OBSERVER
+#define LR_OBS_CURRENT 0.1*MAX_IQ_REQUEST 	//Inject this much current into the d-axis at the slowloop frequency and observe the change in Vd and Vq
+								//Needs to be a small current that does not have much effect on the running parameters.
+								
+//#define USE_MTPA //Cannot currently use at the same time as field weakening...
 
 //#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
 #define POLE_PAIRS 10
@@ -92,6 +116,8 @@
 										//Also, incompatible with flux linkage observer for now...
 #define NON_LINEAR_CENTERING_GAIN 5000.0f
 #define USE_CLAMPED_OBSERVER_CENTERING //Pick one of the two centering methods... preferably this one
+
+#define MESC_UART_USB 		MESC_USB
 
 
 

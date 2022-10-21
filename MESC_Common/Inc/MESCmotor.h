@@ -55,7 +55,7 @@ struct MOTORProfile
 
 typedef struct MOTORProfile MOTORProfile;
 
-extern MOTORProfile const * motor_profile;
+extern MOTORProfile  * motor_profile;
 
 void motor_init( MOTORProfile const * const profile );
 

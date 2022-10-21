@@ -72,15 +72,17 @@ void getRawADC(void) {
   measurement_buffers.RawADC[2][0] = hadc1.Instance->JDR3;  // W Current
   
   //These are handled by regular conversion manager and DMA
-  measurement_buffers.RawADC[1][3] = ADC_buffer[0];  // Throttle
+  measurement_buffers.RawADC[1][3] = ADC_buffer[3];  // Throttle
 
-//No voltage sense on EasyDIY... yet
-  //measurement_buffers.RawADC[0][2] = hadc1.Instance->JDR2; //PhaseU Voltage
-  //measurement_buffers.RawADC[1][1] = hadc1.Instance->JDR3; //PhaseV Voltage
-  //measurement_buffers.RawADC[1][2] = hadc1.Instance->JDR3; //PhaseW Voltage
+//Voltage sense for the MP2
+  measurement_buffers.RawADC[0][2] = ADC_buffer[0]; //PhaseU Voltage
+  measurement_buffers.RawADC[1][1] = ADC_buffer[1]; //PhaseV Voltage
+  measurement_buffers.RawADC[1][2] = ADC_buffer[2]; //PhaseW Voltage
 
-//No temperature yet
-  //measurement_buffers.RawADC[3][0] = hadc2.Instance->JDR4; //Temperature on PB1
+//MOS temperature for MP2
+  measurement_buffers.RawADC[3][0] = ADC_buffer[5]; //Temperature on PB1
+//Motor temp or Brake, needs plumbing in to main MESC...
+//   = ADC_buffer[4]
 }
 
 void getRawADCVph(void){
@@ -204,7 +206,7 @@ void mesc_init_3( void )
 	
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-	
+	generateBreak(); //avoid a spurious pulse on startup
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 
 	HAL_ADCEx_InjectedStart(&hadc1);
