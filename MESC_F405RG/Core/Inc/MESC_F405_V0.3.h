@@ -106,6 +106,7 @@
 #define POLE_ANGLE (65536/POLE_PAIRS)
 
 /////Related to observer
+//#define USE_SALIENT_OBSERVER
 #define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
 #define MAX_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*2.0f //Sets the limits for tracking.
 #define MIN_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*0.7f//Faster convergence with closer start points

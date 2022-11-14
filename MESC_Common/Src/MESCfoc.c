@@ -585,6 +585,8 @@ if(phasebalance){
   // SENSORLESS IMPLEMENTATION//////////////////////////////////////////////////
   static float Ia_last = 0.0f;
   static float Ib_last = 0.0f;
+  static float La_last = 0.0f;
+  static float Lb_last = 0.0f;
   static uint16_t angle = 0;
   volatile static float FLAnow = 0.0f;
   volatile static float FLAmax = 0.0f;
@@ -625,12 +627,30 @@ if(phasebalance){
 	// This is the actual observer function.
 	// We are going to integrate Va-Ri and clamp it positively and negatively
 	// the angle is then the arctangent of the integrals shifted 180 degrees
+#ifdef USE_SALIENT_OBSERVER
+	  float La, Lb;
+	  getLabFast(foc_vars.FOCAngle, motor.Lphase, motor.Lqd_diff, &La, &Lb);
+
+	  foc_vars.flux_linked_alpha = foc_vars.flux_linked_alpha +
+			  (foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0])*foc_vars.pwm_period -
+        La * (foc_vars.Iab[0] - Ia_last) - //Salient inductance NOW
+		foc_vars.Iab[0] * (La - La_last); //Differential of phi = Li -> Ldi/dt+idL/dt
+	  foc_vars.flux_linked_beta = foc_vars.flux_linked_beta +
+			  (foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1])*foc_vars.pwm_period -
+        Lb * (foc_vars.Iab[1] - Ib_last) -
+		foc_vars.Iab[1] * (Lb-Lb_last);
+//Store the inductances
+    La_last = La;
+    Lb_last = Lb;
+#else
 	  foc_vars.flux_linked_alpha =
 			  foc_vars.flux_linked_alpha + (foc_vars.Vab[0] - motor.Rphase * foc_vars.Iab[0])*foc_vars.pwm_period-
         motor.Lphase * (foc_vars.Iab[0] - Ia_last);
 	  foc_vars.flux_linked_beta =
 			  foc_vars.flux_linked_beta + (foc_vars.Vab[1] - motor.Rphase * foc_vars.Iab[1])*foc_vars.pwm_period -
         motor.Lphase * (foc_vars.Iab[1] - Ib_last);
+#endif
+//Store the currents
     Ia_last = foc_vars.Iab[0];
     Ib_last = foc_vars.Iab[1];
 
