@@ -215,7 +215,6 @@ void fastLoop() {
       //        BLDCCurrentController();
       //        BLDCCommuteHall();
       //      }//For now we are going to not support BLDC mode
-    	generateEnable();
       if (MotorSensorMode == MOTOR_SENSOR_MODE_HALL) {
     	foc_vars.inject = 0;
         hallAngleEstimator();
@@ -233,6 +232,7 @@ void fastLoop() {
 #ifdef HAS_PHASE_SENSORS
 			  // Track using BEMF from phase sensors
 			  generateBreak();
+			  ADCPhaseConversion();
 		      MESCTrack();
 		      if (MotorSensorMode == MOTOR_SENSOR_MODE_HALL) {
 		          hallAngleEstimator();
@@ -430,7 +430,6 @@ if(MotorState==MOTOR_STATE_RUN||MotorState==MOTOR_STATE_MEASURING){
 
 #define MAX_ERROR_COUNT 1
 
-// TODO: refactor this function. Is this function called by DMA interrupt?
 void VICheck() {  // Check currents, voltages are within panic limits
 
 
@@ -474,8 +473,6 @@ void VICheck() {  // Check currents, voltages are within panic limits
 float maxIgamma;
 uint16_t phasebalance;
   void ADCConversion() {
-	  foc_vars.Vdq_smoothed.d = (foc_vars.Vdq_smoothed.d*99.0f + foc_vars.Vdq.d)*0.01f;
-	  foc_vars.Vdq_smoothed.q = (foc_vars.Vdq_smoothed.q*99.0f + foc_vars.Vdq.q)*0.01f;
 	  foc_vars.Idq_smoothed.d = (foc_vars.Idq_smoothed.d*99.0f + foc_vars.Idq.d)*0.01f;
 	  foc_vars.Idq_smoothed.q = (foc_vars.Idq_smoothed.q*99.0f + foc_vars.Idq.q)*0.01f;
 
@@ -494,14 +491,6 @@ uint16_t phasebalance;
         (float)(measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] - measurement_buffers.ADCOffset[2]) * g_hw_setup.Igain;
     measurement_buffers.ConvertedADC[0][1] =
         (float)measurement_buffers.RawADC[0][1] * g_hw_setup.VBGain;  // Vbus
-//Convert the voltages to volts in real SI units
-    measurement_buffers.ConvertedADC[0][2] =
-        (float)measurement_buffers.RawADC[0][2] * g_hw_setup.VBGain;  // Usw
-    measurement_buffers.ConvertedADC[1][1] =
-        (float)measurement_buffers.RawADC[1][1] * g_hw_setup.VBGain;  // Vsw
-    measurement_buffers.ConvertedADC[1][2] =
-        (float)measurement_buffers.RawADC[1][2] * g_hw_setup.VBGain;  // Wsw
-
 
     //Check for over limit conditions
     VICheck();
@@ -580,6 +569,18 @@ if(phasebalance){
     foc_vars.Idq.q = foc_vars.sincosangle.cos * foc_vars.Iab[1] -
                      foc_vars.sincosangle.sin * foc_vars.Iab[0];
   }
+
+  void ADCPhaseConversion() {
+	  //To save clock cycles in the main run loop we only want to convert the phase voltages while tracking.
+  //Convert the voltages to volts in real SI units
+	  measurement_buffers.ConvertedADC[0][2] =
+		  (float)measurement_buffers.RawADC[0][2] * g_hw_setup.VBGain;  // Usw
+	  measurement_buffers.ConvertedADC[1][1] =
+		  (float)measurement_buffers.RawADC[1][1] * g_hw_setup.VBGain;  // Vsw
+	  measurement_buffers.ConvertedADC[1][2] =
+		  (float)measurement_buffers.RawADC[1][2] * g_hw_setup.VBGain;  // Wsw
+  }
+
   /////////////////////////////////////////////////////////////////////////////
   // SENSORLESS IMPLEMENTATION//////////////////////////////////////////////////
   static float Ia_last = 0.0f;
@@ -828,7 +829,7 @@ if(phasebalance){
 	    if (fabsf(foc_vars.Vdq.q) > foc_vars.field_weakening_threshold) {
 	      foc_vars.Idq_req.d =
 	          foc_vars.field_weakening_curr_max *foc_vars.field_weakening_multiplier*
-	          (foc_vars.field_weakening_threshold - fabsf(foc_vars.Vdq_smoothed.q));
+	          (foc_vars.field_weakening_threshold - fabsf(foc_vars.Vdq.q));
 	      foc_vars.field_weakening_flag = 1;
 	    } else {
 	    	//if(!foc_vars.inject){
@@ -1293,16 +1294,7 @@ if(phasebalance){
   void measureInductance()  // UNUSED, THIS HAS BEEN ROLLED INTO THE MEASURE
                             // RESISTANCE... no point in 2 functions really...
   {
-    /*
-     * In this function, we are going to run at a fixed duty cycle (perhaps as
-     * determined by Measure Resistance?), pushing ~5A through the motor coils
-     * (~100ADCcounts). We will then wait until steady state achieved... 1000
-     * PWM cycles? before modulating CCR4, which triggers the ADC to capture
-     * currents at at least 2 time points within the PWM cycle With this change
-     * in current, and knowing R from previous measurement, we can calculate L
-     * using L=Vdt/dI=IRdt/dI ToDo Actually do this... ToDo Determination of the
-     * direct and quadrature inductances for MTPA in future?
-     */
+
   }
   int angle_delta;
   static volatile float temp_flux;
@@ -1323,7 +1315,7 @@ if(phasebalance){
         phW_Enable();
     }
 
-    flux_observer();//We run the flux observer during this, and if the flag to track flux linkage is set, it will lock on
+    flux_observer();//We run the flux observer during this
 
     static int count = 0;
     static uint16_t temp_angle;
@@ -1349,6 +1341,7 @@ if(phasebalance){
     }
     else if (cycles < 61000) {
     	generateBreak();
+    	ADCPhaseConversion();
     	MESCTrack();
     }
     else if (cycles < 70001) {
@@ -1372,7 +1365,6 @@ if(phasebalance){
     	motor_profile->flux_linkage = motor.motor_flux;
       MotorState = MOTOR_STATE_TRACKING;
       cycles = 0;
-      //motor.motor_flux = BEMFaccumulator / (2 * count);
       if (motor.motor_flux > 0.0001f && motor.motor_flux < 200.0f) {
         MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
       } else {
@@ -1673,12 +1665,12 @@ if(foc_vars.Idq_req.q<input_vars.min_request_Idq.q){foc_vars.Idq_req.q = input_v
     	}
     }
 /////// Clamp the max power taken from the battery
-    foc_vars.reqPower = 1.5f*fabsf(foc_vars.Vdq_smoothed.q * foc_vars.Idq_req.q);
+    foc_vars.reqPower = 1.5f*fabsf(foc_vars.Vdq.q * foc_vars.Idq_req.q);
     if (foc_vars.reqPower > motor_profile->Pmax) {
     	if(foc_vars.Idq_req.q > 0.0f){
-    		foc_vars.Idq_req.q = motor_profile->Pmax / (fabsf(foc_vars.Vdq_smoothed.q)*1.5f);
+    		foc_vars.Idq_req.q = motor_profile->Pmax / (fabsf(foc_vars.Vdq.q)*1.5f);
     	}else{
-    		foc_vars.Idq_req.q = -motor_profile->Pmax / (fabsf(foc_vars.Vdq_smoothed.q)*1.5f);
+    		foc_vars.Idq_req.q = -motor_profile->Pmax / (fabsf(foc_vars.Vdq.q)*1.5f);
     	}
     }
 
@@ -1706,6 +1698,7 @@ if(fabsf(foc_vars.Idq_req.q)>0.1f){
 	if(MotorState != MOTOR_STATE_ERROR){
 #ifdef HAS_PHASE_SENSORS //We can go straight to RUN if we have been tracking with phase sensors
 	MotorState = MOTOR_STATE_RUN;
+	generateEnable();
 #endif
 if(MotorState==MOTOR_STATE_IDLE){
 #ifdef USE_DEADSHORT

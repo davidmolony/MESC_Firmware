@@ -85,7 +85,6 @@ typedef struct {
   	  	  	  	  	  	  	  	  	  	  	  // transformed current in amps
   float Vab[FOC_TRANSFORMED_CHANNELS + 1];
   MESCiq_s Vdq;
-  MESCiq_s Vdq_smoothed;
   MESCiq_s Idq_smoothed;
   MESCiq_s Idq_int_err;
   float id_mtpa;
@@ -245,6 +244,7 @@ void ADCConversion();  // Roll this into the V_I_Check? less branching, can
 // convert currents from uint_16 ADC readings into float A and uint_16 voltages
 // into float volts Since the observer needs the Clark transformed current, do
 // the Clark and Park transform now
+void ADCPhaseConversion();
 void hallAngleEstimator();  // Going to attempt to make a similar hall angle
                             // estimator that rolls the hall state into the main
                             // function, and calls a vector table to find the
