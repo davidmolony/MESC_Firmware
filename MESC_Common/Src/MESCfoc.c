@@ -172,15 +172,15 @@ void initialiseInverter(){
 // interrupt
 void MESC_PWM_IRQ_handler() {
   if (htim1.Instance->CNT > 512) {
-    foc_vars.IRQentry = debugtim.Instance->CNT;
+    //foc_vars.IRQentry = debugtim.Instance->CNT;
     fastLoop();
-    foc_vars.IRQexit = debugtim.Instance->CNT - foc_vars.IRQentry;
-    foc_vars.FLrun++;
+    //foc_vars.IRQexit = debugtim.Instance->CNT - foc_vars.IRQentry;
+    //foc_vars.FLrun++;
   } else {
-    foc_vars.IRQentry = debugtim.Instance->CNT;
+    //foc_vars.IRQentry = debugtim.Instance->CNT;
     hyperLoop();
-    foc_vars.IRQexit = debugtim.Instance->CNT - foc_vars.IRQentry;
-    foc_vars.VFLrun++;
+    //foc_vars.IRQexit = debugtim.Instance->CNT - foc_vars.IRQentry;
+    //foc_vars.VFLrun++;
   }
 }
 
@@ -603,6 +603,7 @@ if(phasebalance){
 
     // With thanks to C0d3b453 for generally keeping this compiling and Elwin
     // for producing data comparing the output to a 16bit encoder.
+		foc_vars.IRQentry = htim1.Instance->CNT;
 
 
 
@@ -648,6 +649,7 @@ if(phasebalance){
     if (foc_vars.flux_linked_beta < -motor.motor_flux) {
     	foc_vars.flux_linked_beta = -motor.motor_flux;}
 #endif
+
     angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(foc_vars.flux_linked_beta, foc_vars.flux_linked_alpha)) - 32768;
 
 
@@ -656,6 +658,8 @@ if(phasebalance){
     foc_vars.FOCAngle = foc_vars.FOCAngle+60;
 #else
     foc_vars.FOCAngle = angle;
+	foc_vars.IRQexit = foc_vars.IRQentry-htim1.Instance->CNT ;
+
 #endif
     }
 
@@ -819,6 +823,7 @@ if(phasebalance){
   //////////////////////////////////////////////////////////////////////////////////////////
 
   void MESCFOC() {
+
 #ifdef USE_FIELD_WEAKENING
 	    if (fabsf(foc_vars.Vdq.q) > foc_vars.field_weakening_threshold) {
 	      foc_vars.Idq_req.d =
@@ -899,6 +904,7 @@ if(phasebalance){
 
     }
     i = i - 1;
+
   }
 
   static float mid_value = 0;
@@ -907,6 +913,7 @@ if(phasebalance){
  uint16_t deadtime_comp = DEADTIME_COMP_V;
 
  void writePWM() {
+
     // Now we update the sin and cos values, since when we do the inverse
     // transforms, we would like to use the most up to date versions(or even the
     // next predicted version...)
@@ -977,6 +984,7 @@ if(phasebalance){
     if(measurement_buffers.ConvertedADC[2][0] > -0.030f){htim1.Instance->CCR3 = htim1.Instance->CCR3+deadtime_comp;}
 
 #endif
+
   }
 
   // Here we set all the PWMoutputs to LOW, without triggering the timerBRK,
