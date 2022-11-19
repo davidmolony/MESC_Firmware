@@ -83,6 +83,8 @@ void MESCInit() {
 	motor.Lqphase = motor_profile->L_Q;
 	motor.Rphase = motor_profile->R;
 	motor.motor_flux = motor_profile->flux_linkage;
+	motor.measure_current = I_MEASURE;
+	motor.measure_voltage = V_MEASURE;
 
 	mesc_init_1();
 
