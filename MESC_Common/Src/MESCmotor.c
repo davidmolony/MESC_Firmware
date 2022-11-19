@@ -33,7 +33,7 @@
 #include "MESCprofile.h"
 
 #include "stm32fxxx_hal.h"
-
+#include "math.h"
 #include <stdint.h>
 
 MOTORProfile  * motor_profile = NULL;

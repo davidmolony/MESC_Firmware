@@ -25,6 +25,8 @@
 #ifndef MESC_FOC_H
 #define MESC_FOC_H
 
+
+#include <stdbool.h>
 #include "stm32fxxx_hal.h"
 
 #define FOC_SECTORS_PER_REVOLUTION (6)
@@ -85,7 +87,6 @@ typedef struct {
   	  	  	  	  	  	  	  	  	  	  	  // transformed current in amps
   float Vab[FOC_TRANSFORMED_CHANNELS + 1];
   MESCiq_s Vdq;
-  MESCiq_s Vdq_smoothed;
   MESCiq_s Idq_smoothed;
   MESCiq_s Idq_int_err;
   float id_mtpa;
@@ -148,6 +149,9 @@ typedef struct {
   float Ldq_now_dboost[2];
 
   float IIR[2];
+  bool hfi_enable;
+  uint32_t cycles_fastloop;
+  uint32_t cycles_hyperloop;
 } MESCfoc_s;
 
 extern MESCfoc_s foc_vars;
@@ -305,5 +309,4 @@ void deadshort();
 void tle5012();
 void getDeadtime();
 void LRObserver();
-void LRObserverCollect();
 #endif

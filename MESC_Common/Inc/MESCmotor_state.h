@@ -127,4 +127,6 @@ extern motor_control_type_e MotorControlType;
 
 void MESC_Init();
 
+void MESCmotor_state_set(motor_state_e mState);
+
 #endif

@@ -52,9 +52,26 @@ enum CLIVariableType
     CLI_VARIABLE_INT,
     CLI_VARIABLE_UINT,
     CLI_VARIABLE_FLOAT,
+	CLI_VARIABLE_CHAR,
+	CLI_VARIABLE_STRING,
 };
 
+#define typename(x) _Generic((x), \
+    uint8_t:    CLI_VARIABLE_UINT, \
+    uint16_t:   CLI_VARIABLE_UINT, \
+    uint32_t:   CLI_VARIABLE_UINT, \
+    int8_t:     CLI_VARIABLE_INT, \
+    int16_t:    CLI_VARIABLE_INT, \
+    int32_t:    CLI_VARIABLE_INT, \
+    float:      CLI_VARIABLE_FLOAT, \
+    char:       CLI_VARIABLE_CHAR, \
+    char*:      CLI_VARIABLE_STRING)
+
 typedef enum CLIVariableType CLIVariableType;
+
+#define cli_register_var_rw(name, var) cli_register_variable_rw(name, &var, sizeof(var), typename(var))
+#define cli_register_var_ro(name, var) cli_register_variable_ro(name, &var, sizeof(var), typename(var))
+#define cli_register_var_wo(name, var) cli_register_variable_wo(name, &var, sizeof(var), typename(var))
 
 void cli_configure_storage_io(
     ProfileStatus (* const write )( void const * buffer, uint32_t const address, uint32_t const length )
@@ -89,5 +106,17 @@ MESC_INTERNAL_ALIAS(int,CLIState) cli_process( char const c );
 void cli_reply( char const * p, ... );
 
 void cli_reply_scope( void );
+
+
+#ifdef USE_TTERM
+
+#include "TTerm/Core/include/TTerm.h"
+
+uint8_t cli_read(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+uint8_t cli_write(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+uint8_t cli_list(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+#endif
+
+
 
 #endif

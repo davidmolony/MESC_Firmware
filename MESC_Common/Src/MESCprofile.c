@@ -277,17 +277,18 @@ void profile_configure_storage_io(
     cli_configure_storage_io( write );
 }
 
-static void profile_cli_info( void )
-{
+#ifdef USE_TTERM
+uint8_t profile_cli_info(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+
     ProfileStatus const res = profile_header_validate( &profile_stub.header );
 
     if (res != PROFILE_STATUS_SUCCESS )
     {
-        cli_reply( "Invalid/Missing MESC Profile - %d" "\r" "\n", res );
+    	ttprintf( "Invalid/Missing MESC Profile - %d" "\r" "\n", res );
     }
     else
     {
-        cli_reply(
+        ttprintf(
             "%s v%" PRIu8 "." PRIu8 "\n"
             "%s (",
             (char const *)&profile_stub.header.signature,
@@ -298,12 +299,12 @@ static void profile_cli_info( void )
         {
             i--;
 
-            cli_reply(
+            ttprintf(
                 "%08" PRIX32,
                 profile_stub.header.fingerprint.githash[i] );
         }
 
-        cli_reply(
+        ttprintf(
             "\n"
             "Size %" PRIu32 "\r" "\n",
             profile_stub.header.image_length );
@@ -323,38 +324,39 @@ static void profile_cli_info( void )
                 blk++;
             }
 
-            cli_reply( "Entry %" PRIu32 " ", i );
+            ttprintf( "Entry %" PRIu32 " ", i );
 
             switch (map)
             {
                 case PROFILE_ENTRY_DATA:
-                    cli_reply( "DATA" "\r" "\n" );
+                	ttprintf( "DATA" "\r" "\n" );
                     continue;
                 case PROFILE_ENTRY_LOCK:
-                    cli_reply( "LOCK" "\r" "\n" );
+                	ttprintf( "LOCK" "\r" "\n" );
                     break;
                 case PROFILE_ENTRY_FREE:
-                    cli_reply( "FREE" "\r" "\n" );
+                	ttprintf( "FREE" "\r" "\n" );
                     continue;
                 case PROFILE_ENTRY_USED:
-                    cli_reply( "USED" "\r" "\n" );
+                	ttprintf( "USED" "\r" "\n" );
                     break;
                 default:
-                    cli_reply( "?" "\r" "\n" );
+                	ttprintf( "?" "\r" "\n" );
                     continue;
             }
 
             // NOTE - This point means there is a valid entry to decode
 
-            cli_reply(
-                "    %s (%s %08" PRIX32 ")" "\r" "\n"
-                "    %08" PRIX32 "-%08" PRIX32 "\r" "\n",
-                profile_stub.entry[i].signature,
-                profile_stub.entry[i].name, profile_stub.entry[i].data_signature,
-                profile_stub.entry[i].data_offset, profile_stub.entry[i].data_length );
+            ttprintf("    %s (%08" PRIX32") Offset: %08" PRIX32 " Len: %d\r\n", profile_stub.entry[i].name, profile_stub.entry[i].signature, profile_stub.entry[i].data_offset, profile_stub.entry[i].data_length);
+//            ttprintf("    %s (%s %08" PRIX32 ")" "\r" "\n" "    %08" PRIX32 "-%08" PRIX32 "\r" "\n",
+//                profile_stub.entry[i].signature,
+//                profile_stub.entry[i].name, profile_stub.entry[i].data_signature,
+//                profile_stub.entry[i].data_offset, profile_stub.entry[i].data_length );
         }
     }
+    return TERM_CMD_EXIT_SUCCESS;
 }
+#endif
 
 static uint8_t profile_buffer[PROFILE_MAX_SIZE];
 
@@ -369,7 +371,6 @@ ProfileStatus profile_init( void )
 
     address = address + sizeof(profile_stub.header);
 
-    cli_register_function( "info", profile_cli_info );
 
     if (profile_status_storage != PROFILE_STATUS_SUCCESS)
     {
@@ -437,7 +438,7 @@ ProfileStatus profile_init( void )
 
     for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
     {
-        if (profile_entry[i].buffer != NULL)
+        if (profile_entry[i].buffer != NULL && profile_entry[i].length != NULL)
         {
             profile_status_storage = profile_storage_read( profile_entry[i].buffer, profile_stub.entry[i].data_offset, profile_stub.entry[i].data_length );
 
@@ -449,6 +450,7 @@ ProfileStatus profile_init( void )
             }
 
             image_checksum = fnv1a_process_data( image_checksum, profile_entry[i].buffer, *(profile_entry[i].length) );
+
         }
     }
 
@@ -523,7 +525,7 @@ ProfileStatus profile_alloc_entry(
 
 ProfileStatus profile_get_entry(
     char const * name, uint32_t const signature,
-    void * const buffer, uint32_t * const length )
+    void * const buffer, uint32_t * const length)
 {
     ProfileStatus ret = PROFILE_STATUS_ERROR_NAME;
     uint32_t blk = 0;
@@ -581,11 +583,8 @@ ProfileStatus profile_get_entry(
                         ret = PROFILE_STATUS_ERROR_ENTRY_READONLY;
                     }
                 }
-                else if (
-                            (profile_entry[i].buffer == NULL)
-                        &&  (profile_entry[i].length == NULL)
-                        )
-                {
+                else if ( (profile_entry[i].buffer != NULL) &&  (profile_entry[i].length != NULL)){
+
                     if (*length != profile_stub.entry[i].data_length)
                     {
                         return PROFILE_STATUS_ERROR_DATA_LENGTH;
@@ -602,6 +601,51 @@ ProfileStatus profile_get_entry(
 
                 break;
             }
+        }
+    }
+
+    return ret;
+}
+
+ProfileStatus profile_check_entry(
+    char const * name, uint32_t const signature,
+    void * const buffer, uint32_t * const length)
+{
+    ProfileStatus ret = PROFILE_STATUS_ERROR_NAME;
+    uint32_t blk = 0;
+    uint32_t fld = 0;
+
+    profile_status_storage = PROFILE_STATUS_UNKNOWN;
+    profile_status_header  = PROFILE_STATUS_UNKNOWN;
+    profile_status_entry   = PROFILE_STATUS_UNKNOWN;
+    profile_status_other   = PROFILE_STATUS_UNKNOWN;
+
+    for ( uint32_t i = 0; i < PROFILE_HEADER_ENTRIES; ++i )
+    {
+        ProfileEntryMap const map = (ProfileEntryMap)((profile_stub.header.entry_map[blk] >> fld) & PROFILE_ENTRY_MASK);
+
+        fld = fld + PROFILE_ENTRY_BITS;
+
+        if (fld == BITS_PER_BYTE)
+        {
+            fld = 0;
+            blk++;
+        }
+
+        if ((map & PROFILE_ENTRY_R) != PROFILE_ENTRY_R)
+        {
+            continue;
+        }
+
+        if (strncmp( profile_stub.entry[i].name, name, PROFILE_ENTRY_MAX_NAME_LENGTH ) == 0)
+        {
+            ret = PROFILE_STATUS_ERROR_ENTRY_SIGNATURE;
+
+            if (profile_stub.entry[i].data_signature == signature)
+            {
+                ret = PROFILE_STATUS_SUCCESS;
+            }
+
         }
     }
 
@@ -742,7 +786,7 @@ ProfileStatus profile_put_entry(
 {
     profile_status_storage = PROFILE_STATUS_UNKNOWN;
     profile_status_header  = PROFILE_STATUS_UNKNOWN;
-    profile_status_entry   = profile_get_entry( name, signature, buffer, length );
+    profile_status_entry   = profile_check_entry( name, signature, buffer, length);
     profile_status_other   = PROFILE_STATUS_UNKNOWN;
 
     if (profile_status_entry != PROFILE_STATUS_SUCCESS)
@@ -771,7 +815,7 @@ ProfileStatus profile_put_entry(
 ProfileStatus profile_del_entry(
     char const * name, uint32_t const signature )
 {
-    return profile_get_entry( name, signature, NULL, NULL );
+    return profile_get_entry( name, signature, NULL, NULL);
 }
 
 ProfileStatus profile_commit( void )

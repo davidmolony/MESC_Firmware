@@ -46,6 +46,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+
+#ifdef USE_TTERM
+#include "TTerm/Core/include/TTerm.h"
+#endif
 
 #define MAKE_TYPE_SIZE(type,size)      ((uint32_t)((uint32_t)((type) << BITS_PER_NYBBLE) | ((uint32_t)(size))))
 #define MAKE_TYPE_SIZE_CASE(type,size) ((uint32_t)((uint32_t)((JOIN( CLI_VARIABLE_, type)) << BITS_PER_NYBBLE) | ((uint32_t)(size))))
@@ -123,6 +128,7 @@ enum CLIAccess
     CLI_ACCESS_RW   = (CLI_ACCESS_R | CLI_ACCESS_W),
 
     CLI_ACCESS_PROBE = 0x8,
+	CLI_ACCESS_FLASH = 0x16,
 };
 
 typedef enum CLIAccess CLIAccess;
@@ -163,6 +169,7 @@ static CLIVar cli_var = {0};
 struct CLIEntry
 {
     uint32_t        hash;
+    const char * 	name;
     union
     {
     void       *    w;
@@ -183,11 +190,31 @@ struct CLIlut_s
 	CLIEntry 		entries[MAX_CLI_LUT_ENTRIES];
 	uint32_t   		entries_n;
 	CLIEntry * 		entry_ptr;
+
 };
 
 typedef struct CLIlut_s CLIlut_s;
 
 static CLIlut_s CLIlut;
+
+#ifdef USE_TTERM
+
+typedef uint32_t (* CLIread_t)(TERMINAL_HANDLE * handle, CLIEntry * entry, bool newline);
+typedef uint32_t (* CLIwrite_t)(TERMINAL_HANDLE * handle, CLIEntry * entry, char * val);
+
+static CLIEntry * cli_lookup( uint32_t const hash );
+
+
+static uint32_t cli_read_noop(TERMINAL_HANDLE * handle, CLIEntry * entry, bool newline) {
+   ttprintf("Error interpreting type\r\n");
+   return TERM_CMD_EXIT_SUCCESS;
+}
+
+static uint32_t cli_write_noop(TERMINAL_HANDLE * handle, CLIEntry * entry, char * c_val) {
+   ttprintf("Error interpreting type\r\n");
+   return TERM_CMD_EXIT_SUCCESS;
+}
+#endif
 
 
 static MESC_STM_ALIAS(int,UART_HandleTypeDef) cli_io_write_noop( MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle, MESC_STM_ALIAS(void,uint8_t) * data, uint16_t size )
@@ -379,6 +406,7 @@ static CLIEntry * cli_lut_alloc( char const * name )
 
     CLIEntry * entry = &CLIlut.entries[CLIlut.entries_n];
     entry->hash = hash;
+    entry->name = name;
 
     return entry;
 }
@@ -614,6 +642,216 @@ static void cli_process_write_float( char const c )
             break;
     }
 }
+
+#ifdef USE_TTERM
+
+static uint32_t cli_read_int(TERMINAL_HANDLE * handle, CLIEntry * entry, bool newline){
+	if(entry == NULL) return TERM_CMD_EXIT_ERROR;
+
+	if(entry->access & CLI_ACCESS_R){
+		int32_t i32_val;
+		switch(entry->size){
+			case 1:
+				i32_val = *(int8_t*)entry->var.w;
+				break;
+			case 2:
+				i32_val = *(int16_t*)entry->var.w;
+				break;
+			case 4:
+				i32_val = *(int32_t*)entry->var.w;
+				break;
+			default:
+				return TERM_CMD_EXIT_ERROR;
+		}
+		ttprintf("%d\r\n",i32_val);
+		return TERM_CMD_EXIT_SUCCESS;
+	}else{
+		return TERM_CMD_EXIT_ERROR;
+	}
+}
+
+static uint32_t cli_read_uint(TERMINAL_HANDLE * handle, CLIEntry * entry, bool newline){
+	if(entry == NULL) return TERM_CMD_EXIT_ERROR;
+
+	if(entry->access & CLI_ACCESS_R){
+		uint32_t u32_val;
+		switch(entry->size){
+			case 1:
+				u32_val = *(uint8_t*)entry->var.w;
+				break;
+			case 2:
+				u32_val = *(uint16_t*)entry->var.w;
+				break;
+			case 4:
+				u32_val = *(uint32_t*)entry->var.w;
+				break;
+			default:
+				return TERM_CMD_EXIT_ERROR;
+		}
+		ttprintf("%u\r\n",u32_val);
+		return TERM_CMD_EXIT_SUCCESS;
+	}else{
+		return TERM_CMD_EXIT_ERROR;
+	}
+}
+
+static uint32_t cli_read_float(TERMINAL_HANDLE * handle, CLIEntry * entry, bool newline){
+	if(entry == NULL) return TERM_CMD_EXIT_ERROR;
+
+	if(entry->access & CLI_ACCESS_R){
+		float val;
+		switch(entry->size){
+			case 4:
+				val = *(float*)entry->var.w;
+				break;
+			default:
+				return TERM_CMD_EXIT_ERROR;
+		}
+		ttprintf("%f\r\n",val);
+		return TERM_CMD_EXIT_SUCCESS;
+	}else{
+		return TERM_CMD_EXIT_ERROR;
+	}
+}
+
+static uint32_t cli_write_int(TERMINAL_HANDLE * handle, CLIEntry * entry, char * c_val){
+	if(entry == NULL) return TERM_CMD_EXIT_ERROR;
+
+	if(entry->access & CLI_ACCESS_W){
+		int32_t i32_val = strtol(c_val, NULL, 10);
+		int16_t i16_val;
+		int8_t i8_val;
+		switch(entry->size){
+			case 1:
+				i8_val = i32_val;
+				*(int8_t*)entry->var.w = i8_val;
+				break;
+			case 2:
+				i16_val = i32_val;
+				*(int16_t*)entry->var.w = i16_val;
+				break;
+			case 4:
+				*(int32_t*)entry->var.w = i32_val;
+				break;
+			default:
+				return TERM_CMD_EXIT_ERROR;
+		}
+		return TERM_CMD_EXIT_SUCCESS;
+	}else{
+		return TERM_CMD_EXIT_ERROR;
+	}
+}
+
+static uint32_t cli_write_uint(TERMINAL_HANDLE * handle, CLIEntry * entry, char * c_val){
+	if(entry->access & CLI_ACCESS_W){
+		uint32_t ui32_val = strtoul(c_val, NULL, 10);
+		uint16_t ui16_val;
+		uint8_t ui8_val;
+		switch(entry->size){
+			case 1:
+				ui8_val = ui32_val;
+				*(uint8_t*)entry->var.w = ui8_val;
+				break;
+			case 2:
+				ui16_val = ui32_val;
+				*(uint16_t*)entry->var.w = ui16_val;
+				break;
+			case 4:
+				*(uint32_t*)entry->var.w = ui32_val;
+				break;
+			default:
+				return TERM_CMD_EXIT_ERROR;
+		}
+		return TERM_CMD_EXIT_SUCCESS;
+	}else{
+		return TERM_CMD_EXIT_ERROR;
+	}
+}
+
+static uint32_t cli_write_float(TERMINAL_HANDLE * handle, CLIEntry * entry, char * c_val){
+	if(entry->access & CLI_ACCESS_W){
+		float f_val = strtof(c_val, NULL);
+		switch(entry->size){
+			case 4:
+				*(float*)entry->var.w = f_val;
+				break;
+			default:
+				return TERM_CMD_EXIT_ERROR;
+		}
+		return TERM_CMD_EXIT_SUCCESS;
+	}else{
+		return TERM_CMD_EXIT_ERROR;
+	}
+}
+
+static CLIread_t cli_get_read_func(CLIVariableType const type){
+    switch (type)
+    {
+        case CLI_VARIABLE_INT:
+        	return cli_read_int;
+        case CLI_VARIABLE_UINT:
+            return cli_read_uint;
+        case CLI_VARIABLE_FLOAT:
+            return cli_read_float;
+        default:
+            return cli_read_noop;
+    }
+}
+
+static CLIwrite_t cli_get_write_func(CLIVariableType const type){
+    switch (type)
+    {
+        case CLI_VARIABLE_INT:
+            return cli_write_int;
+        case CLI_VARIABLE_UINT:
+            return cli_write_uint;
+        case CLI_VARIABLE_FLOAT:
+            return cli_write_float;
+        default:
+            return cli_write_noop;
+    }
+}
+
+uint8_t cli_read(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+	if(argCount == 1){
+		uint32_t hash = fnv1a_process_data(fnv1a_init(), args[0], strlen(args[0]));
+		CLIEntry * entry = cli_lookup(hash);
+		CLIread_t read_func = cli_get_read_func(entry->type);
+		return read_func(handle, entry, true);
+	}else{
+		return TERM_CMD_EXIT_ERROR;
+	}
+}
+
+uint8_t cli_write(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+	if(argCount == 2){
+		uint32_t hash = fnv1a_process_data(fnv1a_init(), args[0], strlen(args[0]));
+		CLIEntry * entry = cli_lookup(hash);
+		CLIwrite_t write_func = cli_get_write_func(entry->type);
+		return write_func(handle, entry, args[1]);
+	}else{
+		return TERM_CMD_EXIT_ERROR;
+	}
+}
+
+uint8_t cli_list(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+	for ( uint32_t i = 0; i < CLIlut.entries_n; ++i){
+		if(CLIlut.entries[i].name != NULL){
+			if(argCount==1){
+				if(args[0][0] != CLIlut.entries[i].name[0]) continue;
+			}
+			char R = CLIlut.entries[i].access & CLI_ACCESS_R ? 'r' : '-';
+			char W = CLIlut.entries[i].access & CLI_ACCESS_W ? 'w' : '-';
+			char X = CLIlut.entries[i].access & CLI_ACCESS_X ? 'x' : '-';
+			ttprintf("%c%c%c    %s = ", R, W, X, CLIlut.entries[i].name);
+			CLIread_t read_func = cli_get_read_func(CLIlut.entries[i].type);
+			read_func(handle, &CLIlut.entries[i], true);
+		}
+	}
+	return TERM_CMD_EXIT_SUCCESS;
+}
+
+#endif
 
 void cli_configure_storage_io(
     ProfileStatus (* const write)( void const * buffer, uint32_t const address, uint32_t const length )
@@ -901,7 +1139,7 @@ static uint8_t  cli_reply_buffer[256] = {0};
 
 static void cli_reply_begin( void )
 {
-    cli_reply_buffer[0] = '\'0';
+    cli_reply_buffer[0] = '\0';
     cli_reply_buffer_offset = 0;
 }
 
@@ -1134,3 +1372,4 @@ void cli_reply_scope( void )
 
     cli_reply( "%s", "\r\n" );
 }
+

@@ -83,6 +83,8 @@ typedef struct {
   hardware_vars_t Lqd_diff; //Lq-Ld for using MTPA
       uint8_t uncertainty;
   float motor_flux;
+  float measure_current;
+  float measure_voltage;
 } motor_s;
 
 extern motor_s motor; // TODO PROFILE
