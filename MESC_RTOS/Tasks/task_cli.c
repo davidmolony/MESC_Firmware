@@ -139,7 +139,14 @@ void task_cli(void * argument)
 
 	TERMINAL_HANDLE * term_cli;
 
-	term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "usb");
+	switch(port->hw_type){
+		case HW_TYPE_UART:
+			term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "uart");
+			break;
+		case HW_TYPE_USB:
+			term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "usb");
+			break;
+	}
 
 	MESCinterface_init();
 
@@ -183,7 +190,7 @@ void task_cli(void * argument)
 
 void task_cli_init(port_str * port){
 	if(port->task_handle == NULL){
-		xTaskCreate(task_cli, "tskCLI", 2048, (void*)port, osPriorityNormal, &port->task_handle);
+		xTaskCreate(task_cli, "tskCLI", 1024, (void*)port, osPriorityNormal, &port->task_handle);
 	}
 }
 

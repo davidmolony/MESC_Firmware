@@ -162,6 +162,9 @@ uint8_t CMD_flash(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 
 void MESCinterface_init(void){
+	static bool is_init=false;
+	if(is_init) return;
+
 	cli_register_var_rw("idq_req" , input_vars.Idq_req_UART.q);
     cli_register_var_rw( "id"     , foc_vars.Idq_req.d);
     cli_register_var_rw( "iq"     , foc_vars.Idq_req.q);
@@ -182,4 +185,5 @@ void MESCinterface_init(void){
 
 
 	REGISTER_apps(&TERM_defaultList);
+	is_init=true;
 }
