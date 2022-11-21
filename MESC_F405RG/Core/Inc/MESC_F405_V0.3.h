@@ -19,7 +19,11 @@
 							//Basically this is half the time between MOSoff and MOSon
 							//and needs dtermining experimentally, either with openloop
 							//sin wave drawing or by finding the zero current switching "power knee point"
-
+//#define SEVEN_SECTOR
+#define OVERMOD_DT_COMP_THRESHOLD 80	//Prototype concept that allows 100% (possibly greater) modulation by
+										//skipping turn off when the modulation is close to VBus, then compensating next cycle.
+										//Only works with 5 sector (bottom clamp) - comment out #define SEVEN_SECTOR
+#define MAX_MODULATION 0.99f //default is 0.95f, can allow higher or lower.
 #define SHUNT_POLARITY -1.0f
 
 #define ABS_MAX_PHASE_CURRENT 250.0f

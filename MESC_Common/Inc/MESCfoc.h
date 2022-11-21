@@ -39,8 +39,9 @@ enum MESCADC
     ADCIV,
     ADCIW,
 };
-
+#ifndef MAX_MODULATION
 #define MAX_MODULATION 0.95f
+#endif
 #define SVPWM_MULTIPLIER \
   1.1547f  // 1/cos30 which comes from the maximum between two 120 degree apart
           // sin waves being at the
@@ -97,10 +98,10 @@ typedef struct {
   float Ibus;
   float reqPower;
 
-  uint16_t hall_table[6]
-                     [4];  // Lookup table, populated by the getHallTable()
-                           // function and used in estimating the rotor position
-                           // from hall sensors in HallAngleEstimator()
+  uint16_t hall_table[6][4];
+  	  	  	  	  	  	  // Lookup table, populated by the getHallTable()
+                          // function and used in estimating the rotor position
+                          // from hall sensors in HallAngleEstimator()
   int hall_forwards_adjust;
   int hall_backwards_adjust;
 

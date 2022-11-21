@@ -931,6 +931,7 @@ if(phasebalance){
   static float mid_value = 0;
   float top_value;
   float bottom_value;
+  uint16_t t_phase, b_phase;
  uint16_t deadtime_comp = DEADTIME_COMP_V;
 
  void writePWM() {
@@ -959,31 +960,37 @@ if(phasebalance){
     // lowest, we find the highest and lowest and subtract the middle
     top_value = foc_vars.inverterVoltage[0];
     bottom_value = top_value;
+    b_phase = 0;
+    t_phase = 0;
 
     if (foc_vars.inverterVoltage[1] > top_value) {
       top_value = foc_vars.inverterVoltage[1];
+      t_phase = 1;
     }
     if (foc_vars.inverterVoltage[2] > top_value) {
       top_value = foc_vars.inverterVoltage[2];
+      t_phase = 2;
     }
     if (foc_vars.inverterVoltage[1] < bottom_value) {
       bottom_value = foc_vars.inverterVoltage[1];
+      b_phase = 1;
     }
     if (foc_vars.inverterVoltage[2] < bottom_value) {
       bottom_value = foc_vars.inverterVoltage[2];
+      b_phase = 2;
     }
-
+#ifdef SEVEN_SECTOR
     mid_value = foc_vars.PWMmid -
                 0.5f * foc_vars.Vab_to_PWM * (top_value + bottom_value);
 
     ////////////////////////////////////////////////////////
     // Actually write the value to the timer registers
-    htim1.Instance->CCR1 = (uint16_t)(
-        foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[0] + mid_value);
-    htim1.Instance->CCR2 = (uint16_t)(
-        foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[1] + mid_value);
-    htim1.Instance->CCR3 = (uint16_t)(
-        foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[2] + mid_value);
+    htim1.Instance->CCR1 =
+    		(uint16_t)(foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[0] + mid_value);
+    htim1.Instance->CCR2 =
+    		(uint16_t)(foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[1] + mid_value);
+    htim1.Instance->CCR3 =
+    		(uint16_t)(foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[2] + mid_value);
 
     //Dead time compensation
 #ifdef DEADTIME_COMP
@@ -996,7 +1003,11 @@ if(phasebalance){
     	  // variable names, structures containing variables or other minor
     	  // rearrangements in place of the original names I have chosen, and credit
     	  // to David Molony as the original author must be noted.
-
+    //The problem with dead time, is that it is essentially a voltage tie through the body diodes to VBus or ground, depending on the current direction.
+    //If we know the direction of current, and the effective dead time length we can remove this error, by writing the corrected voltage.
+    //This is observed to improve sinusoidalness of currents, but has a slight audible buzz
+    //When the current is approximately zero, it is hard to resolve the direction, and therefore the compensation is ineffective.
+    //However, no torque is generated when the current and voltage are close to zero, so no adverse performance except the buzz.
     if(measurement_buffers.ConvertedADC[0][0] < -0.030f){htim1.Instance->CCR1 = htim1.Instance->CCR1-deadtime_comp;}
     if(measurement_buffers.ConvertedADC[1][0] < -0.030f){htim1.Instance->CCR2 = htim1.Instance->CCR2-deadtime_comp;}
     if(measurement_buffers.ConvertedADC[2][0] < -0.030f){htim1.Instance->CCR3 = htim1.Instance->CCR3-deadtime_comp;}
@@ -1005,6 +1016,43 @@ if(phasebalance){
     if(measurement_buffers.ConvertedADC[2][0] > -0.030f){htim1.Instance->CCR3 = htim1.Instance->CCR3+deadtime_comp;}
 
 #endif
+#else //Use 5 sector, bottom clamp implementation
+//ToDo, threshold for turning on sinusoidal modulation
+    foc_vars.inverterVoltage[0] = foc_vars.inverterVoltage[0]-bottom_value;
+    foc_vars.inverterVoltage[1] = foc_vars.inverterVoltage[1]-bottom_value;
+    foc_vars.inverterVoltage[2] = foc_vars.inverterVoltage[2]-bottom_value;
+
+    htim1.Instance->CCR1 = (uint16_t)(foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[0]);
+    htim1.Instance->CCR2 = (uint16_t)(foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[1]);
+    htim1.Instance->CCR3 = (uint16_t)(foc_vars.Vab_to_PWM * foc_vars.inverterVoltage[2]);
+#ifdef OVERMOD_DT_COMP_THRESHOLD
+    //Concept here is that if we are close to the VBus max, we just do not turn the FET off.
+    //Set CCRx to ARR, record how much was added, then next cycle, remove it from the count.
+    //If the duty is still above the threshold, the CCR will still be set to ARR, until the duty request is sufficiently low...
+static int carryU, carryV, carryW;
+
+	htim1.Instance->CCR1 = 	htim1.Instance->CCR1 - carryU;
+	htim1.Instance->CCR2 = 	htim1.Instance->CCR2 - carryV;
+	htim1.Instance->CCR3 = 	htim1.Instance->CCR3 - carryW;
+	carryU = 0;
+	carryV = 0;
+	carryW = 0;
+
+	if(htim1.Instance->CCR1>(htim1.Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
+		carryU = htim1.Instance->ARR-htim1.Instance->CCR1; //Save the amount we have overmodulated by
+		htim1.Instance->CCR1 = htim1.Instance->ARR;
+	}
+	if(htim1.Instance->CCR2>(htim1.Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
+		carryV = htim1.Instance->ARR-htim1.Instance->CCR2; //Save the amount we have overmodulated by
+		htim1.Instance->CCR2 = htim1.Instance->ARR;
+	}
+	if(htim1.Instance->CCR3>(htim1.Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
+		carryW = htim1.Instance->ARR-htim1.Instance->CCR3; //Save the amount we have overmodulated by
+		htim1.Instance->CCR3 = htim1.Instance->ARR;
+	}
+#endif
+#endif
+
 
   }
 
