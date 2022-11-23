@@ -165,13 +165,15 @@ void MESCinterface_init(void){
 	static bool is_init=false;
 	if(is_init) return;
 
-	cli_register_var_rw("idq_req" , input_vars.Idq_req_UART.q);
-    cli_register_var_rw( "id"     , foc_vars.Idq_req.d);
-    cli_register_var_rw( "iq"     , foc_vars.Idq_req.q);
-    cli_register_var_ro( "vbus"   , measurement_buffers.ConvertedADC[0][1]);
-    cli_register_var_rw( "ld"     , motor.Lphase);
-    cli_register_var_rw( "lq"     , motor.Lqphase);
-    cli_register_var_rw( "r"      , motor.Rphase);
+	cli_register_var_rw("idq_req" 	, input_vars.Idq_req_UART.q, NULL);
+    cli_register_var_rw( "id"     	, foc_vars.Idq_req.d, NULL);
+    cli_register_var_rw( "iq"     	, foc_vars.Idq_req.q, NULL);
+    cli_register_var_ro( "vbus"   	, measurement_buffers.ConvertedADC[0][1], NULL);
+    cli_register_var_rw( "ld"     	, motor.Lphase, calculateGains);
+    cli_register_var_rw( "lq"     	, motor.Lqphase, calculateGains);
+    cli_register_var_rw( "r"      	, motor.Rphase, calculateGains);
+    cli_register_var_rw( "flux"     , motor.motor_flux, calculateGains);
+    cli_register_var_rw( "pwm_freq" , foc_vars.pwm_frequency, calculateGains);
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_getkv, "getkv", "Measure motor kV", 0, &TERM_defaultList);

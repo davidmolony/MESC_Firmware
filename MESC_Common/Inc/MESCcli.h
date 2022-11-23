@@ -69,13 +69,39 @@ enum CLIVariableType
 
 typedef enum CLIVariableType CLIVariableType;
 
+#ifdef USE_TTERM
+typedef void (* cli_callback)(void);
+
+
+#define cli_register_var_rw(name, var, func) cli_register_variable_rw(name, &var, sizeof(var), typename(var), func)
+#define cli_register_var_ro(name, var, func) cli_register_variable_ro(name, &var, sizeof(var), typename(var), func)
+#define cli_register_var_wo(name, var, func) cli_register_variable_wo(name, &var, sizeof(var), typename(var), func)
+
+
+void cli_register_variable_ro(
+    char const * name,
+    void const * address, uint32_t const size,
+    CLIVariableType const type, cli_callback func);
+
+void cli_register_variable_rw(
+    char const * name,
+    void       * address, uint32_t const size,
+    CLIVariableType const type, cli_callback func);
+
+void cli_register_variable_wo(
+    char const * name,
+    void       * address, uint32_t const size,
+    CLIVariableType const type, cli_callback func);
+
+void cli_register_function(
+    char const * name,
+    void (* const fn)( void), cli_callback func);
+
+#else
+
 #define cli_register_var_rw(name, var) cli_register_variable_rw(name, &var, sizeof(var), typename(var))
 #define cli_register_var_ro(name, var) cli_register_variable_ro(name, &var, sizeof(var), typename(var))
 #define cli_register_var_wo(name, var) cli_register_variable_wo(name, &var, sizeof(var), typename(var))
-
-void cli_configure_storage_io(
-    ProfileStatus (* const write )( void const * buffer, uint32_t const address, uint32_t const length )
-    );
 
 void cli_register_variable_ro(
     char const * name,
@@ -95,6 +121,13 @@ void cli_register_variable_wo(
 void cli_register_function(
     char const * name,
     void (* const fn)( void ) );
+
+#endif
+
+void cli_configure_storage_io(
+    ProfileStatus (* const write )( void const * buffer, uint32_t const address, uint32_t const length )
+    );
+
 
 void cli_register_io(
     MESC_STM_ALIAS(void,UART_HandleTypeDef) * handle,

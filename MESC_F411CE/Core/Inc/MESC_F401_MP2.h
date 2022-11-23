@@ -34,7 +34,7 @@
 #define OPGAIN 10.5f
 
 
-#define MAX_ID_REQUEST 2.0f
+#define MAX_ID_REQUEST 5.0f
 #define MAX_IQ_REQUEST 5.0f
 
 #define I_MEASURE 5.0f 			//Higher setpoint for resistance measurement, half this used for OL spin up

@@ -179,6 +179,9 @@ struct CLIEntry
     uint32_t        size;
     CLIAccess       access;
     CLIVariableType type;
+#ifdef USE_TTERM
+    cli_callback	func;
+#endif
 };
 
 typedef struct CLIEntry CLIEntry;
@@ -736,6 +739,7 @@ static uint32_t cli_write_int(TERMINAL_HANDLE * handle, CLIEntry * entry, char *
 			default:
 				return TERM_CMD_EXIT_ERROR;
 		}
+		if(entry->func != NULL)	entry->func();
 		return TERM_CMD_EXIT_SUCCESS;
 	}else{
 		return TERM_CMD_EXIT_ERROR;
@@ -762,6 +766,7 @@ static uint32_t cli_write_uint(TERMINAL_HANDLE * handle, CLIEntry * entry, char 
 			default:
 				return TERM_CMD_EXIT_ERROR;
 		}
+		if(entry->func != NULL)	entry->func();
 		return TERM_CMD_EXIT_SUCCESS;
 	}else{
 		return TERM_CMD_EXIT_ERROR;
@@ -778,6 +783,7 @@ static uint32_t cli_write_float(TERMINAL_HANDLE * handle, CLIEntry * entry, char
 			default:
 				return TERM_CMD_EXIT_ERROR;
 		}
+		if(entry->func != NULL)	entry->func();
 		return TERM_CMD_EXIT_SUCCESS;
 	}else{
 		return TERM_CMD_EXIT_ERROR;
@@ -863,11 +869,11 @@ void cli_configure_storage_io(
     }
 }
 
-void cli_register_variable_ro(
-    char const * name,
-    void const * address, uint32_t const size,
-    CLIVariableType const type )
-{
+#ifdef USE_TTERM
+void cli_register_variable_ro(char const * name, void const * address, uint32_t const size, CLIVariableType const type, cli_callback func){
+#else
+void cli_register_variable_ro(char const * name, void const * address, uint32_t const size, CLIVariableType const type ){
+#endif
     CLIEntry * entry = cli_lut_alloc( name );
 
     if (entry != NULL)
@@ -876,16 +882,19 @@ void cli_register_variable_ro(
         entry->size   = size;
         entry->access = CLI_ACCESS_RO;
         entry->type   = type;
+#ifdef USE_TTERM
+        entry->func = func;
+#endif
 
         CLIlut.entries_n++;
     }
 }
 
-void cli_register_variable_rw(
-    char const * name,
-    void       * address, uint32_t const size,
-    CLIVariableType const type )
-{
+#ifdef USE_TTERM
+void cli_register_variable_rw(char const * name, void * address, uint32_t const size, CLIVariableType const type, cli_callback func){
+#else
+void cli_register_variable_rw(char const * name, void * address, uint32_t const size, CLIVariableType const type ){
+#endif
     CLIEntry * entry = cli_lut_alloc( name );
 
     if (entry != NULL)
@@ -894,16 +903,18 @@ void cli_register_variable_rw(
         entry->size   = size;
         entry->access = CLI_ACCESS_RW;
         entry->type   = type;
-
+#ifdef USE_TTERM
+        entry->func = func;
+#endif
         CLIlut.entries_n++;
     }
 }
 
-void cli_register_variable_wo(
-    char const * name,
-    void       * address, uint32_t const size,
-    CLIVariableType const type )
-{
+#ifdef USE_TTERM
+void cli_register_variable_wo(char const * name, void * address, uint32_t const size, CLIVariableType const type, cli_callback func){
+#else
+void cli_register_variable_wo(char const * name, void * address, uint32_t const size, CLIVariableType const type ){
+#endif
     CLIEntry * entry = cli_lut_alloc( name );
 
     if (entry != NULL)
@@ -912,15 +923,18 @@ void cli_register_variable_wo(
         entry->size   = size;
         entry->access = CLI_ACCESS_WO;
         entry->type   = type;
-
+#ifdef USE_TTERM
+        entry->func = func;
+#endif
         CLIlut.entries_n++;
     }
 }
 
-void cli_register_function(
-    char const * name,
-    void (* const fn)( void ) )
-{
+#ifdef USE_TTERM
+void cli_register_function(char const * name, void (* const fn)( void ), cli_callback func){
+#else
+void cli_register_function(char const * name, void (* const fn)( void ) ){
+#endif
     CLIEntry * entry = cli_lut_alloc( name );
 
     if (entry != NULL)
@@ -929,7 +943,9 @@ void cli_register_function(
         entry->size   = 0;
         entry->access = CLI_ACCESS_X;
         entry->type   = (CLIVariableType)INT_MAX;
-
+#ifdef USE_TTERM
+        entry->func = func;
+#endif
         CLIlut.entries_n++;
     }
 }

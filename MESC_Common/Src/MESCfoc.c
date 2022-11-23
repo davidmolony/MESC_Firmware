@@ -86,6 +86,8 @@ void MESCInit() {
 	motor.measure_current = I_MEASURE;
 	motor.measure_voltage = V_MEASURE;
 
+	foc_vars.pwm_frequency =PWM_FREQUENCY;
+
 	mesc_init_1();
 
 	HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle,
@@ -113,7 +115,7 @@ void MESCInit() {
 
   InputInit();
 
-  //htim1.Instance->BDTR |=TIM_BDTR_MOE;
+   //htim1.Instance->BDTR |=TIM_BDTR_MOE;
 	  // initialising the comparators triggers the break state,
 	  // so turn it back on
 	  // At this point we just let the whole thing run off into interrupt land, and
@@ -1467,7 +1469,6 @@ void generateEnable() {
 #define CURRENT_BANDWIDTH 5000.0f
 #endif
   void calculateGains() {
-    foc_vars.pwm_frequency =PWM_FREQUENCY;
     foc_vars.pwm_period = 1.0f/foc_vars.pwm_frequency;
     htim1.Instance->ARR = HAL_RCC_GetHCLKFreq()/(((float)htim1.Instance->PSC + 1.0f) * 2*foc_vars.pwm_frequency);
     htim1.Instance->CCR4 = htim1.Instance->ARR-2; //Just short of dead center (dead center will not actually trigger the conversion)

@@ -47,6 +47,8 @@ static uint8_t UART_rx_buffer[2];
 
 extern uint8_t b_read_flash;
 
+#ifndef USE_TTERM
+
 #if MESC_UART_USB
 static void usb_ack( void )
 {
@@ -79,7 +81,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     */
 }
 
-#ifndef USE_TTERM
+
 void USB_CDC_Callback(uint8_t *buffer, uint32_t len){
 
 	for(int i = 0; i<len; i++){
@@ -92,7 +94,7 @@ void USB_CDC_Callback(uint8_t *buffer, uint32_t len){
 	}
 
 }
-#endif
+
 
 static void cmd_hall_dec( void )
 {
@@ -201,3 +203,5 @@ void uart_init( void )
     uart_ack();
 #endif
 }
+
+#endif
