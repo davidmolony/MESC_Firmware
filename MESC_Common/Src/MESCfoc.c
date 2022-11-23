@@ -884,7 +884,7 @@ if(phasebalance){
 
       // Bounding final output
 
-#ifdef USE_SQRT_CIRCLE_LIM
+#if defined(USE_SQRT_CIRCLE_LIM)
       float Vmagnow2 = foc_vars.Vdq.d*foc_vars.Vdq.d+foc_vars.Vdq.q*foc_vars.Vdq.q;
       //Check if the vector length is greater than the available voltage
       if(Vmagnow2>foc_vars.Vmag_max2){
@@ -895,7 +895,45 @@ if(phasebalance){
 		  foc_vars.Vdq.q = foc_vars.Vdq.q*one_on_VmagnowxVmagmax;
 		  foc_vars.Idq_int_err.d = foc_vars.Idq_int_err.d*one_on_VmagnowxVmagmax;
 		  foc_vars.Idq_int_err.q = foc_vars.Idq_int_err.q*one_on_VmagnowxVmagmax;
-}
+      }
+#elif defined(USE_SQRT_CIRCLE_LIM_VD)
+     //Circle limiter that favours Vd, similar to used in VESC, and as an option in ST firmware.for torque
+      //This method was primarily designed for induction motors, where the d axis is required to
+      //make the magnetic field for torque. Nevertheless, this finds application at extreme currents and
+      //during field weakening.
+      //Latent concerns about the usual implementation that allows ALL the voltage to be
+      //assigned to Vd becoming unstable as the angle relative to the rotor exceeds 45 degrees
+      //due to rapidly collapsing q-axis voltage. Therefore, this option will be allowed, but
+      // with a limit of voltage angle 60degrees (sin60 = 0.866) from the rotor.
+
+      if(foc_vars.Vdq.d>0.866f*foc_vars.Vmag_max){ //Positive values of Vd
+    	  foc_vars.Vdq.d = 0.866f*foc_vars.Vmag_max; //Hard clamp the Vd
+    			  if(foc_vars.Idq_int_err.d>foc_vars.Vdq.d){
+    				  foc_vars.Idq_int_err.d = foc_vars.Vdq.d; //Also clamp the integral to stop windup
+    			  }
+      }else if(foc_vars.Vdq.d<-0.866f*foc_vars.Vmag_max){ //Negative values of Vd
+    	  foc_vars.Vdq.d = -0.866f*foc_vars.Vmag_max; //Hard clamp the Vd
+    	      			  if(foc_vars.Idq_int_err.d<foc_vars.Vdq.d){
+    	      				  foc_vars.Idq_int_err.d = foc_vars.Vdq.d; //Also clamp the integral to stop windup
+    	      			  }
+      }
+      //Now we take care of the overall length of the voltage vector
+      float Vmagnow2 = foc_vars.Vdq.d*foc_vars.Vdq.d+foc_vars.Vdq.q*foc_vars.Vdq.q;
+      if(Vmagnow2>foc_vars.Vmag_max2){
+    	  if(foc_vars.Vdq.q>0){ //Positive Vq
+    		  foc_vars.Vdq.q = sqrtf(foc_vars.Vmag_max2-foc_vars.Vdq.d*foc_vars.Vdq.d);
+    		  if(foc_vars.Idq_int_err.q>foc_vars.Vdq.q){
+    			  foc_vars.Idq_int_err.q = foc_vars.Vdq.q;
+    		  }
+    	  }
+    	  else{ //Negative Vq
+    		  foc_vars.Vdq.q = -sqrtf(foc_vars.Vmag_max2-foc_vars.Vdq.d*foc_vars.Vdq.d);
+			  if(foc_vars.Idq_int_err.q<foc_vars.Vdq.q){
+				  foc_vars.Idq_int_err.q = foc_vars.Vdq.q;
+			  }
+    	  }
+      }
+
 #else
       // These limits are experimental, but result in close to 100% modulation.
       // Since Vd and Vq are orthogonal, limiting Vd is not especially helpful
