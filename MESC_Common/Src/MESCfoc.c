@@ -340,6 +340,22 @@ void fastLoop() {
 	      deadshort(); //Function to startup motor from running without phase sensors
 
       break;
+    case MOTOR_STATE_SLAMBRAKE:
+      if((fabs(measurement_buffers.ConvertedADC[0][0])>input_vars.max_request_Idq.q)||
+    		  (fabs(measurement_buffers.ConvertedADC[1][0])>input_vars.max_request_Idq.q)||
+			  (fabs(measurement_buffers.ConvertedADC[2][0])>input_vars.max_request_Idq.q)){
+    	  generateBreak();
+      }else{
+    	  generateEnable();
+    	  htim1.Instance->CCR1 = 0;
+    	  htim1.Instance->CCR2 = 0;
+    	  htim1.Instance->CCR3 = 0;
+    	  //We use "0", since this corresponds to all high side FETs off, always, and all low side ones on, always.
+    	  //This means that current measurement can continue on low side and phase shunts, so over current protection remains active.
+      }
+
+    break;
+
     default:
       MotorState = MOTOR_STATE_ERROR;
       generateBreak();
