@@ -842,6 +842,7 @@ if(phasebalance){
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // FOC PID algorithms
   //////////////////////////////////////////////////////////////////////////////////////////
+  float FW_current = 0;
 
   void MESCFOC() {
 
@@ -860,7 +861,15 @@ if(phasebalance){
     // Here we are going to do a PID loop to control the dq currents, converting
     // Idq into Vdq Calculate the errors
     static MESCiq_s Idq_err;
-    Idq_err.d = (foc_vars.Idq_req.d - foc_vars.Idq.d) * foc_vars.Id_pgain;
+#ifdef USE_FIELD_WEAKENINGV2
+    if(FW_current<foc_vars.Idq_req.d){//Field weakenning is -ve, but there may already be d-axis from the MTPA
+    	Idq_err.d = (FW_current - foc_vars.Idq.d) * foc_vars.Id_pgain;
+    }else{
+    	Idq_err.d = (foc_vars.Idq_req.d - foc_vars.Idq.d) * foc_vars.Id_pgain;
+    }
+#else
+	Idq_err.d = (foc_vars.Idq_req.d - foc_vars.Idq.d) * foc_vars.Id_pgain;
+#endif
     Idq_err.q = (foc_vars.Idq_req.q - foc_vars.Idq.q) * foc_vars.Iq_pgain;
 
     // Integral error
@@ -869,10 +878,6 @@ if(phasebalance){
     foc_vars.Idq_int_err.q =
     		foc_vars.Idq_int_err.q + foc_vars.Iq_igain * Idq_err.q * foc_vars.pwm_period;
     // Apply the integral gain at this stage to enable bounding it
-
-    static int i = 0;
-    if (i == 0) {  // set or release the PID controller; may want to do this for
-                   // cycle skipping, which may help for high inductance motors
 
 
         // Apply the PID, and potentially smooth the output for noise - sudden
@@ -959,13 +964,27 @@ if(phasebalance){
       if (foc_vars.Vdq.q < -foc_vars.Vq_max)
         (foc_vars.Vdq.q = -foc_vars.Vq_max);
 #endif
-      i = FOC_PERIODS;
+#ifdef USE_FIELD_WEAKENINGV2
+      //Calculate the module of voltage applied,
+      Vmagnow2 = foc_vars.Vdq.d*foc_vars.Vdq.d+foc_vars.Vdq.q*foc_vars.Vdq.q; //Need to recalculate this since limitation has maybe been applied
+      //Apply a linear slope from the threshold to the max module
+      //Step towards with exponential smoother
+      if(Vmagnow2>(foc_vars.field_weakening_threshold*foc_vars.field_weakening_threshold)){
+    	  FW_current = 0.95f*FW_current +
+    			  	  	0.05f*foc_vars.field_weakening_curr_max *foc_vars.field_weakening_multiplier*
+						(foc_vars.field_weakening_threshold - sqrtf(Vmagnow2));
+      }else{
+    	  FW_current*=0.95f;//Ramp down a bit slowly
+		  if(FW_current>0.1f){//We do not allow positive field weakening current, and we want it to actually go to zero eventually
+			  FW_current = 0.0f;
+		  }
+      }
+      //Apply the field weakening only if the additional d current is greater than the requested d current
 
+#endif
 
     }
-    i = i - 1;
 
-  }
 
   static float mid_value = 0;
   float top_value;
