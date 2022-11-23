@@ -906,17 +906,18 @@ if(phasebalance){
       //due to rapidly collapsing q-axis voltage. Therefore, this option will be allowed, but
       // with a limit of voltage angle 60degrees (sin60 = 0.866) from the rotor.
 
-      if(foc_vars.Vdq.d>0.866f*foc_vars.Vmag_max){ //Positive values of Vd
+      if(foc_vars.Vdq.d<-0.866f*foc_vars.Vmag_max){ //Negative values of Vd - Normally Vd is -ve since it is driving field advance
+		  foc_vars.Vdq.d = -0.866f*foc_vars.Vmag_max; //Hard clamp the Vd
+		  if(foc_vars.Idq_int_err.d<foc_vars.Vdq.d){
+			  foc_vars.Idq_int_err.d = foc_vars.Vdq.d; //Also clamp the integral to stop windup
+		  }
+      } else if(foc_vars.Vdq.d>0.866f*foc_vars.Vmag_max){ //Positive values of Vd
     	  foc_vars.Vdq.d = 0.866f*foc_vars.Vmag_max; //Hard clamp the Vd
-    			  if(foc_vars.Idq_int_err.d>foc_vars.Vdq.d){
-    				  foc_vars.Idq_int_err.d = foc_vars.Vdq.d; //Also clamp the integral to stop windup
-    			  }
-      }else if(foc_vars.Vdq.d<-0.866f*foc_vars.Vmag_max){ //Negative values of Vd
-    	  foc_vars.Vdq.d = -0.866f*foc_vars.Vmag_max; //Hard clamp the Vd
-    	      			  if(foc_vars.Idq_int_err.d<foc_vars.Vdq.d){
-    	      				  foc_vars.Idq_int_err.d = foc_vars.Vdq.d; //Also clamp the integral to stop windup
-    	      			  }
+		  if(foc_vars.Idq_int_err.d>foc_vars.Vdq.d){
+			  foc_vars.Idq_int_err.d = foc_vars.Vdq.d; //Also clamp the integral to stop windup
+		  }
       }
+
       //Now we take care of the overall length of the voltage vector
       float Vmagnow2 = foc_vars.Vdq.d*foc_vars.Vdq.d+foc_vars.Vdq.q*foc_vars.Vdq.q;
       if(Vmagnow2>foc_vars.Vmag_max2){
