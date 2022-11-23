@@ -239,6 +239,21 @@ void fastLoop() {
 		          angleObserver();
 		      } else if (MotorSensorMode == MOTOR_SENSOR_MODE_SENSORLESS) {
 		    	  flux_observer();
+#ifdef USE_HALL_START
+		    	  if(fabs(foc_vars.Vdq.q)>5.0f){ //Are we actually spinning at a reasonable pace?
+		    		  if((current_hall_state>0)&&(current_hall_state<7)){
+		    	  foc_vars.hall_flux[current_hall_state - 1][0] =
+		    			  0.999f*foc_vars.hall_flux[current_hall_state - 1][0] +
+						  0.001f*foc_vars.flux_linked_alpha;
+		    	  //take a slow average of the alpha flux linked and store it for later preloading
+		    	  //the observer during very low speed conditions. There is a slight bias towards
+		    	  //later values of flux linked, which is probably good.
+		    	  foc_vars.hall_flux[current_hall_state - 1][1] =
+		    			  0.999f*foc_vars.hall_flux[current_hall_state - 1][1] +
+						  0.001f*foc_vars.flux_linked_beta;
+		    		  }
+		    	  }
+#endif
 		      }
 #endif
 
@@ -1900,7 +1915,14 @@ was_last_tracking = 1;
 	    if(no_q){foc_vars.Idq_req.q=0.0f;}
     }
 #endif
-
+#ifdef USE_HALL_START
+    if(fabs(foc_vars.Vdq.q)<2.0f){
+		  if((current_hall_state>0)&&(current_hall_state<7)){
+			  foc_vars.flux_linked_alpha = 0.5f*foc_vars.flux_linked_alpha + 0.5f*foc_vars.hall_flux[current_hall_state-1][0];
+			  foc_vars.flux_linked_beta = 0.5f*foc_vars.flux_linked_beta + 0.5f*foc_vars.hall_flux[current_hall_state-1][1];
+		  }
+    }
+#endif
     //Speed tracker
     if(abs(foc_vars.angle_error)>6000){
     	foc_vars.angle_error = 0;
