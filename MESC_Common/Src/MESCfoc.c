@@ -240,19 +240,7 @@ void fastLoop() {
 		      } else if (MotorSensorMode == MOTOR_SENSOR_MODE_SENSORLESS) {
 		    	  flux_observer();
 #ifdef USE_HALL_START
-		    	  if(fabs(foc_vars.Vdq.q)>5.0f){ //Are we actually spinning at a reasonable pace?
-		    		  if((current_hall_state>0)&&(current_hall_state<7)){
-		    	  foc_vars.hall_flux[current_hall_state - 1][0] =
-		    			  0.999f*foc_vars.hall_flux[current_hall_state - 1][0] +
-						  0.001f*foc_vars.flux_linked_alpha;
-		    	  //take a slow average of the alpha flux linked and store it for later preloading
-		    	  //the observer during very low speed conditions. There is a slight bias towards
-		    	  //later values of flux linked, which is probably good.
-		    	  foc_vars.hall_flux[current_hall_state - 1][1] =
-		    			  0.999f*foc_vars.hall_flux[current_hall_state - 1][1] +
-						  0.001f*foc_vars.flux_linked_beta;
-		    		  }
-		    	  }
+		    	  HallFluxMonitor();
 #endif
 		      }
 #endif
@@ -282,16 +270,13 @@ void fastLoop() {
 
     case MOTOR_STATE_DETECTING:
 
-      if ((current_hall_state == 7)) {
-        // no hall sensors detected, all GPIO pulled high
+      if ((current_hall_state == 7)) { // no hall sensors detected, all GPIO pulled high
         MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
         MotorState = MOTOR_STATE_GET_KV;
       } else if (current_hall_state == 0) {
         MotorState = MOTOR_STATE_ERROR;
         MotorError = MOTOR_ERROR_HALL0;
-      }
-      // ToDo add reporting
-      else {
+      } else {
         // hall sensors detected
         MotorSensorMode = MOTOR_SENSOR_MODE_HALL;
         getHallTable();
@@ -301,26 +286,12 @@ void fastLoop() {
       break;
 
     case MOTOR_STATE_MEASURING:
-
-//      if (motor.uncertainty ==
-//          1) {  // Every PWM cycle we enter this function until
+    			// Every PWM cycle we enter this function until
                 // the resistance measurement has converged at a
                 // good value. Once the measurement is complete,
                 // Rphase is set, and this is no longer called
           measureResistance();
         break;
-//      }
-//        else if (motor.Lphase == 0)  // This is currently rolled into measureResistance() since
-//                     // it seemed pointless to re-write basically the same
-//                     // function...
-//      {
-//        // As per resistance measurement, this will be called until an
-//        // inductance measurement is converged.
-//        // measureInductance();
-//        break;
-//      }
-
-      break;
 
     case MOTOR_STATE_GET_KV:
       getkV();
@@ -335,6 +306,7 @@ void fastLoop() {
     case MOTOR_STATE_ALIGN:
       // Turn on at a given voltage at electricalangle0;
       break;
+
     case MOTOR_STATE_TEST:
     	if(TestMode == TEST_TYPE_DOUBLE_PULSE){
       // Double pulse test
@@ -346,19 +318,17 @@ void fastLoop() {
     	}else if(TestMode == TEST_TYPE_HARDWARE_VERIFICATION){
     		//Here we want a function that pulls all phases low, then all high and verifies a response
     		//Then we want to show a current response with increasing phase duty
-
     	}
       break;
 
     case MOTOR_STATE_RECOVERING:
-
 	      deadshort(); //Function to startup motor from running without phase sensors
-
       break;
+
     case MOTOR_STATE_SLAMBRAKE:
       if((fabs(measurement_buffers.ConvertedADC[0][0])>input_vars.max_request_Idq.q)||
-    		  (fabs(measurement_buffers.ConvertedADC[1][0])>input_vars.max_request_Idq.q)||
-			  (fabs(measurement_buffers.ConvertedADC[2][0])>input_vars.max_request_Idq.q)){
+		  (fabs(measurement_buffers.ConvertedADC[1][0])>input_vars.max_request_Idq.q)||
+		  (fabs(measurement_buffers.ConvertedADC[2][0])>input_vars.max_request_Idq.q)){
     	  generateBreak();
       }else{
     	  generateEnable();
@@ -367,8 +337,7 @@ void fastLoop() {
     	  htim1.Instance->CCR3 = 0;
     	  //We use "0", since this corresponds to all high side FETs off, always, and all low side ones on, always.
     	  //This means that current measurement can continue on low side and phase shunts, so over current protection remains active.
-      }
-
+      }`
     break;
 
     default:
@@ -1768,8 +1737,6 @@ if(foc_vars.Idq_req.d<input_vars.min_request_Idq.d){foc_vars.Idq_req.d = input_v
 if(foc_vars.Idq_req.q>input_vars.max_request_Idq.q){foc_vars.Idq_req.q = input_vars.max_request_Idq.q;}
 if(foc_vars.Idq_req.q<input_vars.min_request_Idq.q){foc_vars.Idq_req.q = input_vars.min_request_Idq.q;}
 
-
-
 ////// Adjust the SVPWM gains to account for the change in battery voltage etc
     calculateVoltageGain();
 
@@ -2194,6 +2161,21 @@ uint16_t test_counts;
 	  }
   }
 
+  void HallFluxMonitor(){
+	  if(fabs(foc_vars.Vdq.q)>5.0f){ //Are we actually spinning at a reasonable pace?
+		  if((current_hall_state>0)&&(current_hall_state<7)){
+	  foc_vars.hall_flux[current_hall_state - 1][0] =
+			  0.999f*foc_vars.hall_flux[current_hall_state - 1][0] +
+			  0.001f*foc_vars.flux_linked_alpha;
+	  //take a slow average of the alpha flux linked and store it for later preloading
+	  //the observer during very low speed conditions. There is a slight bias towards
+	  //later values of flux linked, which is probably good.
+	  foc_vars.hall_flux[current_hall_state - 1][1] =
+			  0.999f*foc_vars.hall_flux[current_hall_state - 1][1] +
+			  0.001f*foc_vars.flux_linked_beta;
+		  }
+	  }
+  }
 
 
   // clang-format on

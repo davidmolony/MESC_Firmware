@@ -309,4 +309,6 @@ void tle5012();
 void getDeadtime();
 void LRObserver();
 void LRObserverCollect();
+void HallFluxMonitor();
+
 #endif
