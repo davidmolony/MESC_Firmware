@@ -1833,7 +1833,7 @@ if(foc_vars.Idq_req.q<input_vars.min_request_Idq.q){foc_vars.Idq_req.q = input_v
     //////Set tracking
 static int was_last_tracking;
 
-if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(MotorState==MOTOR_STATE_GET_KV)||(MotorState==MOTOR_STATE_TEST)||(MotorState==MOTOR_STATE_INITIALISING))){
+if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(MotorState==MOTOR_STATE_GET_KV)||(MotorState==MOTOR_STATE_TEST)||(MotorState==MOTOR_STATE_INITIALISING)||(MotorState==MOTOR_STATE_SLAMBRAKE))){
 	if(fabsf(foc_vars.Idq_req.q)>0.1f){
 
 		if(MotorState != MOTOR_STATE_ERROR){
