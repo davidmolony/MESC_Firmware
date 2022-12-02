@@ -19,11 +19,15 @@
 							//Basically this is half the time between MOSoff and MOSon
 							//and needs dtermining experimentally, either with openloop
 							//sin wave drawing or by finding the zero current switching "power knee point"
-//#define SEVEN_SECTOR
+//#define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp
+							//Not defining this uses 5 sector and overmodulation compensation
+							//5 sector is harder on the low side FETs (for now)but offers equal performance at low speed, better at high speed.
 #define OVERMOD_DT_COMP_THRESHOLD 80	//Prototype concept that allows 100% (possibly greater) modulation by
 										//skipping turn off when the modulation is close to VBus, then compensating next cycle.
 										//Only works with 5 sector (bottom clamp) - comment out #define SEVEN_SECTOR
-#define MAX_MODULATION 0.99f //default is 0.95f, can allow higher or lower.
+#define MAX_MODULATION 1.05f //default is 0.95f, can allow higher or lower. up to
+							//1.1 stable with 5 sector switching,
+							//1.05 is advised as max for low side shunts
 #define SHUNT_POLARITY -1.0f
 
 #define ABS_MAX_PHASE_CURRENT 250.0f
@@ -34,17 +38,17 @@
 
 //#define R_VBUS_BOTTOM 1500.0f //Phase and Vbus voltage sensors
 //#define R_VBUS_TOP 82000.0f
-//#define R_VBUS_BOTTOM 3300.0f //Phase and Vbus voltage sensors
-//#define R_VBUS_TOP 100000.0f
-#define R_VBUS_BOTTOM 2700.0f //Phase and Vbus voltage sensors
+#define R_VBUS_BOTTOM 3300.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 100000.0f
+//#define R_VBUS_BOTTOM 2700.0f //Phase and Vbus voltage sensors
+//#define R_VBUS_TOP 100000.0f
 #define OPGAIN 10.0f
 
 
-#define MAX_ID_REQUEST 10.0f
+#define MAX_ID_REQUEST 40.0f
 #define MAX_IQ_REQUEST 200.0f
 
-#define I_MEASURE 15.0f //Higher setpoint for resistance measurement
+#define I_MEASURE 30.0f //Higher setpoint for resistance measurement
 #define IMEASURE_CLOSEDLOOP 1.5f 	//After spinning up openloop and getting an approximation,
 									//this current is used to driver the motor and collect a refined flux linkage
 #define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
@@ -75,10 +79,10 @@
 
 //////Motor parameters
 #define DEFAULT_MOTOR_POWER 250.0f
-#define DEFAULT_FLUX_LINKAGE 0.00380f//Set this to the motor linkage in wB
-#define DEFAULT_MOTOR_Ld 0.000006f //Henries
-#define DEFAULT_MOTOR_Lq 0.0000120f//Henries
-#define DEFAULT_MOTOR_R 0.0105260f //Ohms
+#define DEFAULT_FLUX_LINKAGE 0.01180f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.00008f //Henries
+#define DEFAULT_MOTOR_Lq 0.000120f//Henries
+#define DEFAULT_MOTOR_R 0.059505260f //Ohms
 //Use the Ebike Profile tool
 #define USE_PROFILE
 
@@ -89,7 +93,7 @@
 #define FIELD_WEAKENING_THRESHOLD 0.8f
 //#define USE_HFI
 #define HFI_VOLTAGE 4.0f
-#define HFI_TEST_CURRENT 10.0f
+#define HFI_TEST_CURRENT 30.0f
 
 #ifdef USE_HFI
 #define CURRENT_BANDWIDTH 1000.0f //HFI does not work if the current controller is strong enough to squash the HFI
@@ -126,6 +130,9 @@
 										//Also, incompatible with flux linkage observer for now...
 #define NON_LINEAR_CENTERING_GAIN 5000.0f
 #define USE_CLAMPED_OBSERVER_CENTERING //Pick one of the two centering methods... preferably this one
+
+#define LOGGING
+
 
 #define MESC_UART_USB 		MESC_USB
 

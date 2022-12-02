@@ -58,6 +58,9 @@ MESCfoc_s foc_vars;
 MESCtest_s test_vals;
 foc_measurement_t measurement_buffers;
 input_vars_t input_vars;
+logged_vars_t logged_vars;
+
+int print_logs_now, lognow;
 
 void MESCInit() {
 #ifdef STM32L4 // For some reason, ST have decided to have a different name for the L4 timer DBG freeze...
@@ -337,7 +340,7 @@ void fastLoop() {
     	  htim1.Instance->CCR3 = 0;
     	  //We use "0", since this corresponds to all high side FETs off, always, and all low side ones on, always.
     	  //This means that current measurement can continue on low side and phase shunts, so over current protection remains active.
-      }`
+      }
     break;
 
     default:
@@ -426,6 +429,20 @@ foc_vars.FOCAngle = foc_vars.FOCAngle + 0.5f*foc_vars.angle_error;
 if(MotorState==MOTOR_STATE_RUN||MotorState==MOTOR_STATE_MEASURING){
 	writePWM();
 	}
+#ifdef LOGGING
+if(lognow){
+	static int post_error_samples;
+	if(MotorState!=MOTOR_STATE_ERROR){
+	logVars();
+	post_error_samples = 100;
+	}else{//If we have an error state, we want to keep the data surrounding the error log, including some sampled during and after the fault
+		if(post_error_samples>0){
+			logVars();
+			post_error_samples--;
+		}
+	}
+}
+#endif
 }
 
 #define MAX_ERROR_COUNT 1
@@ -862,7 +879,7 @@ if(phasebalance){
     // Idq into Vdq Calculate the errors
     static MESCiq_s Idq_err;
 #ifdef USE_FIELD_WEAKENINGV2
-    if(FW_current<foc_vars.Idq_req.d){//Field weakenning is -ve, but there may already be d-axis from the MTPA
+    if((FW_current<foc_vars.Idq_req.d)&&(MotorState==MOTOR_STATE_RUN)){//Field weakenning is -ve, but there may already be d-axis from the MTPA
     	Idq_err.d = (FW_current - foc_vars.Idq.d) * foc_vars.Id_pgain;
     }else{
     	Idq_err.d = (foc_vars.Idq_req.d - foc_vars.Idq.d) * foc_vars.Id_pgain;
@@ -1885,8 +1902,8 @@ was_last_tracking = 1;
 #ifdef USE_HALL_START
     if(fabs(foc_vars.Vdq.q)<2.0f){
 		  if((current_hall_state>0)&&(current_hall_state<7)){
-			  foc_vars.flux_linked_alpha = 0.5f*foc_vars.flux_linked_alpha + 0.5f*foc_vars.hall_flux[current_hall_state-1][0];
-			  foc_vars.flux_linked_beta = 0.5f*foc_vars.flux_linked_beta + 0.5f*foc_vars.hall_flux[current_hall_state-1][1];
+			  foc_vars.flux_linked_alpha = 0.1f*foc_vars.flux_linked_alpha + 0.9f*foc_vars.hall_flux[current_hall_state-1][0];
+			  foc_vars.flux_linked_beta = 0.1f*foc_vars.flux_linked_beta + 0.9f*foc_vars.hall_flux[current_hall_state-1][1];
 		  }
     }
 #endif
@@ -2177,5 +2194,63 @@ uint16_t test_counts;
 	  }
   }
 
+void  logVars(){
+	logged_vars.loggedIa[logged_vars.current_sample] = measurement_buffers.ConvertedADC[0][0];
+	logged_vars.loggedIb[logged_vars.current_sample] = measurement_buffers.ConvertedADC[0][1];
+	logged_vars.loggedIc[logged_vars.current_sample] = measurement_buffers.ConvertedADC[0][2];
+	logged_vars.loggedVd[logged_vars.current_sample] = foc_vars.Vdq.d;
+	logged_vars.loggedVq[logged_vars.current_sample] = foc_vars.Vdq.q;
+	logged_vars.logged_angle[logged_vars.current_sample] = foc_vars.FOCAngle;
+	logged_vars.current_sample++;
+	if(logged_vars.current_sample>=LOGLENGTH){
+		logged_vars.current_sample = 0;
+	}
+}
+
+void printLogs(){
+	char send_buffer[100];
+	uint16_t length;
+#ifdef LOGGING
+	if(print_logs_now){
+		lognow = 0;
+		int current_sample_pos = logged_vars.current_sample;
+		uint32_t start_ticks = HAL_GetTick();
+		length = sprintf(send_buffer,"%.2f,%.2f,%.2f,%.2f,%.2f,%d;/r/n",
+				logged_vars.loggedIa[current_sample_pos],
+				logged_vars.loggedIb[current_sample_pos],
+				logged_vars.loggedIc[current_sample_pos],
+				logged_vars.loggedVd[current_sample_pos],
+				logged_vars.loggedVq[current_sample_pos],
+				logged_vars.logged_angle[current_sample_pos]);
+		int samples_sent = 0;
+#ifdef MESC_UART_USB
+		while(samples_sent<LOGLENGTH){
+	//		if(hcdc->TxState == 0){
+				CDC_Transmit_FS(send_buffer, length);
+				HAL_Delay(1);//Wait 2ms, would be nice if we could poll for the CDC being free...
+				samples_sent++;
+				current_sample_pos++;
+				if(current_sample_pos>=LOGLENGTH){
+					current_sample_pos = 0;
+				}
+				length = sprintf(send_buffer,"%f,%f,%f,%f,%f,%d;",
+						logged_vars.loggedIa[current_sample_pos],
+						logged_vars.loggedIb[current_sample_pos],
+						logged_vars.loggedIc[current_sample_pos],
+						logged_vars.loggedVd[current_sample_pos],
+						logged_vars.loggedVq[current_sample_pos],
+						logged_vars.logged_angle[current_sample_pos]);
+	//		}
+			if((HAL_GetTick()-start_ticks)>10000){
+				break;
+			}
+		}
+#else
+		//Do the same for UART
+#endif
+		lognow = 1;
+	}
+#endif
+}
 
   // clang-format on
