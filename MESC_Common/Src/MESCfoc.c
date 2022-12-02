@@ -1834,30 +1834,39 @@ if(foc_vars.Idq_req.q<input_vars.min_request_Idq.q){foc_vars.Idq_req.q = input_v
 static int was_last_tracking;
 
 if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(MotorState==MOTOR_STATE_GET_KV)||(MotorState==MOTOR_STATE_TEST)||(MotorState==MOTOR_STATE_INITIALISING))){
-if(fabsf(foc_vars.Idq_req.q)>0.1f){
+	if(fabsf(foc_vars.Idq_req.q)>0.1f){
 
-	if(MotorState != MOTOR_STATE_ERROR){
-#ifdef HAS_PHASE_SENSORS //We can go straight to RUN if we have been tracking with phase sensors
-	MotorState = MOTOR_STATE_RUN;
-	generateEnable();
-#endif
-if(MotorState==MOTOR_STATE_IDLE){
-#ifdef USE_DEADSHORT
-	MotorState = MOTOR_STATE_RECOVERING;
+		if(MotorState != MOTOR_STATE_ERROR){
+	#ifdef HAS_PHASE_SENSORS //We can go straight to RUN if we have been tracking with phase sensors
+		MotorState = MOTOR_STATE_RUN;
+		generateEnable();
+	#endif
+	if(MotorState==MOTOR_STATE_IDLE){
+	#ifdef USE_DEADSHORT
+		MotorState = MOTOR_STATE_RECOVERING;
 
-#endif
+	#endif
+			}
+		}
+	}else if(FW_current>-0.5f){	//Keep it running if FW current is being used
+	#ifdef HAS_PHASE_SENSORS
+		MotorState = MOTOR_STATE_TRACKING;
+	#else
+	//	if(MotorState != MOTOR_STATE_ERROR){
+		MotorState = MOTOR_STATE_IDLE;
+	//	}
+	#endif
+	was_last_tracking = 1;
+	}else{	//Ramp down the field weakening current
+			//Do NOT assign motorState here, since it could override error states
+		FW_current*=0.95f;
+		if(foc_vars.Vdq.q <0.0f){
+			foc_vars.Idq_req.q = 0.2f; //Apply a brake current
+		}
+		if(foc_vars.Vdq.q >0.0f){
+			foc_vars.Idq_req.q = -0.2f; //Apply a brake current
 		}
 	}
-}else{
-#ifdef HAS_PHASE_SENSORS
-	MotorState = MOTOR_STATE_TRACKING;
-#else
-//	if(MotorState != MOTOR_STATE_ERROR){
-	MotorState = MOTOR_STATE_IDLE;
-//	}
-#endif
-was_last_tracking = 1;
-}
 }
 //foc_vars.Idq_req[0] = 10; //for aligning encoder
 /////////////Set and reset the HFI////////////////////////
