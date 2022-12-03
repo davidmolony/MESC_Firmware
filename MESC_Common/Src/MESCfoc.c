@@ -2054,23 +2054,94 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 	  		countdown--;
   }
 
-  uint16_t ang_reg_v = 0x8021, data_v;
-  HAL_StatusTypeDef status1, status2;
+  uint8_t pkt_crc8(uint8_t crc/*CRC_SEED=0xFF*/, uint8_t *data, uint8_t length)
+  {
+      int16_t i, bit;
+
+      for (i = 0; i < length; i++)
+      {
+          crc ^= data[i];
+
+          for (bit = 0; bit < 8; bit++)
+          {
+              if ((crc & 0x80) != 0)
+              {
+                  crc <<= 1;
+                  crc ^= 0x1D; //CRC_POLYNOMIAL=0x1D;
+              }
+              else
+              {
+                  crc <<= 1;
+              }
+          }
+      }
+
+      return crc;
+  }
+
+  struct __attribute__ ((__packed__))SamplePacket
+  {
+	  	struct
+	  	{
+	  		uint8_t crc;
+	  		uint8_t STAT_RESP; // Should be 0xF_?
+	  	}safetyword;
+  	uint16_t angle;
+  	int16_t speed;
+  	uint16_t revolutions;
+  };
+
+  typedef struct SamplePacket SamplePacket;
+	  SamplePacket pkt;
+
   void tle5012(void)
   {
 
+	  uint16_t const len = sizeof(pkt) / sizeof(uint16_t);
+	  uint16_t reg = (UINT16_C(  1) << 15) /* RW=Read */
+	               | (UINT16_C(0x0) << 11) /* Lock */
+	               | (UINT16_C(0x0) << 10) /* UPD=Buffer */
+	               | (UINT16_C(0x02) << 4) /* ADDR */
+	               | (len -1);            /* ND */
       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
+      HAL_SPI_Transmit( &hspi3, (uint8_t *)&reg,   1, 1000 );
+      HAL_SPI_Receive(  &hspi3, (uint8_t *)&pkt, len, 1000 );
+//      volatile uint8_t crc = 0;
+//#if 1
+//      reg ^= 0xFF00;
+//      crc = pkt_crc8( crc, &((uint8_t *)&reg)[1], 1 );
+//      crc = pkt_crc8( crc, &((uint8_t *)&reg)[0], 1 );
+//      crc = pkt_crc8( crc, &((uint8_t *)&pkt.angle)[1], 1 );
+//      crc = pkt_crc8( crc, &((uint8_t *)&pkt.angle)[0], 1 );
+//      crc = pkt_crc8( crc, &((uint8_t *)&pkt.speed)[1], 1 );
+//      crc = pkt_crc8( crc, &((uint8_t *)&pkt.speed)[0], 1 );
+//      crc = pkt_crc8( crc, &((uint8_t *)&pkt.revolutions)[1], 1 );
+//      crc = pkt_crc8( crc, &((uint8_t *)&pkt.revolutions)[0], 1 );
+//#else
+//      crc = pkt_crc8( crc, &reg, 2 );
+//      crc = pkt_crc8( crc, &pkt.angle, 6 );
+//#endif
+//      crc = pkt_crc8( crc, &pkt.safetyword.STAT_RESP, 1 );
+//      crc = ~crc;
+//      if (crc != pkt.safetyword.crc)
+//      {
+//    	  __NOP();
+//    	  __NOP();
+//    	  __NOP();
+//      }
+//      else
+//      {
+//    	  __NOP();
+//      }
 
-        HAL_SPI_Transmit(&hspi3, (uint8_t *)(&ang_reg_v), 1, 0xff);
-        HAL_SPI_Receive(&hspi3, (uint8_t *)(&data_v), 1, 0xff);
-
-      data_v = data_v & 0x7fff;
+      pkt.angle = pkt.angle & 0x7fff;
 #ifdef ENCODER_DIR_REVERSED
-      foc_vars.enc_angle = -POLE_PAIRS*((data_v *2)%POLE_ANGLE)-foc_vars.enc_offset;
+      	  foc_vars.enc_angle = -POLE_PAIRS*((pkt.angle *2)%POLE_ANGLE)-foc_vars.enc_offset;
 #else
-      foc_vars.enc_angle = POLE_PAIRS*((data_v *2)%POLE_ANGLE)-foc_vars.enc_offset;
+      foc_vars.enc_angle = POLE_PAIRS*((pkt.angle *2)%POLE_ANGLE)-foc_vars.enc_offset;
 #endif
       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
+      pkt.revolutions = pkt.revolutions&0b0000000111111111;
   }
 
 
