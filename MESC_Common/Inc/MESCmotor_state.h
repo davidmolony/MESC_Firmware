@@ -90,6 +90,8 @@ typedef enum {
   MOTOR_SENSOR_MODE_SENSORLESS,
   MOTOR_SENSOR_MODE_HALL,
   MOTOR_SENSOR_MODE_OPENLOOP,
+  MOTOR_SENSOR_MODE_ENCODER,
+
 } motor_sensor_mode_e;
 
 extern motor_sensor_mode_e MotorSensorMode;

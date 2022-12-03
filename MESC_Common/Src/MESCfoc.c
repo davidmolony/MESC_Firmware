@@ -218,17 +218,22 @@ void fastLoop() {
       //        BLDCCurrentController();
       //        BLDCCommuteHall();
       //      }//For now we are going to not support BLDC mode
+    	generateEnable();
       if (MotorSensorMode == MOTOR_SENSOR_MODE_HALL) {
-    	foc_vars.inject = 0;
-        hallAngleEstimator();
-        angleObserver();
-        MESCFOC();
-        writePWM();
+			foc_vars.inject = 0;
+			hallAngleEstimator();
+			angleObserver();
+			MESCFOC();
+			writePWM();
       } else if (MotorSensorMode == MOTOR_SENSOR_MODE_SENSORLESS) {
-        flux_observer();
-        MESCFOC();
-        writePWM();
-      }
+			flux_observer();
+			MESCFOC();
+			writePWM();
+      } else if (MotorSensorMode == MOTOR_SENSOR_MODE_ENCODER) {
+			foc_vars.FOCAngle = foc_vars.enc_angle;
+			MESCFOC();
+			writePWM();
+        }
       break;
 
     case MOTOR_STATE_TRACKING:
@@ -245,6 +250,8 @@ void fastLoop() {
 #ifdef USE_HALL_START
 		    	  HallFluxMonitor();
 #endif
+		      } else if (MotorSensorMode == MOTOR_SENSOR_MODE_ENCODER) {
+					foc_vars.FOCAngle = foc_vars.enc_angle;
 		      }
 #endif
 
@@ -703,7 +710,7 @@ if(phasebalance){
 
 #ifdef USE_ENCODER
     foc_vars.enc_obs_angle = angle - foc_vars.enc_angle;
-    foc_vars.FOCAngle = foc_vars.enc_angle;
+    //foc_vars.FOCAngle = foc_vars.enc_angle;
     //foc_vars.FOCAngle = 0; //for aligning encoder for testing
 #endif
   }
@@ -1636,7 +1643,7 @@ static int carryU, carryV, carryW;
     foc_vars.Vqint_max = foc_vars.Vq_max * 0.9f;
 
     foc_vars.field_weakening_threshold = foc_vars.Vq_max * FIELD_WEAKENING_THRESHOLD;
-    foc_vars.field_weakening_multiplier = 1.0f-FIELD_WEAKENING_THRESHOLD;
+    foc_vars.field_weakening_multiplier = 1.0f/(foc_vars.Vq_max*(1.0f-FIELD_WEAKENING_THRESHOLD));
   }
 
   void doublePulseTest() {
@@ -1760,7 +1767,7 @@ if(foc_vars.Idq_req.q<input_vars.min_request_Idq.q){foc_vars.Idq_req.q = input_v
 ////// Calculate the current power
     foc_vars.currentPower.d = 1.5f*(foc_vars.Vdq.d*foc_vars.Idq_smoothed.d);
     foc_vars.currentPower.q = 1.5f*(foc_vars.Vdq.q*foc_vars.Idq_smoothed.q);
-
+    //foc_vars.currentPowerab = foc_vars.Vab[0]*foc_vars.Iab[0] + foc_vars.Vab[1]*foc_vars.Iab[1];
     foc_vars.Ibus = (foc_vars.currentPower.d + foc_vars.currentPower.q) /measurement_buffers.ConvertedADC[0][1];
 
 //Run MTPA (Field weakening seems to have to go in  the fast loop to be stable)
@@ -1839,7 +1846,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 		if(MotorState != MOTOR_STATE_ERROR){
 	#ifdef HAS_PHASE_SENSORS //We can go straight to RUN if we have been tracking with phase sensors
 		MotorState = MOTOR_STATE_RUN;
-		generateEnable();
+		//generateEnable();
 	#endif
 	if(MotorState==MOTOR_STATE_IDLE){
 	#ifdef USE_DEADSHORT
@@ -2048,26 +2055,25 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
   }
 
   uint16_t ang_reg_v = 0x8021, data_v;
-  float ang_v;
+  HAL_StatusTypeDef status1, status2;
   void tle5012(void)
   {
-#ifdef USE_ENCODER
-      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_2, GPIO_PIN_RESET);
 
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_RESET);
 
-      HAL_SPI_Transmit(&hspi3, (uint8_t *)(&ang_reg_v), 1, 0xff);
-      HAL_SPI_Receive(&hspi3, (uint8_t *)(&data_v), 1, 0xff);
+        HAL_SPI_Transmit(&hspi3, (uint8_t *)(&ang_reg_v), 1, 0xff);
+        HAL_SPI_Receive(&hspi3, (uint8_t *)(&data_v), 1, 0xff);
 
       data_v = data_v & 0x7fff;
+#ifdef ENCODER_DIR_REVERSED
+      foc_vars.enc_angle = -POLE_PAIRS*((data_v *2)%POLE_ANGLE)-foc_vars.enc_offset;
+#else
       foc_vars.enc_angle = POLE_PAIRS*((data_v *2)%POLE_ANGLE)-foc_vars.enc_offset;
-      ang_v = data_v / (0x7fff / 360.0);
-  //HAL_Delay(0);
-      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_2, GPIO_PIN_SET);
-
-      //USARTx_Printf("angle: %d.%03d\n", (int)ang_v, (int)((ang_v * 1000) - (int)(ang_v)*1000));
-  //    HAL_Delay(500);
 #endif
+      HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
   }
+
+
 uint16_t test_on_time;
 uint16_t test_on_time_acc[3];
 uint16_t test_counts;

@@ -95,6 +95,7 @@ typedef struct {
   float inverterVoltage[FOC_TRANSFORMED_CHANNELS + 1];
   MESCiq_s Idq_req;							//The input to the PI controller. Load this with the values you want.
   MESCiq_s currentPower;					//Power being consumed by the motor; this does not include steady state losses and losses to switching
+  float currentPowerab;
   float Ibus;
   float reqPower;
 

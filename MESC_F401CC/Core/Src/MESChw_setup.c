@@ -32,6 +32,9 @@ extern ADC_HandleTypeDef hadc1;
 
 extern TIM_HandleTypeDef htim1;
 
+extern SPI_HandleTypeDef hspi3;
+
+
 hw_setup_s g_hw_setup;
 motor_s motor;
 
