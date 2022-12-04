@@ -71,10 +71,10 @@
 
 //////Motor parameters
 #define DEFAULT_MOTOR_POWER 250.0f
-#define DEFAULT_FLUX_LINKAGE 0.0038f //Wb
-#define DEFAULT_MOTOR_Ld 0.000005f //Henries
-#define DEFAULT_MOTOR_Lq 0.000012f//Henries
-#define DEFAULT_MOTOR_R 0.0130f //Ohms
+#define DEFAULT_FLUX_LINKAGE 0.0118f //Wb
+#define DEFAULT_MOTOR_Ld 0.00007f //Henries
+#define DEFAULT_MOTOR_Lq 0.00012f//Henries
+#define DEFAULT_MOTOR_R 0.0590f //Ohms
 //Use the Ebike Profile tool
 //#define USE_PROFILE
 
@@ -128,7 +128,8 @@
 										//Also, incompatible with flux linkage observer for now...
 #define NON_LINEAR_CENTERING_GAIN 5000.0f
 #define USE_CLAMPED_OBSERVER_CENTERING //Pick one of the two centering methods... preferably this one
-
+#define USE_HALL_START
+#define HALL_VOLTAGE_THRESHOLD 1.5f
 //#define LOGGING
 
 #define MESC_UART_USB 		MESC_USB

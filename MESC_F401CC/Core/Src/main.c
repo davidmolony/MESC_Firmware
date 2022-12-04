@@ -149,7 +149,7 @@ calculateGains();
 calculateVoltageGain();
 MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
-MotorSensorMode = MOTOR_SENSOR_MODE_ENCODER;
+MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
 
   /* USER CODE END 2 */
 

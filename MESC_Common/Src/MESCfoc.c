@@ -226,9 +226,19 @@ void fastLoop() {
 			MESCFOC();
 			writePWM();
       } else if (MotorSensorMode == MOTOR_SENSOR_MODE_SENSORLESS) {
-			flux_observer();
-			MESCFOC();
-			writePWM();
+#ifdef USE_HALL_START
+		if((fabs(foc_vars.Vdq.q-motor.Rphase*foc_vars.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(foc_vars.hall_initialised)&&(current_hall_state>0)&&(current_hall_state<7)){
+				foc_vars.flux_linked_alpha = 0.01f*foc_vars.flux_linked_alpha + 0.99f*foc_vars.hall_flux[current_hall_state-1][0];
+				foc_vars.flux_linked_beta = 0.01f*foc_vars.flux_linked_beta + 0.99f*foc_vars.hall_flux[current_hall_state-1][1];
+				foc_vars.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(foc_vars.flux_linked_beta, foc_vars.flux_linked_alpha)) - 32768;
+		}else{
+				flux_observer();
+		}
+#else
+    	flux_observer();
+#endif
+    	MESCFOC();
+		writePWM();
       } else if (MotorSensorMode == MOTOR_SENSOR_MODE_ENCODER) {
 			foc_vars.FOCAngle = foc_vars.enc_angle;
 			MESCFOC();
@@ -1915,14 +1925,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 	    if(no_q){foc_vars.Idq_req.q=0.0f;}
     }
 #endif
-#ifdef USE_HALL_START
-    if(fabs(foc_vars.Vdq.q)<2.0f){
-		  if((current_hall_state>0)&&(current_hall_state<7)){
-			  foc_vars.flux_linked_alpha = 0.1f*foc_vars.flux_linked_alpha + 0.9f*foc_vars.hall_flux[current_hall_state-1][0];
-			  foc_vars.flux_linked_beta = 0.1f*foc_vars.flux_linked_beta + 0.9f*foc_vars.hall_flux[current_hall_state-1][1];
-		  }
-    }
-#endif
+
     //Speed tracker
     if(abs(foc_vars.angle_error)>6000){
     	foc_vars.angle_error = 0;
@@ -2265,7 +2268,7 @@ uint16_t test_counts;
   }
 
   void HallFluxMonitor(){
-	  if(fabs(foc_vars.Vdq.q)>5.0f){ //Are we actually spinning at a reasonable pace?
+	  if(fabs(foc_vars.Vdq.q)>10.0f){ //Are we actually spinning at a reasonable pace?
 		  if((current_hall_state>0)&&(current_hall_state<7)){
 	  foc_vars.hall_flux[current_hall_state - 1][0] =
 			  0.999f*foc_vars.hall_flux[current_hall_state - 1][0] +
@@ -2277,6 +2280,7 @@ uint16_t test_counts;
 			  0.999f*foc_vars.hall_flux[current_hall_state - 1][1] +
 			  0.001f*foc_vars.flux_linked_beta;
 		  }
+		  foc_vars.hall_initialised = 1;
 	  }
   }
 

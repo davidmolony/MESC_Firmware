@@ -105,6 +105,7 @@ typedef struct {
                           // from hall sensors in HallAngleEstimator()
   float hall_flux[6][2];
   	  	  	  	  	  	  //Lookup table for alpha beta fluxes per hall state
+  int hall_initialised;
   int hall_forwards_adjust;
   int hall_backwards_adjust;
 
