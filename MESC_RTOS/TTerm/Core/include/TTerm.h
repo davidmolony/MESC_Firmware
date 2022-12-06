@@ -97,17 +97,17 @@ typedef enum {
 	TERM_VARIABLE_BOOL,
 } TermVariableType;
 
-#define t_name(x) _Generic((x), \
-    uint8_t:    TERM_VARIABLE_UINT, \
-    uint16_t:   TERM_VARIABLE_UINT, \
-    uint32_t:   TERM_VARIABLE_UINT, \
-    int8_t:     TERM_VARIABLE_INT, \
-    int16_t:    TERM_VARIABLE_INT, \
-    int32_t:    TERM_VARIABLE_INT, \
-	bool:		TERM_VARIABLE_BOOL, \
-    float:      TERM_VARIABLE_FLOAT, \
-    char:       TERM_VARIABLE_CHAR, \
-    char*:      TERM_VARIABLE_STRING)
+//#define t_name(x) _Generic((x), \
+//    uint8_t:    TERM_VARIABLE_UINT, \
+//    uint16_t:   TERM_VARIABLE_UINT, \
+//    uint32_t:   TERM_VARIABLE_UINT, \
+//    int8_t:     TERM_VARIABLE_INT, \
+//    int16_t:    TERM_VARIABLE_INT, \
+//    int32_t:    TERM_VARIABLE_INT, \
+//	bool:		TERM_VARIABLE_BOOL, \
+//    float:      TERM_VARIABLE_FLOAT, \
+//    char:       TERM_VARIABLE_CHAR, \
+//    char*:      TERM_VARIABLE_STRING)
 
 #define TERM_addVar(var, min, max, name, description, rw, listHandle) _Generic((var), \
     uint8_t:    TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \

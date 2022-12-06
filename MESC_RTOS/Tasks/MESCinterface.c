@@ -179,6 +179,8 @@ void MESCinterface_init(void){
 
 	memcpy(buff, "Hello World", sizeof("Hello World"));
 
+
+
 	TERM_addVar(motor.Rphase, 0, 10, "r_phase", "Phase resistance", 0, &TERM_varList);
 	TERM_addVar(motor.Lphase, 0, 10, "lq_phase", "Phase inductance", 0, &TERM_varList);
 	TERM_addVar(buff, 0, 0, "name", "name name", 0, &TERM_varList);
