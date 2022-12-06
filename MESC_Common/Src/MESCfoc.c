@@ -227,12 +227,18 @@ void fastLoop() {
 			writePWM();
       } else if (MotorSensorMode == MOTOR_SENSOR_MODE_SENSORLESS) {
 #ifdef USE_HALL_START
+    	  static int hall_start_now;
 		if((fabs(foc_vars.Vdq.q-motor.Rphase*foc_vars.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(foc_vars.hall_initialised)&&(current_hall_state>0)&&(current_hall_state<7)){
-				foc_vars.flux_linked_alpha = 0.01f*foc_vars.flux_linked_alpha + 0.99f*foc_vars.hall_flux[current_hall_state-1][0];
-				foc_vars.flux_linked_beta = 0.01f*foc_vars.flux_linked_beta + 0.99f*foc_vars.hall_flux[current_hall_state-1][1];
-				foc_vars.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(foc_vars.flux_linked_beta, foc_vars.flux_linked_alpha)) - 32768;
+				hall_start_now = 1;
+		}else if(fabs(foc_vars.Vdq.q-motor.Rphase*foc_vars.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f){
+			hall_start_now = 0;
+		}
+		if(hall_start_now){
+			foc_vars.flux_linked_alpha = 0.01f*foc_vars.flux_linked_alpha + 0.99f*foc_vars.hall_flux[current_hall_state-1][0];
+			foc_vars.flux_linked_beta = 0.01f*foc_vars.flux_linked_beta + 0.99f*foc_vars.hall_flux[current_hall_state-1][1];
+			foc_vars.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(foc_vars.flux_linked_beta, foc_vars.flux_linked_alpha)) - 32768;
 		}else{
-				flux_observer();
+			flux_observer();
 		}
 #else
     	flux_observer();

@@ -79,10 +79,10 @@
 
 //////Motor parameters
 #define DEFAULT_MOTOR_POWER 250.0f
-#define DEFAULT_FLUX_LINKAGE 0.00380f//Set this to the motor linkage in wB
-#define DEFAULT_MOTOR_Ld 0.000005f //Henries
-#define DEFAULT_MOTOR_Lq 0.0000120f//Henries
-#define DEFAULT_MOTOR_R 0.0130f //Ohms
+#define DEFAULT_FLUX_LINKAGE 0.01180f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.00005f //Henries
+#define DEFAULT_MOTOR_Lq 0.000120f//Henries
+#define DEFAULT_MOTOR_R 0.0630f //Ohms
 //Use the Ebike Profile tool
 #define USE_PROFILE
 
@@ -91,7 +91,7 @@
 
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
+//#define USE_HFI
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 30.0f
 
@@ -116,7 +116,7 @@
 //#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
 #define INTERPOLATE_V7_ANGLE
 
-#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
+//#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
 #define POLE_PAIRS 10
 #define ENCODER_E_OFFSET 25000
 #define POLE_ANGLE (65536/POLE_PAIRS)
@@ -129,6 +129,7 @@
 #define FLUX_LINKAGE_GAIN 10.0f * sqrtf(DEFAULT_FLUX_LINKAGE)//*(DEFAULT_FLUX_LINKAGE*DEFAULT_FLUX_LINKAGE)*PWM_FREQUENCY
 
 #define USE_HALL_START
+#define HALL_VOLTAGE_THRESHOLD 1.5f
 
 //#define USE_NONLINEAR_OBSERVER_CENTERING //This is not a preferred option, since it relies on gain tuning and instability,
 										//which is precisely what the original observer intended to avoid.

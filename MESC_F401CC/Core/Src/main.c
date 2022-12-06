@@ -145,11 +145,13 @@ motor.motor_flux = DEFAULT_FLUX_LINKAGE;
 //motor_profile->Pmax = 50.0f;
 motor.uncertainty = 1;
 
+HAL_TIM_PWM_Start_IT(&htim2, TIM_CHANNEL_1);
+
 calculateGains();
 calculateVoltageGain();
 MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
-MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
+MotorSensorMode = MOTOR_SENSOR_MODE_ENCODER;
 
   /* USER CODE END 2 */
 

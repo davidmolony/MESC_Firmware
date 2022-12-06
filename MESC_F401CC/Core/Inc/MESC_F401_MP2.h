@@ -21,7 +21,7 @@
 							//and needs dtermining experimentally, either with openloop
 							//sin wave drawing or by finding the zero current switching "power knee point"
 #define OVERMOD_DT_COMP_THRESHOLD 80
-#define MAX_MODULATION 1.0f
+#define MAX_MODULATION 0.95f //If using 7 sector, limit to 0.95
 #define SOFTWARE_ADC_REGULAR
 #define SHUNT_POLARITY -1.0f
 
@@ -112,7 +112,7 @@
 //#define INTERPOLATE_V7_ANGLE //Caution  with this one,
 
 #define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
-#define POLE_PAIRS 10
+#define POLE_PAIRS 7
 #define ENCODER_E_OFFSET 6000
 #define ENCODER_DIR_REVERSED
 #define POLE_ANGLE (65536/POLE_PAIRS)
