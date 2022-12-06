@@ -88,8 +88,73 @@ typedef struct __TERMINAL_HANDLE__ TERMINAL_HANDLE;
 
 typedef struct __TermCommandDescriptor__ TermCommandDescriptor;
 
+typedef enum {
+    TERM_VARIABLE_INT,
+    TERM_VARIABLE_UINT,
+	TERM_VARIABLE_FLOAT,
+	TERM_VARIABLE_CHAR,
+	TERM_VARIABLE_STRING,
+	TERM_VARIABLE_BOOL,
+} TermVariableType;
+
+#define t_name(x) _Generic((x), \
+    uint8_t:    TERM_VARIABLE_UINT, \
+    uint16_t:   TERM_VARIABLE_UINT, \
+    uint32_t:   TERM_VARIABLE_UINT, \
+    int8_t:     TERM_VARIABLE_INT, \
+    int16_t:    TERM_VARIABLE_INT, \
+    int32_t:    TERM_VARIABLE_INT, \
+	bool:		TERM_VARIABLE_BOOL, \
+    float:      TERM_VARIABLE_FLOAT, \
+    char:       TERM_VARIABLE_CHAR, \
+    char*:      TERM_VARIABLE_STRING)
+
+#define TERM_addVar(var, min, max, name, description, rw, listHandle) _Generic((var), \
+    uint8_t:    TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
+    uint16_t:   TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
+    uint32_t:   TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
+    int8_t:     TERM_addVarSigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
+    int16_t:    TERM_addVarSigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
+    int32_t:    TERM_addVarSigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
+	bool:		TERM_addVarBool(&var, name, description, rw, listHandle), \
+    float:      TERM_addVarFloat(&var, min, max, name, description, rw, listHandle), \
+    char:       TERM_addVarChar(&var, name, description, rw, listHandle), \
+    char*:      TERM_addVarString(&var, sizeof(var), name, description, rw, listHandle))
+
+
+typedef struct __TermVariableDescriptor__ TermVariableDescriptor;
+
+
+struct __TermVariableDescriptor__{
+    void * variable;
+    TermVariableType type;
+    uint16_t typeSize;
+    const char * name;
+    uint32_t nameLength;
+    const char * variableDescription;
+    union{
+    	int32_t min_signed;
+		uint32_t min_unsigned;
+		float min_float;
+    };
+    union{
+       	int32_t max_signed;
+   		uint32_t max_unsigned;
+   		float max_float;
+    };
+    uint8_t rw;
+    TermVariableDescriptor * nextVar;
+};
+
+char toLowerCase(char c);
+
+
 #if TERM_SUPPORT_APPS
 #include "Tasks/apps.h"
+#endif
+
+#if TERM_SUPPORT_VARIABLES
+#include "Term_var.h"
 #endif
 
 typedef uint8_t (* TermCommandFunction)(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
@@ -144,6 +209,9 @@ struct __TERMINAL_HANDLE__{
     uint8_t escSeqBuff[16];
     unsigned echoEnabled;
     TermCommandDescriptor * cmdListHead;
+#if TERM_SUPPORT_VARIABLES
+    TermVariableDescriptor * varListHead;
+#endif
     TermErrorPrinter errorPrinter;
 //TODO actually finish implementing this...
 #if TERM_SUPPORT_CWD == 1
@@ -157,6 +225,10 @@ typedef enum{
 } COPYCHECK_MODE;
 
 extern TermCommandDescriptor TERM_defaultList; 
+
+#if TERM_SUPPORT_VARIABLES
+extern TermVariableDescriptor TERM_varList;
+#endif
 
 #if EXTENDED_PRINTF == 1
 TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, void * port, unsigned echoEnabled, TermCommandDescriptor * cmdListHead, TermErrorPrinter errorPrinter, const char * usr);
@@ -175,7 +247,6 @@ uint8_t TERM_buildCMDList();
 TermCommandDescriptor * TERM_addCommand(TermCommandFunction function, const char * command, const char * description, uint8_t minPermissionLevel, TermCommandDescriptor * head);
 void TERM_addCommandAC(TermCommandDescriptor * cmd, TermAutoCompHandler ACH, void * ACParams);
 unsigned TERM_isSorted(TermCommandDescriptor * a, TermCommandDescriptor * b);
-char toLowerCase(char c);
 void TERM_setCursorPos(TERMINAL_HANDLE * handle, uint16_t x, uint16_t y);
 void TERM_sendVT100Code(TERMINAL_HANDLE * handle, uint16_t cmd, uint8_t var);
 const char * TERM_getVT100Code(uint16_t cmd, uint8_t var);

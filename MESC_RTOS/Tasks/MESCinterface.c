@@ -7,7 +7,7 @@
 #include "MESCmotor_state.h"
 #include "MESCmotor.h"
 #include "MESCflash.h"
-#include "MESCcli.h"
+//#include "MESCcli.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -160,27 +160,40 @@ uint8_t CMD_flash(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     return TERM_CMD_EXIT_SUCCESS;
 }
 
+char buff[16];
 
 void MESCinterface_init(void){
 	static bool is_init=false;
 	if(is_init) return;
 
-	cli_register_var_rw("idq_req" 	, input_vars.Idq_req_UART.q, NULL);
-    cli_register_var_rw( "id"     	, foc_vars.Idq_req.d, NULL);
-    cli_register_var_rw( "iq"     	, foc_vars.Idq_req.q, NULL);
-    cli_register_var_ro( "vbus"   	, measurement_buffers.ConvertedADC[0][1], NULL);
-    cli_register_var_rw( "ld"     	, motor.Lphase, calculateGains);
-    cli_register_var_rw( "lq"     	, motor.Lqphase, calculateGains);
-    cli_register_var_rw( "r"      	, motor.Rphase, calculateGains);
-    cli_register_var_rw( "flux"     , motor.motor_flux, calculateGains);
-    cli_register_var_rw( "pwm_freq" , foc_vars.pwm_frequency, calculateGains);
+//	cli_register_var_rw("idq_req" 	, input_vars.Idq_req_UART.q, NULL);
+//    cli_register_var_rw( "id"     	, foc_vars.Idq_req.d, NULL);
+//    cli_register_var_rw( "iq"     	, foc_vars.Idq_req.q, NULL);
+//    cli_register_var_ro( "vbus"   	, measurement_buffers.ConvertedADC[0][1], NULL);
+//    cli_register_var_rw( "ld"     	, motor.Lphase, calculateGains);
+//    cli_register_var_rw( "lq"     	, motor.Lqphase, calculateGains);
+//    cli_register_var_rw( "r"      	, motor.Rphase, calculateGains);
+//    cli_register_var_rw( "flux"     , motor.motor_flux, calculateGains);
+//    cli_register_var_rw( "pwm_freq" , foc_vars.pwm_frequency, calculateGains);
+//    cli_register_var_rw( "hfi"      , foc_vars.hfi_enable, NULL);
+
+	memcpy(buff, "Hello World", sizeof("Hello World"));
+
+	TERM_addVar(motor.Rphase, 0, 10, "r_phase", "Phase resistance", 0, &TERM_varList);
+	TERM_addVar(motor.Lphase, 0, 10, "lq_phase", "Phase inductance", 0, &TERM_varList);
+	TERM_addVar(buff, 0, 0, "name", "name name", 0, &TERM_varList);
+
+
+
+//	TERM_addVarFloat(&motor.Rphase, TERM_VARIABLE_FLOAT, sizeof(motor.Rphase),"r_phase", "Phase resistance", 0, &TERM_varList);
+//	TERM_addVarFloat(&motor.Lphase, TERM_VARIABLE_FLOAT, sizeof(motor.Lphase),"lq_phase", "Phase inductance", 0, &TERM_varList);
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_getkv, "getkv", "Measure motor kV", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_detect, "deadtime", "Detect deadtime compensation", 0, &TERM_defaultList);
-	TERM_addCommand(cli_read, "read", "Read variable", 0, &TERM_defaultList);
-	TERM_addCommand(cli_write, "write", "Write variable", 0, &TERM_defaultList);
-	TERM_addCommand(cli_list, "list", "List all variables", 0, &TERM_defaultList);
+//	TERM_addCommand(cli_read, "read", "Read variable", 0, &TERM_defaultList);
+//	TERM_addCommand(cli_write, "write", "Write variable", 0, &TERM_defaultList);
+//	TERM_addCommand(cli_list, "list", "List all variables", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
 	TERM_addCommand(profile_cli_info, "profile", "Profile info", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_flash, "flash", "Flash write", 0, &TERM_defaultList);

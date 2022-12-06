@@ -54,6 +54,7 @@ enum CLIVariableType
     CLI_VARIABLE_FLOAT,
 	CLI_VARIABLE_CHAR,
 	CLI_VARIABLE_STRING,
+	CLI_VARIABLE_BOOL,
 };
 
 #define typename(x) _Generic((x), \
@@ -63,6 +64,7 @@ enum CLIVariableType
     int8_t:     CLI_VARIABLE_INT, \
     int16_t:    CLI_VARIABLE_INT, \
     int32_t:    CLI_VARIABLE_INT, \
+	bool:		CLI_VARIABLE_BOOL, \
     float:      CLI_VARIABLE_FLOAT, \
     char:       CLI_VARIABLE_CHAR, \
     char*:      CLI_VARIABLE_STRING)

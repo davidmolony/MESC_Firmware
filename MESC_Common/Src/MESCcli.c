@@ -793,6 +793,7 @@ static uint32_t cli_write_float(TERMINAL_HANDLE * handle, CLIEntry * entry, char
 static CLIread_t cli_get_read_func(CLIVariableType const type){
     switch (type)
     {
+    	case CLI_VARIABLE_BOOL:
         case CLI_VARIABLE_INT:
         	return cli_read_int;
         case CLI_VARIABLE_UINT:
@@ -807,6 +808,7 @@ static CLIread_t cli_get_read_func(CLIVariableType const type){
 static CLIwrite_t cli_get_write_func(CLIVariableType const type){
     switch (type)
     {
+    	case CLI_VARIABLE_BOOL:
         case CLI_VARIABLE_INT:
             return cli_write_int;
         case CLI_VARIABLE_UINT:

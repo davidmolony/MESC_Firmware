@@ -38,8 +38,14 @@
 #include "TTerm/Core/include/TTerm_cmd.h"
 #include "TTerm/Core/include/TTerm_AC.h"
 #include "TTerm/Core/include/TTerm_cwd.h"
+#include "TTerm/Core/include/Term_var.h"
 
 TermCommandDescriptor TERM_defaultList = {.nextCmd = 0, .commandLength = 0};
+
+#if TERM_SUPPORT_VARIABLES
+TermVariableDescriptor TERM_varList = {.nextVar = 0, .nameLength = 0};
+#endif
+
 unsigned TERM_baseCMDsAdded = 0;
 
 
@@ -74,6 +80,11 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
     
     newHandle->echoEnabled = echoEnabled;
     newHandle->cmdListHead = cmdListHead;
+
+    #if TERM_SUPPORT_VARIABLES
+    newHandle->varListHead = &TERM_varList;
+	#endif
+
     sprintf(newHandle->currUserName, "%s%s%s", TERM_getVT100Code(_VT100_FOREGROUND_COLOR, _VT100_BLUE), usr, TERM_getVT100Code(_VT100_RESET_ATTRIB, 0));
     
     //reset pointers
@@ -100,6 +111,10 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
         TERM_addCommand(CMD_mkdir, "mkdir", "Make directory", 0, &TERM_defaultList);
         #endif  
         
+		#if TERM_SUPPORT_VARIABLES
+        TERM_addCommand(CMD_varList, "list", "List variables", 0, &TERM_defaultList);
+		#endif
+
       
         TermCommandDescriptor * test = TERM_addCommand(CMD_testCommandHandler, "test", "tests stuff", 0, &TERM_defaultList);
         head = ACL_create();
@@ -956,6 +971,9 @@ void TERM_sendVT100Code(TERMINAL_HANDLE * handle, uint16_t cmd, uint8_t var){
             break;
         case _VT100_CURSOR_DISABLE:
             ttprintfEcho("\x1b[?25l");
+            break;
+        case _VT100_CURSOR_SET_COLUMN:
+            ttprintfEcho(ESC_STR "[%i`", var);
             break;
         case _VT100_CLS:
             ttprintfEcho("\x1b[2J\033[1;1H");
