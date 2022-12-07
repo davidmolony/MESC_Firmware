@@ -49,9 +49,9 @@
 #define MAX_IQ_REQUEST 40.0f
 
 #define I_MEASURE 30.0f //Higher setpoint for resistance measurement
-#define IMEASURE_CLOSEDLOOP 1.5f 	//After spinning up openloop and getting an approximation,
+#define IMEASURE_CLOSEDLOOP 4.5f 	//After spinning up openloop and getting an approximation,
 									//this current is used to driver the motor and collect a refined flux linkage
-#define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
+#define V_MEASURE 8.0f 	//Voltage setpoint for measuring inductance
 #define ERPM_MEASURE 3000.0f//Speed to do the flux linkage measurement at
 
 ////////////////////USER DEFINES//////////////////
@@ -80,9 +80,9 @@
 //////Motor parameters
 #define DEFAULT_MOTOR_POWER 250.0f
 #define DEFAULT_FLUX_LINKAGE 0.01180f//Set this to the motor linkage in wB
-#define DEFAULT_MOTOR_Ld 0.00005f //Henries
-#define DEFAULT_MOTOR_Lq 0.000120f//Henries
-#define DEFAULT_MOTOR_R 0.0630f //Ohms
+#define DEFAULT_MOTOR_Ld 0.00008f //Henries
+#define DEFAULT_MOTOR_Lq 0.0001320f//Henries
+#define DEFAULT_MOTOR_R 0.0530f //Ohms
 //Use the Ebike Profile tool
 #define USE_PROFILE
 

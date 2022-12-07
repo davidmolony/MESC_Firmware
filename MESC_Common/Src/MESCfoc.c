@@ -404,7 +404,7 @@ static volatile float nrm_avg;
 static uint16_t last_angle;
 
 void hyperLoop() {
-#ifdef USE_HFI
+//#ifdef USE_HFI
   if (foc_vars.inject) {
     if (foc_vars.inject_high_low_now == 0) {
       foc_vars.inject_high_low_now = 1;
@@ -443,7 +443,7 @@ void hyperLoop() {
         foc_vars.FOCAngle += (int)(250.0f*foc_vars.IIR[1] + 5.50f*intdidq.q);
     }
   }
-#endif
+//#endif
 #ifdef USE_LR_OBSERVER
       LRObserverCollect();
 #endif
@@ -890,18 +890,6 @@ if(phasebalance){
 
   void MESCFOC() {
 
-#ifdef USE_FIELD_WEAKENING
-	    if (fabsf(foc_vars.Vdq.q) > foc_vars.field_weakening_threshold) {
-	      foc_vars.Idq_req.d =
-	          foc_vars.field_weakening_curr_max *foc_vars.field_weakening_multiplier*
-	          (foc_vars.field_weakening_threshold - fabsf(foc_vars.Vdq.q));
-	      foc_vars.field_weakening_flag = 1;
-	    } else {
-	    	//if(!foc_vars.inject){
-	      //foc_vars.Idq_req[0] = 0;}
-	      foc_vars.field_weakening_flag = 0;
-	    }
-#endif
     // Here we are going to do a PID loop to control the dq currents, converting
     // Idq into Vdq Calculate the errors
     static MESCiq_s Idq_err;
@@ -1026,7 +1014,6 @@ if(phasebalance){
       //Apply the field weakening only if the additional d current is greater than the requested d current
 
 #endif
-
     }
 
 
@@ -1217,6 +1204,15 @@ static int carryU, carryV, carryW;
       MESCFOC();
       writePWM();
 
+      top_V = 0;
+      bottom_V = 0;
+      top_I = 0;
+      bottom_I = 0;
+      top_I_L = 0;
+      bottom_I_L = 0;
+      top_I_Lq = 0;
+      bottom_I_Lq = 0;
+
       count_top = 0.0f;
       count_bottom = 0.0f;
     }
@@ -1239,6 +1235,8 @@ static int carryU, carryV, carryW;
       bottom_V = bottom_V + foc_vars.Vdq.d;
       bottom_I = bottom_I + foc_vars.Idq.d;
       count_bottom++;
+      Vd_temp = foc_vars.Vdq.d * 1.0f;  // Store the voltage required for the low setpoint, to
+                       	   	   	   	   	 // use as an offset for the inductance
     }
 
     else if (PWM_cycles < 45000) {  // Upper setpoint stabilisation
@@ -1264,7 +1262,7 @@ static int carryU, carryV, carryW;
       motor.Rphase = (top_V - bottom_V) / (top_I - bottom_I);
 
       //Initialise the variables for the next measurement
-      Vd_temp = foc_vars.Vdq.d * 1.0f;  // Store the voltage required for the high setpoint, to
+      //Vd_temp = foc_vars.Vdq.d * 1.0f;  // Store the voltage required for the high setpoint, to
                        	   	   	   	   	 // use as an offset for the inductance
       Vq_temp = 0.0f;
       foc_vars.Vdq.q = 0.0f;//
@@ -1934,6 +1932,8 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 		HFI_countdown--;
 	    if(no_q){foc_vars.Idq_req.q=0.0f;}
     }
+#else
+    foc_vars.inject = 0;
 #endif
 
     //Speed tracker
