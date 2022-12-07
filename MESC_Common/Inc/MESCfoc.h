@@ -15,7 +15,20 @@
  *                        opensource.org/licenses/BSD-3-Clause
  *
  ******************************************************************************
-
+ *In addition to the usual 3 BSD clauses, it is explicitly noted that you
+ *do NOT have the right to take sections of this code for other projects
+ *without attribution and credit to the source. Specifically, if you copy into
+ *copyleft licenced code without attribution and retention of the permissive BSD
+ *3 clause licence, you grant a perpetual licence to do the same regarding turning sections of your code
+ *permissive, and lose any rights to use of this code previously granted or assumed.
+ *
+ *This code is intended to remain permissively licensed wherever it goes,
+ *maintaining the freedom to distribute compiled binaries WITHOUT a requirement to supply source.
+ *
+ *This is to ensure this code can at any point be used commercially, on products that may require
+ *such restriction to meet regulatory requirements, or to avoid damage to hardware, or to ensure
+ *warranties can reasonably be honoured.
+ ******************************************************************************
  * MESCfoc.h
  *
  *  Created on: 18 Jul 2020
@@ -39,8 +52,9 @@ enum MESCADC
     ADCIV,
     ADCIW,
 };
-
+#ifndef MAX_MODULATION
 #define MAX_MODULATION 0.95f
+#endif
 #define SVPWM_MULTIPLIER \
   1.1547f  // 1/cos30 which comes from the maximum between two 120 degree apart
           // sin waves being at the
@@ -85,7 +99,6 @@ typedef struct {
   	  	  	  	  	  	  	  	  	  	  	  // transformed current in amps
   float Vab[FOC_TRANSFORMED_CHANNELS + 1];
   MESCiq_s Vdq;
-  MESCiq_s Vdq_smoothed;
   MESCiq_s Idq_smoothed;
   MESCiq_s Idq_int_err;
   float id_mtpa;
@@ -95,13 +108,17 @@ typedef struct {
   float inverterVoltage[FOC_TRANSFORMED_CHANNELS + 1];
   MESCiq_s Idq_req;							//The input to the PI controller. Load this with the values you want.
   MESCiq_s currentPower;					//Power being consumed by the motor; this does not include steady state losses and losses to switching
+  float currentPowerab;
   float Ibus;
   float reqPower;
 
-  uint16_t hall_table[6]
-                     [4];  // Lookup table, populated by the getHallTable()
-                           // function and used in estimating the rotor position
-                           // from hall sensors in HallAngleEstimator()
+  uint16_t hall_table[6][4];
+  	  	  	  	  	  	  // Lookup table, populated by the getHallTable()
+                          // function and used in estimating the rotor position
+                          // from hall sensors in HallAngleEstimator()
+  float hall_flux[6][2];
+  	  	  	  	  	  	  //Lookup table for alpha beta fluxes per hall state
+  int hall_initialised;
   int hall_forwards_adjust;
   int hall_backwards_adjust;
 
@@ -227,6 +244,26 @@ typedef struct {
 
 extern input_vars_t input_vars;
 
+//Logging
+#ifndef LOGLENGTH
+#define LOGLENGTH 1000
+#endif
+//We want to log primarily Ia Ib Ic, Vd,Vq, phase angle, which gives us a complete picture of the machine state
+//4 bytes per variable*6 variables*1000 = 24000bytes. Lowest spec target is F303CB with 48kB SRAM, so this is OK
+typedef struct {
+	float loggedIa[LOGLENGTH];
+	float loggedIb[LOGLENGTH];
+	float loggedIc[LOGLENGTH];
+	float loggedVd[LOGLENGTH];
+	float loggedVq[LOGLENGTH];
+	uint16_t logged_angle[LOGLENGTH];
+	uint32_t current_sample;
+} logged_vars_t;
+
+extern int print_logs_now;
+
+extern logged_vars_t logged_vars;
+
 /* Function prototypes -----------------------------------------------*/
 
 void MESCInit();
@@ -245,6 +282,7 @@ void ADCConversion();  // Roll this into the V_I_Check? less branching, can
 // convert currents from uint_16 ADC readings into float A and uint_16 voltages
 // into float volts Since the observer needs the Clark transformed current, do
 // the Clark and Park transform now
+void ADCPhaseConversion();
 void hallAngleEstimator();  // Going to attempt to make a similar hall angle
                             // estimator that rolls the hall state into the main
                             // function, and calls a vector table to find the
@@ -306,4 +344,8 @@ void tle5012();
 void getDeadtime();
 void LRObserver();
 void LRObserverCollect();
+void HallFluxMonitor();
+void logVars();
+void printLogs();
+
 #endif

@@ -243,9 +243,8 @@ void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, 1);
-
 	MESC_PWM_IRQ_handler();
-	foc_vars.IRQexit = htim7.Instance->CNT - foc_vars.IRQentry;
+
 	directionstat = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
   __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
 

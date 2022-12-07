@@ -21,6 +21,8 @@ Hardware identifiers
 #define MESC_GPIO_HALL GPIOC
 
 extern TIM_HandleTypeDef htim10;
+extern SPI_HandleTypeDef hspi3;
+
 #define debugtim htim10
 
 /*

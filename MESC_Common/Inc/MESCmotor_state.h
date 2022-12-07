@@ -72,7 +72,14 @@ typedef enum {
    system on the fly - detect if motor is running, detect speed, phase,
    re-enable PWM
    */
-  MOTOR_STATE_IDLE = 12,
+  MOTOR_STATE_SLAMBRAKE = 12,
+  /*
+  We are going to write all phases low, so current can continue to be read, and
+  tristate the bridge when current exceeds the max setpoint on any phase.
+  This will enable aggressive braking if spinning, with uncontrolled regeneration, but
+  the primary usecase is low speed hold.
+   */
+  MOTOR_STATE_IDLE = 13,
   /*All PWM should be off state, nothing happening. Motor may be spinning freely
    */
 } motor_state_e;
@@ -83,6 +90,8 @@ typedef enum {
   MOTOR_SENSOR_MODE_SENSORLESS,
   MOTOR_SENSOR_MODE_HALL,
   MOTOR_SENSOR_MODE_OPENLOOP,
+  MOTOR_SENSOR_MODE_ENCODER,
+
 } motor_sensor_mode_e;
 
 extern motor_sensor_mode_e MotorSensorMode;
