@@ -113,7 +113,6 @@
 								
 
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
-//#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
 #define INTERPOLATE_V7_ANGLE
 
 //#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
@@ -122,13 +121,13 @@
 #define POLE_ANGLE (65536/POLE_PAIRS)
 
 /////Related to observer
-//#define USE_SALIENT_OBSERVER
+#define USE_SALIENT_OBSERVER
 #define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
 #define MAX_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*2.0f //Sets the limits for tracking.
 #define MIN_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*0.7f//Faster convergence with closer start points
 #define FLUX_LINKAGE_GAIN 10.0f * sqrtf(DEFAULT_FLUX_LINKAGE)//*(DEFAULT_FLUX_LINKAGE*DEFAULT_FLUX_LINKAGE)*PWM_FREQUENCY
 
-#define USE_HALL_START
+//#define USE_HALL_START
 #define HALL_VOLTAGE_THRESHOLD 1.5f
 
 //#define USE_NONLINEAR_OBSERVER_CENTERING //This is not a preferred option, since it relies on gain tuning and instability,

@@ -108,7 +108,6 @@
 								//Needs to be a small current that does not have much effect on the running parameters.
 
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
-//#define DO_OPENLOOP //A fudge that can be used for openloop testing; disable HFI
 //#define INTERPOLATE_V7_ANGLE //Caution  with this one,
 
 #define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...

@@ -6,14 +6,27 @@
  ******************************************************************************
  * @attention
  *
- * <h2><center>&copy; Copyright (c) 2020 David Molony.
+ * <h2><center>&copy; Copyright (c) 2022 David Molony.
  * All rights reserved.</center></h2>
  *
  * This software component is licensed under BSD 3-Clause license,
  * the "License"; You may not use this file except in compliance with the
  * License. You may obtain a copy of the License at:
  *                        opensource.org/licenses/BSD-3-Clause
+ ******************************************************************************
+ *In addition to the usual 3 BSD clauses, it is explicitly noted that you
+ *do NOT have the right to take sections of this code for other projects
+ *without attribution and credit to the source. Specifically, if you copy into
+ *copyleft licenced code without attribution and retention of the permissive BSD
+ *3 clause licence, you grant a perpetual licence to do the same regarding turning sections of your code
+ *permissive, and lose any rights to use of this code previously granted or assumed.
  *
+ *This code is intended to remain permissively licensed wherever it goes,
+ *maintaining the freedom to distribute compiled binaries WITHOUT a requirement to supply source.
+ *
+ *This is to ensure this code can at any point be used commercially, on products that may require
+ *such restriction to meet regulatory requirements, or to avoid damage to hardware, or to ensure
+ *warranties can reasonably be honoured.
  ******************************************************************************
 
  * MESCfoc.c
@@ -227,7 +240,7 @@ void fastLoop() {
 			writePWM();
       } else if (MotorSensorMode == MOTOR_SENSOR_MODE_SENSORLESS) {
 #ifdef USE_HALL_START
-    	  static int hall_start_now;
+    static int hall_start_now;
 		if((fabs(foc_vars.Vdq.q-motor.Rphase*foc_vars.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(foc_vars.hall_initialised)&&(current_hall_state>0)&&(current_hall_state<7)){
 				hall_start_now = 1;
 		}else if(fabs(foc_vars.Vdq.q-motor.Rphase*foc_vars.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f){
@@ -275,9 +288,10 @@ void fastLoop() {
 
     case MOTOR_STATE_OPEN_LOOP_STARTUP:
       // Same as open loop
-      OLGenerateAngle();
-      MESCFOC();
-      writePWM();
+    	foc_vars.openloop_step = 60;
+    	OLGenerateAngle();
+    	MESCFOC();
+    	writePWM();
       // Write the PWM values
       break;
 
@@ -634,8 +648,8 @@ if(phasebalance){
   volatile static float FLAdiff = 0.0f;
 
   void flux_observer() {
-    // LICENCE NOTE:
-    // This function deviates slightly from the BSD 3 clause licence.
+    // LICENCE NOTE REMINDER:
+    // This work deviates slightly from the BSD 3 clause licence.
     // The work here is entirely original to the MESC FOC project, and not based
     // on any appnotes, or borrowed from another project. This work is free to
     // use, as granted in BSD 3 clause, with the exception that this note must
@@ -646,10 +660,6 @@ if(phasebalance){
 
     // With thanks to C0d3b453 for generally keeping this compiling and Elwin
     // for producing data comparing the output to a 16bit encoder.
-		foc_vars.IRQentry = htim1.Instance->CNT;
-
-
-
 
 #ifdef USE_FLUX_LINKAGE_OBSERVER
 	  //Variant of the flux linkage observer created by/with Benjamin Vedder to
@@ -715,13 +725,7 @@ if(phasebalance){
 
 
     if(foc_vars.inject==0){
-#ifdef DO_OPENLOOP
-    foc_vars.FOCAngle = foc_vars.FOCAngle+60;
-#else
     foc_vars.FOCAngle = angle;
-	foc_vars.IRQexit = foc_vars.IRQentry-htim1.Instance->CNT ;
-
-#endif
     }
 
 #ifdef USE_ENCODER
