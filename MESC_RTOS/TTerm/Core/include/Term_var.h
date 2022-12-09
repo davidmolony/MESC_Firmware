@@ -31,6 +31,7 @@
 
 //TermVariableDescriptor * TERM_addVar(void* variable, TermVariableType type, uint16_t typeSize , const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head);
 uint8_t CMD_varList(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+uint8_t CMD_varSet(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 
 TermVariableDescriptor * TERM_addVarUnsigned(void* variable, uint16_t typeSize, uint32_t min, uint32_t max, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head);
 TermVariableDescriptor * TERM_addVarSigned(void* variable, uint16_t typeSize, int32_t min, int32_t max, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head);
@@ -38,6 +39,8 @@ TermVariableDescriptor * TERM_addVarFloat(void* variable, float min, float max, 
 TermVariableDescriptor * TERM_addVarString(void* variable, uint16_t typeSize, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head);
 TermVariableDescriptor * TERM_addVarChar(void* variable, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head);
 TermVariableDescriptor * TERM_addVarBool(void* variable, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head);
+
+uint8_t TERM_varCompleter(TERMINAL_HANDLE * handle, void * params);
 
 
 #endif

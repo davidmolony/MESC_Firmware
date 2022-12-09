@@ -113,6 +113,8 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
         
 		#if TERM_SUPPORT_VARIABLES
         TERM_addCommand(CMD_varList, "list", "List variables", 0, &TERM_defaultList);
+        TermCommandDescriptor * varAC = TERM_addCommand(CMD_varSet, "set", "Set variable", 0, &TERM_defaultList);
+        TERM_addCommandAC(varAC, TERM_varCompleter, &TERM_varList);
 		#endif
 
       
@@ -121,7 +123,7 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
         ACL_add(head, "-ra");
         ACL_add(head, "-r");
         ACL_add(head, "-aa");
-        TERM_addCommandAC(test, ACL_defaultCompleter, head);  
+        TERM_addCommandAC(test, ACL_defaultCompleter, head);
         
        // REGISTER_apps(&TERM_defaultList);
     }

@@ -26,6 +26,7 @@
 
 #include <string.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 char toLower(char c){
     if(c > 65 && c < 90){
@@ -240,6 +241,10 @@ TermVariableDescriptor * TERM_addVarBool(void* variable, const char * name, cons
     return newVAR;
 }
 
+uint8_t TERM_varCompleter(TERMINAL_HANDLE * handle, void * params){
+	return 0;
+}
+
 
 #define COL_A 3
 #define COL_B 15
@@ -329,7 +334,6 @@ static void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescripto
 		ttprintf("\033[37m| \033[32m%s", *(bool*)var->variable ? "true" : "false");
 
 		break;
-
 	}
 
 	TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_C);
@@ -377,9 +381,113 @@ uint8_t CMD_varList(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	TermVariableDescriptor * currCmd = handle->varListHead->nextVar;
     for(;currPos < handle->varListHead->nameLength; currPos++){
 
-    	print_var_helperfunc(handle, currCmd);
+    	if(argCount && args[0] != NULL){
+    		if(strstr(currCmd->name, args[0])){
+    			print_var_helperfunc(handle, currCmd);
+    		}
+    	}else{
+    		print_var_helperfunc(handle, currCmd);
+    	}
         currCmd = currCmd->nextVar;
     }
+
+	return TERM_CMD_EXIT_SUCCESS;
+}
+
+static float getMul(char mul){
+	switch(mul){
+		case 'u':
+			return 1e-6f;
+		case 'm':
+			return 1e-3f;
+		case 'k':
+			return 1e3f;
+		case 'M':
+			return 1e6f;
+		default:
+			return 1.0f;
+	}
+}
+
+static void set_value(TermVariableDescriptor * var, char* value){
+
+    uint32_t u_temp_buffer=0;
+    int32_t i_temp_buffer=0;
+    uint32_t len = strlen(value);
+    char* mul = NULL;
+
+	switch (var->type){
+	case TERM_VARIABLE_UINT:
+		u_temp_buffer = strtoul(value, NULL, 10);
+		switch (var->typeSize){
+		case 1:
+			*(uint8_t*)var->variable = u_temp_buffer;
+			break;
+		case 2:
+			*(uint16_t*)var->variable = u_temp_buffer;
+			break;
+		case 4:
+			*(uint32_t*)var->variable = u_temp_buffer;
+			break;
+		}
+		break;
+	case TERM_VARIABLE_INT:
+		i_temp_buffer = strtol(value, NULL, 10);
+		switch (var->typeSize){
+		case 1:
+			*(int8_t*)var->variable = i_temp_buffer;
+			break;
+		case 2:
+			*(int16_t*)var->variable = i_temp_buffer;
+			break;
+		case 4:
+			*(int32_t*)var->variable = i_temp_buffer;
+			break;
+		}
+		break;
+	case TERM_VARIABLE_FLOAT:
+		*(float*)var->variable = strtof(value, &mul);
+		if(mul != NULL){
+			*(float*)var->variable *= getMul(*mul);
+		}
+		break;
+	case TERM_VARIABLE_CHAR:
+		*(char*)var->variable = value[0];
+		break;
+	case TERM_VARIABLE_STRING:
+		strcpy((char*)var->variable, value);
+		break;
+	case TERM_VARIABLE_BOOL:
+		for(uint32_t i=0;i<len;i++){
+			value[i] = toLower(value[i]);
+		}
+		if(strcmp(value, "true")==0) *(bool*)var->variable = true;
+		if(strcmp(value, "false")==0) *(bool*)var->variable = false;
+		if(strcmp(value, "1")==0) *(bool*)var->variable = true;
+		if(strcmp(value, "0")==0) *(bool*)var->variable = false;
+		break;
+	}
+
+}
+
+uint8_t CMD_varSet(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+
+	uint32_t currPos = 0;
+	if(argCount<2){
+		ttprintf("Usage: set [name] [value]");
+		return TERM_CMD_EXIT_SUCCESS;
+	}
+
+	TermVariableDescriptor * currCmd = handle->varListHead->nextVar;
+    for(;currPos < handle->varListHead->nameLength; currPos++){
+    	if(strcmp(args[0], currCmd->name)==0){
+    		set_value(currCmd, args[1]);
+    		return TERM_CMD_EXIT_SUCCESS;
+    	}
+
+        currCmd = currCmd->nextVar;
+    }
+
 
 	return TERM_CMD_EXIT_SUCCESS;
 }

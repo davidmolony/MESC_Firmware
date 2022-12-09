@@ -181,9 +181,13 @@ void MESCinterface_init(void){
 
 
 
-	TERM_addVar(motor.Rphase, 0, 10, "r_phase", "Phase resistance", 0, &TERM_varList);
-	TERM_addVar(motor.Lphase, 0, 10, "lq_phase", "Phase inductance", 0, &TERM_varList);
-	TERM_addVar(buff, 0, 0, "name", "name name", 0, &TERM_varList);
+	TERM_addVar(motor.Rphase, 0.0f, 10.0f, "r_phase", "Phase resistance", 0, &TERM_varList);
+	TERM_addVar(motor.Lphase, 0.0f, 10.0f, "ld_phase", "Phase inductance", 0, &TERM_varList);
+	TERM_addVar(motor.Lqphase, 0.0f, 10.0f, "lq_phase", "Phase inductance", 0, &TERM_varList);
+	TERM_addVar(motor.motor_flux, 0.0f, 100.0f, "flux", "Flux linkage", 0, &TERM_varList);
+	TERM_addVar(buff, 0, 0, "name", "ESC name", 0, &TERM_varList);
+	TERM_addVar(foc_vars.hfi_enable, 0, 0, "hfi", "Enable HFI", 0, &TERM_varList);
+	TERM_addVar(input_vars.Idq_req_UART.q, -100.0f, 100.0f, "iq_req", "IQ request", 0, &TERM_varList);
 
 
 
