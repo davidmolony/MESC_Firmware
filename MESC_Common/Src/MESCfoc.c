@@ -1669,26 +1669,43 @@ static int carryU, carryV, carryW;
     foc_vars.field_weakening_multiplier = 1.0f/(foc_vars.Vq_max*(1.0f-FIELD_WEAKENING_THRESHOLD));
   }
 
+
+  static int dp_periods = 3;
   void doublePulseTest() {
     static int dp_counter;
-    static int dp_periods = 3;
-    if (dp_counter < dp_periods) {
+    if  (dp_counter == 0) { //Let bootstrap charge
+        phU_Enable();
+        phV_Enable();
+        phW_Enable();
+        htim1.Instance->CCR1 = 0;
+        htim1.Instance->CCR2 = 0;
+        htim1.Instance->CCR3 = 0;
+        test_vals.dp_current_final[dp_counter] =
+            measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
+        dp_counter++;
+      } else if(dp_counter <= (dp_periods-2)) { //W State ON
       htim1.Instance->CCR1 = 0;
       htim1.Instance->CCR2 = 0;
-      htim1.Instance->CCR3 = 1022;
+      htim1.Instance->CCR3 = htim1.Instance->ARR;
       phU_Break();
       phV_Enable();
       phW_Enable();
       test_vals.dp_current_final[dp_counter] =
           measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
       dp_counter++;
-    } else if (dp_counter == dp_periods) {
-      htim1.Instance->CCR2 = 0;
-      htim1.Instance->CCR3 = 100;
-      test_vals.dp_current_final[dp_counter] =
-          measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
-      dp_counter++;
-    } else {
+    } else if (dp_counter == (dp_periods-1)) { //W short second pulse
+        htim1.Instance->CCR2 = 0;
+        htim1.Instance->CCR3 = 100;
+        test_vals.dp_current_final[dp_counter] =
+            measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
+        dp_counter++;
+     } else if (dp_counter == dp_periods) { //Freewheel a bit to see the current
+          htim1.Instance->CCR2 = 0;
+          htim1.Instance->CCR3 = 0;
+          test_vals.dp_current_final[dp_counter] =
+              measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
+          dp_counter++;
+        }else { //Turn all off
       htim1.Instance->CCR1 = 0;
       htim1.Instance->CCR2 = 0;
       htim1.Instance->CCR3 = 0;
