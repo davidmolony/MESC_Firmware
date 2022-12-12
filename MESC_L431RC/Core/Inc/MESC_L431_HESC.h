@@ -13,17 +13,25 @@
 //#define MISSING_UCURRSENSOR //You can run two current sensors ONLY if they are phase sensors.
 //#define MISSING_VCURRSENSOR //Running this with low side sensors may result in fire.
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
-
+#define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp
 #define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
 #define DEADTIME_COMP_V 5 	//Arbitrary value for starting, needs determining through TEST_TYP_DEAD_TIME_IDENT.
 							//Basically this is half the time between MOSoff and MOSon
 							//and needs dtermining experimentally, either with openloop
 							//sin wave drawing or by finding the zero current switching "power knee point"
-							
+							//Not defining this uses 5 sector and overmodulation compensation
+							//5 sector is harder on the low side FETs (for now)but offers equal performance at low speed, better at high speed.
+#define OVERMOD_DT_COMP_THRESHOLD 80	//Prototype concept that allows 100% (possibly greater) modulation by
+										//skipping turn off when the modulation is close to VBus, then compensating next cycle.
+										//Only works with 5 sector (bottom clamp) - comment out #define SEVEN_SECTOR
+#define MAX_MODULATION 0.95f //default is 0.95f, can allow higher or lower. up to
+							//1.1 stable with 5 sector switching,
+							//1.05 is advised as max for low side shunts
+
 #define SOFTWARE_ADC_REGULAR
 #define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 50.0f
+#define ABS_MAX_PHASE_CURRENT 250.0f
 #define ABS_MAX_BUS_VOLTAGE 45.0f
 #define ABS_MIN_BUS_VOLTAGE 10.0f
 #define R_SHUNT 0.00033f
@@ -67,17 +75,17 @@
 #define DEFAULT_INPUT	0b0010 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
 //////Motor parameters
-#define DEFAULT_MOTOR_POWER 250.0f
-#define DEFAULT_FLUX_LINKAGE 0.0038f //mWb
-#define DEFAULT_MOTOR_Ld 0.000005f //Henries
-#define DEFAULT_MOTOR_Lq 0.000005f//Henries
-#define DEFAULT_MOTOR_R 0.005f //Ohms
+#define DEFAULT_MOTOR_POWER 1250.0f
+#define DEFAULT_FLUX_LINKAGE 0.0138f //mWb
+#define DEFAULT_MOTOR_Ld 0.00007f //Henries
+#define DEFAULT_MOTOR_Lq 0.00015f//Henries
+#define DEFAULT_MOTOR_R 0.05f //Ohms
 //Use the Ebike Profile tool
 //#define USE_PROFILE
-//#define USE_FIELD_WEAKENING
-#define FIELD_WEAKENING_CURRENT 10.0f
+//#define USE_FIELD_WEAKENINGV2
+#define FIELD_WEAKENING_CURRENT 20.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-#define USE_HFI
+//#define USE_HFI
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 20.0f
 
@@ -88,11 +96,20 @@
 #endif
 
 #define USE_SQRT_CIRCLE_LIM
+//#define USE_SQRT_CIRCLE_LIM_VD
 //#define USE_LR_OBSERVER
 #define LR_OBS_CURRENT 0.1*MAX_IQ_REQUEST 	//Inject this much current into the d-axis at the slowloop frequency and observe the change in Vd and Vq
 								//Needs to be a small current that does not have much effect on the running parameters.
 							
 //#define USE_MTPA
+
+/////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
+#define INTERPOLATE_V7_ANGLE
+
+//#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
+#define POLE_PAIRS 10
+#define ENCODER_E_OFFSET 25000
+#define POLE_ANGLE (65536/POLE_PAIRS)
 
 /////Related to observer
 #define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
@@ -105,3 +122,7 @@
 										//Also, incompatible with flux linkage observer for now...
 #define NON_LINEAR_CENTERING_GAIN 5000.0f
 #define USE_CLAMPED_OBSERVER_CENTERING //Pick one of the two centering methods... preferably this one
+
+//#define USE_HALL_START
+#define HALL_VOLTAGE_THRESHOLD 1.5f
+//#define LOGGING

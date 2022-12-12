@@ -1,4 +1,4 @@
-#define PWM_FREQUENCY 25000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
+#define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
 #define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!
 //#define USE_DEADSHORT //This can be used in place of the phase sensors for startup from running.
 #define DEADSHORT_CURRENT 30.0f	//When recovering from tracking phase without phase sensors, the
@@ -14,7 +14,7 @@
 //#define MISSING_VCURRSENSOR //Running this with low side sensors may result in fire.
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
 
-//#define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp
+#define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp
 #define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
 #define DEADTIME_COMP_V 5 	//Arbitrary value for starting, needs determining through TEST_TYP_DEAD_TIME_IDENT.
 							//Basically this is half the time between MOSoff and MOSon
@@ -25,7 +25,7 @@
 #define OVERMOD_DT_COMP_THRESHOLD 80	//Prototype concept that allows 100% (possibly greater) modulation by
 										//skipping turn off when the modulation is close to VBus, then compensating next cycle.
 										//Only works with 5 sector (bottom clamp) - comment out #define SEVEN_SECTOR
-#define MAX_MODULATION 1.05f //default is 0.95f, can allow higher or lower. up to
+#define MAX_MODULATION 0.95f //default is 0.95f, can allow higher or lower. up to
 							//1.1 stable with 5 sector switching,
 							//1.05 is advised as max for low side shunts
 #define SHUNT_POLARITY -1.0f
@@ -86,8 +86,7 @@
 //Use the Ebike Profile tool
 #define USE_PROFILE
 
-//#define USE_FIELD_WEAKENING
-#define USE_FIELD_WEAKENINGV2
+//#define USE_FIELD_WEAKENINGV2
 
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
@@ -121,7 +120,7 @@
 #define POLE_ANGLE (65536/POLE_PAIRS)
 
 /////Related to observer
-#define USE_SALIENT_OBSERVER
+//#define USE_SALIENT_OBSERVER
 #define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
 #define MAX_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*2.0f //Sets the limits for tracking.
 #define MIN_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*0.7f//Faster convergence with closer start points

@@ -79,7 +79,7 @@
 //#define USE_PROFILE
 
 //#define USE_FIELD_WEAKENING
-#define USE_FIELD_WEAKENINGV2
+//#define USE_FIELD_WEAKENINGV2
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
 //#define USE_HFI
@@ -111,7 +111,7 @@
 //#define INTERPOLATE_V7_ANGLE //Caution  with this one,
 
 #define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
-#define POLE_PAIRS 7
+#define POLE_PAIRS 10
 #define ENCODER_E_OFFSET 6000
 #define ENCODER_DIR_REVERSED
 #define POLE_ANGLE (65536/POLE_PAIRS)
@@ -127,7 +127,7 @@
 										//Also, incompatible with flux linkage observer for now...
 #define NON_LINEAR_CENTERING_GAIN 5000.0f
 #define USE_CLAMPED_OBSERVER_CENTERING //Pick one of the two centering methods... preferably this one
-#define USE_HALL_START
+//#define USE_HALL_START
 #define HALL_VOLTAGE_THRESHOLD 1.5f
 //#define LOGGING
 

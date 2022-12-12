@@ -256,13 +256,18 @@ void fastLoop() {
 #else
     	flux_observer();
 #endif
-    	MESCFOC();
-		writePWM();
-      } else if (MotorSensorMode == MOTOR_SENSOR_MODE_ENCODER) {
-			foc_vars.FOCAngle = foc_vars.enc_angle;
 			MESCFOC();
 			writePWM();
-        }
+      } else if (MotorSensorMode == MOTOR_SENSOR_MODE_ENCODER) {
+		  foc_vars.FOCAngle = foc_vars.enc_angle;
+		  MESCFOC();
+		  writePWM();
+      } else if(MotorSensorMode == MOTOR_SENSOR_MODE_OPENLOOP){
+		  foc_vars.openloop_step = 60;
+		  OLGenerateAngle();
+		  MESCFOC();
+		  writePWM();
+      }
       break;
 
     case MOTOR_STATE_TRACKING:
@@ -2109,7 +2114,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 
   void tle5012(void)
   {
-
+#ifdef USE_ENCODER
 	  uint16_t const len = sizeof(pkt) / sizeof(uint16_t);
 	  uint16_t reg = (UINT16_C(  1) << 15) /* RW=Read */
 	               | (UINT16_C(0x0) << 11) /* Lock */
@@ -2155,6 +2160,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 #endif
       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
       pkt.revolutions = pkt.revolutions&0b0000000111111111;
+#endif
   }
 
 
@@ -2293,6 +2299,7 @@ uint16_t test_counts;
 		  foc_vars.hall_initialised = 1;
 	  }
   }
+
 
 void  logVars(){
 	logged_vars.loggedIa[logged_vars.current_sample] = measurement_buffers.ConvertedADC[0][0];
