@@ -32,7 +32,7 @@
 
 #include "MESCmotor_state.h"
 #include "MESC_Comms.h"
-#include "simple_coms.h"
+#include "Simple_coms.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

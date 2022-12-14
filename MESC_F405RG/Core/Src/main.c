@@ -35,6 +35,7 @@
 #include "MESCmotor_state.h"
 #include "MESC_Comms.h"
 #include "MPU6050.h"
+#include "Simple_coms.h"
 
 /* USER CODE END Includes */
 
@@ -71,6 +72,9 @@ I2C_HandleTypeDef hi2c2;
 uint16_t MPU_present, MPU_present2;
 MPU6050_data_t MPU_instance_1, MPU_instance_2;
 #define MPU6050_ADDR 0xD0
+
+COMS_data_t com1;
+
 
 /* USER CODE END PV */
 
@@ -140,6 +144,10 @@ int main(void)
   //MX_I2C2_Init();
 
   HAL_SPI_Init(&hspi3);
+
+  HAL_UART_Init(&huart3);
+  SimpleComsInit(&huart3, &com1);
+
   /*
   Starting System Initialisation
   */
@@ -235,15 +243,7 @@ calculateVoltageGain();
 #endif
 
   while (1) {
-		HAL_Delay(100);
-		static int a;
-		char transmit_buffer[100];
-		int sizebuff;
-		extern uint16_t enc_obs_angle;
-//		sizebuff = sprintf(transmit_buffer,"%d,%0.2f,%0.2f,%0.2f,%0.2f\n",a,0.005493f*(float)foc_vars.enc_obs_angle,foc_vars.Vdq[1],1000.0f*motor.motor_flux,foc_vars.Idq_smoothed[1]);
-//			HAL_UART_Transmit_DMA(&huart3, transmit_buffer, sizebuff);
-			a++;
-
+	  SimpleComsProcess(&com1);
 
     /* USER CODE END WHILE */
 
