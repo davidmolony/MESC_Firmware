@@ -31,7 +31,7 @@
 #define SHUNT_POLARITY -1.0f
 
 #define ABS_MAX_PHASE_CURRENT 250.0f
-#define ABS_MAX_BUS_VOLTAGE 50.0f
+#define ABS_MAX_BUS_VOLTAGE 42.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
 #define R_SHUNT 0.000333f
 //ToDo need to define using a discrete opamp with resistors to set gain vs using one with a specified gain
@@ -139,6 +139,7 @@
 
 
 #define MESC_UART_USB 		MESC_USB
+#define HW_UART huart3
 
 
 

@@ -24,7 +24,11 @@ void SimpleComsProcess(COMS_data_t *coms_instance){
 			measurement_buffers.ConvertedADC[0][1],
 			foc_vars.Idq_smoothed.q,
 			(foc_vars.currentPower.q+foc_vars.currentPower.d));
+#ifdef MESC_UART_USB
+		CDC_Transmit_FS(coms_instance->data, coms_instance->len);
+#else
 	HAL_UART_Transmit_DMA(coms_instance->UART_handle, coms_instance->data, coms_instance->len);
+#endif
 	}
 	}else{
 		printSamples(coms_instance->UART_handle);
