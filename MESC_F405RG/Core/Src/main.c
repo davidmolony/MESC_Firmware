@@ -34,6 +34,8 @@
 
 #include "MESCmotor_state.h"
 #include "MESC_Comms.h"
+#include "MPU6050.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,7 +53,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
- ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 ADC_HandleTypeDef hadc3;
 
@@ -66,6 +68,9 @@ DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
 I2C_HandleTypeDef hi2c2;
+uint16_t MPU_present, MPU_present2;
+MPU6050_data_t MPU_instance_1, MPU_instance_2;
+#define MPU6050_ADDR 0xD0
 
 /* USER CODE END PV */
 
