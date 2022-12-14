@@ -71,9 +71,9 @@ MESCfoc_s foc_vars;
 MESCtest_s test_vals;
 foc_measurement_t measurement_buffers;
 input_vars_t input_vars;
-logged_vars_t logged_vars;
+sampled_vars_t sampled_vars;
 
-int print_logs_now, lognow;
+int print_samples_now, lognow;
 
 void MESCInit() {
 #ifdef STM32L4 // For some reason, ST have decided to have a different name for the L4 timer DBG freeze...
@@ -99,6 +99,9 @@ MotorState = MOTOR_STATE_IDLE;
   // startup
   mesc_init_3();
   MotorState = MOTOR_STATE_INITIALISING;
+#ifdef LOGGING
+  lognow = 1;
+#endif
 
 #ifdef USE_ENCODER
   foc_vars.enc_offset = ENCODER_E_OFFSET;
@@ -476,11 +479,16 @@ if(lognow){
 	static int post_error_samples;
 	if(MotorState!=MOTOR_STATE_ERROR){
 	logVars();
-	post_error_samples = 100;
+	post_error_samples = 50;
 	}else{//If we have an error state, we want to keep the data surrounding the error log, including some sampled during and after the fault
-		if(post_error_samples>0){
+		if(post_error_samples>1){
 			logVars();
 			post_error_samples--;
+		}else if(post_error_samples == 1){
+			print_samples_now = 1;
+			post_error_samples--;
+		}else{
+			__NOP();
 		}
 	}
 }
@@ -504,31 +512,7 @@ void VICheck() {  // Check currents, voltages are within panic limits
   if (measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V] > g_hw_setup.RawVoltLim){
 	  handleError(ERROR_OVERVOLTAGE);
   }
-//  static int errorCount = 0;
-//  if ((measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
-//      (measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
-//      (measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim) ||
-//      (measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V   ] > g_hw_setup.RawVoltLim)){
-//        foc_vars.Idq_req[0] = foc_vars.Idq_req[0] * 0.9f;
-//        foc_vars.Idq_req[1] = foc_vars.Idq_req[1] * 0.9f;
-//
-//        errorCount++;
-//        if (errorCount >= MAX_ERROR_COUNT) {
-//          generateBreak();
-//          measurement_buffers.adc1 = measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I];
-//          measurement_buffers.adc2 = measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I];
-//          measurement_buffers.adc3 = measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I];
-//          measurement_buffers.adc4 = measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V   ];
-//
-//          MotorState = MOTOR_STATE_ERROR;
-//          MotorError = MOTOR_ERROR_OVER_LIMIT;
-//        }
-//      }
-//      else {
-//        errorCount = 0;
-//      }
-
-  }
+}
 float maxIgamma;
 uint16_t phasebalance;
   void ADCConversion() {
@@ -1347,9 +1331,7 @@ static int carryU, carryV, carryW;
       foc_vars.Vd_injectionV = HFI_VOLTAGE;
       foc_vars.Vq_injectionV = 0.0f;
       calculateGains();
-      // MotorState = MOTOR_STATE_IDLE;  //
       MotorState = MOTOR_STATE_TRACKING;
-      //MotorState = MOTOR_STATE_DETECTING;
       PWM_cycles = 0;
       phU_Enable();
       phV_Enable();
@@ -1898,6 +1880,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 	}else if(FW_current>-0.5f){	//Keep it running if FW current is being used
 	#ifdef HAS_PHASE_SENSORS
 		MotorState = MOTOR_STATE_TRACKING;
+		VICheck(); //Immediately return it to error state if there is still a critical fault condition active
 	#else
 	//	if(MotorState != MOTOR_STATE_ERROR){
 		MotorState = MOTOR_STATE_IDLE;
@@ -2319,59 +2302,59 @@ uint16_t test_counts;
 
 
 void  logVars(){
-	logged_vars.loggedIa[logged_vars.current_sample] = measurement_buffers.ConvertedADC[0][0];
-	logged_vars.loggedIb[logged_vars.current_sample] = measurement_buffers.ConvertedADC[0][1];
-	logged_vars.loggedIc[logged_vars.current_sample] = measurement_buffers.ConvertedADC[0][2];
-	logged_vars.loggedVd[logged_vars.current_sample] = foc_vars.Vdq.d;
-	logged_vars.loggedVq[logged_vars.current_sample] = foc_vars.Vdq.q;
-	logged_vars.logged_angle[logged_vars.current_sample] = foc_vars.FOCAngle;
-	logged_vars.current_sample++;
-	if(logged_vars.current_sample>=LOGLENGTH){
-		logged_vars.current_sample = 0;
+	sampled_vars.Vbus[sampled_vars.current_sample] = measurement_buffers.ConvertedADC[0][1];
+	sampled_vars.Iu[sampled_vars.current_sample] = measurement_buffers.ConvertedADC[0][0];
+	sampled_vars.Iv[sampled_vars.current_sample] = measurement_buffers.ConvertedADC[1][0];
+	sampled_vars.Iw[sampled_vars.current_sample] = measurement_buffers.ConvertedADC[2][0];
+	sampled_vars.Vd[sampled_vars.current_sample] = foc_vars.Vdq.d;
+	sampled_vars.Vq[sampled_vars.current_sample] = foc_vars.Vdq.q;
+	sampled_vars.angle[sampled_vars.current_sample] = foc_vars.FOCAngle;
+	sampled_vars.current_sample++;
+	if(sampled_vars.current_sample>=LOGLENGTH){
+		sampled_vars.current_sample = 0;
 	}
 }
 
-void printLogs(){
+int samples_sent;
+uint32_t start_ticks;
+void printSamples(UART_HandleTypeDef *uart){
 	char send_buffer[100];
 	uint16_t length;
 #ifdef LOGGING
-	if(print_logs_now){
+	if(print_samples_now){
+		print_samples_now = 0;
 		lognow = 0;
-		int current_sample_pos = logged_vars.current_sample;
-		uint32_t start_ticks = HAL_GetTick();
-		length = sprintf(send_buffer,"%.2f,%.2f,%.2f,%.2f,%.2f,%d;/r/n",
-				logged_vars.loggedIa[current_sample_pos],
-				logged_vars.loggedIb[current_sample_pos],
-				logged_vars.loggedIc[current_sample_pos],
-				logged_vars.loggedVd[current_sample_pos],
-				logged_vars.loggedVq[current_sample_pos],
-				logged_vars.logged_angle[current_sample_pos]);
-		int samples_sent = 0;
-#ifdef MESC_UART_USB
+		int current_sample_pos = sampled_vars.current_sample;
+		start_ticks = HAL_GetTick();
+
+		samples_sent = 0;
+
 		while(samples_sent<LOGLENGTH){
-	//		if(hcdc->TxState == 0){
-				CDC_Transmit_FS(send_buffer, length);
-				HAL_Delay(1);//Wait 2ms, would be nice if we could poll for the CDC being free...
+				HAL_Delay(100);//Wait 2ms, would be nice if we could poll for the CDC being free...
 				samples_sent++;
 				current_sample_pos++;
+
 				if(current_sample_pos>=LOGLENGTH){
-					current_sample_pos = 0;
+					current_sample_pos = 0;	//Wrap
 				}
-				length = sprintf(send_buffer,"%f,%f,%f,%f,%f,%d;",
-						logged_vars.loggedIa[current_sample_pos],
-						logged_vars.loggedIb[current_sample_pos],
-						logged_vars.loggedIc[current_sample_pos],
-						logged_vars.loggedVd[current_sample_pos],
-						logged_vars.loggedVq[current_sample_pos],
-						logged_vars.logged_angle[current_sample_pos]);
-	//		}
-			if((HAL_GetTick()-start_ticks)>10000){
+
+				length = sprintf(send_buffer,"%.2f%.2f,%.2f,%.2f,%.2f,%.2f,%d;\r\n",
+						sampled_vars.Vbus[current_sample_pos],
+						sampled_vars.Iu[current_sample_pos],
+						sampled_vars.Iv[current_sample_pos],
+						sampled_vars.Iw[current_sample_pos],
+						sampled_vars.Vd[current_sample_pos],
+						sampled_vars.Vq[current_sample_pos],
+						sampled_vars.angle[current_sample_pos]);
+				if((HAL_GetTick()-start_ticks)>10000){
 				break;
-			}
-		}
+				}
+#ifdef MESC_UART_USB
+		CDC_Transmit_FS(send_buffer, length);
 #else
-		//Do the same for UART
+		HAL_UART_Transmit_DMA(uart, send_buffer, length);
 #endif
+		}
 		lognow = 1;
 	}
 #endif

@@ -246,23 +246,24 @@ extern input_vars_t input_vars;
 
 //Logging
 #ifndef LOGLENGTH
-#define LOGLENGTH 1000
+#define LOGLENGTH 100
 #endif
 //We want to log primarily Ia Ib Ic, Vd,Vq, phase angle, which gives us a complete picture of the machine state
 //4 bytes per variable*6 variables*1000 = 24000bytes. Lowest spec target is F303CB with 48kB SRAM, so this is OK
 typedef struct {
-	float loggedIa[LOGLENGTH];
-	float loggedIb[LOGLENGTH];
-	float loggedIc[LOGLENGTH];
-	float loggedVd[LOGLENGTH];
-	float loggedVq[LOGLENGTH];
-	uint16_t logged_angle[LOGLENGTH];
+	float Vbus[LOGLENGTH];
+	float Iu[LOGLENGTH];
+	float Iv[LOGLENGTH];
+	float Iw[LOGLENGTH];
+	float Vd[LOGLENGTH];
+	float Vq[LOGLENGTH];
+	uint16_t angle[LOGLENGTH];
 	uint32_t current_sample;
-} logged_vars_t;
+} sampled_vars_t;
 
-extern int print_logs_now;
+extern int print_samples_now;
 
-extern logged_vars_t logged_vars;
+extern sampled_vars_t sampled_vars;
 
 /* Function prototypes -----------------------------------------------*/
 
@@ -346,6 +347,6 @@ void LRObserver();
 void LRObserverCollect();
 void HallFluxMonitor();
 void logVars();
-void printLogs();
+void printSamples(UART_HandleTypeDef *uart);
 
 #endif

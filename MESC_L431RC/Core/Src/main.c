@@ -32,6 +32,7 @@
 
 #include "MESCmotor_state.h"
 #include "MESC_Comms.h"
+#include "simple_coms.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,7 +61,7 @@ UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
-
+COMS_data_t com1;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -116,10 +117,12 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
+
+  HAL_UART_Init(&huart3);
+  SimpleComsInit(&huart3, &com1);
+
   MESCInit();
   motor_init(NULL);
-
-
 
 
   motor.Rphase = motor_profile->R;
@@ -142,6 +145,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  SimpleComsProcess(&com1);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -564,7 +569,7 @@ static void MX_USART3_UART_Init(void)
 
   /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 115200;
+  huart3.Init.BaudRate = 9600;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;
@@ -591,6 +596,11 @@ static void MX_DMA_Init(void)
 
   /* DMA controller clock enable */
   __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
 
 }
 
