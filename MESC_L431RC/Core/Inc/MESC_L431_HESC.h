@@ -95,8 +95,8 @@
 #define CURRENT_BANDWIDTH 5000.0f
 #endif
 
-#define USE_SQRT_CIRCLE_LIM
-//#define USE_SQRT_CIRCLE_LIM_VD
+//#define USE_SQRT_CIRCLE_LIM
+#define USE_SQRT_CIRCLE_LIM_VD
 //#define USE_LR_OBSERVER
 #define LR_OBS_CURRENT 0.1*MAX_IQ_REQUEST 	//Inject this much current into the d-axis at the slowloop frequency and observe the change in Vd and Vq
 								//Needs to be a small current that does not have much effect on the running parameters.

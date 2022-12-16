@@ -535,7 +535,8 @@ uint16_t phasebalance;
     measurement_buffers.ConvertedADC[0][1] =
         (float)measurement_buffers.RawADC[0][1] * g_hw_setup.VBGain;  // Vbus
 
-    //Check for over limit conditions
+    //Check for over limit conditions. We want this after the conversion so that the
+    //correct overcurrent values are logged
     VICheck();
 
 //Deal with terrible hardware choice of only having two current sensors
@@ -2317,7 +2318,8 @@ void  logVars(){
 
 int samples_sent;
 uint32_t start_ticks;
-void printSamples(UART_HandleTypeDef *uart){
+extern DMA_HandleTypeDef hdma_usart3_tx;
+void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma){
 	char send_buffer[100];
 	uint16_t length;
 #ifdef LOGGING
@@ -2330,7 +2332,7 @@ void printSamples(UART_HandleTypeDef *uart){
 		samples_sent = 0;
 
 		while(samples_sent<LOGLENGTH){
-				HAL_Delay(100);//Wait 2ms, would be nice if we could poll for the CDC being free...
+				HAL_Delay(1);//Wait 2ms, would be nice if we could poll for the CDC being free...
 				samples_sent++;
 				current_sample_pos++;
 
@@ -2352,7 +2354,12 @@ void printSamples(UART_HandleTypeDef *uart){
 #ifdef MESC_UART_USB
 		CDC_Transmit_FS(send_buffer, length);
 #else
+
 		HAL_UART_Transmit_DMA(uart, send_buffer, length);
+			while(hdma_usart3_tx.State != HAL_DMA_STATE_READY){//Pause here
+		//	while(hdma_usart3_tx.Lock != HAL_UNLOCKED){//Pause here
+				__NOP();
+			}
 #endif
 		}
 		lognow = 1;

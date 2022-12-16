@@ -46,6 +46,25 @@
 #define FOC_NUM_ADC                (4)
 #define FOC_PERIODS                (1)
 
+//Default options which can be overwritten by user
+#ifndef DEADTIME_COMP_V
+#define DEADTIME_COMP_V 5 	//Arbitrary value for starting, needs determining through TEST_TYP_DEAD_TIME_IDENT.
+#endif						//Basically this is half the time between MOSoff and MOSon
+							//and needs dtermining experimentally, either with openloop
+							//sin wave drawing or by finding the zero current switching "power knee point"
+							//Not defining this uses 5 sector and overmodulation compensation
+							//5 sector is harder on the low side FETs (for now)but offers equal performance at low speed, better at high speed.
+#ifndef OVERMOD_DT_COMP_THRESHOLD
+#define OVERMOD_DT_COMP_THRESHOLD 80	//Prototype concept that allows 100% (possibly greater) modulation by
+										//skipping turn off when the modulation is close to VBus, then compensating next cycle.
+										//Only works with 5 sector (bottom clamp) - comment out #define SEVEN_SECTOR
+#endif
+#ifndef MAX_MODULATION
+#define MAX_MODULATION 0.95f //default is 0.95f, can allow higher or lower. up to
+							//1.1 stable with 5 sector switching,
+							//1.05 is advised as max for low side shunts
+#endif
+
 enum MESCADC
 {
     ADCIU,
@@ -347,6 +366,6 @@ void LRObserver();
 void LRObserverCollect();
 void HallFluxMonitor();
 void logVars();
-void printSamples(UART_HandleTypeDef *uart);
+void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma);
 
 #endif
