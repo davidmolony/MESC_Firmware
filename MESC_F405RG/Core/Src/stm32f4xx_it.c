@@ -23,6 +23,7 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "MESCerror.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -226,10 +227,20 @@ void DMA1_Stream3_IRQHandler(void)
 void ADC_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC_IRQn 0 */
-  // fastLoop();
-    __HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_JEOC));
-    __HAL_ADC_CLEAR_FLAG(&hadc2, (ADC_FLAG_JSTRT | ADC_FLAG_JEOC));
-    __HAL_ADC_CLEAR_FLAG(&hadc3, (ADC_FLAG_JSTRT | ADC_FLAG_JEOC));
+
+if(__HAL_ADC_GET_FLAG(&hadc1,ADC_FLAG_AWD)){
+	handleError(ERROR_ADC_OUT_OF_RANGE_IA);
+}
+if(__HAL_ADC_GET_FLAG(&hadc2,ADC_FLAG_AWD)){
+	handleError(ERROR_ADC_OUT_OF_RANGE_IB);
+}
+if(__HAL_ADC_GET_FLAG(&hadc3,ADC_FLAG_AWD)){
+	handleError(ERROR_ADC_OUT_OF_RANGE_IC);
+}
+
+    __HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_AWD | ADC_FLAG_JEOC));
+    __HAL_ADC_CLEAR_FLAG(&hadc2, (ADC_FLAG_JSTRT | ADC_FLAG_AWD | ADC_FLAG_JEOC));
+    __HAL_ADC_CLEAR_FLAG(&hadc3, (ADC_FLAG_JSTRT | ADC_FLAG_AWD | ADC_FLAG_JEOC));
 
   /* USER CODE END ADC_IRQn 0 */
   /* USER CODE BEGIN ADC_IRQn 1 */

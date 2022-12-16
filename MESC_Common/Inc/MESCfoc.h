@@ -47,8 +47,12 @@
 #define FOC_PERIODS                (1)
 
 //Default options which can be overwritten by user
+#ifndef PWM_FREQUENCY
+#define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
+#endif
+
 #ifndef DEADTIME_COMP_V
-#define DEADTIME_COMP_V 5 	//Arbitrary value for starting, needs determining through TEST_TYP_DEAD_TIME_IDENT.
+#define DEADTIME_COMP_V 0 	//Arbitrary value for starting, needs determining through TEST_TYP_DEAD_TIME_IDENT.
 #endif						//Basically this is half the time between MOSoff and MOSon
 							//and needs dtermining experimentally, either with openloop
 							//sin wave drawing or by finding the zero current switching "power knee point"
@@ -59,10 +63,25 @@
 										//skipping turn off when the modulation is close to VBus, then compensating next cycle.
 										//Only works with 5 sector (bottom clamp) - comment out #define SEVEN_SECTOR
 #endif
+
 #ifndef MAX_MODULATION
 #define MAX_MODULATION 0.95f //default is 0.95f, can allow higher or lower. up to
 							//1.1 stable with 5 sector switching,
 							//1.05 is advised as max for low side shunts
+#endif
+
+#ifndef I_MEASURE
+#define I_MEASURE 10.0f //Higher setpoint for resistance measurement
+#endif
+#ifndef IMEASURE_CLOSEDLOOP
+#define IMEASURE_CLOSEDLOOP 4.5f 	//After spinning up openloop and getting an approximation,
+									//this current is used to driver the motor and collect a refined flux linkage
+#endif
+#ifndef V_MEASURE
+#define V_MEASURE 4.0f 	//Voltage setpoint for measuring inductance
+#endif
+#ifndef ERPM_MEASURE
+#define ERPM_MEASURE 3000.0f//Speed to do the flux linkage measurement at
 #endif
 
 enum MESCADC
@@ -71,9 +90,7 @@ enum MESCADC
     ADCIV,
     ADCIW,
 };
-#ifndef MAX_MODULATION
-#define MAX_MODULATION 0.95f
-#endif
+
 #define SVPWM_MULTIPLIER \
   1.1547f  // 1/cos30 which comes from the maximum between two 120 degree apart
           // sin waves being at the
