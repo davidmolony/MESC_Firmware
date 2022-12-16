@@ -1,17 +1,17 @@
 //First, include the header specific to your board, which includes hardware parameters like ABS MAX, shunts, potential divdiders
 //Ensure only one board's header file is uncommented!
-#include "MP2_V0_1.h"
-//#include "MX_FOC_IMS.h"
-//#include <MX_FOC_GaN.h>
 
-#define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!
+#include "MX_FOC_IMS.h"
+//#include "HESC_INSANE.h"
 
+#define HAS_PHASE_SENSORS //This is not actually true. Really needs to have phase sensors... Leaving this in because it enables tracking and PWM disabling for debug.
 
 //#define MISSING_UCURRSENSOR //You can run two current sensors ONLY if they are phase sensors.
 //#define MISSING_VCURRSENSOR //Running this with low side sensors may result in fire.
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
 
 
+#define SOFTWARE_ADC_REGULAR //REQUIRED because L431 does not have enough channels triggered from the timer
 
 ////////////////////USER DEFINES//////////////////
 	///////////////////RCPWM//////////////////////
@@ -33,8 +33,6 @@
 
 #define ADC1_POLARITY 1.0f
 #define ADC2_POLARITY -1.0f
-
-#define DEFAULT_INPUT	0b1010 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
 
 //Use the Ebike Profile tool
@@ -75,7 +73,7 @@
 #ifndef LR_OBS_CURRENT
 #define LR_OBS_CURRENT 0.1*MAX_IQ_REQUEST 	//Inject this much current into the d-axis at the slowloop frequency and observe the change in Vd and Vq
 								//Needs to be a small current that does not have much effect on the running parameters.
-#endif
+#endif					
 
 /////////////////////Related to OBSERVER//////////////////////////////
 #define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
@@ -89,18 +87,4 @@
 #define NON_LINEAR_CENTERING_GAIN 5000.0f
 #define USE_CLAMPED_OBSERVER_CENTERING //Pick one of the two centering methods... preferably this one
 
-/////////////////////Related to COMMs INTERFACE//////////////////////////////
-#define MESC_UART_USB 		MESC_USB
-#define HW_UART huart3
 
-/////////////////////Prototype stuff that does not really work nicely//////////////////////////////
-
-//#define USE_DEADSHORT //This can be used in place of the phase sensors for startup from running.
-#define DEADSHORT_CURRENT 30.0f	//When recovering from tracking phase without phase sensors, the
-							//deadshort function will short the phases
-							//until the current exceeds this value. At this point, it calculates the Vd Vq and phase angle
-							//Don't set too high, after 9PWM periods, it will run the calc and start the motor regardless.
-							//This seems to work best with a higher current bandwidth (~10krads-1) and using the non-linear observer centering.
-							//Broadly incompatible with the flux observer
-							//Only works for forward direction presently
-							//^^WIP, not completely stable yet

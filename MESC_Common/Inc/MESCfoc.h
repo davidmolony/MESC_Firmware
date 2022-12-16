@@ -84,6 +84,11 @@
 #define ERPM_MEASURE 3000.0f//Speed to do the flux linkage measurement at
 #endif
 
+#ifndef DEADSHORT_CURRENT
+#define DEADSHORT_CURRENT 30.0f
+#endif
+
+
 enum MESCADC
 {
     ADCIU,
