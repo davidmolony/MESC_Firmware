@@ -11,8 +11,6 @@
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
 
 
-#define SOFTWARE_ADC_REGULAR //REQUIRED because L431 does not have enough channels triggered from the timer
-
 ////////////////////USER DEFINES//////////////////
 	///////////////////RCPWM//////////////////////
 #define IC_DURATION_MAX 25000

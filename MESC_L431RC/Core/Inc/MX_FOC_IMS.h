@@ -11,6 +11,8 @@
 //Pick a motor for default
 #define MCMASTER_70KV_8080
 
+//#define PWM_FREQUENCY 38000
+
 #define SHUNT_POLARITY -1.0f
 
 #define ABS_MAX_PHASE_CURRENT 250.0f

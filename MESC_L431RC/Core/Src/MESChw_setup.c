@@ -35,7 +35,7 @@ extern TIM_HandleTypeDef htim1;
 hw_setup_s g_hw_setup;
 motor_s motor;
 
-uint32_t ADC_buffer[6];
+uint32_t ADC_buffer[10];
 
 void hw_init() {
   g_hw_setup.Imax = ABS_MAX_PHASE_CURRENT;  	// Imax is the current at which we are either no longer able to
@@ -198,7 +198,7 @@ void mesc_init_2( void )
 void mesc_init_3( void )
 {
 	
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&ADC_buffer, 6);
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&ADC_buffer, 10);
 	
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
