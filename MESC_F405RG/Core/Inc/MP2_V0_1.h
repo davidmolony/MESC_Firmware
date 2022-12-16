@@ -8,7 +8,7 @@
 #ifndef INC_MP2_V0_1_H_
 #define INC_MP2_V0_1_H_
 //Pick a motor for default
-#define QS165
+#define QS165//MCMASTER_70KV_8080//
 
 #define SHUNT_POLARITY -1.0f
 
@@ -30,7 +30,7 @@
 #define DEADTIME_COMP_V 10
 
 //Inputs
-//#define GET_THROTTLE_INPUT measurement_buffers.RawADC[1][3] = hadc1.Instance->JDR4;  // Throttle for MP2 with F405 pill
+#define GET_THROTTLE_INPUT measurement_buffers.RawADC[1][3] = hadc1.Instance->JDR4;  // Throttle for MP2 with F405 pill
 
 //#define USE_FIELD_WEAKENINGV2
 
@@ -41,7 +41,7 @@
 
 //#define USE_HFI
 
-//#define USE_HALL_START
+#define USE_HALL_START
 #define HALL_VOLTAGE_THRESHOLD 1.5f
 
 //#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
