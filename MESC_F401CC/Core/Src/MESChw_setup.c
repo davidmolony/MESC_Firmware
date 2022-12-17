@@ -214,7 +214,6 @@ void mesc_init_3( void )
 	HAL_ADCEx_InjectedStart(&hadc1);
 	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD);
 	__HAL_TIM_ENABLE_IT(&htim1,TIM_IT_UPDATE);
-	hadc1.Instance->LTR = 4001; //default for AWD
-	hadc1.Instance->LTR = 100;
+
 
 }
