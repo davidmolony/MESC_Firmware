@@ -394,7 +394,8 @@ void fastLoop() {
       break;
   }
 #ifdef SOFTWARE_ADC_REGULAR
-        HAL_ADC_Start(&hadc1); //ToDo Eliminate the HAL call, slow and inefficient.
+       HAL_ADC_Start(&hadc1); //Try to eliminate the HAL call, slow and inefficient. Leaving this here for now.
+        //hadc1.Instance->CR2 |= (uint32_t)ADC_CR2_SWSTART;
 #endif
 }
 

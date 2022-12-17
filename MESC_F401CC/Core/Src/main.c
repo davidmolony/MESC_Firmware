@@ -138,10 +138,10 @@ int main(void)
 //Initialise MESC
 MESCInit();
 motor_init(NULL);
-motor.Rphase = DEFAULT_MOTOR_R;
-motor.Lphase = DEFAULT_MOTOR_Ld;
-motor.Lqphase = DEFAULT_MOTOR_Lq;
-motor.motor_flux = DEFAULT_FLUX_LINKAGE;
+motor.Rphase = motor_profile->R;
+motor.Lphase = motor_profile->L_D;
+motor.Lqphase = motor_profile->L_Q;
+motor.motor_flux = motor_profile->flux_linkage;
 //motor_profile->Pmax = 50.0f;
 motor.uncertainty = 1;
 
@@ -151,7 +151,6 @@ calculateGains();
 calculateVoltageGain();
 MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
-MotorSensorMode = MOTOR_SENSOR_MODE_ENCODER;
 
   /* USER CODE END 2 */
 
@@ -255,8 +254,8 @@ static void MX_ADC1_Init(void)
   /** Configure the analog watchdog
   */
   AnalogWDGConfig.WatchdogMode = ADC_ANALOGWATCHDOG_ALL_INJEC;
-  AnalogWDGConfig.HighThreshold = 4000;
-  AnalogWDGConfig.LowThreshold = 0;
+  AnalogWDGConfig.HighThreshold = 4048;
+  AnalogWDGConfig.LowThreshold = 48;
   AnalogWDGConfig.ITMode = ENABLE;
   if (HAL_ADC_AnalogWDGConfig(&hadc1, &AnalogWDGConfig) != HAL_OK)
   {
@@ -302,7 +301,7 @@ static void MX_ADC1_Init(void)
 
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
-  sConfig.Channel = ADC_CHANNEL_8;
+  sConfig.Channel = ADC_CHANNEL_7;
   sConfig.Rank = 5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {

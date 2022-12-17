@@ -22,6 +22,7 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "MESCerror.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -215,8 +216,13 @@ void ADC_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC_IRQn 0 */
 	//Implement break if we get here
-	  generateBreak();
-    __HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_AWD));
+	if(__HAL_ADC_GET_FLAG(&hadc1,ADC_FLAG_AWD)){
+		handleError(ERROR_ADC_OUT_OF_RANGE_IA);
+		handleError(ERROR_ADC_OUT_OF_RANGE_IB);
+		handleError(ERROR_ADC_OUT_OF_RANGE_IC);
+		handleError(ERROR_ADC_OUT_OF_RANGE_VBUS);
+	}
+	__HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_AWD));
     //HAL_ADC_IRQHandler(&hadc1);
 
   /* USER CODE END ADC_IRQn 0 */

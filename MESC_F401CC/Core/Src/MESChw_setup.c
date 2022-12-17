@@ -69,14 +69,13 @@ void hw_init() {
 void getRawADC(void) {
 	//Get the injected critical conversions
   measurement_buffers.RawADC[0][0] = hadc1.Instance->JDR1;  // U Current
-  measurement_buffers.RawADC[0][1] = hadc1.Instance->JDR4;  // DC Link Voltage
-
   measurement_buffers.RawADC[1][0] = hadc1.Instance->JDR2;  // V Current
   measurement_buffers.RawADC[2][0] = hadc1.Instance->JDR3;  // W Current
-  
-  //These are handled by regular conversion manager and DMA
-  measurement_buffers.RawADC[1][3] = ADC_buffer[3];  // Throttle
+  measurement_buffers.RawADC[0][1] = hadc1.Instance->JDR4;  // DC Link Voltage
 
+  //These are handled by regular conversion manager and DMA
+  //measurement_buffers.RawADC[1][3] = ADC_buffer[3];
+  GET_THROTTLE_INPUT;
 //Voltage sense for the MP2
   measurement_buffers.RawADC[0][2] = ADC_buffer[0]; //PhaseU Voltage
   measurement_buffers.RawADC[1][1] = ADC_buffer[1]; //PhaseV Voltage
