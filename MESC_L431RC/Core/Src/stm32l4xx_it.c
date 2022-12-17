@@ -22,6 +22,7 @@
 #include "stm32l4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "MESCerror.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,6 +56,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern ADC_HandleTypeDef hadc1;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
 extern DMA_HandleTypeDef hdma_usart3_tx;
@@ -213,6 +215,25 @@ void DMA1_Channel2_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
 
   /* USER CODE END DMA1_Channel2_IRQn 1 */
+}
+
+/**
+  * @brief This function handles ADC1 global interrupt.
+  */
+void ADC1_IRQHandler(void)
+{
+  /* USER CODE BEGIN ADC1_IRQn 0 */
+	if(__HAL_ADC_GET_FLAG(&hadc1,ADC_FLAG_AWD1)){
+		handleError(ERROR_ADC_OUT_OF_RANGE_IA);
+		handleError(ERROR_ADC_OUT_OF_RANGE_IB);
+		handleError(ERROR_ADC_OUT_OF_RANGE_IC);
+		handleError(ERROR_ADC_OUT_OF_RANGE_VBUS);
+	}
+  /* USER CODE END ADC1_IRQn 0 */
+  HAL_ADC_IRQHandler(&hadc1);
+  /* USER CODE BEGIN ADC1_IRQn 1 */
+
+  /* USER CODE END ADC1_IRQn 1 */
 }
 
 /**

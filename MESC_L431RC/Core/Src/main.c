@@ -214,6 +214,7 @@ static void MX_ADC1_Init(void)
 
   /* USER CODE END ADC1_Init 0 */
 
+  ADC_AnalogWDGConfTypeDef AnalogWDGConfig = {0};
   ADC_ChannelConfTypeDef sConfig = {0};
   ADC_InjectionConfTypeDef sConfigInjected = {0};
 
@@ -246,6 +247,18 @@ static void MX_ADC1_Init(void)
   /** Disable Injected Queue
   */
   HAL_ADCEx_DisableInjectedQueue(&hadc1);
+
+  /** Configure Analog WatchDog 1
+  */
+  AnalogWDGConfig.WatchdogNumber = ADC_ANALOGWATCHDOG_1;
+  AnalogWDGConfig.WatchdogMode = ADC_ANALOGWATCHDOG_ALL_INJEC;
+  AnalogWDGConfig.ITMode = ENABLE;
+  AnalogWDGConfig.HighThreshold = 4048;
+  AnalogWDGConfig.LowThreshold = 48;
+  if (HAL_ADC_AnalogWDGConfig(&hadc1, &AnalogWDGConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
   /** Configure Regular Channel
   */
