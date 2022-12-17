@@ -23,7 +23,7 @@
  */
 
 #include "stm32fxxx_hal.h"
-
+#include "MESCfoc.h"
 
 
 
@@ -114,7 +114,7 @@ void hw_init(void);  // Fills the parameters of the hardware struct, simplifies
                      // some into useful overall gain values
 
 void setAWDVals();
-void getRawADC(void);
+void getRawADC(MESC_motor_typedef *_motor);
 void getRawADCVph(void);
 
 /*
@@ -125,7 +125,7 @@ int getHallState( void );
 
 void mesc_init_1( void ); // Perform HW specific initialisation for MESCInit() before delay
 void mesc_init_2( void ); // Perform HW specific initialisation for MESCInit() after delay
-void mesc_init_3( void ); // Perform HW specific initialisation for MESCInit() after hw_init()
+void mesc_init_3( MESC_motor_typedef *_motor ); // Perform HW specific initialisation for MESCInit() after hw_init()
 
 /*
 Profile defaults

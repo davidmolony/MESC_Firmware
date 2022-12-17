@@ -121,7 +121,7 @@ static void cmd_stop( void )
     foc_vars.Idq_req.d = 0.0f;
     foc_vars.Idq_req.q = 0.0f;
 
-generateBreak();
+generateBreak(&motor1);
 MotorState = MOTOR_STATE_TRACKING;
 }
 
@@ -143,8 +143,8 @@ static void cmd_reset( void )
 static void cmd_test( void )
 {
     MotorState = MOTOR_STATE_TEST;
-    phV_Enable();
-    phW_Enable();
+    phV_Enable(&motor1);
+    phW_Enable(&motor1);
 }
 static void cmd_iqup( void )
 {

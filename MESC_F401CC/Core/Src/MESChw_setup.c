@@ -66,7 +66,7 @@ void hw_init() {
                  (g_hw_setup.RVBB + g_hw_setup.RVBT));
 }
 
-void getRawADC(void) {
+void getRawADC(MESC_motor_typedef *_motor) {
 	//Get the injected critical conversions
   measurement_buffers.RawADC[0][0] = hadc1.Instance->JDR1;  // U Current
   measurement_buffers.RawADC[1][0] = hadc1.Instance->JDR2;  // V Current
@@ -85,6 +85,15 @@ void getRawADC(void) {
   measurement_buffers.RawADC[3][0] = ADC_buffer[5]; //Temperature on PB1
 //Motor temp or Brake, needs plumbing in to main MESC...
 //   = ADC_buffer[4]
+
+  _motor->Raw.Iu = hadc1.Instance->JDR1;// PhaseU Current
+  _motor->Raw.Iv = hadc1.Instance->JDR2;
+  _motor->Raw.Iw = hadc1.Instance->JDR3;
+  _motor->Raw.Vbus = hadc1.Instance->JDR4; //Bus/battery voltage
+  _motor->Raw.Vu = ADC_buffer[0]; //PhaseU Voltage
+  _motor->Raw.Vv = ADC_buffer[1];
+  _motor->Raw.Vw = ADC_buffer[2];
+
 }
 
 void getRawADCVph(void){
@@ -195,7 +204,7 @@ void mesc_init_2( void )
     // Do nothing
 }
 
-void mesc_init_3( void )
+void mesc_init_3( MESC_motor_typedef *_motor )
 {
 	
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&ADC_buffer, 6);
@@ -208,7 +217,7 @@ void mesc_init_3( void )
 	
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-	generateBreak(); //avoid a spurious pulse on startup
+	generateBreak(_motor); //avoid a spurious pulse on startup
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 
 	HAL_ADCEx_InjectedStart(&hadc1);

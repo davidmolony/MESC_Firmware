@@ -67,6 +67,8 @@ int adc_conv_end;
 //static float flux_linked_alpha = 0.00501f;
 //static float flux_linked_beta = 0.00511f;
 
+MESC_motor_typedef motor1;
+
 MESCfoc_s foc_vars;
 MESCtest_s test_vals;
 foc_measurement_t measurement_buffers;
@@ -77,11 +79,13 @@ int print_samples_now, lognow;
 
 void MESCInit() {
 #ifdef STM32L4 // For some reason, ST have decided to have a different name for the L4 timer DBG freeze...
-DBGMCU->APB2FZ |= DBGMCU_APB2FZ_DBG_TIM1_STOP;
+	DBGMCU->APB2FZ |= DBGMCU_APB2FZ_DBG_TIM1_STOP;
 #else
-DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP;
+	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP;
 #endif
-MotorState = MOTOR_STATE_IDLE;
+	MotorState = MOTOR_STATE_IDLE;
+
+	motor1.mtimer = &htim1;
 
   mesc_init_1();
 
@@ -97,7 +101,7 @@ MotorState = MOTOR_STATE_IDLE;
   // Start the PWM channels, reset the counter to zero each time to avoid
   // triggering the ADC, which in turn triggers the ISR routine and wrecks the
   // startup
-  mesc_init_3();
+  mesc_init_3(&motor1);
   MotorState = MOTOR_STATE_INITIALISING;
 #ifdef LOGGING
   lognow = 1;
@@ -163,11 +167,15 @@ void InputInit(){
 	input_vars.Idq_req_ADC2.q =0;
 
 }
-void initialiseInverter(){
+void initialiseInverter(MESC_motor_typedef *_motor){
 
       for (uint32_t i = 0; i < 3; i++) {
         measurement_buffers.ADCOffset[i] += measurement_buffers.RawADC[i][FOC_CHANNEL_PHASE_I];
       }
+      _motor->offset.Iu += _motor->Raw.Iu;
+      _motor->offset.Iv += _motor->Raw.Iv;
+      _motor->offset.Iw += _motor->Raw.Iw;
+
 
       static int initcycles = 0;
       initcycles = initcycles + 1;
@@ -180,6 +188,10 @@ void initialiseInverter(){
         for (uint32_t i = 0; i < 3; i++) {
           measurement_buffers.ADCOffset[i] /= 1000;
         }
+        _motor->offset.Iu /=  initcycles;
+        _motor->offset.Iv /=  initcycles;
+        _motor->offset.Iw /=  initcycles;
+
     	MotorState = MOTOR_STATE_TRACKING;
         htim1.Instance->BDTR |= TIM_BDTR_MOE;
       }
@@ -189,15 +201,15 @@ void initialiseInverter(){
 // This should be the only function needed to be added into the PWM interrupt
 // for MESC to run Ensure that it is followed by the clear timer update
 // interrupt
-void MESC_PWM_IRQ_handler() {
+void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor) {
   if (htim1.Instance->CNT > 512) {
     //foc_vars.IRQentry = debugtim.Instance->CNT;
-    fastLoop();
+    fastLoop(_motor);
     //foc_vars.IRQexit = debugtim.Instance->CNT - foc_vars.IRQentry;
     //foc_vars.FLrun++;
   } else {
     //foc_vars.IRQentry = debugtim.Instance->CNT;
-    hyperLoop();
+    hyperLoop(_motor);
     //foc_vars.IRQexit = debugtim.Instance->CNT - foc_vars.IRQentry;
     //foc_vars.VFLrun++;
   }
@@ -211,18 +223,18 @@ void MESC_PWM_IRQ_handler() {
 
 static int current_hall_state;
 
-void fastLoop() {
+void fastLoop(MESC_motor_typedef *_motor) {
   // Call this directly from the TIM top IRQ
   current_hall_state = getHallState();
   // First thing we ever want to do is convert the ADC values
   // to real, useable numbers.
-  ADCConversion();
+  ADCConversion(_motor);
   adc_conv_end = htim1.Instance->CNT;  // track the ADC conversion time
 
   switch (MotorState) {
 
   	case MOTOR_STATE_INITIALISING:
-  		initialiseInverter();
+  		initialiseInverter(_motor);
   		break;
 
     case MOTOR_STATE_RUN:
@@ -234,13 +246,13 @@ void fastLoop() {
       //        BLDCCurrentController();
       //        BLDCCommuteHall();
       //      }//For now we are going to not support BLDC mode
-    	generateEnable();
+    	generateEnable(_motor);
       if (MotorSensorMode == MOTOR_SENSOR_MODE_HALL) {
 			foc_vars.inject = 0;
 			hallAngleEstimator();
 			angleObserver();
-			MESCFOC();
-			writePWM();
+			MESCFOC(_motor);
+			writePWM(_motor);
       } else if (MotorSensorMode == MOTOR_SENSOR_MODE_SENSORLESS) {
 #ifdef USE_HALL_START
     static int hall_start_now;
@@ -259,25 +271,25 @@ void fastLoop() {
 #else
     	flux_observer();
 #endif
-			MESCFOC();
-			writePWM();
+			MESCFOC(_motor);
+			writePWM(_motor);
       } else if (MotorSensorMode == MOTOR_SENSOR_MODE_ENCODER) {
 		  foc_vars.FOCAngle = foc_vars.enc_angle;
-		  MESCFOC();
-		  writePWM();
+		  MESCFOC(_motor);
+		  writePWM(_motor);
       } else if(MotorSensorMode == MOTOR_SENSOR_MODE_OPENLOOP){
 		  foc_vars.openloop_step = 60;
 		  OLGenerateAngle();
-		  MESCFOC();
-		  writePWM();
+		  MESCFOC(_motor);
+		  writePWM(_motor);
       }
       break;
 
     case MOTOR_STATE_TRACKING:
 #ifdef HAS_PHASE_SENSORS
 			  // Track using BEMF from phase sensors
-			  generateBreak();
-			  ADCPhaseConversion();
+			  generateBreak(_motor);
+			  ADCPhaseConversion(_motor);
 		      MESCTrack();
 		      if (MotorSensorMode == MOTOR_SENSOR_MODE_HALL) {
 		          hallAngleEstimator();
@@ -298,8 +310,8 @@ void fastLoop() {
       // Same as open loop
     	foc_vars.openloop_step = 60;
     	OLGenerateAngle();
-    	MESCFOC();
-    	writePWM();
+    	MESCFOC(_motor);
+    	writePWM(_motor);
       // Write the PWM values
       break;
 
@@ -312,7 +324,7 @@ void fastLoop() {
       break;
 
     case MOTOR_STATE_IDLE:
-        generateBreak();
+        generateBreak(_motor);
       // Do basically nothing
       break;
 
@@ -327,9 +339,9 @@ void fastLoop() {
       } else {
         // hall sensors detected
         MotorSensorMode = MOTOR_SENSOR_MODE_HALL;
-        getHallTable();
-        MESCFOC();
-        writePWM();
+        getHallTable(_motor);
+        MESCFOC(_motor);
+        writePWM(_motor);
       }
       break;
 
@@ -338,16 +350,16 @@ void fastLoop() {
                 // the resistance measurement has converged at a
                 // good value. Once the measurement is complete,
                 // Rphase is set, and this is no longer called
-          measureResistance();
+          measureResistance(_motor);
         break;
 
     case MOTOR_STATE_GET_KV:
-      getkV();
+      getkV(_motor);
 
       break;
 
     case MOTOR_STATE_ERROR:
-      generateBreak();  // Generate a break state (software disabling all PWM)
+      generateBreak(_motor);  // Generate a break state (software disabling all PWM)
                         // Now panic and freak out
       break;
 
@@ -358,11 +370,11 @@ void fastLoop() {
     case MOTOR_STATE_TEST:
     	if(TestMode == TEST_TYPE_DOUBLE_PULSE){
       // Double pulse test
-      doublePulseTest();
+      doublePulseTest(_motor);
     	}else if(TestMode == TEST_TYPE_DEAD_TIME_IDENT){
     	//Here we are going to pull all phases low, and then increase the duty on one phase until we register a current response.
     	//This duty represents the dead time during which there is no current response
-    		getDeadtime();
+    		getDeadtime(_motor);
     	}else if(TestMode == TEST_TYPE_HARDWARE_VERIFICATION){
     		//Here we want a function that pulls all phases low, then all high and verifies a response
     		//Then we want to show a current response with increasing phase duty
@@ -370,16 +382,16 @@ void fastLoop() {
       break;
 
     case MOTOR_STATE_RECOVERING:
-	      deadshort(); //Function to startup motor from running without phase sensors
+	      deadshort(_motor); //Function to startup motor from running without phase sensors
       break;
 
     case MOTOR_STATE_SLAMBRAKE:
       if((fabs(measurement_buffers.ConvertedADC[0][0])>input_vars.max_request_Idq.q)||
 		  (fabs(measurement_buffers.ConvertedADC[1][0])>input_vars.max_request_Idq.q)||
 		  (fabs(measurement_buffers.ConvertedADC[2][0])>input_vars.max_request_Idq.q)){
-    	  generateBreak();
+    	  generateBreak(_motor);
       }else{
-    	  generateEnable();
+    	  generateEnable(_motor);
     	  htim1.Instance->CCR1 = 0;
     	  htim1.Instance->CCR2 = 0;
     	  htim1.Instance->CCR3 = 0;
@@ -390,7 +402,7 @@ void fastLoop() {
 
     default:
       MotorState = MOTOR_STATE_ERROR;
-      generateBreak();
+      generateBreak(_motor);
       break;
   }
 #ifdef SOFTWARE_ADC_REGULAR
@@ -412,7 +424,7 @@ static volatile float nrm;
 static volatile float nrm_avg;
 static uint16_t last_angle;
 
-void hyperLoop() {
+void hyperLoop(MESC_motor_typedef *_motor) {
 //#ifdef USE_HFI
   if (foc_vars.inject) {
     if (foc_vars.inject_high_low_now == 0) {
@@ -473,7 +485,7 @@ foc_vars.FOCAngle = foc_vars.FOCAngle + 0.5f*foc_vars.angle_error;
 #endif
  // foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.angle_error;
 if(MotorState==MOTOR_STATE_RUN||MotorState==MOTOR_STATE_MEASURING){
-	writePWM();
+	writePWM(_motor);
 	}
 #ifdef LOGGING
 if(lognow){
@@ -498,29 +510,29 @@ if(lognow){
 
 #define MAX_ERROR_COUNT 1
 
-void VICheck() {  // Check currents, voltages are within panic limits
+void VICheck(MESC_motor_typedef *_motor) {  // Check currents, voltages are within panic limits
 
 
   if (measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim){
-	  handleError(ERROR_OVERCURRENT_PHA);
+	  handleError(_motor, ERROR_OVERCURRENT_PHA);
   }
   if (measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim){
-	  handleError(ERROR_OVERCURRENT_PHB);
+	  handleError(_motor, ERROR_OVERCURRENT_PHB);
   }
   if (measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim){
-	  handleError(ERROR_OVERCURRENT_PHC);
+	  handleError(_motor,ERROR_OVERCURRENT_PHC);
   }
   if (measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V] > g_hw_setup.RawVoltLim){
-	  handleError(ERROR_OVERVOLTAGE);
+	  handleError(_motor, ERROR_OVERVOLTAGE);
   }
 }
 float maxIgamma;
 uint16_t phasebalance;
-  void ADCConversion() {
+  void ADCConversion(MESC_motor_typedef *_motor) {
 	  foc_vars.Idq_smoothed.d = (foc_vars.Idq_smoothed.d*99.0f + foc_vars.Idq.d)*0.01f;
 	  foc_vars.Idq_smoothed.q = (foc_vars.Idq_smoothed.q*99.0f + foc_vars.Idq.q)*0.01f;
 
-    getRawADC();
+    getRawADC(_motor);
 
     // Here we take the raw ADC values, offset, cast to (float) and use the
     // hardware gain values to create volt and amp variables
@@ -535,10 +547,19 @@ uint16_t phasebalance;
         (float)(measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] - measurement_buffers.ADCOffset[2]) * g_hw_setup.Igain;
     measurement_buffers.ConvertedADC[0][1] =
         (float)measurement_buffers.RawADC[0][1] * g_hw_setup.VBGain;  // Vbus
+    //Convert the currents to real amps in SI units
+	_motor->Conv.Iu =
+		(float)(_motor->Raw.Iu - _motor->offset.Iu) * g_hw_setup.Igain;
+	_motor->Conv.Iv =
+		(float)(_motor->Raw.Iv - _motor->offset.Iv) * g_hw_setup.Igain;
+	_motor->Conv.Iw =
+		(float)(_motor->Raw.Iw - _motor->offset.Iw) * g_hw_setup.Igain;
+	_motor->Conv.Vbus =
+		(float)_motor->Raw.Vbus * g_hw_setup.VBGain;  // Vbus
 
     //Check for over limit conditions. We want this after the conversion so that the
     //correct overcurrent values are logged
-    VICheck();
+    VICheck(_motor);
 
 //Deal with terrible hardware choice of only having two current sensors
 //Based on Iu+Iv+Iw = 0
@@ -615,7 +636,7 @@ if(phasebalance){
                      foc_vars.sincosangle.sin * foc_vars.Iab[0];
   }
 
-  void ADCPhaseConversion() {
+  void ADCPhaseConversion(MESC_motor_typedef *_motor) {
 	  //To save clock cycles in the main run loop we only want to convert the phase voltages while tracking.
   //Convert the voltages to volts in real SI units
 	  measurement_buffers.ConvertedADC[0][2] =
@@ -624,6 +645,10 @@ if(phasebalance){
 		  (float)measurement_buffers.RawADC[1][1] * g_hw_setup.VBGain;  // Vsw
 	  measurement_buffers.ConvertedADC[1][2] =
 		  (float)measurement_buffers.RawADC[1][2] * g_hw_setup.VBGain;  // Wsw
+
+	  _motor->Conv.Vu = (float)_motor->Raw.Vu * g_hw_setup.VBGain;
+	  _motor->Conv.Vv = (float)_motor->Raw.Vv * g_hw_setup.VBGain;
+	  _motor->Conv.Vw = (float)_motor->Raw.Vw * g_hw_setup.VBGain;
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -879,7 +904,7 @@ if(phasebalance){
   //////////////////////////////////////////////////////////////////////////////////////////
   float FW_current = 0;
 
-  void MESCFOC() {
+  void MESCFOC(MESC_motor_typedef *_motor) {
 
     // Here we are going to do a PID loop to control the dq currents, converting
     // Idq into Vdq Calculate the errors
@@ -1014,7 +1039,7 @@ if(phasebalance){
   uint16_t t_phase, b_phase;
  uint16_t deadtime_comp = DEADTIME_COMP_V;
 
- void writePWM() {
+ void writePWM(MESC_motor_typedef *_motor) {
 
     // Now we update the sin and cos values, since when we do the inverse
     // transforms, we would like to use the most up to date versions(or even the
@@ -1143,15 +1168,15 @@ static int carryU, carryV, carryW;
   // single PWM period break in which the backEMF can be measured directly
   // This function needs implementing and testing before any high current or
   // voltage is applied, otherwise... DeadFETs
-  void generateBreak() {
-    phU_Break();
-    phV_Break();
-    phW_Break();
+  void generateBreak(MESC_motor_typedef *_motor) {
+    phU_Break(_motor);
+    phV_Break(_motor );
+    phW_Break(_motor );
   }
-  void generateEnable() {
-    phU_Enable();
-    phV_Enable();
-    phW_Enable();
+  void generateEnable(MESC_motor_typedef *_motor) {
+    phU_Enable(_motor);
+    phV_Enable(_motor);
+    phW_Enable(_motor);
   }
 
   static float top_V;
@@ -1171,7 +1196,7 @@ static int carryU, carryV, carryW;
   static float bottom_I_Lq;
   static int PWM_cycles = 0;
 
-  void measureResistance() {
+  void measureResistance(MESC_motor_typedef *_motor) {
 
     if (PWM_cycles < 2) {
       uint16_t half_ARR = htim1.Instance->ARR / 2;
@@ -1183,17 +1208,17 @@ static int carryU, carryV, carryW;
       motor.Lqphase = 0.000001f;
       calculateVoltageGain();    // Set initial gains to enable MESCFOC to run
       calculateGains();
-      phU_Enable();
-      phV_Enable();
-      phW_Enable();
+      phU_Enable(_motor);
+      phV_Enable(_motor);
+      phW_Enable(_motor);
       foc_vars.Idq_req.d = I_MEASURE;
       foc_vars.Idq_req.q = 0.0f;
       foc_vars.FOCAngle = 0;
 
       foc_vars.inject = 0;  // flag to not inject at SVPWM top
 
-      MESCFOC();
-      writePWM();
+      MESCFOC(_motor);
+      writePWM(_motor);
 
       top_V = 0;
       bottom_V = 0;
@@ -1213,15 +1238,15 @@ static int carryU, carryV, carryW;
       foc_vars.Idq_req.q = 0.0f;
 
       foc_vars.inject = 0;
-      MESCFOC();
-      writePWM();
+      MESCFOC(_motor);
+      writePWM(_motor);
     }
 
     else if (PWM_cycles < 40000) {  // Lower setpoint
       foc_vars.Idq_req.d = 0.20f*I_MEASURE;
       foc_vars.inject = 0;
-      MESCFOC();
-      writePWM();
+      MESCFOC(_motor);
+      writePWM(_motor);
 
       bottom_V = bottom_V + foc_vars.Vdq.d;
       bottom_I = bottom_I + foc_vars.Idq.d;
@@ -1233,23 +1258,23 @@ static int carryU, carryV, carryW;
     else if (PWM_cycles < 45000) {  // Upper setpoint stabilisation
       foc_vars.Idq_req.d = I_MEASURE;
       foc_vars.inject = 0;
-      MESCFOC();
-      writePWM();
+      MESCFOC(_motor);
+      writePWM(_motor);
 
     }
 
     else if (PWM_cycles < 50000) {  // Upper setpoint
       foc_vars.Idq_req.d = I_MEASURE;
       foc_vars.inject = 0;
-      MESCFOC();
-      writePWM();
+      MESCFOC(_motor);
+      writePWM(_motor);
 
       top_V = top_V + foc_vars.Vdq.d;
       top_I = top_I + foc_vars.Idq.d;
       count_top++;
     } else if (PWM_cycles < 50001) {  // Calculate R
 
-      generateBreak();
+      generateBreak(_motor);
       motor.Rphase = (top_V - bottom_V) / (top_I - bottom_I);
 
       //Initialise the variables for the next measurement
@@ -1264,7 +1289,7 @@ static int carryU, carryV, carryW;
       top_I_L = 0.0f;
       bottom_I_L = 0.0f;
 
-      generateEnable();
+      generateEnable(_motor);
     }
 /////////////////////////// Collect Ld variable//////////////////////////
     else if (PWM_cycles < 80001) {
@@ -1287,7 +1312,7 @@ static int carryU, carryV, carryW;
     }
 
     else if (PWM_cycles < 80002) {
-      generateBreak();
+      generateBreak(_motor);
       motor.Lphase =
           fabsf((foc_vars.Vd_injectionV) /
           ((top_I_L - bottom_I_L) / (count_top * foc_vars.pwm_period)));
@@ -1297,9 +1322,9 @@ static int carryU, carryV, carryW;
       count_bottomq = 0.0f;
       __NOP();  // Put a break point on it...
     } else if (PWM_cycles < 80003) {
-      phU_Enable();
-      phV_Enable();
-      phW_Enable();
+      phU_Enable(_motor);
+      phV_Enable(_motor);
+      phW_Enable(_motor);
 
 ////////////////////////// Collect Lq variable//////////////////////////////
     } else if (PWM_cycles < 100003) {
@@ -1321,7 +1346,7 @@ static int carryU, carryV, carryW;
     }
 
     else {
-      generateBreak();
+      generateBreak(_motor);
       motor.Lqphase =
           fabsf((foc_vars.Vq_injectionV) /
           ((top_I_Lq - bottom_I_Lq) / (count_top * foc_vars.pwm_period)));
@@ -1335,15 +1360,15 @@ static int carryU, carryV, carryW;
       calculateGains();
       MotorState = MOTOR_STATE_TRACKING;
       PWM_cycles = 0;
-      phU_Enable();
-      phV_Enable();
-      phW_Enable();
+      phU_Enable(_motor);
+      phV_Enable(_motor);
+      phW_Enable(_motor);
     }
     PWM_cycles++;
   }
 
 
-  void getHallTable() {
+  void getHallTable(MESC_motor_typedef *_motor) {
     static int firstturn = 1;
     static int hallstate;
     hallstate = getHallState();
@@ -1354,7 +1379,7 @@ static int carryU, carryV, carryW;
     static int rollover;
     hallstate = current_hall_state;
     if (firstturn) {
-    	generateEnable();
+    	generateEnable(_motor);
       lasthallstate = hallstate;
       (void)lasthallstate;
       firstturn = 0;
@@ -1426,7 +1451,7 @@ static int carryU, carryV, carryW;
       }
     }
     if (pwm_count == 65535) {
-      generateBreak();  // Debugging
+      generateBreak(_motor);  // Debugging
       for (int i = 1; i < 7; i++) {
         hallangles[i][0] = hallangles[i][0] / hallangles[i][1];
         if (hallangles[i][0] > 65535) {
@@ -1442,23 +1467,22 @@ static int carryU, carryV, carryW;
       MotorState = MOTOR_STATE_RUN;
       foc_vars.Idq_req.d = 0;
       foc_vars.Idq_req.q = 0;
-      phU_Enable();
-      phV_Enable();
-      phW_Enable();
+      phU_Enable(_motor);
+      phV_Enable(_motor);
+      phW_Enable(_motor);
     }
   }
 
-  void measureInductance()  // UNUSED, THIS HAS BEEN ROLLED INTO THE MEASURE
+  void measureInductance(MESC_motor_typedef *_motor){  // UNUSED, THIS HAS BEEN ROLLED INTO THE MEASURE
                             // RESISTANCE... no point in 2 functions really...
-  {
-
+__NOP();
   }
   int angle_delta;
   static volatile float temp_flux;
   static volatile float temp_FLA;
   static volatile float temp_FLB;
 
-  void getkV() {
+  void getkV(MESC_motor_typedef *_motor) {
   	foc_vars.inject = 0;
     static int cycles = 0;
 
@@ -1467,9 +1491,9 @@ static int carryU, carryV, carryW;
     	motor_profile->flux_linkage_min = 0.00001f;//Set really wide limits
     	foc_vars.openloop_step = 0;
     	motor.motor_flux = motor_profile->flux_linkage_max;
-        phU_Enable();
-        phV_Enable();
-        phW_Enable();
+        phU_Enable(_motor);
+        phV_Enable(_motor);
+        phW_Enable(_motor);
     }
 
     flux_observer();//We run the flux observer during this
@@ -1494,17 +1518,17 @@ static int carryU, carryV, carryW;
         	temp_FLA = foc_vars.flux_linked_alpha;
         	temp_FLB = foc_vars.flux_linked_beta;
         }
-        MESCFOC();
+        MESCFOC(_motor);
     }
     else if (cycles < 61000) {
-    	generateBreak();
-    	ADCPhaseConversion();
+    	generateBreak(_motor);
+    	ADCPhaseConversion(_motor);
     	MESCTrack();
     }
     else if (cycles < 70001) {
-    	generateEnable();
+    	generateEnable(_motor);
         foc_vars.Idq_int_err.d = 0.0f;
-        MESCFOC();
+        MESCFOC(_motor);
 
       count++;
       foc_vars.Idq_req.d = 0.0f;
@@ -1514,9 +1538,9 @@ static int carryU, carryV, carryW;
       count++;
       foc_vars.Idq_req.d = 0.0f;
       foc_vars.Idq_req.q = IMEASURE_CLOSEDLOOP;
-      MESCFOC();
+      MESCFOC(_motor);
     } else {
-       generateBreak();
+       generateBreak(_motor);
     	motor_profile->flux_linkage_max = 1.3f*motor.motor_flux;
     	motor_profile->flux_linkage_min = 0.7f*motor.motor_flux;
     	motor_profile->flux_linkage = motor.motor_flux;
@@ -1526,10 +1550,10 @@ static int carryU, carryV, carryW;
         MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
       } else {
         MotorState = MOTOR_STATE_ERROR;
-        generateBreak();
+        generateBreak(_motor);
       }
     }
-    writePWM();
+    writePWM(_motor);
 
     cycles++;
 
@@ -1539,7 +1563,7 @@ static int carryU, carryV, carryW;
 
   // Turn all phase U FETs off, Tristate the HBridge output - For BLDC mode
   // mainly, but also used for measuring, software fault detection and recovery
-  void phU_Break() {
+  void phU_Break(MESC_motor_typedef *_motor) {
     tmpccmrx = htim1.Instance->CCMR1;
     tmpccmrx &= ~TIM_CCMR1_OC1M;
     tmpccmrx &= ~TIM_CCMR1_CC1S;
@@ -1549,7 +1573,7 @@ static int carryU, carryV, carryW;
     htim1.Instance->CCER &= ~TIM_CCER_CC1NE;  // disable
   }
   // Basically un-break phase U, opposite of above...
-  void phU_Enable() {
+  void phU_Enable(MESC_motor_typedef *_motor) {
     tmpccmrx = htim1.Instance->CCMR1;
     tmpccmrx &= ~TIM_CCMR1_OC1M;
     tmpccmrx &= ~TIM_CCMR1_CC1S;
@@ -1559,7 +1583,7 @@ static int carryU, carryV, carryW;
     htim1.Instance->CCER |= TIM_CCER_CC1NE;  // enable
   }
 
-  void phV_Break() {
+  void phV_Break(MESC_motor_typedef *_motor) {
     tmpccmrx = htim1.Instance->CCMR1;
     tmpccmrx &= ~TIM_CCMR1_OC2M;
     tmpccmrx &= ~TIM_CCMR1_CC2S;
@@ -1569,7 +1593,7 @@ static int carryU, carryV, carryW;
     htim1.Instance->CCER &= ~TIM_CCER_CC2NE;  // disable
   }
 
-  void phV_Enable() {
+  void phV_Enable(MESC_motor_typedef *_motor) {
     tmpccmrx = htim1.Instance->CCMR1;
     tmpccmrx &= ~TIM_CCMR1_OC2M;
     tmpccmrx &= ~TIM_CCMR1_CC2S;
@@ -1579,7 +1603,7 @@ static int carryU, carryV, carryW;
     htim1.Instance->CCER |= TIM_CCER_CC2NE;  // enable
   }
 
-  void phW_Break() {
+  void phW_Break(MESC_motor_typedef *_motor) {
     tmpccmrx = htim1.Instance->CCMR2;
     tmpccmrx &= ~TIM_CCMR2_OC3M;
     tmpccmrx &= ~TIM_CCMR2_CC3S;
@@ -1589,7 +1613,7 @@ static int carryU, carryV, carryW;
     htim1.Instance->CCER &= ~TIM_CCER_CC3NE;  // disable
   }
 
-  void phW_Enable() {
+  void phW_Enable(MESC_motor_typedef *_motor) {
     tmpccmrx = htim1.Instance->CCMR2;
     tmpccmrx &= ~TIM_CCMR2_OC3M;
     tmpccmrx &= ~TIM_CCMR2_CC3S;
@@ -1655,12 +1679,12 @@ static int carryU, carryV, carryW;
 
 
   static int dp_periods = 3;
-  void doublePulseTest() {
+  void doublePulseTest(MESC_motor_typedef *_motor) {
     static int dp_counter;
     if  (dp_counter == 0) { //Let bootstrap charge
-        phU_Enable();
-        phV_Enable();
-        phW_Enable();
+        phU_Enable(_motor);
+        phV_Enable(_motor);
+        phW_Enable(_motor);
         htim1.Instance->CCR1 = 0;
         htim1.Instance->CCR2 = 0;
         htim1.Instance->CCR3 = 0;
@@ -1671,9 +1695,9 @@ static int carryU, carryV, carryW;
       htim1.Instance->CCR1 = 0;
       htim1.Instance->CCR2 = 0;
       htim1.Instance->CCR3 = htim1.Instance->ARR;
-      phU_Break();
-      phV_Enable();
-      phW_Enable();
+      phU_Break(_motor);
+      phV_Enable(_motor);
+      phW_Enable(_motor);
       test_vals.dp_current_final[dp_counter] =
           measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
       dp_counter++;
@@ -1696,7 +1720,7 @@ static int carryU, carryV, carryW;
       test_vals.dp_current_final[dp_counter] =
           measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
       dp_counter = 0;
-      generateBreak();
+      generateBreak(_motor);
       MotorState = MOTOR_STATE_IDLE;
     }
   }
@@ -1831,7 +1855,7 @@ if(foc_vars.Idq_req.q<input_vars.min_request_Idq.q){foc_vars.Idq_req.q = input_v
     }
 
     if(temp_check( measurement_buffers.RawADC[3][0] ) == false){
-    	if(0){generateBreak(); //ToDo Currently not loading the profile so commented out - no temp safety!
+    	if(0){generateBreak(&motor1); //ToDo Currently not loading the profile so commented out - no temp safety!
     	MotorState = MOTOR_STATE_ERROR;
     	MotorError = MOTOR_ERROR_OVER_LIMIT_TEMP;
     	}
@@ -1882,7 +1906,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 	}else if(FW_current>-0.5f){	//Keep it running if FW current is being used
 	#ifdef HAS_PHASE_SENSORS
 		MotorState = MOTOR_STATE_TRACKING;
-		VICheck(); //Immediately return it to error state if there is still a critical fault condition active
+		VICheck(&motor1); //Immediately return it to error state if there is still a critical fault condition active
 	#else
 	//	if(MotorState != MOTOR_STATE_ERROR){
 		MotorState = MOTOR_STATE_IDLE;
@@ -1981,7 +2005,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
   float IacalcDS, IbcalcDS, VacalcDS, VbcalcDS, VdcalcDS, VqcalcDS, FLaDS, FLbDS, FLaDSErr, FLbDSErr;
   uint16_t angleDS, angleErrorDSENC, angleErrorPhaseSENC, angleErrorPhaseDS, countdown_cycles;
 
-  void deadshort(){
+  void deadshort(MESC_motor_typedef *_motor){
 	  // LICENCE NOTE:
 	  // This function deviates slightly from the BSD 3 clause licence.
 	  // The work here is entirely original to the MESC FOC project, and not based
@@ -2005,7 +2029,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 	  		if(countdown == 1||(((foc_vars.Iab[0]*foc_vars.Iab[0]+foc_vars.Iab[1]*foc_vars.Iab[1])>DEADSHORT_CURRENT*DEADSHORT_CURRENT)&&countdown<9))
 	  				{
 	  					//Need to collect the ADC currents here
-	  					generateBreak();
+	  					generateBreak(_motor);
 	  					//Calculate the voltages in the alpha beta phase...
 	  					IacalcDS = foc_vars.Iab[0];
 	  					IbcalcDS = foc_vars.Iab[1];
@@ -2045,7 +2069,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 	  					foc_vars.Idq_int_err.d = VdcalcDS;
 	  					foc_vars.Idq_int_err.q = VqcalcDS;
 	  		//Next PWM cycle it  will jump to running state,
-	  					MESCFOC();
+	  					MESCFOC(_motor);
 	  					countdown_cycles = 9-countdown;
 	  					countdown = 1;
 
@@ -2053,7 +2077,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 
 	  		}
 	  		if(countdown > 10){
-	  			generateBreak();
+	  			generateBreak(_motor);
 	  			htim1.Instance->CCR1 = 50;
 	  			htim1.Instance->CCR2 = 50;
 	  			htim1.Instance->CCR3 = 50;
@@ -2063,7 +2087,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 	  			htim1.Instance->CCR1 = 50;
 	  			htim1.Instance->CCR2 = 50;
 	  			htim1.Instance->CCR3 = 50;
-	  			generateEnable();
+	  			generateEnable(_motor);
 	  		}
 	  		if(countdown == 1 ){
 					countdown = 15; //We need at least a few cycles for the current to relax
@@ -2169,7 +2193,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 uint16_t test_on_time;
 uint16_t test_on_time_acc[3];
 uint16_t test_counts;
-  void getDeadtime(){
+  void getDeadtime(MESC_motor_typedef *_motor){
 	  static int use_phase = 0;
 
 	  if(measurement_buffers.ConvertedADC[use_phase][0]<1.0f){ test_on_time=test_on_time+1;}
@@ -2180,25 +2204,25 @@ uint16_t test_counts;
 		htim1.Instance->CCR1 = test_on_time;
 		htim1.Instance->CCR2 = 0;
 		htim1.Instance->CCR3 = 0;
-		generateEnable();
+		generateEnable(_motor);
 		test_on_time_acc[0] = test_on_time_acc[0]+test_on_time;
 		}
 		if(use_phase==1){
 			htim1.Instance->CCR1 = 0;
 			htim1.Instance->CCR2 = test_on_time;
 			htim1.Instance->CCR3 = 0;
-			generateEnable();
+			generateEnable(_motor);
 			test_on_time_acc[1] = test_on_time_acc[1]+test_on_time;
 		}
 		if(use_phase==2){
 			htim1.Instance->CCR1 = 0;
 			htim1.Instance->CCR2 = 0;
 			htim1.Instance->CCR3 = test_on_time;
-			generateEnable();
+			generateEnable(_motor);
 			test_on_time_acc[2] = test_on_time_acc[2]+test_on_time;
 		}
 		if(use_phase>2){
-			generateBreak();
+			generateBreak(_motor);
 			MotorState = MOTOR_STATE_TRACKING;
 			use_phase = 0;
 			test_on_time_acc[0] = test_on_time_acc[0]>>10;

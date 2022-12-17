@@ -88,6 +88,65 @@
 #define DEADSHORT_CURRENT 30.0f
 #endif
 
+typedef struct {
+	uint32_t Iu;
+	uint32_t Iv;
+	uint32_t Iw;
+
+	uint32_t Vbus;
+
+	uint32_t Vu;
+	uint32_t Vv;
+	uint32_t Vw;
+
+	uint32_t MOSu_T;
+	uint32_t MOSv_T;
+	uint32_t MOSw_T;
+
+	uint32_t Motor_T;
+
+	uint32_t ADC_in_ext1;
+	uint32_t ADC_in_ext2;
+}MESC_raw_typedef;
+
+//extern MESC_raw_typedef motor1;
+
+typedef struct {
+	uint32_t Iu;
+	uint32_t Iv;
+	uint32_t Iw;
+}MESC_offset_typedef;
+
+typedef struct {
+	float Iu;
+	float Iv;
+	float Iw;
+
+	float Vbus;
+
+	float Vu;
+	float Vv;
+	float Vw;
+
+	float MOSu_T;
+	float MOSv_T;
+	float MOSw_T;
+
+	float Motor_T;
+}MESC_Converted_typedef;
+
+//extern MESC_Converted_typedef motor1;
+
+typedef struct{
+	TIM_HandleTypeDef *mtimer; //3 phase PWM timer
+	TIM_HandleTypeDef *stimer; //Timer that services the slowloop
+
+	MESC_raw_typedef Raw;
+	MESC_Converted_typedef Conv;
+	MESC_offset_typedef offset;
+}MESC_motor_typedef;
+
+extern MESC_motor_typedef motor1;
 
 enum MESCADC
 {
@@ -310,21 +369,22 @@ extern sampled_vars_t sampled_vars;
 
 void MESCInit();
 void InputInit();
-void initialiseInverter();
+void initialiseInverter(MESC_motor_typedef *_motor);
 
-void MESC_PWM_IRQ_handler(); //Put this into the PWM interrupt,
+void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor);
+							//Put this into the PWM interrupt,
 							//(or less optimally) ADC conversion complete interrupt
 							//If using ADC interrupt, may want to get ADC to convert on top and bottom of PWM
-void fastLoop();
-void hyperLoop();
-void VICheck();
-void ADCConversion();  // Roll this into the V_I_Check? less branching, can
+void fastLoop(MESC_motor_typedef *_motor);
+void hyperLoop(MESC_motor_typedef *_motor);
+void VICheck(MESC_motor_typedef *_motor);
+void ADCConversion(MESC_motor_typedef *_motor);  // Roll this into the V_I_Check? less branching, can
                        // probably reduce no.ops and needs doing every cycle
                        // anyway...
 // convert currents from uint_16 ADC readings into float A and uint_16 voltages
 // into float volts Since the observer needs the Clark transformed current, do
 // the Clark and Park transform now
-void ADCPhaseConversion();
+void ADCPhaseConversion(MESC_motor_typedef *_motor);
 void hallAngleEstimator();  // Going to attempt to make a similar hall angle
                             // estimator that rolls the hall state into the main
                             // function, and calls a vector table to find the
@@ -339,51 +399,45 @@ void OLGenerateAngle();  // For open loop FOC startup, just use this to generate
                          // thinking about things like synchronising, phase
                          // etc...
 
-void observerTick();  // Call every time to allow the observer, whatever it is,
-                      // to update itself and find motor position
-
-void MESCFOC();  // Field and quadrature current control (PI?)
+void MESCFOC(MESC_motor_typedef *_motor);  // Field and quadrature current control (PI?)
                  // Inverse Clark and Park transforms
 
-void writePWM();  // Offset the PWM to voltage centred (0Vduty is 50% PWM) or
+void writePWM(MESC_motor_typedef *_motor);  // Offset the PWM to voltage centred (0Vduty is 50% PWM) or
                   // subtract lowest phase to always clamp one phase at 0V or
                   // SVPWM
                   // write CCR registers
 
-void generateBreak();  // Software break that does not stop the PWM timer but
+void generateBreak(MESC_motor_typedef *_motor);  // Software break that does not stop the PWM timer but
                        // disables the outputs, sum of phU,V,W_Break();
-void generateEnable(); // Opposite of generateBreak
+void generateEnable(MESC_motor_typedef *_motor); // Opposite of generateBreak
 
-int isMotorRunning();  // return motor state if state is one of the running
-                       // states, if it's an idle, error or break state, disable
-                       // all outputs and measure the phase voltages - if all
-                       // the same, then it's stationary.
-void measureResistance();
-void measureInductance();
-void getkV();
 
-void getHallTable();
-void phU_Break();   // Turn all phase U FETs off, Tristate the ouput - For BLDC
+void measureResistance(MESC_motor_typedef *_motor);
+void measureInductance(MESC_motor_typedef *_motor);
+void getkV(MESC_motor_typedef *_motor);
+
+void getHallTable(MESC_motor_typedef *_motor);
+void phU_Break(MESC_motor_typedef *_motor);   // Turn all phase U FETs off, Tristate the ouput - For BLDC
                     // mode mainly, but also used for measuring
-void phU_Enable();  // Basically un-break phase U, opposite of above...
-void phV_Break();
-void phV_Enable();
-void phW_Break();
-void phW_Enable();
+void phU_Enable(MESC_motor_typedef *_motor);  // Basically un-break phase U, opposite of above...
+void phV_Break(MESC_motor_typedef *_motor);
+void phV_Enable(MESC_motor_typedef *_motor);
+void phW_Break(MESC_motor_typedef *_motor);
+void phW_Enable(MESC_motor_typedef *_motor);
 
 void calculateGains();
 void calculateVoltageGain();
 
-void doublePulseTest();
+void doublePulseTest(MESC_motor_typedef *_motor);
 
 void MESC_Slow_IRQ_handler(TIM_HandleTypeDef *htim); 	//This loop should run off a slow timer e.g. timer 3,4... at 20-50Hz in reset mode
 														//Default setup is to use a 50Hz RCPWM input, which if the RCPWM is not present will run at 20Hz
 														//If entered from update (reset, CC1) no data available for the PWM in. If entered from CC2, new PWM data available
 void slowLoop(TIM_HandleTypeDef *htim);
 void MESCTrack();
-void deadshort();
+void deadshort(MESC_motor_typedef *_motor);
 void tle5012();
-void getDeadtime();
+void getDeadtime(MESC_motor_typedef *_motor);
 void LRObserver();
 void LRObserverCollect();
 void HallFluxMonitor();

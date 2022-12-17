@@ -41,8 +41,8 @@ extern TIM_HandleTypeDef htim1;
  struct MESC_log_vars error_log;
  uint32_t MESC_errors; //This is a bitwise uint32_t representation of the errors that have occurred.
 
-void handleError(uint32_t error_code){
-	generateBreak(); //Always generate a break when something bad happens
+void handleError(MESC_motor_typedef *_motor, uint32_t error_code){
+	generateBreak(_motor); //Always generate a break when something bad happens
 	MotorState = MOTOR_STATE_ERROR;
 	//Log the nature of the fault
 	MESC_errors|= (0b01<<(error_code-1));
@@ -63,11 +63,11 @@ void clearErrors(){
 }
 
 //Observe caution when using this function, BRK hypothetically occurs after a disastrous error.
-void clearBRK(){
+void clearBRK(MESC_motor_typedef *_motor){
 	//If the requested current is zero then sensible to proceed
 	if((foc_vars.Idq_req.q+foc_vars.Idq_req.d)==0.0f){
 	//Generate a break, and set the mode to tracking to enable a chance of safe restart and recovery
-		generateBreak();
+		generateBreak(_motor);
 		//Need to set the MOE bit high to re-enable the timer
 		htim1.Instance->BDTR |= (0b01);
 		MotorState = MOTOR_STATE_TRACKING;
