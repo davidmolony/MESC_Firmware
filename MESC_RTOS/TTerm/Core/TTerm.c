@@ -116,7 +116,9 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
         TERM_addCommandAC(varAC, TERM_varCompleter, &TERM_varList);
         varAC = TERM_addCommand(CMD_varSet, "set", "Set variable", 0, &TERM_defaultList);
         TERM_addCommandAC(varAC, TERM_varCompleter, &TERM_varList);
-        TERM_addCommand(CMD_varSave, "save", "Save variable", 0, &TERM_defaultList);
+        TERM_addCommand(CMD_varSave, "save", "Save variables", 0, &TERM_defaultList);
+        varAC = TERM_addCommand(CMD_varLoad, "load", "Load variables", 0, &TERM_defaultList);
+        TERM_addCommandAC(varAC, TERM_varCompleter, &TERM_varList);
 		#endif
 
       
