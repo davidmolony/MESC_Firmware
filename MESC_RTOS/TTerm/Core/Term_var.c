@@ -28,6 +28,10 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#define HEADER_START 	0xDEADBEEF
+#define FOOTER_END   	0xDEADC0DE
+#define HEADER_VERSION	0x00000001
+
 char toLower(char c){
     if(c > 65 && c < 90){
         return c + 32;
@@ -241,8 +245,49 @@ TermVariableDescriptor * TERM_addVarBool(void* variable, const char * name, cons
     return newVAR;
 }
 
+static uint8_t TERM_doVarListAC(TermVariableDescriptor * head, char * currInput, uint8_t length, char ** buff){
+    uint8_t currPos = 0;
+    uint8_t commandsFound = 0;
+    //UART_print("\r\nStart scan\r\n", buff[commandsFound], commandsFound+1);
+
+    TermVariableDescriptor * curr = head->nextVar;
+	for(;currPos < head->nameLength; currPos++){
+		if(strncmp(currInput, curr->name, length) == 0){
+			if(strlen(curr->name) >= length){
+				buff[commandsFound] = curr->name;
+				commandsFound ++;
+				//UART_print("found %s (count is now %d)\r\n", buff[commandsFound], commandsFound);
+			}
+		}else{
+			if(commandsFound > 0) return commandsFound;
+		}
+		curr = curr->nextVar;
+		if(curr == 0) break;
+	}
+
+    return commandsFound;
+}
+
 uint8_t TERM_varCompleter(TERMINAL_HANDLE * handle, void * params){
-	return 0;
+    if(params == 0){
+        handle->autocompleteBufferLength = 0;
+        return 0;
+    }
+
+    char * buff = pvPortMalloc(128);
+    uint8_t len;
+    memset(buff, 0, 128);
+    handle->autocompleteStart = TERM_findLastArg(handle, buff, &len);
+
+    //TODO use a reasonable size here
+    handle->autocompleteBuffer = pvPortMalloc(handle->varListHead->nameLength * sizeof(char *));
+    handle->currAutocompleteCount = 0;
+
+    handle->autocompleteBufferLength = handle->varListHead->nameLength;
+    handle->autocompleteBufferLength = TERM_doVarListAC(handle->varListHead, buff, len, handle->autocompleteBuffer);
+
+    vPortFree(buff);
+    return handle->autocompleteBufferLength;
 }
 
 
@@ -347,8 +392,11 @@ static void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescripto
 		case TERM_VARIABLE_FLOAT:
 			ttprintf("\033[37m| %.2f", var->min_float);
 			break;
+		case TERM_VARIABLE_BOOL:
+			ttprintf("\033[37m| false");
+			break;
 		default:
-			ttprintf("\033[37m| -");
+			//ttprintf("\033[37m| -");
 			break;
 	}
 
@@ -363,8 +411,11 @@ static void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescripto
 		case TERM_VARIABLE_FLOAT:
 			ttprintf("\033[37m| %.2f", var->max_float);
 			break;
+		case TERM_VARIABLE_BOOL:
+			ttprintf("\033[37m| true");
+			break;
 		default:
-			ttprintf("\033[37m| -");
+			//ttprintf("\033[37m| -");
 			break;
 	}
 	TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_E);
@@ -378,17 +429,17 @@ uint8_t CMD_varList(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	print_var_header(handle);
 
-	TermVariableDescriptor * currCmd = handle->varListHead->nextVar;
+	TermVariableDescriptor * currVar = handle->varListHead->nextVar;
     for(;currPos < handle->varListHead->nameLength; currPos++){
 
     	if(argCount && args[0] != NULL){
-    		if(strstr(currCmd->name, args[0])){
-    			print_var_helperfunc(handle, currCmd);
+    		if(strstr(currVar->name, args[0])){
+    			print_var_helperfunc(handle, currVar);
     		}
     	}else{
-    		print_var_helperfunc(handle, currCmd);
+    		print_var_helperfunc(handle, currVar);
     	}
-        currCmd = currCmd->nextVar;
+        currVar = currVar->nextVar;
     }
 
 	return TERM_CMD_EXIT_SUCCESS;
@@ -455,7 +506,7 @@ static void set_value(TermVariableDescriptor * var, char* value){
 		*(char*)var->variable = value[0];
 		break;
 	case TERM_VARIABLE_STRING:
-		strcpy((char*)var->variable, value);
+		strncpy((char*)var->variable, value, var->typeSize);
 		break;
 	case TERM_VARIABLE_BOOL:
 		for(uint32_t i=0;i<len;i++){
@@ -478,18 +529,127 @@ uint8_t CMD_varSet(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		return TERM_CMD_EXIT_SUCCESS;
 	}
 
-	TermVariableDescriptor * currCmd = handle->varListHead->nextVar;
+	TermVariableDescriptor * currVar = handle->varListHead->nextVar;
     for(;currPos < handle->varListHead->nameLength; currPos++){
-    	if(strcmp(args[0], currCmd->name)==0){
-    		set_value(currCmd, args[1]);
+    	if(strcmp(args[0], currVar->name)==0){
+    		set_value(currVar, args[1]);
+    		print_var_header(handle);
+    		print_var_helperfunc(handle, currVar);
     		return TERM_CMD_EXIT_SUCCESS;
     	}
 
-        currCmd = currCmd->nextVar;
+        currVar = currVar->nextVar;
     }
 
 
 	return TERM_CMD_EXIT_SUCCESS;
 }
 
+uint8_t buffer[1024];
+
+typedef struct _FlashHeader_ FlashHeader;
+typedef struct _FlashFooter_ FlashFooter;
+
+struct _FlashHeader_{
+	uint32_t start;
+	uint32_t num_entries;
+	uint32_t version;
+} __attribute__((packed));
+
+struct _FlashFooter_{
+	uint32_t crc;
+	uint32_t end;
+} __attribute__((packed));
+
+
+uint8_t * address = buffer;
+
+volatile TermVariableDescriptor temp;
+volatile TermVariableDescriptor * new;
+
+uint8_t CMD_varSave(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+
+	uint32_t currPos = 0;
+	TermVariableDescriptor * currVar = handle->varListHead->nextVar;
+
+	uint32_t storage_size = sizeof(buffer);
+	uint8_t * header_section = address;
+	TermVariableDescriptor * var_section 	 = (TermVariableDescriptor *)(address + sizeof(FlashHeader));
+	uint8_t * data_section 	 = address + sizeof(FlashHeader) + (sizeof(TermVariableDescriptor) * handle->varListHead->nameLength);
+
+
+	//Determine how much memory is needed
+	uint32_t n_bytes = sizeof(FlashHeader) + (sizeof(TermVariableDescriptor) * handle->varListHead->nameLength);
+	for(;currPos < handle->varListHead->nameLength; currPos++){
+		n_bytes += (currVar->nameLength+1);
+		n_bytes += currVar->typeSize;
+		currVar = currVar->nextVar;
+	}
+
+	if(n_bytes > storage_size){
+		ttprintf("Flash overflow by %u bytes\r\n", n_bytes - storage_size);
+		return TERM_CMD_EXIT_SUCCESS;
+	}
+
+
+	new = var_section;
+	memset(buffer,0,sizeof(buffer));
+
+	FlashHeader header;
+	FlashFooter footer;
+
+	header.start = HEADER_START;
+	header.num_entries = handle->varListHead->nameLength;
+	header.version = HEADER_VERSION;
+
+	memcpy(header_section, &header, sizeof(header));
+
+
+	currPos = 0;
+	currVar = handle->varListHead->nextVar;
+	for(;currPos < handle->varListHead->nameLength; currPos++){
+
+		memcpy(&temp, currVar, sizeof(TermVariableDescriptor));
+
+		uint32_t nameLengthWNull = currVar->nameLength+1;
+
+		temp.name = data_section;
+		temp.variableDescription = NULL;
+		temp.variable = data_section + nameLengthWNull;
+
+		if(currVar->nextVar){
+			temp.nextVar = var_section + 1;
+		}else{
+			temp.nextVar = 0;
+		}
+
+		memcpy(var_section,&temp,sizeof(TermVariableDescriptor));
+
+		memcpy(data_section, currVar->name, nameLengthWNull);
+		data_section += nameLengthWNull;
+
+		memcpy(data_section, currVar->variable, currVar->typeSize);
+		data_section += currVar->typeSize;
+
+		var_section++;
+		currVar = currVar->nextVar;
+	}
+
+
+	footer.end = FOOTER_END;
+	footer.crc = 0x00;
+
+	memcpy(data_section, &footer, sizeof(FlashFooter));
+
+	ttprintf("Saved %u variables in %u bytes\r\n", handle->varListHead->nameLength, n_bytes);
+
+	return TERM_CMD_EXIT_SUCCESS;
+}
+
+uint8_t CMD_varLoad(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+
+
+	return TERM_CMD_EXIT_SUCCESS;
+
+}
 

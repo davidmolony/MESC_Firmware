@@ -112,9 +112,11 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
         #endif  
         
 		#if TERM_SUPPORT_VARIABLES
-        TERM_addCommand(CMD_varList, "list", "List variables", 0, &TERM_defaultList);
-        TermCommandDescriptor * varAC = TERM_addCommand(CMD_varSet, "set", "Set variable", 0, &TERM_defaultList);
+        TermCommandDescriptor * varAC = TERM_addCommand(CMD_varList, "get", "Get variable value", 0, &TERM_defaultList);
         TERM_addCommandAC(varAC, TERM_varCompleter, &TERM_varList);
+        varAC = TERM_addCommand(CMD_varSet, "set", "Set variable", 0, &TERM_defaultList);
+        TERM_addCommandAC(varAC, TERM_varCompleter, &TERM_varList);
+        TERM_addCommand(CMD_varSave, "save", "Save variable", 0, &TERM_defaultList);
 		#endif
 
       
@@ -375,9 +377,18 @@ uint8_t TERM_handleInput(uint16_t c, TERMINAL_HANDLE * handle){
         case 0x0a: 		//LF
         case 0x08:      //backspace (used by xTerm)
         case 0x7f:      //DEL       (used by hTerm)
+        case _VT100_KEY_DEL:
             TERM_checkForCopy(handle, TERM_CHECK_COMP_AND_HIST);
+
+            if(handle->currBufferPosition < handle->currBufferLength && c == _VT100_KEY_DEL){
+                handle->currBufferPosition ++;
+                TERM_sendVT100Code(handle, _VT100_CURSOR_FORWARD, 0);
+            }else if (c == _VT100_KEY_DEL) {
+                break;
+            }
+
             if(handle->currBufferPosition == 0) break;
-            
+
             if(handle->inputBuffer[handle->currBufferPosition] != 0){      //check if we are at the end of our command
                 //we are somewhere in the middle -> move back existing characters
                 strsft(handle->inputBuffer, handle->currBufferPosition - 1, -1);    
@@ -396,13 +407,23 @@ uint8_t TERM_handleInput(uint16_t c, TERMINAL_HANDLE * handle){
             break;
             
         case _VT100_KEY_END:
-            TERM_checkForCopy(handle, TERM_CHECK_COMP_AND_HIST);
-            //TODO move cursor to EOL
+        	TERM_checkForCopy(handle, TERM_CHECK_COMP_AND_HIST); //is the user browsing the history right now? if so copy whatever ehs looking at to the entry buffer
+
+			if(handle->currBufferLength > handle->currBufferPosition){
+				//move the cursor to the right position
+				TERM_sendVT100Code(handle, _VT100_CURSOR_FORWARD_BY, handle->currBufferLength - handle->currBufferPosition);
+				handle->currBufferPosition = handle->currBufferLength;
+			}
             break;
             
         case _VT100_KEY_POS1:
-            TERM_checkForCopy(handle, TERM_CHECK_COMP_AND_HIST);
-            //TODO move cursor to BOL
+        	TERM_checkForCopy(handle, TERM_CHECK_COMP_AND_HIST); //is the user browsing the history right now? if so copy whatever ehs looking at to the entry buffer
+
+			if(handle->currBufferPosition > 0){
+				//move the cursor to the right position
+				TERM_sendVT100Code(handle, _VT100_CURSOR_BACK_BY, handle->currBufferPosition);
+				handle->currBufferPosition = 0;
+			}
             break;
             
         case _VT100_CURSOR_FORWARD:
