@@ -367,7 +367,7 @@ extern sampled_vars_t sampled_vars;
 
 /* Function prototypes -----------------------------------------------*/
 
-void MESCInit();
+void MESCInit(MESC_motor_typedef *_motor);
 void InputInit();
 void initialiseInverter(MESC_motor_typedef *_motor);
 
@@ -389,11 +389,10 @@ void hallAngleEstimator();  // Going to attempt to make a similar hall angle
                             // estimator that rolls the hall state into the main
                             // function, and calls a vector table to find the
                             // angle from hall offsets.
-void flux_observer();
+void flux_observer(MESC_motor_typedef *_motor);
 float fast_atan2(float y, float x);
-void angleObserver();
-void fluxIntegrator();
-void OLGenerateAngle();  // For open loop FOC startup, just use this to generate
+void angleObserver(MESC_motor_typedef *_motor);
+void OLGenerateAngle(MESC_motor_typedef *_motor);  // For open loop FOC startup, just use this to generate
                          // an angle and velocity ramp, then keep the phase
                          // currents at the requested value without really
                          // thinking about things like synchronising, phase
@@ -425,8 +424,8 @@ void phV_Enable(MESC_motor_typedef *_motor);
 void phW_Break(MESC_motor_typedef *_motor);
 void phW_Enable(MESC_motor_typedef *_motor);
 
-void calculateGains();
-void calculateVoltageGain();
+void calculateGains(MESC_motor_typedef *_motor);
+void calculateVoltageGain(MESC_motor_typedef *_motor);
 
 void doublePulseTest(MESC_motor_typedef *_motor);
 
@@ -434,13 +433,13 @@ void MESC_Slow_IRQ_handler(TIM_HandleTypeDef *htim); 	//This loop should run off
 														//Default setup is to use a 50Hz RCPWM input, which if the RCPWM is not present will run at 20Hz
 														//If entered from update (reset, CC1) no data available for the PWM in. If entered from CC2, new PWM data available
 void slowLoop(TIM_HandleTypeDef *htim);
-void MESCTrack();
+void MESCTrack(MESC_motor_typedef *_motor);
 void deadshort(MESC_motor_typedef *_motor);
 void tle5012();
 void getDeadtime(MESC_motor_typedef *_motor);
-void LRObserver();
-void LRObserverCollect();
-void HallFluxMonitor();
+void LRObserver(MESC_motor_typedef *_motor);
+void LRObserverCollect(MESC_motor_typedef *_motor);
+void HallFluxMonitor(MESC_motor_typedef *_motor);
 void logVars();
 void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma);
 

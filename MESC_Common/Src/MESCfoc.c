@@ -77,7 +77,7 @@ sampled_vars_t sampled_vars;
 
 int print_samples_now, lognow;
 
-void MESCInit() {
+void MESCInit(MESC_motor_typedef *_motor) {
 #ifdef STM32L4 // For some reason, ST have decided to have a different name for the L4 timer DBG freeze...
 	DBGMCU->APB2FZ |= DBGMCU_APB2FZ_DBG_TIM1_STOP;
 #else
@@ -85,7 +85,8 @@ void MESCInit() {
 #endif
 	MotorState = MOTOR_STATE_IDLE;
 
-	motor1.mtimer = &htim1;
+
+
 
   mesc_init_1();
 
@@ -663,7 +664,7 @@ if(phasebalance){
   volatile static float FLAmin = 0.0f;
   volatile static float FLAdiff = 0.0f;
 
-  void flux_observer() {
+  void flux_observer(MESC_motor_typedef *_motor) {
     // LICENCE NOTE REMINDER:
     // This work deviates slightly from the BSD 3 clause licence.
     // The work here is entirely original to the MESC FOC project, and not based
@@ -794,7 +795,7 @@ if(phasebalance){
   static float angle_step = 0;
 
   static int hall_error = 0;
-  void hallAngleEstimator() {  // Implementation using the mid point of the hall
+  void hallAngleEstimator(MESC_motor_typedef *_motor) {  // Implementation using the mid point of the hall
                                // sensor angles, which should be much more
                                // reliable to generate that the edges
 
@@ -836,7 +837,7 @@ if(phasebalance){
     }
   }
 
-  void angleObserver() {
+  void angleObserver(MESC_motor_typedef *_motor) {
     // This function should take the available data (hall change, BEMF crossing
     // etc...) and process it with a PLL type mechanism
     if (foc_vars.hall_update == 1) {
@@ -894,7 +895,7 @@ if(phasebalance){
     }
   }
 
-  void OLGenerateAngle() {
+  void OLGenerateAngle(MESC_motor_typedef *_motor) {
 
     foc_vars.FOCAngle = foc_vars.FOCAngle + foc_vars.openloop_step;
     // ToDo
@@ -1496,7 +1497,7 @@ __NOP();
         phW_Enable(_motor);
     }
 
-    flux_observer();//We run the flux observer during this
+    flux_observer(_motor);//We run the flux observer during this
 
     static int count = 0;
     static uint16_t temp_angle;
@@ -1506,7 +1507,7 @@ __NOP();
     	angle_delta = temp_angle-foc_vars.FOCAngle;
     	foc_vars.openloop_step = (uint16_t)(ERPM_MEASURE*65536.0f/(foc_vars.pwm_frequency*60.0f)*(float)cycles/65000.0f);
     	foc_vars.FOCAngle = temp_angle;
-        OLGenerateAngle();
+        OLGenerateAngle(_motor);
         temp_angle = foc_vars.FOCAngle;
         if(cycles==60001){
         	temp_flux = sqrtf(foc_vars.Vdq.d*foc_vars.Vdq.d+foc_vars.Vdq.q*foc_vars.Vdq.q)/(6.28f * (float)foc_vars.openloop_step * (float)foc_vars.pwm_frequency/65536.0f);
@@ -1626,7 +1627,7 @@ __NOP();
 #ifndef CURRENT_BANDWIDTH
 #define CURRENT_BANDWIDTH 5000.0f
 #endif
-  void calculateGains() {
+  void calculateGains(MESC_motor_typedef *_motor) {
     foc_vars.pwm_frequency =PWM_FREQUENCY;
     foc_vars.pwm_period = 1.0f/foc_vars.pwm_frequency;
     htim1.Instance->ARR = HAL_RCC_GetHCLKFreq()/(((float)htim1.Instance->PSC + 1.0f) * 2*foc_vars.pwm_frequency);
@@ -1649,7 +1650,7 @@ __NOP();
   motor.Lqd_diff = motor.Lqphase-motor.Lphase;
   }
 
-  void calculateVoltageGain() {
+  void calculateVoltageGain(MESC_motor_typedef *_motor) {
     // We need a number to convert between Va Vb and raw PWM register values
     // This number should be the bus voltage divided by the ARR register
     foc_vars.Vab_to_PWM =
@@ -1724,10 +1725,10 @@ __NOP();
       MotorState = MOTOR_STATE_IDLE;
     }
   }
-  void MESC_Slow_IRQ_handler(TIM_HandleTypeDef *htim){
+  void MESC_Slow_IRQ_handler(MESC_motor_typedef *_motor){
 
 
-	  if(htim->Instance->SR & TIM_FLAG_CC2){
+	  if(_motor->stimer->Instance->SR & TIM_FLAG_CC2){
 		  input_vars.IC_duration = htim->Instance->CCR1;// HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_1);
 		  input_vars.IC_pulse = htim->Instance->CCR2;//HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_2);
 		  input_vars.pulse_recieved = 1;
@@ -1810,7 +1811,7 @@ if(foc_vars.Idq_req.q>input_vars.max_request_Idq.q){foc_vars.Idq_req.q = input_v
 if(foc_vars.Idq_req.q<input_vars.min_request_Idq.q){foc_vars.Idq_req.q = input_vars.min_request_Idq.q;}
 
 ////// Adjust the SVPWM gains to account for the change in battery voltage etc
-    calculateVoltageGain();
+    calculateVoltageGain(_motor);
 
 ////// Calculate the current power
     foc_vars.currentPower.d = 1.5f*(foc_vars.Vdq.d*foc_vars.Idq_smoothed.d);
@@ -1975,7 +1976,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
   }
 
 
-  void MESCTrack() {
+  void MESCTrack(MESC_motor_typedef *_motor) {
     // here we are going to do the clark and park transform of the voltages to
     // get the VaVb and VdVq These can be handed later to the observers and used
     // to set the integral terms
@@ -2246,7 +2247,7 @@ uint16_t test_counts;
   float Vd_obs_high_filt, Vd_obs_low_filt,Vq_obs_high_filt,Vq_obs_low_filt;
   static int plusminus = 1;
 
-  void LRObserver(){
+  void LRObserver(MESC_motor_typedef *_motor){
 	  if((fabs(foc_vars.eHz)>0.005*foc_vars.pwm_frequency)&&(foc_vars.inject ==0)){
 
 
@@ -2295,7 +2296,7 @@ uint16_t test_counts;
 #endif
   }
 
-  void LRObserverCollect(){
+  void LRObserverCollect(MESC_motor_typedef *_motor){
 	  LR_collect_count++;
 	  if((fabs(foc_vars.eHz)>0.005*foc_vars.pwm_frequency)&&(foc_vars.inject ==0)){
 	  	  	if(plusminus==1){
@@ -2309,7 +2310,7 @@ uint16_t test_counts;
 	  }
   }
 
-  void HallFluxMonitor(){
+  void HallFluxMonitor(MESC_motor_typedef *_motor){
 	  if(fabs(foc_vars.Vdq.q)>10.0f){ //Are we actually spinning at a reasonable pace?
 		  if((current_hall_state>0)&&(current_hall_state<7)){
 	  foc_vars.hall_flux[current_hall_state - 1][0] =
@@ -2327,7 +2328,7 @@ uint16_t test_counts;
   }
 
 
-void  logVars(){
+void  logVars(MESC_motor_typedef *_motor){
 	sampled_vars.Vbus[sampled_vars.current_sample] = measurement_buffers.ConvertedADC[0][1];
 	sampled_vars.Iu[sampled_vars.current_sample] = measurement_buffers.ConvertedADC[0][0];
 	sampled_vars.Iv[sampled_vars.current_sample] = measurement_buffers.ConvertedADC[1][0];
