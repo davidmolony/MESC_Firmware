@@ -209,20 +209,25 @@ void mesc_init_3( MESC_motor_typedef *_motor )
 	
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&ADC_buffer, 6);
 	
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_1);
+	HAL_TIMEx_PWMN_Start(_motor->mtimer, TIM_CHANNEL_1);
 
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_2);
+	HAL_TIMEx_PWMN_Start(_motor->mtimer, TIM_CHANNEL_2);
 	
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
+	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_3);
+	HAL_TIMEx_PWMN_Start(_motor->mtimer, TIM_CHANNEL_3);
 	generateBreak(_motor); //avoid a spurious pulse on startup
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_4);
 
 	HAL_ADCEx_InjectedStart(&hadc1);
-	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD);
-	__HAL_TIM_ENABLE_IT(&htim1,TIM_IT_UPDATE);
+	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD); //ToDo, how do I put this into the whole shabang with multiple motors?...
+	__HAL_TIM_ENABLE_IT(_motor->mtimer, TIM_IT_UPDATE);
 
-
+	//Set up the input capture for throttle
+	HAL_TIM_IC_Start(_motor->stimer, TIM_CHANNEL_1);
+	HAL_TIM_IC_Start(_motor->stimer, TIM_CHANNEL_2);
+	__HAL_TIM_ENABLE_IT(_motor->stimer, TIM_IT_UPDATE);
+	// Here we can auto set the prescaler to get the us input regardless of the main clock
+	__HAL_TIM_SET_PRESCALER(_motor->stimer, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
 }

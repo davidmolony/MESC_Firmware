@@ -128,18 +128,15 @@ int main(void)
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 #endif
 //  uart_init();
-  //Set up the input capture for throttle
-  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1);
-  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_2);
-  __HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
-  // Here we can auto set the prescaler to get the us input regardless of the main clock
-  __HAL_TIM_SET_PRESCALER(&htim2, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
 
   //Set motor timer
 	motor1.mtimer = &htim1;
 	motor1.stimer = &htim2;
+
+
+
 //Initialise MESC
-MESCInit(motor1);
+MESCInit(&motor1);
 motor_init(NULL);
 motor.Rphase = motor_profile->R;
 motor.Lphase = motor_profile->L_D;
@@ -150,8 +147,8 @@ motor.uncertainty = 1;
 
 HAL_TIM_PWM_Start_IT(&htim2, TIM_CHANNEL_1);
 
-calculateGains(motor1);
-calculateVoltageGain(motor1);
+calculateGains(&motor1);
+calculateVoltageGain(&motor1);
 MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
 

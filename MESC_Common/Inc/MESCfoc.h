@@ -89,32 +89,32 @@
 #endif
 
 typedef struct {
-	uint32_t Iu;
-	uint32_t Iv;
-	uint32_t Iw;
+	int Iu;
+	int Iv;
+	int Iw;
 
-	uint32_t Vbus;
+	int Vbus;
 
-	uint32_t Vu;
-	uint32_t Vv;
-	uint32_t Vw;
+	int Vu;
+	int Vv;
+	int Vw;
 
-	uint32_t MOSu_T;
-	uint32_t MOSv_T;
-	uint32_t MOSw_T;
+	int MOSu_T;
+	int MOSv_T;
+	int MOSw_T;
 
-	uint32_t Motor_T;
+	int Motor_T;
 
-	uint32_t ADC_in_ext1;
-	uint32_t ADC_in_ext2;
+	int ADC_in_ext1;
+	int ADC_in_ext2;
 }MESC_raw_typedef;
 
 //extern MESC_raw_typedef motor1;
 
 typedef struct {
-	uint32_t Iu;
-	uint32_t Iv;
-	uint32_t Iw;
+	int Iu;
+	int Iv;
+	int Iw;
 }MESC_offset_typedef;
 
 typedef struct {
@@ -429,10 +429,10 @@ void calculateVoltageGain(MESC_motor_typedef *_motor);
 
 void doublePulseTest(MESC_motor_typedef *_motor);
 
-void MESC_Slow_IRQ_handler(TIM_HandleTypeDef *htim); 	//This loop should run off a slow timer e.g. timer 3,4... at 20-50Hz in reset mode
+void MESC_Slow_IRQ_handler(MESC_motor_typedef *_motor); 	//This loop should run off a slow timer e.g. timer 3,4... at 20-50Hz in reset mode
 														//Default setup is to use a 50Hz RCPWM input, which if the RCPWM is not present will run at 20Hz
 														//If entered from update (reset, CC1) no data available for the PWM in. If entered from CC2, new PWM data available
-void slowLoop(TIM_HandleTypeDef *htim);
+void slowLoop(MESC_motor_typedef *_motor);
 void MESCTrack(MESC_motor_typedef *_motor);
 void deadshort(MESC_motor_typedef *_motor);
 void tle5012();
