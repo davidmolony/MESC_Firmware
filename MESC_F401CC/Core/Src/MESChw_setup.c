@@ -67,33 +67,22 @@ void hw_init() {
 }
 
 void getRawADC(MESC_motor_typedef *_motor) {
-	//Get the injected critical conversions
-  measurement_buffers.RawADC[0][0] = hadc1.Instance->JDR1;  // U Current
-  measurement_buffers.RawADC[1][0] = hadc1.Instance->JDR2;  // V Current
-  measurement_buffers.RawADC[2][0] = hadc1.Instance->JDR3;  // W Current
-  measurement_buffers.RawADC[0][1] = hadc1.Instance->JDR4;  // DC Link Voltage
-
-  //These are handled by regular conversion manager and DMA
-  //measurement_buffers.RawADC[1][3] = ADC_buffer[3];
-  GET_THROTTLE_INPUT;
-//Voltage sense for the MP2
-  measurement_buffers.RawADC[0][2] = ADC_buffer[0]; //PhaseU Voltage
-  measurement_buffers.RawADC[1][1] = ADC_buffer[1]; //PhaseV Voltage
-  measurement_buffers.RawADC[1][2] = ADC_buffer[2]; //PhaseW Voltage
-
-//MOS temperature for MP2
-  measurement_buffers.RawADC[3][0] = ADC_buffer[5]; //Temperature on PB1
-//Motor temp or Brake, needs plumbing in to main MESC...
-//   = ADC_buffer[4]
-
+//Get the injected critical conversions
   _motor->Raw.Iu = hadc1.Instance->JDR1;// PhaseU Current
   _motor->Raw.Iv = hadc1.Instance->JDR2;
   _motor->Raw.Iw = hadc1.Instance->JDR3;
   _motor->Raw.Vbus = hadc1.Instance->JDR4; //Bus/battery voltage
+
+//These are handled by regular conversion manager and DMA
+  GET_THROTTLE_INPUT;
+//Voltage sense for the MP2
   _motor->Raw.Vu = ADC_buffer[0]; //PhaseU Voltage
   _motor->Raw.Vv = ADC_buffer[1];
   _motor->Raw.Vw = ADC_buffer[2];
-
+//MOS temperature for MP2
+  measurement_buffers.RawADC[3][0] = ADC_buffer[5]; //Temperature on PB1
+//Motor temp or Brake, needs plumbing in to main MESC...
+//   = ADC_buffer[4]
 }
 
 void getRawADCVph(void){
