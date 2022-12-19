@@ -52,8 +52,8 @@ void handleError(MESC_motor_typedef *_motor, uint32_t error_code){
 	error_log.current_C = measurement_buffers.ConvertedADC[2][0];
 	error_log.voltage = measurement_buffers.ConvertedADC[0][1];
 	error_log.motor_flux = motor.motor_flux;
-	error_log.flux_linked_alpha = foc_vars.flux_linked_alpha;
-	error_log.flux_linked_beta = foc_vars.flux_linked_beta;
+	error_log.flux_linked_alpha = _motor->FOC.flux_linked_alpha;
+	error_log.flux_linked_beta = _motor->FOC.flux_linked_beta;
 	}
 	error_log.count += 1;
 }

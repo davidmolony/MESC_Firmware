@@ -245,6 +245,8 @@ typedef struct{
 }MESC_motor_typedef;
 
 extern MESC_motor_typedef motor1;
+extern MESC_motor_typedef motor2;
+
 
 enum MESCADC
 {

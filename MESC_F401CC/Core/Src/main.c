@@ -132,7 +132,8 @@ int main(void)
   //Set motor timer
 	motor1.mtimer = &htim1;
 	motor1.stimer = &htim2;
-
+	motor2.mtimer = &htim1;
+	motor2.stimer = &htim2;
 
 
 //Initialise MESC
