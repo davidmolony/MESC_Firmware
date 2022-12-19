@@ -40,7 +40,7 @@ motor_s motor;
 
 uint32_t ADC_buffer[6];
 
-void hw_init() {
+void hw_init(MESC_motor_typedef *_motor) {
   g_hw_setup.Imax = ABS_MAX_PHASE_CURRENT;  	// Imax is the current at which we are either no longer able to
              	 	 	 	 	 	 	 	 	// read it, or hardware "don't ever exceed to avoid breakage"
   g_hw_setup.Vmax = ABS_MAX_BUS_VOLTAGE;  // Headroom beyond which likely to get avalanche of
@@ -85,7 +85,7 @@ void getRawADC(MESC_motor_typedef *_motor) {
 //   = ADC_buffer[4]
 }
 
-void getRawADCVph(void){
+void getRawADCVph(MESC_motor_typedef *_motor){
 
 
 
@@ -183,12 +183,12 @@ ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
     }
 }
 #endif
-void mesc_init_1( void )
+void mesc_init_1( MESC_motor_typedef *_motor )
 {
     // Do nothing
 }
 
-void mesc_init_2( void )
+void mesc_init_2( MESC_motor_typedef *_motor )
 {
     // Do nothing
 }
