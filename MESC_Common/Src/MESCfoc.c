@@ -123,21 +123,21 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
   InputInit();
 
-  //htim1.Instance->BDTR |=TIM_BDTR_MOE;
+  	  //htim1.Instance->BDTR |=TIM_BDTR_MOE;
 	  // initialising the comparators triggers the break state,
 	  // so turn it back on
 	  // At this point we just let the whole thing run off into interrupt land, and
 	  // the fastLoop() starts to be triggered by the ADC conversion complete
 	  // interrupt
 
-  motor.Rphase = motor_profile->R;
-  motor.Lphase = motor_profile->L_D;
-  motor.Lqphase = motor_profile->L_Q;
-  motor.motor_flux = motor_profile->flux_linkage;
-  motor.uncertainty = 1;
+	motor.Rphase = motor_profile->R;
+	motor.Lphase = motor_profile->L_D;
+	motor.Lqphase = motor_profile->L_Q;
+	motor.motor_flux = motor_profile->flux_linkage;
+	motor.uncertainty = 1;
 
-calculateGains(_motor);
-calculateVoltageGain(_motor);
+	calculateGains(_motor);
+	calculateVoltageGain(_motor);
 
 }
 
@@ -188,9 +188,6 @@ void InputInit(){
 }
 void initialiseInverter(MESC_motor_typedef *_motor){
 
-      for (uint32_t i = 0; i < 3; i++) {
-        measurement_buffers.ADCOffset[i] += measurement_buffers.RawADC[i][FOC_CHANNEL_PHASE_I];
-      }
       _motor->offset.Iu += _motor->Raw.Iu;
       _motor->offset.Iv += _motor->Raw.Iv;
       _motor->offset.Iw += _motor->Raw.Iw;
@@ -204,9 +201,7 @@ void initialiseInverter(MESC_motor_typedef *_motor){
         calculateVoltageGain(_motor);
         _motor->FOC.flux_linked_beta = 0.001f;
         _motor->FOC.flux_linked_alpha = 0.001f;
-        for (uint32_t i = 0; i < 3; i++) {
-          measurement_buffers.ADCOffset[i] /= 1000;
-        }
+
         _motor->offset.Iu /=  initcycles;
         _motor->offset.Iv /=  initcycles;
         _motor->offset.Iw /=  initcycles;
@@ -405,9 +400,9 @@ void fastLoop(MESC_motor_typedef *_motor) {
       break;
 
     case MOTOR_STATE_SLAMBRAKE:
-      if((fabs(measurement_buffers.ConvertedADC[0][0])>input_vars.max_request_Idq.q)||
-		  (fabs(measurement_buffers.ConvertedADC[1][0])>input_vars.max_request_Idq.q)||
-		  (fabs(measurement_buffers.ConvertedADC[2][0])>input_vars.max_request_Idq.q)){
+      if((fabs(_motor->Conv.Iu)>input_vars.max_request_Idq.q)||
+		  (fabs(_motor->Conv.Iv)>input_vars.max_request_Idq.q)||
+		  (fabs(_motor->Conv.Iw)>input_vars.max_request_Idq.q)){
     	  generateBreak(_motor);
       }else{
     	  generateEnable(_motor);
@@ -510,11 +505,11 @@ if(MotorState==MOTOR_STATE_RUN||MotorState==MOTOR_STATE_MEASURING){
 if(lognow){
 	static int post_error_samples;
 	if(MotorState!=MOTOR_STATE_ERROR){
-	logVars();
+	logVars(_motor);
 	post_error_samples = 50;
 	}else{//If we have an error state, we want to keep the data surrounding the error log, including some sampled during and after the fault
 		if(post_error_samples>1){
-			logVars();
+			logVars(_motor);
 			post_error_samples--;
 		}else if(post_error_samples == 1){
 			print_samples_now = 1;
@@ -532,16 +527,16 @@ if(lognow){
 void VICheck(MESC_motor_typedef *_motor) {  // Check currents, voltages are within panic limits
 
 
-  if (measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim){
+  if (_motor->Raw.Iu > g_hw_setup.RawCurrLim){
 	  handleError(_motor, ERROR_OVERCURRENT_PHA);
   }
-  if (measurement_buffers.RawADC[1][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim){
+  if (_motor->Raw.Iv > g_hw_setup.RawCurrLim){
 	  handleError(_motor, ERROR_OVERCURRENT_PHB);
   }
-  if (measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] > g_hw_setup.RawCurrLim){
+  if (_motor->Raw.Iw > g_hw_setup.RawCurrLim){
 	  handleError(_motor,ERROR_OVERCURRENT_PHC);
   }
-  if (measurement_buffers.RawADC[0][FOC_CHANNEL_DC_V] > g_hw_setup.RawVoltLim){
+  if (_motor->Raw.Vbus > g_hw_setup.RawVoltLim){
 	  handleError(_motor, ERROR_OVERVOLTAGE);
   }
 }
@@ -555,17 +550,6 @@ uint16_t phasebalance;
 
     // Here we take the raw ADC values, offset, cast to (float) and use the
     // hardware gain values to create volt and amp variables
-
-
-//Convert the currents to real amps in SI units
-    measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I] =
-        (float)(measurement_buffers.RawADC[0][FOC_CHANNEL_PHASE_I] - measurement_buffers.ADCOffset[0]) * g_hw_setup.Igain;
-    measurement_buffers.ConvertedADC[1][0] =
-        (float)(measurement_buffers.RawADC[1][0] - measurement_buffers.ADCOffset[1]) * g_hw_setup.Igain;
-    measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I] =
-        (float)(measurement_buffers.RawADC[2][FOC_CHANNEL_PHASE_I] - measurement_buffers.ADCOffset[2]) * g_hw_setup.Igain;
-    measurement_buffers.ConvertedADC[0][1] =
-        (float)measurement_buffers.RawADC[0][1] * g_hw_setup.VBGain;  // Vbus
     //Convert the currents to real amps in SI units
 	_motor->Conv.Iu =
 		(float)(_motor->Raw.Iu - _motor->offset.Iu) * g_hw_setup.Igain;
@@ -583,16 +567,16 @@ uint16_t phasebalance;
 //Deal with terrible hardware choice of only having two current sensors
 //Based on Iu+Iv+Iw = 0
 #ifdef MISSING_UCURRSENSOR
-    measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I] =
-    		-measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I] - measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
+    _motor->Conv.Iu =
+    		-_motor->Conv.Iv -_motor->Conv.Iw;
 #endif
 #ifdef MISSING_VCURRSENSOR
-    measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I] =
-    		-measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I] - measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I];
+    _motor->Conv.Iv =
+    		-_motor->Conv.Iu -_motor->Conv.Iw;
 #endif
 #ifdef MISSING_WCURRSENSOR
-    measurement_buffers.ConvertedADC[2][FOC_CHANNEL_PHASE_I] =
-    		-measurement_buffers.ConvertedADC[0][FOC_CHANNEL_PHASE_I] - measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
+    _motor->Conv.Iw =
+    		-_motor->Conv.Iu -_motor->Conv.Iv;
 #endif
 
 
@@ -654,11 +638,6 @@ if(phasebalance){
   void ADCPhaseConversion(MESC_motor_typedef *_motor) {
 	  //To save clock cycles in the main run loop we only want to convert the phase voltages while tracking.
   //Convert the voltages to volts in real SI units
-
-	  measurement_buffers.ConvertedADC[0][2] =(float)_motor->Raw.Vu * g_hw_setup.VBGain;
-	  measurement_buffers.ConvertedADC[1][1] =(float)_motor->Raw.Vv * g_hw_setup.VBGain;
-	  measurement_buffers.ConvertedADC[1][2] =(float)_motor->Raw.Vw * g_hw_setup.VBGain;
-
 	  _motor->Conv.Vu = (float)_motor->Raw.Vu * g_hw_setup.VBGain;
 	  _motor->Conv.Vv = (float)_motor->Raw.Vv * g_hw_setup.VBGain;
 	  _motor->Conv.Vw = (float)_motor->Raw.Vw * g_hw_setup.VBGain;
@@ -746,17 +725,14 @@ if(phasebalance){
     	_motor->FOC.flux_linked_beta = -motor.motor_flux;}
 #endif
 
-    angle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_linked_beta, _motor->FOC.flux_linked_alpha)) - 32768;
-
-
-    if(_motor->FOC.inject==0){
-    _motor->FOC.FOCAngle = angle;
-    }
-
 #ifdef USE_ENCODER
+    //This does not apply the encoder angle,
+    //It tracks the difference between the encoder and the observer.
     _motor->FOC.enc_obs_angle = angle - _motor->FOC.enc_angle;
-    //_motor->FOC.FOCAngle = _motor->FOC.enc_angle;
-    //_motor->FOC.FOCAngle = 0; //for aligning encoder for testing
+#else
+    if(_motor->FOC.inject==0){
+    _motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_linked_beta, _motor->FOC.flux_linked_alpha)) - 32768;
+    }
 #endif
   }
 
@@ -1698,7 +1674,7 @@ __NOP();
         htim1.Instance->CCR2 = 0;
         htim1.Instance->CCR3 = 0;
         test_vals.dp_current_final[dp_counter] =
-            measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
+            _motor->Conv.Iv;
         dp_counter++;
       } else if(dp_counter <= (dp_periods-2)) { //W State ON
       htim1.Instance->CCR1 = 0;
@@ -1708,26 +1684,26 @@ __NOP();
       phV_Enable(_motor);
       phW_Enable(_motor);
       test_vals.dp_current_final[dp_counter] =
-          measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
+          _motor->Conv.Iv;
       dp_counter++;
     } else if (dp_counter == (dp_periods-1)) { //W short second pulse
         htim1.Instance->CCR2 = 0;
         htim1.Instance->CCR3 = 100;
         test_vals.dp_current_final[dp_counter] =
-            measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
+            _motor->Conv.Iv;
         dp_counter++;
      } else if (dp_counter == dp_periods) { //Freewheel a bit to see the current
           htim1.Instance->CCR2 = 0;
           htim1.Instance->CCR3 = 0;
           test_vals.dp_current_final[dp_counter] =
-              measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
+              _motor->Conv.Iv;
           dp_counter++;
         }else { //Turn all off
       htim1.Instance->CCR1 = 0;
       htim1.Instance->CCR2 = 0;
       htim1.Instance->CCR3 = 0;
       test_vals.dp_current_final[dp_counter] =
-          measurement_buffers.ConvertedADC[1][FOC_CHANNEL_PHASE_I];
+          _motor->Conv.Iv;
       dp_counter = 0;
       generateBreak(_motor);
       MotorState = MOTOR_STATE_IDLE;
@@ -2341,10 +2317,10 @@ uint16_t test_counts;
 
 
 void  logVars(MESC_motor_typedef *_motor){
-	sampled_vars.Vbus[sampled_vars.current_sample] = measurement_buffers.ConvertedADC[0][1];
-	sampled_vars.Iu[sampled_vars.current_sample] = measurement_buffers.ConvertedADC[0][0];
-	sampled_vars.Iv[sampled_vars.current_sample] = measurement_buffers.ConvertedADC[1][0];
-	sampled_vars.Iw[sampled_vars.current_sample] = measurement_buffers.ConvertedADC[2][0];
+	sampled_vars.Vbus[sampled_vars.current_sample] = _motor->Conv.Vbus;
+	sampled_vars.Iu[sampled_vars.current_sample] = _motor->Conv.Iu;
+	sampled_vars.Iv[sampled_vars.current_sample] = _motor->Conv.Iv;
+	sampled_vars.Iw[sampled_vars.current_sample] = _motor->Conv.Iw;
 	sampled_vars.Vd[sampled_vars.current_sample] = _motor->FOC.Vdq.d;
 	sampled_vars.Vq[sampled_vars.current_sample] = _motor->FOC.Vdq.q;
 	sampled_vars.angle[sampled_vars.current_sample] = _motor->FOC.FOCAngle;

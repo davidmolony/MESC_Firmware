@@ -121,7 +121,11 @@ int main(void)
   HAL_UART_Init(&huart3);
   SimpleComsInit(&huart3, &com1);
 
-  MESCInit();
+  //Set motor timer
+  motor1.mtimer = &htim1;
+  motor1.stimer = &htim2;
+
+  MESCInit(&motor1);
   motor_init(NULL);
 
 
@@ -131,14 +135,10 @@ int main(void)
   motor.motor_flux = motor_profile->flux_linkage;
   motor.uncertainty = 1;
 
-  calculateGains();
-  calculateVoltageGain();
+
   MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
-  //Start the input capture timer for slowloop
-  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1);
-  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_2);
-  __HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */

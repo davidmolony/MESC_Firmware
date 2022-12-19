@@ -37,7 +37,7 @@ motor_s motor;
 
 uint32_t ADC_buffer[10];
 
-void hw_init() {
+void hw_init(MESC_motor_typedef *_motor) {
   g_hw_setup.Imax = ABS_MAX_PHASE_CURRENT;  	// Imax is the current at which we are either no longer able to
              	 	 	 	 	 	 	 	 	// read it, or hardware "don't ever exceed to avoid breakage"
   g_hw_setup.Vmax = ABS_MAX_BUS_VOLTAGE;  // Headroom beyond which likely to get avalanche of
@@ -63,26 +63,31 @@ void hw_init() {
                  (g_hw_setup.RVBB + g_hw_setup.RVBT));
 }
 
-void getRawADC(void) {
+void getRawADC(MESC_motor_typedef *_motor) {
 	//Get the injected critical conversions
-  measurement_buffers.RawADC[0][0] = hadc1.Instance->JDR1;  // U Current
-  measurement_buffers.RawADC[1][0] = hadc1.Instance->JDR2;  // V Current
-  measurement_buffers.RawADC[2][0] = hadc1.Instance->JDR3;  // W Current
-  measurement_buffers.RawADC[0][1] = hadc1.Instance->JDR4;  // DC Link Voltage
+  _motor->Raw.Iu = hadc1.Instance->JDR1;  // U Current
+  _motor->Raw.Iv = hadc1.Instance->JDR2;  // V Current
+  _motor->Raw.Iw = hadc1.Instance->JDR3;  // W Current
+  _motor->Raw.Vbus = hadc1.Instance->JDR4;  // DC Link Voltage
 
   //These are handled by regular conversion manager and DMA
-  measurement_buffers.RawADC[1][3] = ADC_buffer[4];  // Throttle
+  _motor->Raw.ADC_in_ext1 = ADC_buffer[4];  // Throttle external inputs on buffer 4=ADC_in10, 5=ADC_in11 and 7=ADC_in14 on Mxlemming FOCcontrol board, pins 21,22,25
+  _motor->Raw.ADC_in_ext2 = ADC_buffer[5];  // Throttle
+  _motor->Raw.Motor_T = ADC_buffer[6];		//Motor input pin 24, buffer 6=ADC_in13
 
 //Voltage sense 
-  measurement_buffers.RawADC[0][2] = ADC_buffer[0]; //PhaseU Voltage
-  measurement_buffers.RawADC[1][1] = ADC_buffer[1]; //PhaseV Voltage
-  measurement_buffers.RawADC[1][2] = ADC_buffer[2]; //PhaseW Voltage
+  _motor->Raw.Vu = ADC_buffer[0]; //PhaseU Voltage
+  _motor->Raw.Vv = ADC_buffer[1]; //PhaseV Voltage
+  _motor->Raw.Vw = ADC_buffer[2]; //PhaseW Voltage
 
 //Temperature
-  measurement_buffers.RawADC[3][0] = ADC_buffer[2]; //Temperature on PA3
+  _motor->Raw.MOSu_T = ADC_buffer[3]; //Temperature on PA3
+  _motor->Raw.MOSv_T = ADC_buffer[8];
+  _motor->Raw.MOSw_T = ADC_buffer[9];
+
 }
 
-void getRawADCVph(void){
+void getRawADCVph(MESC_motor_typedef *_motor){
 
 
 
@@ -185,39 +190,39 @@ ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
     }
 }
 #endif
-void mesc_init_1( void )
+void mesc_init_1( MESC_motor_typedef *_motor )
 {
     // Do nothing
 }
 
-void mesc_init_2( void )
+void mesc_init_2( MESC_motor_typedef *_motor )
 {
     // Do nothing
 }
 
-void mesc_init_3( void )
+void mesc_init_3( MESC_motor_typedef *_motor )
 {
 	
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&ADC_buffer, 10);
 	
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_1);
+	HAL_TIMEx_PWMN_Start(_motor->mtimer, TIM_CHANNEL_1);
 
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_2);
+	HAL_TIMEx_PWMN_Start(_motor->mtimer, TIM_CHANNEL_2);
 	
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
+	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_3);
+	HAL_TIMEx_PWMN_Start(_motor->mtimer, TIM_CHANNEL_3);
 	
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-    generateBreak();//We have started the timers, but we really do not want them PWMing yet
+	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_4);
+    generateBreak(_motor);//We have started the timers, but we really do not want them PWMing yet
 
 	HAL_ADCEx_InjectedStart(&hadc1);
 	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD);
-	__HAL_TIM_ENABLE_IT(&htim1,TIM_IT_UPDATE);
+	__HAL_TIM_ENABLE_IT(_motor->mtimer,TIM_IT_UPDATE);
 
 	HAL_Delay(100);
-//	hadc1.Instance->LTR = 4001; //default for AWD
+//	hadc1.Instance->HTR = 4001; //Set your own limits if you want, or set them in the .ioc
 //	hadc1.Instance->LTR = 100;
 
 }

@@ -74,7 +74,7 @@ extern UART_HandleTypeDef huart3;
 void NMI_Handler(void)
 {
   /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
-	  generateBreak();
+	  generateBreak(&motor1);
   /* USER CODE END NonMaskableInt_IRQn 0 */
   /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
   while (1)
@@ -89,7 +89,7 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-	  generateBreak();
+	  generateBreak(&motor1);
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {
@@ -104,7 +104,7 @@ void HardFault_Handler(void)
 void MemManage_Handler(void)
 {
   /* USER CODE BEGIN MemoryManagement_IRQn 0 */
-	  generateBreak();
+	  generateBreak(&motor1);
   /* USER CODE END MemoryManagement_IRQn 0 */
   while (1)
   {
@@ -119,7 +119,7 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
   /* USER CODE BEGIN BusFault_IRQn 0 */
-	  generateBreak();
+	  generateBreak(&motor1);
   /* USER CODE END BusFault_IRQn 0 */
   while (1)
   {
@@ -134,7 +134,7 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
   /* USER CODE BEGIN UsageFault_IRQn 0 */
-	  generateBreak();
+	  generateBreak(&motor1);
   /* USER CODE END UsageFault_IRQn 0 */
   while (1)
   {
@@ -224,10 +224,10 @@ void ADC1_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC1_IRQn 0 */
 	if(__HAL_ADC_GET_FLAG(&hadc1,ADC_FLAG_AWD1)){
-		handleError(ERROR_ADC_OUT_OF_RANGE_IA);
-		handleError(ERROR_ADC_OUT_OF_RANGE_IB);
-		handleError(ERROR_ADC_OUT_OF_RANGE_IC);
-		handleError(ERROR_ADC_OUT_OF_RANGE_VBUS);
+		handleError(&motor1, ERROR_ADC_OUT_OF_RANGE_IA);
+		handleError(&motor1, ERROR_ADC_OUT_OF_RANGE_IB);
+		handleError(&motor1, ERROR_ADC_OUT_OF_RANGE_IC);
+		handleError(&motor1, ERROR_ADC_OUT_OF_RANGE_VBUS);
 	}
   /* USER CODE END ADC1_IRQn 0 */
   HAL_ADC_IRQHandler(&hadc1);
@@ -242,7 +242,7 @@ void ADC1_IRQHandler(void)
 void TIM1_UP_TIM16_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
-	MESC_PWM_IRQ_handler();
+	MESC_PWM_IRQ_handler(&motor1);
   __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
   /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
@@ -256,7 +256,7 @@ void TIM1_UP_TIM16_IRQHandler(void)
 void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
-	MESC_Slow_IRQ_handler(&htim2);
+	MESC_Slow_IRQ_handler(&motor1);
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_CC1);
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_CC2);
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);

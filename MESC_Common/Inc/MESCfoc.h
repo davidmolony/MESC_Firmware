@@ -445,7 +445,7 @@ void getDeadtime(MESC_motor_typedef *_motor);
 void LRObserver(MESC_motor_typedef *_motor);
 void LRObserverCollect(MESC_motor_typedef *_motor);
 void HallFluxMonitor(MESC_motor_typedef *_motor);
-void logVars();
+void logVars(MESC_motor_typedef *_motor);
 void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma);
 
 #endif

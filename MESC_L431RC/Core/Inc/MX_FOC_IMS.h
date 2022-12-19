@@ -35,7 +35,7 @@
 
 //#define USE_FIELD_WEAKENINGV2
 
-#define GET_THROTTLE_INPUT   measurement_buffers.RawADC[1][3] = ADC_buffer[4];  // Throttle input to L431
+#define GET_THROTTLE_INPUT   _motor->Raw.ADC_in_ext1 = ADC_buffer[4];  // Throttle input to L431
 
 
 //#define USE_LR_OBSERVER
