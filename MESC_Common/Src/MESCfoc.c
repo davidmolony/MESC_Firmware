@@ -90,14 +90,14 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
 
 
-  mesc_init_1();
+  mesc_init_1(_motor);
 
   HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle,
                     // controller, PWM source...)
 
-  mesc_init_2();
+  mesc_init_2(_motor);
 
-  hw_init();  // Populate the resistances, gains etc of the PCB - edit within
+  hw_init(_motor);  // Populate the resistances, gains etc of the PCB - edit within
               // this function if compiling for other PCBs
 
 
@@ -114,6 +114,13 @@ void MESCInit(MESC_motor_typedef *_motor) {
   _motor->FOC.enc_offset = ENCODER_E_OFFSET;
 #endif
 
+	//Set up the input capture for throttle
+	HAL_TIM_IC_Start(_motor->stimer, TIM_CHANNEL_1);
+	HAL_TIM_IC_Start(_motor->stimer, TIM_CHANNEL_2);
+	// Here we can auto set the prescaler to get the us input regardless of the main clock
+	__HAL_TIM_SET_PRESCALER(_motor->stimer, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
+	__HAL_TIM_ENABLE_IT(_motor->stimer, TIM_IT_UPDATE);
+
   InputInit();
 
   //htim1.Instance->BDTR |=TIM_BDTR_MOE;
@@ -122,6 +129,15 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	  // At this point we just let the whole thing run off into interrupt land, and
 	  // the fastLoop() starts to be triggered by the ADC conversion complete
 	  // interrupt
+
+  motor.Rphase = motor_profile->R;
+  motor.Lphase = motor_profile->L_D;
+  motor.Lqphase = motor_profile->L_Q;
+  motor.motor_flux = motor_profile->flux_linkage;
+  motor.uncertainty = 1;
+
+calculateGains(_motor);
+calculateVoltageGain(_motor);
 
 }
 
@@ -1083,11 +1099,11 @@ if(phasebalance){
 
     ////////////////////////////////////////////////////////
     // Actually write the value to the timer registers
-    htim1.Instance->CCR1 =
+    _motor->mtimer->Instance->CCR1 =
     		(uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[0] + mid_value);
-    htim1.Instance->CCR2 =
+    _motor->mtimer->Instance->CCR2 =
     		(uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[1] + mid_value);
-    htim1.Instance->CCR3 =
+    _motor->mtimer->Instance->CCR3 =
     		(uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[2] + mid_value);
 
     //Dead time compensation
@@ -1106,12 +1122,12 @@ if(phasebalance){
     //This is observed to improve sinusoidalness of currents, but has a slight audible buzz
     //When the current is approximately zero, it is hard to resolve the direction, and therefore the compensation is ineffective.
     //However, no torque is generated when the current and voltage are close to zero, so no adverse performance except the buzz.
-    if(measurement_buffers.ConvertedADC[0][0] < -0.030f){htim1.Instance->CCR1 = htim1.Instance->CCR1-deadtime_comp;}
-    if(measurement_buffers.ConvertedADC[1][0] < -0.030f){htim1.Instance->CCR2 = htim1.Instance->CCR2-deadtime_comp;}
-    if(measurement_buffers.ConvertedADC[2][0] < -0.030f){htim1.Instance->CCR3 = htim1.Instance->CCR3-deadtime_comp;}
-    if(measurement_buffers.ConvertedADC[0][0] > -0.030f){htim1.Instance->CCR1 = htim1.Instance->CCR1+deadtime_comp;}
-    if(measurement_buffers.ConvertedADC[1][0] > -0.030f){htim1.Instance->CCR2 = htim1.Instance->CCR2+deadtime_comp;}
-    if(measurement_buffers.ConvertedADC[2][0] > -0.030f){htim1.Instance->CCR3 = htim1.Instance->CCR3+deadtime_comp;}
+    if(_motor->Conv.Iu < -0.030f){_motor->mtimer->Instance->CCR1 = _motor->mtimer->Instance->CCR1-deadtime_comp;}
+    if(_motor->Conv.Iv < -0.030f){_motor->mtimer->Instance->CCR2 = _motor->mtimer->Instance->CCR2-deadtime_comp;}
+    if(_motor->Conv.Iw < -0.030f){_motor->mtimer->Instance->CCR3 = _motor->mtimer->Instance->CCR3-deadtime_comp;}
+    if(_motor->Conv.Iu > -0.030f){_motor->mtimer->Instance->CCR1 = _motor->mtimer->Instance->CCR1+deadtime_comp;}
+    if(_motor->Conv.Iv > -0.030f){_motor->mtimer->Instance->CCR2 = _motor->mtimer->Instance->CCR2+deadtime_comp;}
+    if(_motor->Conv.Iw > -0.030f){_motor->mtimer->Instance->CCR3 = _motor->mtimer->Instance->CCR3+deadtime_comp;}
 
 #endif
 #else //Use 5 sector, bottom clamp implementation
@@ -1120,33 +1136,33 @@ if(phasebalance){
     _motor->FOC.inverterVoltage[1] = _motor->FOC.inverterVoltage[1]-bottom_value;
     _motor->FOC.inverterVoltage[2] = _motor->FOC.inverterVoltage[2]-bottom_value;
 
-    htim1.Instance->CCR1 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[0]);
-    htim1.Instance->CCR2 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[1]);
-    htim1.Instance->CCR3 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[2]);
+    _motor->mtimer->Instance->CCR1 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[0]);
+    _motor->mtimer->Instance->CCR2 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[1]);
+    _motor->mtimer->Instance->CCR3 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[2]);
 #ifdef OVERMOD_DT_COMP_THRESHOLD
     //Concept here is that if we are close to the VBus max, we just do not turn the FET off.
     //Set CCRx to ARR, record how much was added, then next cycle, remove it from the count.
     //If the duty is still above the threshold, the CCR will still be set to ARR, until the duty request is sufficiently low...
 static int carryU, carryV, carryW;
 
-	htim1.Instance->CCR1 = 	htim1.Instance->CCR1 - carryU;
-	htim1.Instance->CCR2 = 	htim1.Instance->CCR2 - carryV;
-	htim1.Instance->CCR3 = 	htim1.Instance->CCR3 - carryW;
+	_motor->mtimer->Instance->CCR1 = 	_motor->Instance->CCR1 - carryU;
+	_motor->mtimer->Instance->CCR2 = 	_motor->mtimer->Instance->CCR2 - carryV;
+	_motor->mtimer->Instance->CCR3 = 	_motor->mtimer->Instance->CCR3 - carryW;
 	carryU = 0;
 	carryV = 0;
 	carryW = 0;
 
-	if(htim1.Instance->CCR1>(htim1.Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
-		carryU = htim1.Instance->ARR-htim1.Instance->CCR1; //Save the amount we have overmodulated by
-		htim1.Instance->CCR1 = htim1.Instance->ARR;
+	if(_motor->mtimer->Instance->CCR1>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
+		carryU = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR1; //Save the amount we have overmodulated by
+		_motor->mtimer->Instance->CCR1 = _motor->mtimer->Instance->ARR;
 	}
-	if(htim1.Instance->CCR2>(htim1.Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
-		carryV = htim1.Instance->ARR-htim1.Instance->CCR2; //Save the amount we have overmodulated by
-		htim1.Instance->CCR2 = htim1.Instance->ARR;
+	if(_motor->mtimer->Instance->CCR2>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
+		carryV = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR2; //Save the amount we have overmodulated by
+		_motor->mtimer->Instance->CCR2 = _motor->mtimer->Instance->ARR;
 	}
-	if(htim1.Instance->CCR3>(htim1.Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
-		carryW = htim1.Instance->ARR-htim1.Instance->CCR3; //Save the amount we have overmodulated by
-		htim1.Instance->CCR3 = htim1.Instance->ARR;
+	if(_motor->mtimer->Instance->CCR3>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
+		carryW = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR3; //Save the amount we have overmodulated by
+		_motor->mtimer->Instance->CCR3 = _motor->mtimer->Instance->ARR;
 	}
 #endif
 #endif
@@ -1646,16 +1662,16 @@ __NOP();
     // We need a number to convert between Va Vb and raw PWM register values
     // This number should be the bus voltage divided by the ARR register
     _motor->FOC.Vab_to_PWM =
-        htim1.Instance->ARR / measurement_buffers.ConvertedADC[0][1];
+        htim1.Instance->ARR / _motor->Conv.Vbus;
     // We also need a number to set the maximum voltage that can be effectively
     // used by the SVPWM This is equal to
     // 0.5*Vbus*MAX_MODULATION*SVPWM_MULTIPLIER*Vd_MAX_PROPORTION
-    _motor->FOC.Vmag_max = 0.5f * measurement_buffers.ConvertedADC[0][1] *
+    _motor->FOC.Vmag_max = 0.5f * _motor->Conv.Vbus *
             MAX_MODULATION * SVPWM_MULTIPLIER;
     _motor->FOC.Vmag_max2 = _motor->FOC.Vmag_max*_motor->FOC.Vmag_max;
-    _motor->FOC.Vd_max = 0.5f * measurement_buffers.ConvertedADC[0][1] *
+    _motor->FOC.Vd_max = 0.5f * _motor->Conv.Vbus *
                       MAX_MODULATION * SVPWM_MULTIPLIER * Vd_MAX_PROPORTION;
-    _motor->FOC.Vq_max = 0.5f * measurement_buffers.ConvertedADC[0][1] *
+    _motor->FOC.Vq_max = 0.5f * _motor->Conv.Vbus *
                       MAX_MODULATION * SVPWM_MULTIPLIER * Vq_MAX_PROPORTION;
 #ifdef USE_SQRT_CIRCLE_LIM
     _motor->FOC.Vd_max = _motor->FOC.Vmag_max;
@@ -1780,9 +1796,9 @@ if(MotorState != MOTOR_STATE_MEASURING){
 
 	  //ADC1 input
 	  if(input_vars.input_options & 0b0010){
-		  if(measurement_buffers.RawADC[1][3]>input_vars.adc1_MIN){
+		  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
 			  input_vars.Idq_req_ADC1.d = 0.0f;
-			  input_vars.Idq_req_ADC1.q = ((float)measurement_buffers.RawADC[1][3]-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
+			  input_vars.Idq_req_ADC1.q = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
 		  }
 		  else{
 			  input_vars.Idq_req_ADC1.d = 0.0f;

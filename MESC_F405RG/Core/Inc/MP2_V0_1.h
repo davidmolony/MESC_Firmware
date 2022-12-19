@@ -30,7 +30,7 @@
 #define DEADTIME_COMP_V 10
 
 //Inputs
-#define GET_THROTTLE_INPUT measurement_buffers.RawADC[1][3] = hadc1.Instance->JDR4;  // Throttle for MP2 with F405 pill
+#define GET_THROTTLE_INPUT _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR4;  // Throttle for MP2 with F405 pill
 
 //#define USE_FIELD_WEAKENINGV2
 

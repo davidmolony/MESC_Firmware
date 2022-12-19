@@ -38,7 +38,7 @@ extern SPI_HandleTypeDef hspi3;
 hw_setup_s g_hw_setup;
 motor_s motor;
 
-void hw_init() {
+void hw_init(MESC_motor_typedef *_motor) {
   g_hw_setup.Imax = ABS_MAX_PHASE_CURRENT;  	// Imax is the current at which we are either no longer able to
              	 	 	 	 	 	 	 	 	// read it, or hardware "don't ever exceed to avoid breakage"
   g_hw_setup.Vmax = ABS_MAX_BUS_VOLTAGE;  // Headroom beyond which likely to get avalanche of
@@ -64,22 +64,22 @@ void hw_init() {
                  (g_hw_setup.RVBB + g_hw_setup.RVBT));
 }
 
-void getRawADC(void) {
-  measurement_buffers.RawADC[0][0] = hadc1.Instance->JDR1;  // U Current
-  measurement_buffers.RawADC[0][1] = hadc3.Instance->JDR2;  // DC Link Voltage
+void getRawADC(MESC_motor_typedef *_motor) {
+  _motor->Raw.Iu = hadc1.Instance->JDR1;  // U Current
+  _motor->Raw.Vbus = hadc3.Instance->JDR2;  // DC Link Voltage
 
-  measurement_buffers.RawADC[1][0] = hadc2.Instance->JDR1;  // V Current
-  measurement_buffers.RawADC[2][0] = hadc3.Instance->JDR1;  // W Current
+  _motor->Raw.Iv = hadc2.Instance->JDR1;  // V Current
+  _motor->Raw.Iw = hadc3.Instance->JDR1;  // W Current
   GET_THROTTLE_INPUT; //Define a similar macro in the header file for your board that maps the throttle
 
-  measurement_buffers.RawADC[0][2] = hadc1.Instance->JDR2; //PhaseU Voltage
-  measurement_buffers.RawADC[1][1] = hadc2.Instance->JDR3; //PhaseV Voltage
-  measurement_buffers.RawADC[1][2] = hadc3.Instance->JDR3; //PhaseW Voltage
+  _motor->Raw.Vu = hadc1.Instance->JDR2; //PhaseU Voltage
+  _motor->Raw.Vv = hadc2.Instance->JDR3; //PhaseV Voltage
+  _motor->Raw.Vw = hadc3.Instance->JDR3; //PhaseW Voltage
 
-  measurement_buffers.RawADC[3][0] = hadc2.Instance->JDR4; //Temperature on PB1
+  _motor->Raw.MOSu_T = hadc2.Instance->JDR4; //Temperature on PB1
 }
 
-void getRawADCVph(void){
+void getRawADCVph(MESC_motor_typedef *_motor){
 
 
 
@@ -177,34 +177,32 @@ ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
     }
 }
 
-void mesc_init_1( void )
+void mesc_init_1( MESC_motor_typedef *_motor )
 {
     // Do nothing
 }
 
-void mesc_init_2( void )
+void mesc_init_2( MESC_motor_typedef *_motor )
 {
     // Do nothing
 }
 
-void mesc_init_3( void )
+void mesc_init_3( MESC_motor_typedef *_motor )
 {
     HAL_ADCEx_InjectedStart( &hadc1 );
     HAL_ADCEx_InjectedStart(    &hadc2 );
     HAL_ADCEx_InjectedStart(    &hadc3 );
 
-    HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_1 );
-    HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_1 );
+    HAL_TIM_PWM_Start(    _motor->mtimer, TIM_CHANNEL_1 );
+    HAL_TIMEx_PWMN_Start( _motor->mtimer, TIM_CHANNEL_1 );
 
-    HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_2 );
-    HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_2 );
+    HAL_TIM_PWM_Start(    _motor->mtimer, TIM_CHANNEL_2 );
+    HAL_TIMEx_PWMN_Start( _motor->mtimer, TIM_CHANNEL_2 );
 
-    HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_3 );
-    HAL_TIMEx_PWMN_Start( &htim1, TIM_CHANNEL_3 );
-    generateBreak();//We have started the timers, but we really do not want them PWMing yet
+    HAL_TIM_PWM_Start(    _motor->mtimer, TIM_CHANNEL_3 );
+    HAL_TIMEx_PWMN_Start( _motor->mtimer, TIM_CHANNEL_3 );
+    generateBreak(_motor);//We have started the timers, but we really do not want them PWMing yet
 
-    HAL_TIM_PWM_Start(    &htim1, TIM_CHANNEL_4 );
-
-
-    __HAL_TIM_ENABLE_IT(&htim1, TIM_IT_UPDATE);
+    HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_4 );
+    __HAL_TIM_ENABLE_IT(_motor->mtimer, TIM_IT_UPDATE);
 }

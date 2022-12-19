@@ -96,7 +96,7 @@ static void cmd_hall_dec( void )
 {
     for (int i = 0; i < 6; i++)
     {
-        foc_vars.hall_table[i][2] -= 100;
+        motor1.FOC.hall_table[i][2] -= 100;
     }
 }
 
@@ -104,7 +104,7 @@ static void cmd_hall_inc( void )
 {
     for (int i = 0; i < 6; i++)
     {
-        foc_vars.hall_table[i][2] += 100;
+    	motor1.FOC.hall_table[i][2] += 100;
     }
 }
 
@@ -118,8 +118,8 @@ static void cmd_stop( void )
     cli_reply( "%s" "\r" "\n", "STOP" );
     input_vars.Idq_req_UART.d = 0.0f;
     input_vars.Idq_req_UART.q = 0.0f;
-    foc_vars.Idq_req.d = 0.0f;
-    foc_vars.Idq_req.q = 0.0f;
+    motor1.FOC.Idq_req.d = 0.0f;
+    motor1.FOC.Idq_req.q = 0.0f;
 
 generateBreak(&motor1);
 MotorState = MOTOR_STATE_TRACKING;
@@ -149,12 +149,12 @@ static void cmd_test( void )
 static void cmd_iqup( void )
 {
 	input_vars.Idq_req_UART.q = input_vars.Idq_req_UART.q+1.0f;
-cli_reply( "%s%f" "\r" "\n", "Iq",foc_vars.Idq_req.q );
+cli_reply( "%s%f" "\r" "\n", "Iq",motor1.FOC.Idq_req.q );
 }
 static void cmd_iqdown( void )
 {
 input_vars.Idq_req_UART.q = input_vars.Idq_req_UART.q-1.0f;
-cli_reply( "%s%f" "\r" "\n", "Iq",foc_vars.Idq_req.q );
+cli_reply( "%s%f" "\r" "\n", "Iq",motor1.FOC.Idq_req.q );
 }
 static void cmd_measure( void )
 {
@@ -172,8 +172,8 @@ static void cmd_detect( void )
 void uart_init( void )
 {
 	cli_register_variable_rw( "Idq_req", &input_vars.Idq_req_UART.q, sizeof(input_vars.Idq_req_UART.q), CLI_VARIABLE_FLOAT );
-    cli_register_variable_rw( "Id"       , &foc_vars.Idq_req.d                   , sizeof(foc_vars.Idq_req.d                   ), CLI_VARIABLE_FLOAT );
-    cli_register_variable_rw( "Iq"        , &foc_vars.Idq_req.q                   , sizeof(foc_vars.Idq_req.q                   ), CLI_VARIABLE_FLOAT );
+    cli_register_variable_rw( "Id"       , &motor1.FOC.Idq_req.d                   , sizeof(motor1.FOC.Idq_req.d                   ), CLI_VARIABLE_FLOAT );
+    cli_register_variable_rw( "Iq"        , &motor1.FOC.Idq_req.q                   , sizeof(motor1.FOC.Idq_req.q                   ), CLI_VARIABLE_FLOAT );
     cli_register_variable_ro( "Vbus"      , &measurement_buffers.ConvertedADC[0][1], sizeof(measurement_buffers.ConvertedADC[0][1]), CLI_VARIABLE_FLOAT );
 
     cli_register_function( "hall_dec"     , cmd_hall_dec        );

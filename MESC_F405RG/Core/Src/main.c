@@ -200,15 +200,11 @@ int main(void)
   Finished System Initialisation
   */
 
-  HAL_TIM_IC_Start(&htim4, TIM_CHANNEL_1);
-  HAL_TIM_IC_Start(&htim4, TIM_CHANNEL_2);
-  __HAL_TIM_ENABLE_IT(&htim4, TIM_IT_UPDATE);
-  // Here we can auto set the prescaler to get the us input regardless of the
-  // main clock
- // __HAL_TIM_SET_PRESCALER(&htim4, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
-//HAL_UART_Init(&huart3);
+  //Set motor timer
+	motor1.mtimer = &htim1;
+	motor1.stimer = &htim4;
 
-  MESCInit();
+  MESCInit(&motor1);
 
   // MESC_Init();
 
@@ -217,18 +213,10 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  motor.Rphase = motor_profile->R;
-  motor.Lphase = motor_profile->L_D;
-  motor.Lqphase = motor_profile->L_Q;
-  motor.motor_flux = motor_profile->flux_linkage;
-  motor.uncertainty = 1;
 
-calculateGains();
-calculateVoltageGain();
   MotorControlType = MOTOR_CONTROL_TYPE_FOC;
   HAL_Delay(1000);
   //MotorState = MOTOR_STATE_RUN;
-//650 is the right number for a motor with 7PP and 50kV
   HAL_Delay(1000);
 
 

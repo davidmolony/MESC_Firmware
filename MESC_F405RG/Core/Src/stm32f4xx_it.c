@@ -79,7 +79,7 @@ uint32_t directionstat;
 void NMI_Handler(void)
 {
   /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
-  generateBreak();
+  generateBreak(&motor1);
   /* USER CODE END NonMaskableInt_IRQn 0 */
   /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
   while (1) {
@@ -93,7 +93,7 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-  generateBreak();
+  generateBreak(&motor1);
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {
@@ -108,7 +108,7 @@ void HardFault_Handler(void)
 void MemManage_Handler(void)
 {
   /* USER CODE BEGIN MemoryManagement_IRQn 0 */
-  generateBreak();
+  generateBreak(&motor1);
   /* USER CODE END MemoryManagement_IRQn 0 */
   while (1)
   {
@@ -123,7 +123,7 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
   /* USER CODE BEGIN BusFault_IRQn 0 */
-  generateBreak();
+  generateBreak(&motor1);
   /* USER CODE END BusFault_IRQn 0 */
   while (1)
   {
@@ -138,7 +138,7 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
   /* USER CODE BEGIN UsageFault_IRQn 0 */
-  generateBreak();
+  generateBreak(&motor1);
   /* USER CODE END UsageFault_IRQn 0 */
   while (1)
   {
@@ -229,13 +229,13 @@ void ADC_IRQHandler(void)
   /* USER CODE BEGIN ADC_IRQn 0 */
 
 if(__HAL_ADC_GET_FLAG(&hadc1,ADC_FLAG_AWD)){
-	handleError(ERROR_ADC_OUT_OF_RANGE_IA);
+	handleError(&motor1, ERROR_ADC_OUT_OF_RANGE_IA);
 }
 if(__HAL_ADC_GET_FLAG(&hadc2,ADC_FLAG_AWD)){
-	handleError(ERROR_ADC_OUT_OF_RANGE_IB);
+	handleError(&motor1, ERROR_ADC_OUT_OF_RANGE_IB);
 }
 if(__HAL_ADC_GET_FLAG(&hadc3,ADC_FLAG_AWD)){
-	handleError(ERROR_ADC_OUT_OF_RANGE_IC);
+	handleError(&motor1, ERROR_ADC_OUT_OF_RANGE_IC);
 }
 
     __HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_AWD | ADC_FLAG_JEOC));
@@ -254,7 +254,7 @@ void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, 1);
-	MESC_PWM_IRQ_handler();
+	MESC_PWM_IRQ_handler(&motor1);
 
 	directionstat = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
   __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
@@ -278,7 +278,7 @@ void TIM4_IRQHandler(void)
 //    input_vars.fUPD = __HAL_TIM_GET_FLAG(&htim4, TIM_FLAG_UPDATE) &
 //                    __HAL_TIM_GET_IT_SOURCE(&htim4, TIM_IT_UPDATE);
 
-MESC_Slow_IRQ_handler(&htim4);
+MESC_Slow_IRQ_handler(&motor1);
 __HAL_TIM_CLEAR_IT(&htim4, TIM_IT_CC1);
 __HAL_TIM_CLEAR_IT(&htim4, TIM_IT_CC2);
 __HAL_TIM_CLEAR_IT(&htim4, TIM_IT_UPDATE);
