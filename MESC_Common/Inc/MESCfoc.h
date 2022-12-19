@@ -135,41 +135,6 @@ typedef struct {
 	float Motor_T;
 }MESC_Converted_typedef;
 
-//extern MESC_Converted_typedef motor1;
-
-typedef struct{
-	TIM_HandleTypeDef *mtimer; //3 phase PWM timer
-	TIM_HandleTypeDef *stimer; //Timer that services the slowloop
-
-	MESC_raw_typedef Raw;
-	MESC_Converted_typedef Conv;
-	MESC_offset_typedef offset;
-}MESC_motor_typedef;
-
-extern MESC_motor_typedef motor1;
-
-enum MESCADC
-{
-    ADCIU,
-    ADCIV,
-    ADCIW,
-};
-
-#define SVPWM_MULTIPLIER \
-  1.1547f  // 1/cos30 which comes from the maximum between two 120 degree apart
-          // sin waves being at the
-#define Vd_MAX_PROPORTION 0.3f //These are only used when hard clamping limits are enabled, not when SQRT circle limitation used
-#define Vq_MAX_PROPORTION 0.95f
-
-enum FOCChannels
-{
-    FOC_CHANNEL_PHASE_I,
-    FOC_CHANNEL_DC_V,
-    FOC_CHANNEL_PHASE_V,
-
-    FOC_CHANNELS
-};
-
 typedef struct {
 	float sin;
 	float cos;
@@ -268,6 +233,44 @@ typedef struct {
 } MESCfoc_s;
 
 extern MESCfoc_s foc_vars;
+
+typedef struct{
+	TIM_HandleTypeDef *mtimer; //3 phase PWM timer
+	TIM_HandleTypeDef *stimer; //Timer that services the slowloop
+
+	MESC_raw_typedef Raw;
+	MESC_Converted_typedef Conv;
+	MESC_offset_typedef offset;
+	MESCfoc_s FOC;
+}MESC_motor_typedef;
+
+extern MESC_motor_typedef motor1;
+
+enum MESCADC
+{
+    ADCIU,
+    ADCIV,
+    ADCIW,
+};
+
+#define SVPWM_MULTIPLIER \
+  1.1547f  // 1/cos30 which comes from the maximum between two 120 degree apart
+          // sin waves being at the
+#define Vd_MAX_PROPORTION 0.3f //These are only used when hard clamping limits are enabled, not when SQRT circle limitation used
+#define Vq_MAX_PROPORTION 0.95f
+
+enum FOCChannels
+{
+    FOC_CHANNEL_PHASE_I,
+    FOC_CHANNEL_DC_V,
+    FOC_CHANNEL_PHASE_V,
+
+    FOC_CHANNELS
+};
+
+
+
+
 
 typedef struct {
   float dp_current_final[10];

@@ -636,12 +636,10 @@ if(phasebalance){
   void ADCPhaseConversion(MESC_motor_typedef *_motor) {
 	  //To save clock cycles in the main run loop we only want to convert the phase voltages while tracking.
   //Convert the voltages to volts in real SI units
-	  measurement_buffers.ConvertedADC[0][2] =
-		  (float)measurement_buffers.RawADC[0][2] * g_hw_setup.VBGain;  // Usw
-	  measurement_buffers.ConvertedADC[1][1] =
-		  (float)measurement_buffers.RawADC[1][1] * g_hw_setup.VBGain;  // Vsw
-	  measurement_buffers.ConvertedADC[1][2] =
-		  (float)measurement_buffers.RawADC[1][2] * g_hw_setup.VBGain;  // Wsw
+
+	  measurement_buffers.ConvertedADC[0][2] =(float)_motor->Raw.Vu * g_hw_setup.VBGain;
+	  measurement_buffers.ConvertedADC[1][1] =(float)_motor->Raw.Vv * g_hw_setup.VBGain;
+	  measurement_buffers.ConvertedADC[1][2] =(float)_motor->Raw.Vw * g_hw_setup.VBGain;
 
 	  _motor->Conv.Vu = (float)_motor->Raw.Vu * g_hw_setup.VBGain;
 	  _motor->Conv.Vv = (float)_motor->Raw.Vv * g_hw_setup.VBGain;
@@ -655,10 +653,6 @@ if(phasebalance){
   static float La_last = 0.0f;
   static float Lb_last = 0.0f;
   static uint16_t angle = 0;
-  volatile static float FLAnow = 0.0f;
-  volatile static float FLAmax = 0.0f;
-  volatile static float FLAmin = 0.0f;
-  volatile static float FLAdiff = 0.0f;
 
   void flux_observer(MESC_motor_typedef *_motor) {
     // LICENCE NOTE REMINDER:
@@ -1979,13 +1973,13 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 
     // Clark transform
     foc_vars.Vab[0] =
-        0.666f * (measurement_buffers.ConvertedADC[0][2] -
-                  0.5f * ((measurement_buffers.ConvertedADC[1][1] - 0.3f) +
-                          (measurement_buffers.ConvertedADC[1][2])));
+        0.666f * (_motor->Conv.Vu -
+                  0.5f * ((_motor->Conv.Vv) +
+                          (_motor->Conv.Vw)));
     foc_vars.Vab[1] =
         0.666f *
-        (sqrt3_on_2 * ((measurement_buffers.ConvertedADC[1][1]) -
-                       (measurement_buffers.ConvertedADC[1][2] + 0.6f)));
+        (sqrt3_on_2 * ((_motor->Conv.Vv) -
+                       (_motor->Conv.Vw)));
 
     sin_cos_fast(foc_vars.FOCAngle, &foc_vars.sincosangle.sin, &foc_vars.sincosangle.cos);
 
@@ -2193,21 +2187,23 @@ uint16_t test_counts;
   void getDeadtime(MESC_motor_typedef *_motor){
 	  static int use_phase = 0;
 
-	  if(measurement_buffers.ConvertedADC[use_phase][0]<1.0f){ test_on_time=test_on_time+1;}
-	  if(measurement_buffers.ConvertedADC[use_phase][0]>1.0f){ test_on_time=test_on_time-1;}
 	  if(test_on_time<1){test_on_time = 1;}
 
 		if(use_phase==0){
-		htim1.Instance->CCR1 = test_on_time;
-		htim1.Instance->CCR2 = 0;
-		htim1.Instance->CCR3 = 0;
-		generateEnable(_motor);
-		test_on_time_acc[0] = test_on_time_acc[0]+test_on_time;
-		}
+			htim1.Instance->CCR1 = test_on_time;
+			htim1.Instance->CCR2 = 0;
+			htim1.Instance->CCR3 = 0;
+			if(_motor->Conv.Iu<1.0f){ test_on_time=test_on_time+1;}
+			if(_motor->Conv.Iu>1.0f){ test_on_time=test_on_time-1;}
+			generateEnable(_motor);
+			test_on_time_acc[0] = test_on_time_acc[0]+test_on_time;
+			}
 		if(use_phase==1){
 			htim1.Instance->CCR1 = 0;
 			htim1.Instance->CCR2 = test_on_time;
 			htim1.Instance->CCR3 = 0;
+			if(_motor->Conv.Iv<1.0f){ test_on_time=test_on_time+1;}
+			if(_motor->Conv.Iv>1.0f){ test_on_time=test_on_time-1;}
 			generateEnable(_motor);
 			test_on_time_acc[1] = test_on_time_acc[1]+test_on_time;
 		}
@@ -2215,6 +2211,8 @@ uint16_t test_counts;
 			htim1.Instance->CCR1 = 0;
 			htim1.Instance->CCR2 = 0;
 			htim1.Instance->CCR3 = test_on_time;
+			if(_motor->Conv.Iw<1.0f){ test_on_time=test_on_time+1;}
+			if(_motor->Conv.Iw>1.0f){ test_on_time=test_on_time-1;}
 			generateEnable(_motor);
 			test_on_time_acc[2] = test_on_time_acc[2]+test_on_time;
 		}
