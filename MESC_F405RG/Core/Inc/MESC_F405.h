@@ -52,22 +52,26 @@
 #ifndef HFI_VOLTAGE
 #define HFI_VOLTAGE 4.0f
 #endif
+
 #ifndef HFI_TEST_CURRENT
-#define HFI_TEST_CURRENT 30.0f
+#define HFI_TEST_CURRENT 10.0f
 #endif
 
+#ifndef HFI_THRESHOLD
+#define HFI_THRESHOLD 3.0f
+#endif
 
 #ifdef USE_HFI
-#define CURRENT_BANDWIDTH 1000.0f //HFI does not work if the current controller is strong enough to squash the HFI
+#define CURRENT_BANDWIDTH 10000.0f //HFI does not work if the current controller is strong enough to squash the HFI
 #else
 #ifndef CURRENT_BANDWIDTH
-#define CURRENT_BANDWIDTH 5000.0f
+#define CURRENT_BANDWIDTH 10000.0f
 #endif
 #endif
 
 /////////////////////Related to CIRCLE LIMITATION////////////////////////////////////////
-//#define USE_SQRT_CIRCLE_LIM
-#define USE_SQRT_CIRCLE_LIM_VD
+#define USE_SQRT_CIRCLE_LIM
+//#define USE_SQRT_CIRCLE_LIM_VD
 
 //#define USE_MTPA
 

@@ -1,4 +1,4 @@
-/*
+	/*
  **
  ******************************************************************************
  * @file           : MESChw_setup.c
@@ -50,10 +50,10 @@ void hw_init(MESC_motor_typedef *_motor) {
   g_hw_setup.OpGain = OPGAIN;   //
   g_hw_setup.VBGain =
       (3.3f / 4096.0f) * (g_hw_setup.RVBB + g_hw_setup.RVBT) / g_hw_setup.RVBB;
-  g_hw_setup.Igain = 3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain * SHUNT_POLARITY);  // TODO
+  g_hw_setup.Igain = 3.3f / (g_hw_setup.Rshunt * 4096.0f * g_hw_setup.OpGain * SHUNT_POLARITY);  // TODO
   g_hw_setup.RawCurrLim =
-      g_hw_setup.Imax * g_hw_setup.Rshunt * g_hw_setup.OpGain * (4096 / 3.3) +
-      2048;
+      g_hw_setup.Imax * g_hw_setup.Rshunt * g_hw_setup.OpGain * (4096.0f / 3.3f) +
+      2048.0f;
   if (g_hw_setup.RawCurrLim > 4000) {
     g_hw_setup.RawCurrLim = 4000;
   }  // 4000 is 96 counts away from ADC saturation, allow headroom for opamp not
@@ -204,7 +204,10 @@ void mesc_init_3( MESC_motor_typedef *_motor )
 {
 	
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&ADC_buffer, 10);
-	
+	HAL_ADCEx_InjectedStart(&hadc1);
+
+	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_4);
+
 	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_1);
 	HAL_TIMEx_PWMN_Start(_motor->mtimer, TIM_CHANNEL_1);
 
@@ -214,14 +217,12 @@ void mesc_init_3( MESC_motor_typedef *_motor )
 	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start(_motor->mtimer, TIM_CHANNEL_3);
 	
-	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_4);
     generateBreak(_motor);//We have started the timers, but we really do not want them PWMing yet
+	HAL_Delay(100);
 
-	HAL_ADCEx_InjectedStart(&hadc1);
 	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD);
 	__HAL_TIM_ENABLE_IT(_motor->mtimer,TIM_IT_UPDATE);
 
-	HAL_Delay(100);
 //	hadc1.Instance->HTR = 4001; //Set your own limits if you want, or set them in the .ioc
 //	hadc1.Instance->LTR = 100;
 

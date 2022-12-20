@@ -30,7 +30,7 @@
 #define DEADTIME_COMP_V 10
 
 //Inputs
-#define GET_THROTTLE_INPUT measurement_buffers.RawADC[1][3] = ADC_buffer[3]  // Throttle
+#define GET_THROTTLE_INPUT _motor->Raw.ADC_in_ext1 = ADC_buffer[3]  // Throttle
 
 //#define USE_FIELD_WEAKENINGV2
 

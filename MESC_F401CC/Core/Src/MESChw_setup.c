@@ -75,20 +75,18 @@ void getRawADC(MESC_motor_typedef *_motor) {
 
 //These are handled by regular conversion manager and DMA
   GET_THROTTLE_INPUT;
-//Voltage sense for the MP2
-  _motor->Raw.Vu = ADC_buffer[0]; //PhaseU Voltage
-  _motor->Raw.Vv = ADC_buffer[1];
-  _motor->Raw.Vw = ADC_buffer[2];
+
 //MOS temperature for MP2
-  measurement_buffers.RawADC[3][0] = ADC_buffer[5]; //Temperature on PB1
+  _motor->Raw.MOSu_T = ADC_buffer[5]; //Temperature on PB1
 //Motor temp or Brake, needs plumbing in to main MESC...
-//   = ADC_buffer[4]
+  _motor->Raw.ADC_in_ext2 = ADC_buffer[4];
 }
 
 void getRawADCVph(MESC_motor_typedef *_motor){
-
-
-
+	//Voltage sense for the MP2
+	  _motor->Raw.Vu = ADC_buffer[0]; //PhaseU Voltage
+	  _motor->Raw.Vv = ADC_buffer[1];
+	  _motor->Raw.Vw = ADC_buffer[2];
 }
 #if 0
 static uint32_t const flash_sector_map[] = {
@@ -197,6 +195,9 @@ void mesc_init_3( MESC_motor_typedef *_motor )
 {
 	
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&ADC_buffer, 6);
+	HAL_ADCEx_InjectedStart(&hadc1);
+
+	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_4);
 	
 	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_1);
 	HAL_TIMEx_PWMN_Start(_motor->mtimer, TIM_CHANNEL_1);
@@ -207,9 +208,8 @@ void mesc_init_3( MESC_motor_typedef *_motor )
 	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start(_motor->mtimer, TIM_CHANNEL_3);
 	generateBreak(_motor); //avoid a spurious pulse on startup
-	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_4);
+	HAL_Delay(10); //Delay enabling interrupt to avoid spurious error on startup due to ADC not being ready
 
-	HAL_ADCEx_InjectedStart(&hadc1);
 	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD); //ToDo, how do I put this into the whole shabang with multiple motors?...
 	__HAL_TIM_ENABLE_IT(_motor->mtimer, TIM_IT_UPDATE);
 

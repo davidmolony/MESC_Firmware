@@ -24,7 +24,7 @@ void SimpleComsProcess(COMS_data_t *coms_instance){
 		coms_instance->time = HAL_GetTick();
 		coms_instance->len = sprintf(coms_instance->data,"Vbus: %.2f, eHz: %.2f, Id: %.2f, Iq: %.2f, P: %.2f, \r\n",
 		//coms_instance->len = sprintf(coms_instance->data,"%.2f,%.2f,%.2f,%.2f, %.2f \r\n",
-			measurement_buffers.ConvertedADC[0][1],
+			motor1.Conv.Vbus,
 			motor1.FOC.eHz,
 			motor1.FOC.Idq_smoothed.d,
 			motor1.FOC.Idq_smoothed.q,
