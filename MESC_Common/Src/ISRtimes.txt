@@ -1,0 +1,21 @@
+Times for parts of fastloop
+using htim7 which is clocked at half speed
+
+Fluxobserver
+134*2 to 150*2
+
+MESCFOC
+82*2 using VD circle limiter, no FW
+146*2 with field weakenning V2
+
+WritePWM
+166*2 with V7 switching and deadtime comp
+114*2 with V7 and no deadtime comp
+174 with V5 and over modulation with compensation
+
+ADCConversion
+188*2 at low speed (full clark transform) 
+156*2 to 180*2 at high speed
+
+Total
+300+164+332+376 for typical use

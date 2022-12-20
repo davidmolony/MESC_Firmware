@@ -252,15 +252,6 @@ void fastLoop(MESC_motor_typedef *_motor) {
   		break;
 
     case MOTOR_STATE_RUN:
-      // transform
-      //      if (MotorControlType ==
-      //          MOTOR_CONTROL_TYPE_BLDC) {
-    	// BLDC is hopefully just a
-      //          temporary "Get it spinning" kind of thing, to be deprecated in favour of FOC
-      //        BLDCCurrentController();
-      //        BLDCCommuteHall();
-      //      }//For now we are going to not support BLDC mode
-    	//generateEnable(_motor);
       if (MotorSensorMode == MOTOR_SENSOR_MODE_HALL) {
 			_motor->FOC.inject = 0;
 			hallAngleEstimator();
@@ -269,7 +260,7 @@ void fastLoop(MESC_motor_typedef *_motor) {
 			writePWM(_motor);
       } else if (MotorSensorMode == MOTOR_SENSOR_MODE_SENSORLESS) {
 #ifdef USE_HALL_START
-    static int hall_start_now;
+		  static int hall_start_now;
 		if((fabsf(_motor->FOC.Vdq.q-motor.Rphase*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.hall_initialised)&&(current_hall_state>0)&&(current_hall_state<7)){
 				hall_start_now = 1;
 		}else if(fabsf(_motor->FOC.Vdq.q-motor.Rphase*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f){
@@ -439,7 +430,6 @@ static volatile float nrm_avg;
 static uint16_t last_angle;
 
 void hyperLoop(MESC_motor_typedef *_motor) {
-//#ifdef USE_HFI
   if (_motor->FOC.inject) {
     if (_motor->FOC.inject_high_low_now == 0) {
       _motor->FOC.inject_high_low_now = 1;
@@ -475,10 +465,9 @@ void hyperLoop(MESC_motor_typedef *_motor) {
 
 		_motor->FOC.IIR[0] *= 0.01f;
 		_motor->FOC.IIR[1] *=0.5f;
-        _motor->FOC.FOCAngle += (int)(250.0f*_motor->FOC.IIR[1] + 5.50f*intdidq.q);
+        _motor->FOC.FOCAngle -= (int)(250.0f*_motor->FOC.IIR[1] + 10.50f*intdidq.q);
     }
   }
-//#endif
 #ifdef USE_LR_OBSERVER
       LRObserverCollect();
 #endif
@@ -1121,7 +1110,7 @@ if(phasebalance){
     //If the duty is still above the threshold, the CCR will still be set to ARR, until the duty request is sufficiently low...
 static int carryU, carryV, carryW;
 
-	_motor->mtimer->Instance->CCR1 = 	_motor->Instance->CCR1 - carryU;
+	_motor->mtimer->Instance->CCR1 = 	_motor->mtimer->Instance->CCR1 - carryU;
 	_motor->mtimer->Instance->CCR2 = 	_motor->mtimer->Instance->CCR2 - carryV;
 	_motor->mtimer->Instance->CCR3 = 	_motor->mtimer->Instance->CCR3 - carryW;
 	carryU = 0;
@@ -1911,9 +1900,9 @@ if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STA
 //_motor->FOC.Idq_req[0] = 10; //for aligning encoder
 /////////////Set and reset the HFI////////////////////////
 #ifdef USE_HFI
-    if((_motor->FOC.Vdq.q > 2.0f)||(_motor->FOC.Vdq.q < -2.0f)||(MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
+    if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) > HFI_THRESHOLD)||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) < -HFI_THRESHOLD)||(MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
     	_motor->FOC.inject = 0;
-    } else if((_motor->FOC.Vdq.q < 1.0f)&&(_motor->FOC.Vdq.q > -1.0f)){
+    } else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) < (HFI_THRESHOLD-1))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) > -(HFI_THRESHOLD-1))){
     	_motor->FOC.inject = 1;
   	  _motor->FOC.Vd_injectionV = HFI_VOLTAGE;
   	  _motor->FOC.Vq_injectionV = 0.0f;
@@ -1934,11 +1923,11 @@ if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STA
 			_motor->FOC.Ldq_now_dboost[0] = _motor->FOC.IIR[0]; //Find the effect of d-axis current
 			_motor->FOC.Idq_req.d = 1.0f;
 		}else if(HFI_countdown == 1){
-			_motor->FOC.Idq_req.d = -50.0f;
+			_motor->FOC.Idq_req.d = -HFI_TEST_CURRENT;
 		}else if(HFI_countdown == 0){
 			_motor->FOC.Ldq_now[0] = _motor->FOC.IIR[0];//_motor->FOC.Vd_injectionV;
 			_motor->FOC.Idq_req.d = 1.0f;
-		if(_motor->FOC.Ldq_now[0]>_motor->FOC.Ldq_now_dboost[0]){_motor->FOC.FOCAngle+=32768;}
+		if(_motor->FOC.Ldq_now[0]<_motor->FOC.Ldq_now_dboost[0]){_motor->FOC.FOCAngle+=32768;}
 		HFI_countdown = 200;
 		no_q = 0;
 		}else{
