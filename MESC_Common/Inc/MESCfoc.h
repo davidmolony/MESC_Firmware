@@ -190,6 +190,7 @@ typedef struct {
   float pwm_period;
   float pwm_frequency;
 
+  float Current_bandwidth;
   float Id_pgain;  // Current controller gains
   float Id_igain;
   float Iq_pgain;

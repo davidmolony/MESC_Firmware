@@ -1612,15 +1612,10 @@ __NOP();
 
     _motor->FOC.ADC_duty_threshold = htim1.Instance->ARR * 0.85f;
 
-    _motor->FOC.Id_pgain = CURRENT_BANDWIDTH * motor.Lphase;
 
-    _motor->FOC.Id_igain = motor.Rphase / motor.Lphase;
-    // Pole zero cancellation for series PI control
-
-    _motor->FOC.Iq_pgain = _motor->FOC.Id_pgain;
-    _motor->FOC.Iq_igain = _motor->FOC.Id_igain;
     _motor->FOC.field_weakening_curr_max = FIELD_WEAKENING_CURRENT;  // test number, to be stored in user settings
   motor.Lqd_diff = motor.Lqphase-motor.Lphase;
+  _motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
   }
 
   void calculateVoltageGain(MESC_motor_typedef *_motor) {
@@ -1644,11 +1639,18 @@ __NOP();
 
 #endif
 
-    _motor->FOC.Vdint_max = _motor->FOC.Vd_max * 0.9f; //ToDo unvoodoo, logic in this is to always ensure headroom for the P term
+    _motor->FOC.Vdint_max = _motor->FOC.Vd_max * 0.9f; //Logic in this is to always ensure headroom for the P term
     _motor->FOC.Vqint_max = _motor->FOC.Vq_max * 0.9f;
 
     _motor->FOC.field_weakening_threshold = _motor->FOC.Vq_max * FIELD_WEAKENING_THRESHOLD;
     _motor->FOC.field_weakening_multiplier = 1.0f/(_motor->FOC.Vq_max*(1.0f-FIELD_WEAKENING_THRESHOLD));
+#ifdef USE_HFI //When running HFI we want the bandwidth low
+    _motor->FOC.Id_pgain = _motor->FOC.Current_bandwidth * motor.Lphase;
+    _motor->FOC.Id_igain = motor.Rphase / motor.Lphase;
+    // Pole zero cancellation for series PI control
+    _motor->FOC.Iq_pgain = _motor->FOC.Id_pgain;
+    _motor->FOC.Iq_igain = _motor->FOC.Id_igain;
+#endif
   }
 
 
@@ -1784,7 +1786,6 @@ if(_motor->FOC.Idq_req.q>input_vars.max_request_Idq.q){_motor->FOC.Idq_req.q = i
 if(_motor->FOC.Idq_req.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_req.q = input_vars.min_request_Idq.q;}
 
 ////// Adjust the SVPWM gains to account for the change in battery voltage etc
-    calculateVoltageGain(_motor);
 
 ////// Calculate the current power
     _motor->FOC.currentPower.d = 1.5f*(_motor->FOC.Vdq.d*_motor->FOC.Idq_smoothed.d);
@@ -1902,8 +1903,10 @@ if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STA
 #ifdef USE_HFI
     if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) > HFI_THRESHOLD)||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) < -HFI_THRESHOLD)||(MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
     	_motor->FOC.inject = 0;
-    } else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) < (HFI_THRESHOLD-1))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) > -(HFI_THRESHOLD-1))){
+    	_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
+    } else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) < (HFI_THRESHOLD-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) > -(HFI_THRESHOLD-1.0f))){
     	_motor->FOC.inject = 1;
+    	_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH*0.1f;
   	  _motor->FOC.Vd_injectionV = HFI_VOLTAGE;
   	  _motor->FOC.Vq_injectionV = 0.0f;
     }
@@ -1945,6 +1948,8 @@ if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STA
     	_motor->FOC.angle_error = 0;
     }
   }
+	calculateVoltageGain(_motor);
+
   }
 
 

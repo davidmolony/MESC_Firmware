@@ -8,7 +8,8 @@
 #ifndef INC_MP2_V0_1_H_
 #define INC_MP2_V0_1_H_
 //Pick a motor for default
-#define MCMASTER_70KV_8080//QS165//CA120//
+#define CA120//MCMASTER_70KV_8080//QS165//
+#define PWM_FREQUENCY 30000
 
 #define SHUNT_POLARITY -1.0f
 
@@ -40,8 +41,10 @@
 //#define INTERPOLATE_V7_ANGLE
 
 #define USE_HFI
-#define HFI_VOLTAGE 8.0f
+#define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 10.0f
+#define HFI_THRESHOLD 2.5f
+
 
 
 //#define USE_HALL_START
