@@ -47,10 +47,10 @@ void handleError(MESC_motor_typedef *_motor, uint32_t error_code){
 	//Log the nature of the fault
 	MESC_errors|= (0b01<<(error_code-1));
 	if(error_log.count<1){ //only log the first error
-	error_log.current_A = measurement_buffers.ConvertedADC[0][0];
-	error_log.current_B = measurement_buffers.ConvertedADC[1][0];
-	error_log.current_C = measurement_buffers.ConvertedADC[2][0];
-	error_log.voltage = measurement_buffers.ConvertedADC[0][1];
+	error_log.current_A = _motor->Conv.Iu;
+	error_log.current_B = _motor->Conv.Iv;
+	error_log.current_C = _motor->Conv.Iw;
+	error_log.voltage = _motor->Conv.Vbus;
 	error_log.motor_flux = motor.motor_flux;
 	error_log.flux_linked_alpha = _motor->FOC.flux_linked_alpha;
 	error_log.flux_linked_beta = _motor->FOC.flux_linked_beta;

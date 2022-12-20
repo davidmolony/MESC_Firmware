@@ -243,12 +243,10 @@ static volatile int ISRtimestart,ISRtime;
 void TIM1_UP_TIM16_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
-	ISRtimestart = htim7.Instance->CNT;
 	MESC_PWM_IRQ_handler(&motor1);
   __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
   /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
-ISRtime = htim7.Instance->CNT-ISRtimestart;
   /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
 }
 

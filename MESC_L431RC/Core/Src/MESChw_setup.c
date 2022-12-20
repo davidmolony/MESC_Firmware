@@ -1,4 +1,4 @@
-/*
+	/*
  **
  ******************************************************************************
  * @file           : MESChw_setup.c
@@ -50,10 +50,10 @@ void hw_init(MESC_motor_typedef *_motor) {
   g_hw_setup.OpGain = OPGAIN;   //
   g_hw_setup.VBGain =
       (3.3f / 4096.0f) * (g_hw_setup.RVBB + g_hw_setup.RVBT) / g_hw_setup.RVBB;
-  g_hw_setup.Igain = 3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain * SHUNT_POLARITY);  // TODO
+  g_hw_setup.Igain = 3.3f / (g_hw_setup.Rshunt * 4096.0f * g_hw_setup.OpGain * SHUNT_POLARITY);  // TODO
   g_hw_setup.RawCurrLim =
-      g_hw_setup.Imax * g_hw_setup.Rshunt * g_hw_setup.OpGain * (4096 / 3.3) +
-      2048;
+      g_hw_setup.Imax * g_hw_setup.Rshunt * g_hw_setup.OpGain * (4096.0f / 3.3f) +
+      2048.0f;
   if (g_hw_setup.RawCurrLim > 4000) {
     g_hw_setup.RawCurrLim = 4000;
   }  // 4000 is 96 counts away from ADC saturation, allow headroom for opamp not

@@ -45,7 +45,7 @@
 
 //#define USE_HFI
 
-//#define USE_HALL_START
+#define USE_HALL_START
 #define HALL_VOLTAGE_THRESHOLD 1.5f
 
 //#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...

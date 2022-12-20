@@ -193,6 +193,9 @@ void mesc_init_3( MESC_motor_typedef *_motor )
     HAL_ADCEx_InjectedStart(    &hadc2 );
     HAL_ADCEx_InjectedStart(    &hadc3 );
 
+    HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_4 );
+
+
     HAL_TIM_PWM_Start(    _motor->mtimer, TIM_CHANNEL_1 );
     HAL_TIMEx_PWMN_Start( _motor->mtimer, TIM_CHANNEL_1 );
 
@@ -202,6 +205,8 @@ void mesc_init_3( MESC_motor_typedef *_motor )
     HAL_TIM_PWM_Start(    _motor->mtimer, TIM_CHANNEL_3 );
     HAL_TIMEx_PWMN_Start( _motor->mtimer, TIM_CHANNEL_3 );
     generateBreak(_motor);//We have started the timers, but we really do not want them PWMing yet
+	HAL_Delay(10); //Need to let the ADC start before we enable the fastloop interrupt, otherwise it returns 0 and errors.
+
 
     HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_4 );
     __HAL_TIM_ENABLE_IT(_motor->mtimer, TIM_IT_UPDATE);

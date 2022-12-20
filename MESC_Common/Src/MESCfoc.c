@@ -270,9 +270,9 @@ void fastLoop(MESC_motor_typedef *_motor) {
       } else if (MotorSensorMode == MOTOR_SENSOR_MODE_SENSORLESS) {
 #ifdef USE_HALL_START
     static int hall_start_now;
-		if((fabs(_motor->FOC.Vdq.q-motor.Rphase*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.hall_initialised)&&(current_hall_state>0)&&(current_hall_state<7)){
+		if((fabsf(_motor->FOC.Vdq.q-motor.Rphase*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.hall_initialised)&&(current_hall_state>0)&&(current_hall_state<7)){
 				hall_start_now = 1;
-		}else if(fabs(_motor->FOC.Vdq.q-motor.Rphase*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f){
+		}else if(fabsf(_motor->FOC.Vdq.q-motor.Rphase*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f){
 			hall_start_now = 0;
 		}
 		if(hall_start_now){
@@ -400,9 +400,9 @@ void fastLoop(MESC_motor_typedef *_motor) {
       break;
 
     case MOTOR_STATE_SLAMBRAKE:
-      if((fabs(_motor->Conv.Iu)>input_vars.max_request_Idq.q)||
-		  (fabs(_motor->Conv.Iv)>input_vars.max_request_Idq.q)||
-		  (fabs(_motor->Conv.Iw)>input_vars.max_request_Idq.q)){
+      if((fabsf(_motor->Conv.Iu)>input_vars.max_request_Idq.q)||
+		  (fabsf(_motor->Conv.Iv)>input_vars.max_request_Idq.q)||
+		  (fabsf(_motor->Conv.Iw)>input_vars.max_request_Idq.q)){
     	  generateBreak(_motor);
       }else{
     	  generateEnable(_motor);
@@ -490,7 +490,7 @@ _motor->FOC.angle_error = _motor->FOC.angle_error-0.02f*(int16_t)((_motor->FOC.a
 _motor->FOC.eHz = _motor->FOC.angle_error * _motor->FOC.pwm_frequency/65536.0f;
 last_angle = _motor->FOC.FOCAngle;
 #ifdef INTERPOLATE_V7_ANGLE
-if(fabs(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency){
+if(fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency){
 	//Only run it when there is likely to be good speed measurement stability and
 	//actual utility in doing it. At low speed, there is minimal benefit, and
 	//unstable speed estimation could make it worse.
@@ -612,7 +612,7 @@ uint16_t phasebalance;
           one_on_sqrt3 * two_on_sqrt3 *
 		  _motor->Conv.Iu;
     } else {
-#ifdef USE_HIGHHOPES_PHASE BALANCING
+#ifdef USE_HIGHHOPES_PHASE_BALANCING
 		_motor->FOC.Iab[2] = _motor->Conv.Iu + _motor->Conv.Iv + _motor->Conv.Iw;
 if(phasebalance){
 	_motor->Conv.Iu = _motor->Conv.Iu + _motor->FOC.Iab[2];
@@ -657,7 +657,6 @@ if(phasebalance){
   static float Ib_last = 0.0f;
   static float La_last = 0.0f;
   static float Lb_last = 0.0f;
-  static uint16_t angle = 0;
 
   void flux_observer(MESC_motor_typedef *_motor) {
     // LICENCE NOTE REMINDER:
@@ -2236,7 +2235,7 @@ uint16_t test_counts;
   static int plusminus = 1;
 
   void LRObserver(MESC_motor_typedef *_motor){
-	  if((fabs(_motor->FOC.eHz)>0.005*_motor->FOC.pwm_frequency)&&(_motor->FOC.inject ==0)){
+	  if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->FOC.inject ==0)){
 
 
 
@@ -2286,7 +2285,7 @@ uint16_t test_counts;
 
   void LRObserverCollect(MESC_motor_typedef *_motor){
 	  LR_collect_count++;
-	  if((fabs(_motor->FOC.eHz)>0.005*_motor->FOC.pwm_frequency)&&(_motor->FOC.inject ==0)){
+	  if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->FOC.inject ==0)){
 	  	  	if(plusminus==1){
 	  	  		Vd_obs_low = Vd_obs_low + _motor->FOC.Vdq.d;
 	  	  		Vq_obs_low = Vq_obs_low + _motor->FOC.Vdq.q;
@@ -2299,7 +2298,7 @@ uint16_t test_counts;
   }
 
   void HallFluxMonitor(MESC_motor_typedef *_motor){
-	  if(fabs(_motor->FOC.Vdq.q)>10.0f){ //Are we actually spinning at a reasonable pace?
+	  if(fabsf(_motor->FOC.Vdq.q)>10.0f){ //Are we actually spinning at a reasonable pace?
 		  if((current_hall_state>0)&&(current_hall_state<7)){
 	  _motor->FOC.hall_flux[current_hall_state - 1][0] =
 			  0.999f*_motor->FOC.hall_flux[current_hall_state - 1][0] +
@@ -2334,9 +2333,9 @@ int samples_sent;
 uint32_t start_ticks;
 extern DMA_HandleTypeDef hdma_usart3_tx;
 void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma){
+#ifdef LOGGING
 	char send_buffer[100];
 	uint16_t length;
-#ifdef LOGGING
 	if(print_samples_now){
 		print_samples_now = 0;
 		lognow = 0;
