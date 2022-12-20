@@ -120,7 +120,7 @@ int main(void)
 
   HAL_UART_Init(&huart3);
   SimpleComsInit(&huart3, &com1);
-
+HAL_TIM_Base_Start(&htim7);
   //Set motor timer
   motor1.mtimer = &htim1;
   motor1.stimer = &htim2;
@@ -470,7 +470,6 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
-  sConfigOC.Pulse = 0;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();

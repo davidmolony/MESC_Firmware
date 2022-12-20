@@ -63,7 +63,7 @@
 
 /////////////////////Related to CIRCLE LIMITATION////////////////////////////////////////
 //#define USE_SQRT_CIRCLE_LIM
-#define USE_SQRT_CIRCLE_LIM_VD
+//#define USE_SQRT_CIRCLE_LIM_VD
 
 //#define USE_MTPA
 

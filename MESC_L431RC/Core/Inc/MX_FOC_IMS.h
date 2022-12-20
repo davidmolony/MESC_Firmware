@@ -11,11 +11,11 @@
 //Pick a motor for default
 #define MCMASTER_70KV_8080
 
-//#define PWM_FREQUENCY 38000
+#define PWM_FREQUENCY 20000
 
 #define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 250.0f
+#define ABS_MAX_PHASE_CURRENT 50.0f
 #define ABS_MAX_BUS_VOLTAGE 50.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
 #define R_SHUNT 0.00025f
@@ -30,7 +30,7 @@
 #define MAX_IQ_REQUEST 40.0f
 
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
-#define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
+//#define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
 #define DEADTIME_COMP_V 10
 
 //#define USE_FIELD_WEAKENINGV2
@@ -45,7 +45,7 @@
 
 //#define USE_HFI
 
-#define USE_HALL_START
+//#define USE_HALL_START
 #define HALL_VOLTAGE_THRESHOLD 1.5f
 
 //#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
@@ -55,6 +55,6 @@
 
 //#define USE_SALIENT_OBSERVER //If not defined, it assumes that Ld and Lq are equal, which is fine usually.
 
-#define LOGGING
+//#define LOGGING
 
 #endif /* INC_MX_FOC_IMS_H_ */
