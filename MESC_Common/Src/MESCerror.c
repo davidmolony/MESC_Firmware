@@ -43,7 +43,7 @@ extern TIM_HandleTypeDef htim1;
 
 void handleError(MESC_motor_typedef *_motor, uint32_t error_code){
 	generateBreak(_motor); //Always generate a break when something bad happens
-	MotorState = MOTOR_STATE_ERROR;
+	_motor->MotorState = MOTOR_STATE_ERROR;
 	//Log the nature of the fault
 	MESC_errors|= (0b01<<(error_code-1));
 	if(error_log.count<1){ //only log the first error
@@ -70,7 +70,7 @@ void clearBRK(MESC_motor_typedef *_motor){
 		generateBreak(_motor);
 		//Need to set the MOE bit high to re-enable the timer
 		htim1.Instance->BDTR |= (0b01);
-		MotorState = MOTOR_STATE_TRACKING;
+		_motor->MotorState = MOTOR_STATE_TRACKING;
 	}
 
 }

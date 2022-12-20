@@ -39,8 +39,8 @@
 #define MESC_FOC_H
 
 #include "stm32fxxx_hal.h"
+#include "MESCmotor_state.h"
 
-#define FOC_SECTORS_PER_REVOLUTION (6)
 #define FOC_CONV_CHANNELS          (4)
 #define FOC_TRANSFORMED_CHANNELS   (2)
 #define FOC_NUM_ADC                (4)
@@ -234,10 +234,13 @@ typedef struct {
 
 extern MESCfoc_s foc_vars;
 
+///////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////Main typedef for starting a motor instance////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////
 typedef struct{
 	TIM_HandleTypeDef *mtimer; //3 phase PWM timer
 	TIM_HandleTypeDef *stimer; //Timer that services the slowloop
-
+	motor_state_e MotorState;
 	MESC_raw_typedef Raw;
 	MESC_Converted_typedef Conv;
 	MESC_offset_typedef offset;

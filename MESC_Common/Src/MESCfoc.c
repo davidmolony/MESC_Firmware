@@ -85,7 +85,7 @@ void MESCInit(MESC_motor_typedef *_motor) {
 #else
 	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP;
 #endif
-	MotorState = MOTOR_STATE_IDLE;
+	_motor->MotorState = MOTOR_STATE_IDLE;
 
 
 
@@ -105,7 +105,7 @@ void MESCInit(MESC_motor_typedef *_motor) {
   // triggering the ADC, which in turn triggers the ISR routine and wrecks the
   // startup
   mesc_init_3(_motor);
-  MotorState = MOTOR_STATE_INITIALISING;
+  _motor->MotorState = MOTOR_STATE_INITIALISING;
 #ifdef LOGGING
   lognow = 1;
 #endif
@@ -206,7 +206,7 @@ void initialiseInverter(MESC_motor_typedef *_motor){
         _motor->offset.Iv /=  initcycles;
         _motor->offset.Iw /=  initcycles;
 //ToDo, do we want some safety checks here like offsets being roughly correct?
-    	MotorState = MOTOR_STATE_TRACKING;
+    	_motor->MotorState = MOTOR_STATE_TRACKING;
         htim1.Instance->BDTR |= TIM_BDTR_MOE;
       }
 }
@@ -245,7 +245,7 @@ void fastLoop(MESC_motor_typedef *_motor) {
   ADCConversion(_motor);
   adc_conv_end = htim1.Instance->CNT;  // track the ADC conversion time
 
-  switch (MotorState) {
+  switch (_motor->MotorState) {
 
   	case MOTOR_STATE_INITIALISING:
   		initialiseInverter(_motor);
@@ -346,9 +346,9 @@ void fastLoop(MESC_motor_typedef *_motor) {
 
       if ((current_hall_state == 7)) { // no hall sensors detected, all GPIO pulled high
         MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
-        MotorState = MOTOR_STATE_GET_KV;
+        _motor->MotorState = MOTOR_STATE_GET_KV;
       } else if (current_hall_state == 0) {
-        MotorState = MOTOR_STATE_ERROR;
+        _motor->MotorState = MOTOR_STATE_ERROR;
         MotorError = MOTOR_ERROR_HALL0;
       } else {
         // hall sensors detected
@@ -415,7 +415,7 @@ void fastLoop(MESC_motor_typedef *_motor) {
     break;
 
     default:
-      MotorState = MOTOR_STATE_ERROR;
+      _motor->MotorState = MOTOR_STATE_ERROR;
       generateBreak(_motor);
       break;
   }
@@ -454,7 +454,7 @@ void hyperLoop(MESC_motor_typedef *_motor) {
       Idq[1].d = _motor->FOC.Idq.d;
       Idq[1].q = _motor->FOC.Idq.q;
     }
-    if (MotorState == MOTOR_STATE_RUN) {
+    if (_motor->MotorState == MOTOR_STATE_RUN) {
 
 
   	  dIdq.d = (Idq[0].d - Idq[1].d);
@@ -498,13 +498,13 @@ _motor->FOC.FOCAngle = _motor->FOC.FOCAngle + 0.5f*_motor->FOC.angle_error;
 }
 #endif
  // _motor->FOC.FOCAngle = _motor->FOC.FOCAngle + _motor->FOC.angle_error;
-if(MotorState==MOTOR_STATE_RUN||MotorState==MOTOR_STATE_MEASURING){
+if(_motor->MotorState==MOTOR_STATE_RUN||_motor->MotorState==MOTOR_STATE_MEASURING){
 	writePWM(_motor);
 	}
 #ifdef LOGGING
 if(lognow){
 	static int post_error_samples;
-	if(MotorState!=MOTOR_STATE_ERROR){
+	if(_motor->MotorState!=MOTOR_STATE_ERROR){
 	logVars(_motor);
 	post_error_samples = 50;
 	}else{//If we have an error state, we want to keep the data surrounding the error log, including some sampled during and after the fault
@@ -786,10 +786,10 @@ if(phasebalance){
     if (current_hall_state != last_hall_state) {
       _motor->FOC.hall_update = 1;
       if (current_hall_state == 0) {
-        MotorState = MOTOR_STATE_ERROR;
+        _motor->MotorState = MOTOR_STATE_ERROR;
         MotorError = MOTOR_ERROR_HALL0;
       } else if (current_hall_state == 7) {
-        MotorState = MOTOR_STATE_ERROR;
+        _motor->MotorState = MOTOR_STATE_ERROR;
         MotorError = MOTOR_ERROR_HALL7;
       }
       //////////Implement the Hall table here, but the vector can be dynamically
@@ -895,7 +895,7 @@ if(phasebalance){
     // Idq into Vdq Calculate the errors
     static MESCiq_s Idq_err;
 #ifdef USE_FIELD_WEAKENINGV2
-    if((FW_current<_motor->FOC.Idq_req.d)&&(MotorState==MOTOR_STATE_RUN)){//Field weakenning is -ve, but there may already be d-axis from the MTPA
+    if((FW_current<_motor->FOC.Idq_req.d)&&(_motor->MotorState==MOTOR_STATE_RUN)){//Field weakenning is -ve, but there may already be d-axis from the MTPA
     	Idq_err.d = (FW_current - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
     }else{
     	Idq_err.d = (_motor->FOC.Idq_req.d - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
@@ -1336,14 +1336,14 @@ static int carryU, carryV, carryW;
           fabsf((_motor->FOC.Vq_injectionV) /
           ((top_I_Lq - bottom_I_Lq) / (count_top * _motor->FOC.pwm_period)));
 
-      MotorState = MOTOR_STATE_IDLE;
+      _motor->MotorState = MOTOR_STATE_IDLE;
       motor.uncertainty = 0;
 
       _motor->FOC.inject = 0;  // flag to the SVPWM writer stop injecting at top
       _motor->FOC.Vd_injectionV = HFI_VOLTAGE;
       _motor->FOC.Vq_injectionV = 0.0f;
       calculateGains(_motor);
-      MotorState = MOTOR_STATE_TRACKING;
+      _motor->MotorState = MOTOR_STATE_TRACKING;
       PWM_cycles = 0;
       phU_Enable(_motor);
       phV_Enable(_motor);
@@ -1449,7 +1449,7 @@ static int carryU, carryV, carryW;
             _motor->FOC.hall_table[i][0] = _motor->FOC.hall_table[i][2]-_motor->FOC.hall_table[i][3]/2;//This is the start angle of the hall state
             _motor->FOC.hall_table[i][1] = _motor->FOC.hall_table[i][2]+_motor->FOC.hall_table[i][3]/2;//This is the end angle of the hall state
       }
-      MotorState = MOTOR_STATE_RUN;
+      _motor->MotorState = MOTOR_STATE_RUN;
       _motor->FOC.Idq_req.d = 0;
       _motor->FOC.Idq_req.q = 0;
       phU_Enable(_motor);
@@ -1529,12 +1529,12 @@ __NOP();
     	motor_profile->flux_linkage_max = 1.3f*motor.motor_flux;
     	motor_profile->flux_linkage_min = 0.7f*motor.motor_flux;
     	motor_profile->flux_linkage = motor.motor_flux;
-      MotorState = MOTOR_STATE_TRACKING;
+      _motor->MotorState = MOTOR_STATE_TRACKING;
       cycles = 0;
       if (motor.motor_flux > 0.0001f && motor.motor_flux < 200.0f) {
         MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
       } else {
-        MotorState = MOTOR_STATE_ERROR;
+        _motor->MotorState = MOTOR_STATE_ERROR;
         generateBreak(_motor);
       }
     }
@@ -1706,7 +1706,7 @@ __NOP();
           _motor->Conv.Iv;
       dp_counter = 0;
       generateBreak(_motor);
-      MotorState = MOTOR_STATE_IDLE;
+      _motor->MotorState = MOTOR_STATE_IDLE;
     }
   }
   void MESC_Slow_IRQ_handler(MESC_motor_typedef *_motor){
@@ -1735,7 +1735,7 @@ __NOP();
     // In this loop, we will fetch the throttle values, and run functions that
     // are critical, but do not need to be executed very often e.g. adjustment
     // for battery voltage change
-if(MotorState != MOTOR_STATE_MEASURING){
+if(_motor->MotorState != MOTOR_STATE_MEASURING){
 	  //Collect the requested throttle inputs
 	  //UART input
 	  if(0 == (input_vars.input_options & 0b1000)){
@@ -1841,7 +1841,7 @@ if(_motor->FOC.Idq_req.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_req.q = i
 
     if(temp_check( measurement_buffers.RawADC[3][0] ) == false){
     	if(0){generateBreak(_motor); //ToDo Currently not loading the profile so commented out - no temp safety!
-    	MotorState = MOTOR_STATE_ERROR;
+    	_motor->MotorState = MOTOR_STATE_ERROR;
     	MotorError = MOTOR_ERROR_OVER_LIMIT_TEMP;
     	}
     }
@@ -1873,28 +1873,28 @@ if(_motor->FOC.Idq_req.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_req.q = i
     //////Set tracking
 static int was_last_tracking;
 
-if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(MotorState==MOTOR_STATE_GET_KV)||(MotorState==MOTOR_STATE_TEST)||(MotorState==MOTOR_STATE_INITIALISING)||(MotorState==MOTOR_STATE_SLAMBRAKE))){
+if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STATE_DETECTING)||(_motor->MotorState==MOTOR_STATE_GET_KV)||(_motor->MotorState==MOTOR_STATE_TEST)||(_motor->MotorState==MOTOR_STATE_INITIALISING)||(_motor->MotorState==MOTOR_STATE_SLAMBRAKE))){
 	if(fabsf(_motor->FOC.Idq_req.q)>0.1f){
 
-		if(MotorState != MOTOR_STATE_ERROR){
+		if(_motor->MotorState != MOTOR_STATE_ERROR){
 	#ifdef HAS_PHASE_SENSORS //We can go straight to RUN if we have been tracking with phase sensors
-		MotorState = MOTOR_STATE_RUN;
+		_motor->MotorState = MOTOR_STATE_RUN;
 		//generateEnable();
 	#endif
-	if(MotorState==MOTOR_STATE_IDLE){
+	if(_motor->MotorState==MOTOR_STATE_IDLE){
 	#ifdef USE_DEADSHORT
-		MotorState = MOTOR_STATE_RECOVERING;
+		_motor->MotorState = MOTOR_STATE_RECOVERING;
 
 	#endif
 			}
 		}
 	}else if(FW_current>-0.5f){	//Keep it running if FW current is being used
 	#ifdef HAS_PHASE_SENSORS
-		MotorState = MOTOR_STATE_TRACKING;
+		_motor->MotorState = MOTOR_STATE_TRACKING;
 		VICheck(_motor); //Immediately return it to error state if there is still a critical fault condition active
 	#else
-	//	if(MotorState != MOTOR_STATE_ERROR){
-		MotorState = MOTOR_STATE_IDLE;
+	//	if(_motor->MotorState != MOTOR_STATE_ERROR){
+		_motor->MotorState = MOTOR_STATE_IDLE;
 	//	}
 	#endif
 	was_last_tracking = 1;
@@ -2077,7 +2077,7 @@ if(!((MotorState==MOTOR_STATE_MEASURING)||(MotorState==MOTOR_STATE_DETECTING)||(
 	  		if(countdown == 1 ){
 					countdown = 15; //We need at least a few cycles for the current to relax
 									//to zero in case of rapid switching between states
-  					MotorState = MOTOR_STATE_RUN;
+  					_motor->MotorState = MOTOR_STATE_RUN;
 
 	  		}
 	  		countdown--;
@@ -2212,7 +2212,7 @@ uint16_t test_counts;
 		}
 		if(use_phase>2){
 			generateBreak(_motor);
-			MotorState = MOTOR_STATE_TRACKING;
+			_motor->MotorState = MOTOR_STATE_TRACKING;
 			use_phase = 0;
 			test_on_time_acc[0] = test_on_time_acc[0]>>10;
 			test_on_time_acc[1] = test_on_time_acc[1]>>10;
