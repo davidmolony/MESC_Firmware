@@ -8,7 +8,7 @@
 #ifndef INC_MP2_V0_1_H_
 #define INC_MP2_V0_1_H_
 //Pick a motor for default
-#define CA120//MCMASTER_70KV_8080//QS165//
+#define MCMASTER_70KV_8080//QS165//CA120//
 #define PWM_FREQUENCY 30000
 
 #define SHUNT_POLARITY -1.0f

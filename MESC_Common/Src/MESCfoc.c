@@ -294,6 +294,7 @@ void fastLoop(MESC_motor_typedef *_motor) {
 #ifdef HAS_PHASE_SENSORS
 			  // Track using BEMF from phase sensors
 			  generateBreak(_motor);
+			  getRawADCVph(_motor);
 			  ADCPhaseConversion(_motor);
 		      MESCTrack(_motor);
 		      if (MotorSensorMode == MOTOR_SENSOR_MODE_HALL) {
@@ -465,7 +466,7 @@ void hyperLoop(MESC_motor_typedef *_motor) {
 
 		_motor->FOC.IIR[0] *= 0.01f;
 		_motor->FOC.IIR[1] *=0.5f;
-        _motor->FOC.FOCAngle -= (int)(250.0f*_motor->FOC.IIR[1] + 10.50f*intdidq.q);
+        _motor->FOC.FOCAngle += (int)(250.0f*_motor->FOC.IIR[1] + 10.50f*intdidq.q);
     }
   }
 #ifdef USE_LR_OBSERVER
@@ -1597,16 +1598,14 @@ __NOP();
     htim1.Instance->CCER |= TIM_CCER_CC3NE;  // enable
   }
 
-#ifndef CURRENT_BANDWIDTH
-#define CURRENT_BANDWIDTH 5000.0f
-#endif
+
   void calculateGains(MESC_motor_typedef *_motor) {
     _motor->FOC.pwm_frequency =PWM_FREQUENCY;
     _motor->FOC.pwm_period = 1.0f/_motor->FOC.pwm_frequency;
     _motor->mtimer->Instance->ARR = HAL_RCC_GetHCLKFreq()/(((float)htim1.Instance->PSC + 1.0f) * 2*_motor->FOC.pwm_frequency);
-    _motor->mtimer->Instance->CCR4 = htim1.Instance->ARR-2; //Just short of dead center (dead center will not actually trigger the conversion)
+    _motor->mtimer->Instance->CCR4 = htim1.Instance->ARR-50; //Just short of dead center (dead center will not actually trigger the conversion)
     #ifdef SINGLE_ADC
-    _motor->mtimer->Instance->CCR4 = htim1.Instance->ARR-50; //If we only have one ADC, we need to convert early otherwise the data will not be ready in time
+    _motor->mtimer->Instance->CCR4 = htim1.Instance->ARR-80; //If we only have one ADC, we need to convert early otherwise the data will not be ready in time
     #endif
     _motor->FOC.PWMmid = htim1.Instance->ARR * 0.5f;
 
@@ -1930,7 +1929,7 @@ if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STA
 		}else if(HFI_countdown == 0){
 			_motor->FOC.Ldq_now[0] = _motor->FOC.IIR[0];//_motor->FOC.Vd_injectionV;
 			_motor->FOC.Idq_req.d = 1.0f;
-		if(_motor->FOC.Ldq_now[0]<_motor->FOC.Ldq_now_dboost[0]){_motor->FOC.FOCAngle+=32768;}
+		if(_motor->FOC.Ldq_now[0]>_motor->FOC.Ldq_now_dboost[0]){_motor->FOC.FOCAngle+=32768;}
 		HFI_countdown = 200;
 		no_q = 0;
 		}else{

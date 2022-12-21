@@ -51,10 +51,10 @@ void hw_init(MESC_motor_typedef *_motor) {
   g_hw_setup.OpGain = OPGAIN;   //
   g_hw_setup.VBGain =
       (3.3f / 4096.0f) * (g_hw_setup.RVBB + g_hw_setup.RVBT) / g_hw_setup.RVBB;
-  g_hw_setup.Igain = 3.3 / (g_hw_setup.Rshunt * 4096 * g_hw_setup.OpGain * SHUNT_POLARITY);  // TODO
+  g_hw_setup.Igain = 3.3f / (g_hw_setup.Rshunt * 4096.0f * g_hw_setup.OpGain * SHUNT_POLARITY);  // TODO
   g_hw_setup.RawCurrLim =
-      g_hw_setup.Imax * g_hw_setup.Rshunt * g_hw_setup.OpGain * (4096 / 3.3) +
-      2048;
+      g_hw_setup.Imax * g_hw_setup.Rshunt * g_hw_setup.OpGain * (4096.0f / 3.3f) +
+      2048.0f;
   if (g_hw_setup.RawCurrLim > 4000) {
     g_hw_setup.RawCurrLim = 4000;
   }  // 4000 is 96 counts away from ADC saturation, allow headroom for opamp not
@@ -65,24 +65,25 @@ void hw_init(MESC_motor_typedef *_motor) {
 }
 
 void getRawADC(MESC_motor_typedef *_motor) {
-  _motor->Raw.Iu = hadc1.Instance->JDR1;  // U Current
-  _motor->Raw.Vbus = hadc3.Instance->JDR2;  // DC Link Voltage
+	//Get the injected critical conversions
 
+  _motor->Raw.Iu = hadc1.Instance->JDR1;  // U Current
   _motor->Raw.Iv = hadc2.Instance->JDR1;  // V Current
   _motor->Raw.Iw = hadc3.Instance->JDR1;  // W Current
+  _motor->Raw.Vbus = hadc3.Instance->JDR2;  // DC Link Voltage
+
   GET_THROTTLE_INPUT; //Define a similar macro in the header file for your board that maps the throttle
 
-  _motor->Raw.Vu = hadc1.Instance->JDR2; //PhaseU Voltage
-  _motor->Raw.Vv = hadc2.Instance->JDR3; //PhaseV Voltage
-  _motor->Raw.Vw = hadc3.Instance->JDR3; //PhaseW Voltage
+
 
   _motor->Raw.MOSu_T = hadc2.Instance->JDR4; //Temperature on PB1
 }
 
 void getRawADCVph(MESC_motor_typedef *_motor){
-
-
-
+	//Voltage sense
+	  _motor->Raw.Vu = hadc1.Instance->JDR2; //PhaseU Voltage
+	  _motor->Raw.Vv = hadc2.Instance->JDR3; //PhaseV Voltage
+	  _motor->Raw.Vw = hadc3.Instance->JDR3; //PhaseW Voltage
 }
 
 static uint32_t const flash_sector_map[] = {

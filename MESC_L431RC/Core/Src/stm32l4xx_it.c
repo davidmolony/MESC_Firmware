@@ -239,7 +239,6 @@ void ADC1_IRQHandler(void)
 /**
   * @brief This function handles TIM1 update interrupt and TIM16 global interrupt.
   */
-static volatile int ISRtimestart,ISRtime;
 void TIM1_UP_TIM16_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */

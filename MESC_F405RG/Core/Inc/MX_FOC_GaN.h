@@ -34,7 +34,7 @@
 
 //#define USE_FIELD_WEAKENINGV2
 
-#define GET_THROTTLE_INPUT  measurement_buffers.RawADC[1][3] = hadc1.Instance->JDR3;  // Throttle for IMS board
+#define GET_THROTTLE_INPUT  _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR3;  // Throttle for IMS board
 
 
 //#define USE_LR_OBSERVER
@@ -42,9 +42,9 @@
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
 #define INTERPOLATE_V7_ANGLE
 
-//#define USE_HFI
+#define USE_HFI
 
-#define USE_HALL_START
+//#define USE_HALL_START
 #define HALL_VOLTAGE_THRESHOLD 1.5f
 
 //#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...

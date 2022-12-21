@@ -33,7 +33,7 @@
 
 //#define USE_FIELD_WEAKENINGV2
 
-#define GET_THROTTLE_INPUT  measurement_buffers.RawADC[1][3] = hadc1.Instance->JDR3;  // Throttle for IMS board
+#define GET_THROTTLE_INPUT  _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR3;  // Throttle for IMS board
 
 //#define USE_LR_OBSERVER
 

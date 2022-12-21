@@ -27,7 +27,7 @@
 
 #if defined(MCMASTER_70KV_8080) //Reliable params
 #define MAX_MOTOR_PHASE_CURRENT 60.0f
-#define DEFAULT_MOTOR_POWER 250.0f
+#define DEFAULT_MOTOR_POWER 500.0f
 #define DEFAULT_FLUX_LINKAGE 0.01180f//Set this to the motor linkage in wB
 #define DEFAULT_MOTOR_Ld 0.000080f //Henries
 #define DEFAULT_MOTOR_Lq 0.000130f//Henries

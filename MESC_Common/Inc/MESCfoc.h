@@ -87,6 +87,26 @@
 #ifndef DEADSHORT_CURRENT
 #define DEADSHORT_CURRENT 30.0f
 #endif
+//HFI related
+#ifndef HFI_VOLTAGE
+#define HFI_VOLTAGE 4.0f
+#endif
+
+#ifndef HFI_TEST_CURRENT
+#define HFI_TEST_CURRENT 10.0f
+#endif
+
+#ifndef HFI_THRESHOLD
+#define HFI_THRESHOLD 3.0f
+#endif
+
+#ifdef USE_HFI
+#define CURRENT_BANDWIDTH 10000.0f
+#else
+#ifndef CURRENT_BANDWIDTH
+#define CURRENT_BANDWIDTH 10000.0f
+#endif
+#endif
 
 typedef struct {
 	int Iu;

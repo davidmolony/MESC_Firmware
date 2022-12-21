@@ -75,10 +75,7 @@ void getRawADC(MESC_motor_typedef *_motor) {
   _motor->Raw.ADC_in_ext2 = ADC_buffer[5];  // Throttle
   _motor->Raw.Motor_T = ADC_buffer[6];		//Motor input pin 24, buffer 6=ADC_in13
 
-//Voltage sense 
-  _motor->Raw.Vu = ADC_buffer[0]; //PhaseU Voltage
-  _motor->Raw.Vv = ADC_buffer[1]; //PhaseV Voltage
-  _motor->Raw.Vw = ADC_buffer[2]; //PhaseW Voltage
+
 
 //Temperature
   _motor->Raw.MOSu_T = ADC_buffer[3]; //Temperature on PA3
@@ -88,9 +85,10 @@ void getRawADC(MESC_motor_typedef *_motor) {
 }
 
 void getRawADCVph(MESC_motor_typedef *_motor){
-
-
-
+	//Voltage sense
+	  _motor->Raw.Vu = ADC_buffer[0]; //PhaseU Voltage
+	  _motor->Raw.Vv = ADC_buffer[1]; //PhaseV Voltage
+	  _motor->Raw.Vw = ADC_buffer[2]; //PhaseW Voltage
 }
 
 ///////////////////////////////////////////////////////////////
