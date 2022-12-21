@@ -1987,7 +1987,7 @@ uint16_t test_counts;
   //Original work to MESC project.
   float Vd_obs_high, Vd_obs_low, R_observer, Vq_obs_high, Vq_obs_low, L_observer, Last_eHz;
   void LRObserver(){
-	  if((fabs(foc_vars.eHz)>0.005*foc_vars.pwm_frequency)&&(foc_vars.inject ==0)){
+	  if((fabsf(foc_vars.eHz)>0.005f*foc_vars.pwm_frequency)&&(foc_vars.inject ==0)){
 	  	static int plusminus = 1;
 	  	if(plusminus==1){
 	  		plusminus = -1;

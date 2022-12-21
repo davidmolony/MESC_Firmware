@@ -125,7 +125,6 @@ uint8_t CMD_reset(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 uint8_t CMD_help(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     uint8_t currArg = 0;
-    uint8_t returnCode = TERM_CMD_EXIT_SUCCESS;
     for(;currArg<argCount; currArg++){
         if(strcmp(args[currArg], "-?") == 0){
             ttprintf("come on do you really need help with help?\r\n");
@@ -144,7 +143,6 @@ uint8_t CMD_help(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 uint8_t CMD_cls(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     uint8_t currArg = 0;
-    uint8_t returnCode = TERM_CMD_EXIT_SUCCESS;
     for(;currArg<argCount; currArg++){
         if(strcmp(args[currArg], "-?") == 0){
             ttprintf("clears the screen\r\n");

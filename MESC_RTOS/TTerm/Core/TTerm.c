@@ -38,7 +38,7 @@
 #include "TTerm/Core/include/TTerm_cmd.h"
 #include "TTerm/Core/include/TTerm_AC.h"
 #include "TTerm/Core/include/TTerm_cwd.h"
-#include "TTerm/Core/include/Term_var.h"
+#include <TTerm/Core/include/TTerm_var.h>
 
 TermCommandDescriptor TERM_defaultList = {.nextCmd = 0, .commandLength = 0};
 
@@ -82,7 +82,8 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
     newHandle->cmdListHead = cmdListHead;
 
     #if TERM_SUPPORT_VARIABLES
-    newHandle->varListHead = &TERM_varList;
+    newHandle->varHandle = pvPortMalloc(sizeof(TermVariableHandle));
+    newHandle->varHandle->varListHead = &TERM_varList;
 	#endif
 
     sprintf(newHandle->currUserName, "%s%s%s", TERM_getVT100Code(_VT100_FOREGROUND_COLOR, _VT100_BLUE), usr, TERM_getVT100Code(_VT100_RESET_ATTRIB, 0));
@@ -113,12 +114,12 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
         
 		#if TERM_SUPPORT_VARIABLES
         TermCommandDescriptor * varAC = TERM_addCommand(CMD_varList, "get", "Get variable value", 0, &TERM_defaultList);
-        TERM_addCommandAC(varAC, TERM_varCompleter, &TERM_varList);
+        TERM_addCommandAC(varAC, TERM_varCompleter, newHandle->varHandle->varListHead);
         varAC = TERM_addCommand(CMD_varSet, "set", "Set variable", 0, &TERM_defaultList);
-        TERM_addCommandAC(varAC, TERM_varCompleter, &TERM_varList);
+        TERM_addCommandAC(varAC, TERM_varCompleter, newHandle->varHandle->varListHead);
         TERM_addCommand(CMD_varSave, "save", "Save variables", 0, &TERM_defaultList);
         varAC = TERM_addCommand(CMD_varLoad, "load", "Load variables", 0, &TERM_defaultList);
-        TERM_addCommandAC(varAC, TERM_varCompleter, &TERM_varList);
+        TERM_addCommandAC(varAC, TERM_varCompleter, newHandle->varHandle->varListHead);
 		#endif
 
       

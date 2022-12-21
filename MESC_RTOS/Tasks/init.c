@@ -30,6 +30,5 @@ void init_system(void){
 
 	task_cli_init(&main_usb);
 	task_cli_init(&main_uart);
-
 }
 

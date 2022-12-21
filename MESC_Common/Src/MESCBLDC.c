@@ -109,7 +109,7 @@ void BLDCCurrentController() {
   CurrentIntegralError =
       CurrentIntegralError +
       CurrentError *
-          0.0027;  // 37kHz PWM, so the integral portion should
+          0.0027f;  // 37kHz PWM, so the integral portion should
                    // be multiplied by 1/37k before accumulating Interesting
                    // behaviour with gating - increasing the factor here and
                    // changing the pgain have different results -  need to have

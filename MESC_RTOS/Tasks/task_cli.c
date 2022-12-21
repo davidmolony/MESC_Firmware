@@ -33,6 +33,71 @@
 
 #include "usbd_cdc_if.h"
 
+#define FLASH_SIZE 		130048
+
+//uint8_t memo[2048];
+
+
+
+uint32_t flash_clear(void * address, uint32_t len){
+	FLASH_WaitForLastOperation(500);
+	HAL_FLASH_Unlock();
+	FLASH_WaitForLastOperation(500);
+	eraseFlash((uint32_t)address, len);
+	HAL_FLASH_Lock();
+	FLASH_WaitForLastOperation(500);
+	return len;
+}
+
+uint32_t flash_start_write(void * address, void * data, uint32_t len){
+	uint8_t * buffer = data;
+	FLASH_WaitForLastOperation(500);
+	HAL_FLASH_Unlock();
+	FLASH_WaitForLastOperation(500);
+	uint32_t written=0;
+	while(len){
+		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, (uint32_t)address, *buffer)==HAL_OK){
+			written++;
+		}
+		buffer++;
+		address++;
+		len--;
+	}
+	return written;
+}
+
+uint32_t flash_write(void * address, void * data, uint32_t len){
+	uint8_t * buffer = data;
+	uint32_t written=0;
+	while(len){
+		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, (uint32_t)address, *buffer)==HAL_OK){
+			written++;
+		}
+		buffer++;
+		address++;
+		len--;
+	}
+	return written;
+}
+
+uint32_t flash_end_write(void * address, void * data, uint32_t len){
+	uint8_t * buffer = data;
+	uint32_t written=0;
+	while(len){
+		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, (uint32_t)address, *buffer)==HAL_OK){
+			written++;
+		}
+		buffer++;
+		address++;
+		len--;
+	}
+	FLASH_WaitForLastOperation(500);
+	HAL_FLASH_Lock();
+	FLASH_WaitForLastOperation(500);
+	return written;
+}
+
+
 void putbuffer_uart(unsigned char *buf, unsigned int len, port_str * port){
 	UART_HandleTypeDef *uart_handle = port->hw;
 
@@ -147,6 +212,8 @@ void task_cli(void * argument)
 			term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "usb");
 			break;
 	}
+
+	TERM_VAR_init(term_cli, (uint8_t*)getFlashBaseAddress(), FLASH_SIZE, flash_clear, flash_start_write, flash_write, flash_end_write);
 
 	MESCinterface_init();
 

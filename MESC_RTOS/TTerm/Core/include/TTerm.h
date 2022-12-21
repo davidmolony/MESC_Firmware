@@ -97,18 +97,6 @@ typedef enum {
 	TERM_VARIABLE_BOOL,
 } TermVariableType;
 
-//#define t_name(x) _Generic((x), \
-//    uint8_t:    TERM_VARIABLE_UINT, \
-//    uint16_t:   TERM_VARIABLE_UINT, \
-//    uint32_t:   TERM_VARIABLE_UINT, \
-//    int8_t:     TERM_VARIABLE_INT, \
-//    int16_t:    TERM_VARIABLE_INT, \
-//    int32_t:    TERM_VARIABLE_INT, \
-//	bool:		TERM_VARIABLE_BOOL, \
-//    float:      TERM_VARIABLE_FLOAT, \
-//    char:       TERM_VARIABLE_CHAR, \
-//    char*:      TERM_VARIABLE_STRING)
-
 #define TERM_addVar(var, min, max, name, description, rw, listHandle) _Generic((var), \
     uint8_t:    TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
     uint16_t:   TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
@@ -121,6 +109,11 @@ typedef enum {
     char:       TERM_addVarChar(&var, name, description, rw, listHandle), \
     char*:      TERM_addVarString(&var, sizeof(var), name, description, rw, listHandle))
 
+
+typedef uint32_t (* nvm_clear)(void * address, uint32_t len);
+typedef uint32_t (* nvm_start_write)(void * address, void * buffer, uint32_t len);
+typedef uint32_t (* nvm_write)(void * address, void * buffer, uint32_t len);
+typedef uint32_t (* nvm_end_write)(void * address, void * buffer, uint32_t len);
 
 typedef struct __TermVariableDescriptor__ TermVariableDescriptor;
 
@@ -146,6 +139,18 @@ struct __TermVariableDescriptor__{
     TermVariableDescriptor * nextVar;
 };
 
+typedef struct __TermVariableHandle__ TermVariableHandle;
+
+struct __TermVariableHandle__{
+	TermVariableDescriptor * varListHead;
+	uint32_t nvm_size;
+	void * nvm_address;
+	nvm_clear nvm_clear;
+	nvm_start_write nvm_start_write;
+	nvm_write nvm_write;
+	nvm_end_write nvm_end_write;
+};
+
 char toLowerCase(char c);
 
 
@@ -154,7 +159,7 @@ char toLowerCase(char c);
 #endif
 
 #if TERM_SUPPORT_VARIABLES
-#include "Term_var.h"
+#include <TTerm/Core/include/TTerm_var.h>
 #endif
 
 typedef uint8_t (* TermCommandFunction)(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
@@ -210,7 +215,7 @@ struct __TERMINAL_HANDLE__{
     unsigned echoEnabled;
     TermCommandDescriptor * cmdListHead;
 #if TERM_SUPPORT_VARIABLES
-    TermVariableDescriptor * varListHead;
+    TermVariableHandle * varHandle;
 #endif
     TermErrorPrinter errorPrinter;
 //TODO actually finish implementing this...
