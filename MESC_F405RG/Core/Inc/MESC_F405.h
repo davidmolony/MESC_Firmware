@@ -51,8 +51,8 @@
 
 
 /////////////////////Related to CIRCLE LIMITATION////////////////////////////////////////
-#define USE_SQRT_CIRCLE_LIM
-//#define USE_SQRT_CIRCLE_LIM_VD
+//#define USE_SQRT_CIRCLE_LIM //Use for high PWM frequency (less clock cycles) or try if stability issues seen with Vd favouring option (unlikely)
+#define USE_SQRT_CIRCLE_LIM_VD //Use for Field weakening
 
 //#define USE_MTPA
 

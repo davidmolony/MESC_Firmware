@@ -41,9 +41,7 @@
 #include "stm32fxxx_hal.h"
 #include "MESCmotor_state.h"
 
-#define FOC_CONV_CHANNELS          (4)
-#define FOC_TRANSFORMED_CHANNELS   (2)
-#define FOC_NUM_ADC                (4)
+
 #define FOC_PERIODS                (1)
 
 //Default options which can be overwritten by user
@@ -166,6 +164,12 @@ typedef struct {
 } MESCiq_s;
 
 typedef struct {
+  float a;
+  float b;
+  float g;
+} MESCiab_s;
+
+typedef struct {
   int initing;  // Flag to say we are initialising
 
   uint16_t openloop_step;//The angle to increment by for openloop
@@ -177,12 +181,10 @@ typedef struct {
   MESCsin_cos_s sincosangle;  // This variable carries the current sin and cosine of
                          	  // the angle being used for Park and Clark transforms,
                               // so they only need computing once per pwm cycle
-  float Iab[FOC_TRANSFORMED_CHANNELS + 1];  // Float vector containing the Clark
-                                            // transformed current in amps
+  MESCiab_s Vab;							//Float vector containing the Alpha beta frame voltage
+  MESCiab_s Iab;							// Float vector containing the Clark transformed current in Amps
   MESCiq_s Idq;      						// Float vector containing the Park
-
-  	  	  	  	  	  	  	  	  	  	  	  // transformed current in amps
-  float Vab[FOC_TRANSFORMED_CHANNELS + 1];
+  	  	  	  	  	  	  	  	  	  	  	// transformed current in amps
   MESCiq_s Vdq;
   MESCiq_s Idq_smoothed;
   MESCiq_s Idq_int_err;
@@ -190,12 +192,18 @@ typedef struct {
   float iq_mtpa;
 
 
-  float inverterVoltage[FOC_TRANSFORMED_CHANNELS + 1];
+  float inverterVoltage[3];
   MESCiq_s Idq_req;							//The input to the PI controller. Load this with the values you want.
   MESCiq_s currentPower;					//Power being consumed by the motor; this does not include steady state losses and losses to switching
   float currentPowerab;
   float Ibus;
   float reqPower;
+
+  //Observer parameters
+  float Ia_last;
+  float Ib_last;
+  float La_last;
+  float Lb_last;
 
   uint16_t hall_table[6][4];
   	  	  	  	  	  	  // Lookup table, populated by the getHallTable()
@@ -230,10 +238,11 @@ typedef struct {
   float field_weakening_threshold;
   float field_weakening_multiplier;
   int field_weakening_flag;
+  float FW_current;
 
   float VBEMFintegral[2];
-  float flux_linked_alpha;
-  float flux_linked_beta;
+  float flux_a;
+  float flux_b;
   uint16_t state[4];  // current state, last state, angle change occurred
   uint16_t hall_update;
   uint16_t BEMF_update;
@@ -304,25 +313,6 @@ typedef struct {
 
 extern MESCtest_s test_vals;
 
-typedef struct {
-  int32_t RawADC[FOC_NUM_ADC]
-                [FOC_CONV_CHANNELS];  // ADC1 returns Ucurrent, DClink
-                                      // voltage and U phase voltage
-                                      //  ADC2 returns Vcurrent, V and Wphase
-                                      //  voltages
-                                      // ADC3 returns Wcurrent
-  // We can use ints rather than uints, since this later helps the conversion of
-  // values to float, and the sign bit remains untouched (0)
-  int32_t ADCOffset[FOC_NUM_ADC];  // During detect phase, need to sense the
-                                   // zero current offset
-  float ConvertedADC[FOC_NUM_ADC]
-                    [FOC_CONV_CHANNELS];  // We will fill this with currents
-                                          // in A and voltages in Volts
-  uint32_t adc1, adc2, adc3, adc4, adc5;
-
-} foc_measurement_t;
-
-extern foc_measurement_t measurement_buffers;  // fixme: floating function prototype
 
 enum RCPWMMode{
 	THROTTLE_ONLY,

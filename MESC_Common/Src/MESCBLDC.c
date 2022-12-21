@@ -28,6 +28,8 @@
 #include "MESChw_setup.h"
 #include "MESCmotor_state.h"
 
+foc_measurement_t measurement_buffers;
+
 extern TIM_HandleTypeDef htim1;
 
 MESCBLDCVars_s BLDCVars;
