@@ -420,41 +420,41 @@ void fastLoop(MESC_motor_typedef *_motor) {
 // that the next signal level takes affect right after the ADC reading In normal
 // run mode, we want to increment the angle and write the next PWM values
 static MESCiq_s Idq[2] = {{.d = 0.0f, .q = 0.0f}, {.d = 0.0f, .q = 0.0f}};
-static MESCiq_s dIdq = {.d = 0.0f, .q = 0.0f};
+static volatile MESCiq_s dIdq = {.d = 0.0f, .q = 0.0f};
 //static float IIR[2] = {0.0f, 0.0f};
 static MESCiq_s intdidq;
-static volatile float nrm;
+static volatile float nrm, magnitude45, mag45avg;
+
 static volatile float nrm_avg;
 static uint16_t last_angle;
 
 void hyperLoop(MESC_motor_typedef *_motor) {
   if (_motor->FOC.inject) {
-    if (_motor->FOC.inject_high_low_now == 0) {
+    if (_motor->FOC.inject_high_low_now == 0) {///////////////LOW
       _motor->FOC.inject_high_low_now = 1;
-      _motor->FOC.Vdq.d = _motor->FOC.Vdq.d + _motor->FOC.Vd_injectionV;
-      _motor->FOC.Vdq.q = _motor->FOC.Vdq.q + _motor->FOC.Vq_injectionV;
+#ifdef HFID
+      _motor->FOC.Vd_injectionV = +HFI_VOLTAGE;
+#else
+      _motor->FOC.Vd_injectionV = +HFI_VOLTAGE;
+      _motor->FOC.Vq_injectionV = +HFI_VOLTAGE;//Maybe make this inverting with Iq direction?
+#endif
       Idq[0].d = _motor->FOC.Idq.d;
       Idq[0].q = _motor->FOC.Idq.q;
-    } else if (_motor->FOC.inject_high_low_now == 1) {
+    } else if (_motor->FOC.inject_high_low_now == 1) {//////////////HIGH
       _motor->FOC.inject_high_low_now = 0;
-      _motor->FOC.Vdq.d = _motor->FOC.Vdq.d - _motor->FOC.Vd_injectionV;
-      _motor->FOC.Vdq.q = _motor->FOC.Vdq.q - _motor->FOC.Vq_injectionV;
+#ifdef HFID
+      _motor->FOC.Vd_injectionV = -HFI_VOLTAGE;
+#else
+      _motor->FOC.Vd_injectionV = -HFI_VOLTAGE;
+      _motor->FOC.Vq_injectionV = -HFI_VOLTAGE;//Maybe make this inverting with Iq direction?
+#endif
       Idq[1].d = _motor->FOC.Idq.d;
       Idq[1].q = _motor->FOC.Idq.q;
     }
     if (_motor->MotorState == MOTOR_STATE_RUN) {
-
-
+    	//Find the current fluctuation
   	  dIdq.d = (Idq[0].d - Idq[1].d);
   	  dIdq.q = (Idq[0].q - Idq[1].q);
-  	  if(dIdq.q>1.0f){dIdq.q = 1.0f;}
-  	  if(dIdq.q<-1.0f){dIdq.q = -1.0f;}
-  	  intdidq.q = (intdidq.q + dIdq.q);
-  	  if(intdidq.q>10){intdidq.q=10;}
-  	  if(intdidq.q<-10){intdidq.q=-10;}
-
-  //	  static float ffactor = 2.0f;
-
 		_motor->FOC.IIR[0] *= (99.0f);
 		_motor->FOC.IIR[1] *= (1.0f);
 
@@ -463,8 +463,40 @@ void hyperLoop(MESC_motor_typedef *_motor) {
 
 		_motor->FOC.IIR[0] *= 0.01f;
 		_motor->FOC.IIR[1] *=0.5f;
+
+#ifdef HFID
+  	  if(dIdq.q>1.0f){dIdq.q = 1.0f;}
+  	  if(dIdq.q<-1.0f){dIdq.q = -1.0f;}
+  	  intdidq.q = (intdidq.q + dIdq.q);
+  	  if(intdidq.q>10){intdidq.q=10;}
+  	  if(intdidq.q<-10){intdidq.q=-10;}
+
+  //	  static float ffactor = 2.0f;
+
+
         _motor->FOC.FOCAngle += (int)(250.0f*_motor->FOC.IIR[1] + 10.50f*intdidq.q);
+#endif
+#ifdef HFI45
+        magnitude45 = sqrtf(dIdq.d*dIdq.d+dIdq.q*dIdq.q);
+        mag45avg = 0.0005f*_motor->FOC.HFI_Threshold+0.9995f*mag45avg;
+//        if(dIdq.d>dIdq.q){
+//        	_motor->FOC.FOCAngle =_motor->FOC.FOCAngle +10;
+//        }else{
+//        	_motor->FOC.FOCAngle =_motor->FOC.FOCAngle -10;
+//        }
+        if(magnitude45>mag45avg){//_motor->FOC.HFI_Threshold){//Maybe make this inverting with Iq direction?
+        	_motor->FOC.FOCAngle =_motor->FOC.FOCAngle +250; //deal with gains later... bang bang for now and maybe evermore
+
+        }else{
+        	_motor->FOC.FOCAngle =_motor->FOC.FOCAngle -250;
+
+        }
+//        _motor->FOC.Idq_req.d = 20.0f;
+#endif
     }
+  }else {
+	  _motor->FOC.Vd_injectionV = 0;
+	  _motor->FOC.Vq_injectionV = 0;
   }
 #ifdef USE_LR_OBSERVER
       LRObserverCollect();
@@ -1033,6 +1065,10 @@ if(phasebalance){
  uint16_t deadtime_comp = DEADTIME_COMP_V;
 
  void writePWM(MESC_motor_typedef *_motor) {
+float Vd, Vq;
+
+		 Vd = _motor->FOC.Vdq.d + _motor->FOC.Vd_injectionV;
+		 Vq = _motor->FOC.Vdq.q + _motor->FOC.Vq_injectionV;
 
     // Now we update the sin and cos values, since when we do the inverse
     // transforms, we would like to use the most up to date versions(or even the
@@ -1040,10 +1076,10 @@ if(phasebalance){
 	sin_cos_fast(_motor->FOC.FOCAngle, &_motor->FOC.sincosangle.sin, &_motor->FOC.sincosangle.cos);
 
     // Inverse Park transform
-    _motor->FOC.Vab.a = _motor->FOC.sincosangle.cos * _motor->FOC.Vdq.d -
-                      _motor->FOC.sincosangle.sin * _motor->FOC.Vdq.q;
-    _motor->FOC.Vab.b = _motor->FOC.sincosangle.sin * _motor->FOC.Vdq.d +
-                      _motor->FOC.sincosangle.cos * _motor->FOC.Vdq.q;
+    _motor->FOC.Vab.a = _motor->FOC.sincosangle.cos * Vd -
+                      _motor->FOC.sincosangle.sin * Vq;
+    _motor->FOC.Vab.b = _motor->FOC.sincosangle.sin * Vd +
+                      _motor->FOC.sincosangle.cos * Vq;
 
 	// Inverse Clark transform - power variant
 	_motor->FOC.inverterVoltage[0] = _motor->FOC.Vab.a;
@@ -1660,7 +1696,10 @@ __NOP();
     // Pole zero cancellation for series PI control
     _motor->FOC.Iq_pgain = _motor->FOC.Id_pgain;
     _motor->FOC.Iq_igain = _motor->FOC.Id_igain;
-#endif
+    //This is the expected current magnitude we would see based on the average inductance and the injected voltage
+    //_motor->FOC.HFI_Threshold = ((HFI_VOLTAGE*sqrt2*2.0f)*_motor->FOC.pwm_period)/((motor.Lphase+motor.Lqphase)*0.5f);
+    _motor->FOC.HFI_Threshold = 2.50f;
+    #endif
   }
 
 
@@ -1917,19 +1956,21 @@ if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STA
     } else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) < (HFI_THRESHOLD-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) > -(HFI_THRESHOLD-1.0f))){
     	_motor->FOC.inject = 1;
     	_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH*0.1f;
-  	  _motor->FOC.Vd_injectionV = HFI_VOLTAGE;
-  	  _motor->FOC.Vq_injectionV = 0.0f;
+//  	  _motor->FOC.Vd_injectionV = HFI_VOLTAGE;
+//  	  _motor->FOC.Vq_injectionV = 0.0f;
     }
 
     if(_motor->FOC.inject==1){
     	static int HFI_countdown;
-    	static int no_q;
+    	//static int no_q;
     	if(was_last_tracking==1){
     		HFI_countdown = 4; //resolve the ambiguity immediately
-    		_motor->FOC.Idq_req.q = 0.0f;
-    		no_q=1;
+    		//_motor->FOC.Idq_req.q = 0.0f;
+    		//no_q=1;
+    		mag45avg = 0.0f;
     		was_last_tracking = 0;
     	}
+#ifdef HFID
 		if(HFI_countdown==3){
 			_motor->FOC.Idq_req.d = HFI_TEST_CURRENT;
 		}else if(HFI_countdown==2){
@@ -1942,12 +1983,13 @@ if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STA
 			_motor->FOC.Idq_req.d = 1.0f;
 		if(_motor->FOC.Ldq_now[0]>_motor->FOC.Ldq_now_dboost[0]){_motor->FOC.FOCAngle+=32768;}
 		HFI_countdown = 200;
-		no_q = 0;
+		//no_q = 0;
 		}else{
 			_motor->FOC.Idq_req.d = 0.0f;
 		}
 		HFI_countdown--;
 	    if(no_q){_motor->FOC.Idq_req.q=0.0f;}
+#endif
     }
 #else
     _motor->FOC.inject = 0;

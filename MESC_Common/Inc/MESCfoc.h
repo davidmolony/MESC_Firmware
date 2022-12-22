@@ -237,24 +237,23 @@ typedef struct {
   float field_weakening_curr_max;
   float field_weakening_threshold;
   float field_weakening_multiplier;
-  int field_weakening_flag;
   float FW_current;
 
-  float VBEMFintegral[2];
   float flux_a;
   float flux_b;
   uint16_t state[4];  // current state, last state, angle change occurred
   uint16_t hall_update;
-  uint16_t BEMF_update;
   uint32_t IRQentry;
   uint32_t IRQexit;
+
+  //HFI
   uint16_t inject;
   uint16_t inject_high_low_now;
   float Vd_injectionV;
   float Vq_injectionV;
+  float HFI_Threshold;
   uint32_t FLrun, VFLrun;
   float angle_error;
-  int increment_count;
   float eHz;
   float Ldq_now[2];
   float Ldq_now_dboost[2];

@@ -34,7 +34,7 @@
 #define GET_THROTTLE_INPUT _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR4;  // Throttle for MP2 with F405 pill
 
 //#define USE_FIELD_WEAKENING
-#define USE_FIELD_WEAKENINGv2
+//#define USE_FIELD_WEAKENINGv2
 
 //#define USE_LR_OBSERVER
 
@@ -43,8 +43,9 @@
 
 #define USE_HFI
 #define HFI_VOLTAGE 4.0f
-#define HFI_TEST_CURRENT 10.0f
+#define HFI_TEST_CURRENT 0.0f
 #define HFI_THRESHOLD 2.5f
+#define HFI45
 
 
 
