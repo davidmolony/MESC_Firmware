@@ -33,6 +33,14 @@
 #define FOOTER_END   	0xDEADC0DE
 #define HEADER_VERSION	0x00000001
 
+
+typedef enum {
+    HELPER_FLAG_FLASH,
+	HELPER_FLAG_DETAIL,
+	HELPER_FLAG_DEFAULT,
+} HelperFlagType;
+
+
 uint16_t toLower(uint16_t c){
     if(c > 65 && c < 90){
         return c + 32;
@@ -203,6 +211,26 @@ TermVariableDescriptor * TERM_addVarFloat(void* variable, float min, float max, 
     return newVAR;
 }
 
+TermVariableDescriptor * TERM_addVarArrayFloat(void* variable, uint32_t size,  float min, float max, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head){
+    //if(head == NULL) head = TERM_defaultList;
+    if(head->nameLength == 0xff) return 0;
+
+    TermVariableDescriptor * newVAR = pvPortMalloc(sizeof(TermVariableDescriptor));
+
+    newVAR->variable = variable;
+    newVAR->min_float = min;
+    newVAR->max_float = max;
+    newVAR->type = TERM_VARIABLE_FLOAT_ARRAY;
+    newVAR->typeSize = size;
+    newVAR->name = name;
+    newVAR->nameLength = strlen(name);
+    newVAR->variableDescription = description;
+    newVAR->rw = rw;
+
+    TERM_VAR_LIST_add(newVAR, head);
+    return newVAR;
+}
+
 TermVariableDescriptor * TERM_addVarString(void* variable, uint16_t typeSize, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head){
     //if(head == NULL) head = TERM_defaultList;
     if(head->nameLength == 0xff) return 0;
@@ -362,10 +390,11 @@ static void print_var_header_update(TERMINAL_HANDLE * handle){
 	ttprintf("| Changes\r\n");
 }
 
-static void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescriptor * var, bool flash ){
+static void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescriptor * var, HelperFlagType flag ){
 
     uint32_t u_temp_buffer=0;
     int32_t i_temp_buffer=0;
+    float f_buffer;
 
 	TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_A);
 	ttprintf("\033[36m%s", var->name);
@@ -411,6 +440,22 @@ static void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescripto
 		ttprintf("\033[37m| \033[32m%f", *(float*)var->variable);
 
 		break;
+	case TERM_VARIABLE_FLOAT_ARRAY:
+		if(flag == HELPER_FLAG_DETAIL){
+			for(uint32_t cnt=0;cnt<(var->typeSize / sizeof(float));cnt++){
+				f_buffer = ((float*)var->variable)[cnt];
+				TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_B);
+				ttprintf("\033[37m| [%u] \033[32m%f", cnt , f_buffer);
+				if(cnt<(var->typeSize / sizeof(float)-1)){
+					ttprintf("\r\n");
+				}
+			}
+		}else{
+			TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_B);
+			ttprintf("\033[37m| \033[32mArray[%u]", (var->typeSize / sizeof(float)));
+		}
+
+		break;
 	case TERM_VARIABLE_CHAR:
 
 		TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_B);
@@ -432,7 +477,7 @@ static void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescripto
 	}
 
 	TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_C);
-	if(flash==false){
+	if(flag != HELPER_FLAG_FLASH){
 		switch (var->type){
 			case TERM_VARIABLE_UINT:
 				ttprintf("\033[37m| %u", var->min_unsigned);
@@ -441,6 +486,7 @@ static void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescripto
 				ttprintf("\033[37m| %i", var->min_signed);
 				break;
 			case TERM_VARIABLE_FLOAT:
+			case TERM_VARIABLE_FLOAT_ARRAY:
 				ttprintf("\033[37m| %.2f", var->min_float);
 				break;
 			case TERM_VARIABLE_BOOL:
@@ -457,7 +503,7 @@ static void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescripto
 	}
 
 	TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_D);
-	if(flash==false){
+	if(flag != HELPER_FLAG_FLASH){
 		switch (var->type){
 			case TERM_VARIABLE_UINT:
 				ttprintf("\033[37m| %u", var->max_unsigned);
@@ -466,6 +512,7 @@ static void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescripto
 				ttprintf("\033[37m| %i", var->max_signed);
 				break;
 			case TERM_VARIABLE_FLOAT:
+			case TERM_VARIABLE_FLOAT_ARRAY:
 				ttprintf("\033[37m| %.2f", var->max_float);
 				break;
 			case TERM_VARIABLE_BOOL:
@@ -481,7 +528,7 @@ static void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescripto
 		}
 	}
 	TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_E);
-	if(flash==false){
+	if(flag != HELPER_FLAG_FLASH){
 		if(var->variableDescription){
 			ttprintf("\033[37m| %s\r\n", var->variableDescription);
 		}else{
@@ -495,6 +542,13 @@ static void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescripto
 
 uint8_t CMD_varList(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
+	HelperFlagType flag = HELPER_FLAG_DEFAULT;
+
+	if(argCount && strcmp("-d",args[argCount-1])==0){
+		flag = HELPER_FLAG_DETAIL;
+		argCount--;
+	}
+
 	uint8_t currPos = 0;
 
 	print_var_header(handle);
@@ -505,10 +559,10 @@ uint8_t CMD_varList(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
     	if(argCount && args[0] != NULL){
     		if(strstr(currVar->name, args[0])){
-    			print_var_helperfunc(handle, currVar, false);
+    			print_var_helperfunc(handle, currVar, flag);
     		}
     	}else{
-    		print_var_helperfunc(handle, currVar, false);
+    		print_var_helperfunc(handle, currVar, flag);
     	}
         currVar = currVar->nextVar;
     }
@@ -536,6 +590,9 @@ static bool set_value(TermVariableDescriptor * var, char* value){
     uint32_t u_temp_buffer=0;
     int32_t i_temp_buffer=0;
     float f_temp_buffer=0.0f;
+
+    uint32_t index=0;
+    char* next_char=NULL;
     uint32_t len = strlen(value);
     char* mul = NULL;
 
@@ -604,6 +661,30 @@ static bool set_value(TermVariableDescriptor * var, char* value){
 		*(float*)var->variable = f_temp_buffer;
 
 		break;
+	case TERM_VARIABLE_FLOAT_ARRAY:
+		next_char = strstr(value, "]")+1;
+		if(value[0]=='[') value++;
+		index = strtoul(value, _NULL, 10);
+		if(next_char==NULL) break;
+		if(index>var->typeSize / sizeof(float)-1) break;
+
+		f_temp_buffer = strtof(next_char, &mul);
+
+		if(mul != NULL){
+			f_temp_buffer *= getMul(*mul);
+		}
+
+		if(f_temp_buffer < var->min_float){
+			f_temp_buffer = var->min_float;
+			truncated = true;
+		}else if(f_temp_buffer > var->max_float){
+			f_temp_buffer = var->max_float;
+			truncated = true;
+		}
+
+		((float*)var->variable)[index] = f_temp_buffer;
+
+		break;
 	case TERM_VARIABLE_CHAR:
 		*(char*)var->variable = value[0];
 		break;
@@ -641,7 +722,7 @@ uint8_t CMD_varSet(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     	if(strcmp(args[0], currVar->name)==0){
     		bool truncated = set_value(currVar, args[1]);
     		print_var_header(handle);
-    		print_var_helperfunc(handle, currVar, false);
+    		print_var_helperfunc(handle, currVar, HELPER_FLAG_DETAIL);
     		if(truncated){
     			TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_B);
     			TERM_sendVT100Code(handle, _VT100_FOREGROUND_COLOR, _VT100_RED);
@@ -887,7 +968,7 @@ static void print_var_flash(TERMINAL_HANDLE * handle, FlashVariable * flashVar){
 	var.type = flashVar->type;
 	var.typeSize = flashVar->typeSize;
 	var.variable = flashVar->variable;
-	print_var_helperfunc(handle, &var, true);
+	print_var_helperfunc(handle, &var, HELPER_FLAG_FLASH);
 }
 
 uint8_t CMD_varLoad(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){

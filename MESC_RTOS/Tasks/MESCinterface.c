@@ -161,6 +161,7 @@ uint8_t CMD_flash(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 }
 
 char buff[16];
+float hall[6] = {1,2,3,4,5,6};
 
 void MESCinterface_init(void){
 	static bool is_init=false;
@@ -188,7 +189,7 @@ void MESCinterface_init(void){
 	TERM_addVar(buff, 0, 0, "name", "ESC name", 0, &TERM_varList);
 	TERM_addVar(foc_vars.hfi_enable, 0, 0, "hfi", "Enable HFI", 0, &TERM_varList);
 	TERM_addVar(input_vars.Idq_req_UART.q, -100.0f, 100.0f, "iq_req", "IQ request", 0, &TERM_varList);
-
+	TERM_addVar(hall, -10.0f, 10.0f, "hall", "Hall array", 0, &TERM_varList);
 
 
 //	TERM_addVarFloat(&motor.Rphase, TERM_VARIABLE_FLOAT, sizeof(motor.Rphase),"r_phase", "Phase resistance", 0, &TERM_varList);

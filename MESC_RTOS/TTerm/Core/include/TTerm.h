@@ -92,6 +92,7 @@ typedef enum {
     TERM_VARIABLE_INT,
     TERM_VARIABLE_UINT,
 	TERM_VARIABLE_FLOAT,
+	TERM_VARIABLE_FLOAT_ARRAY,
 	TERM_VARIABLE_CHAR,
 	TERM_VARIABLE_STRING,
 	TERM_VARIABLE_BOOL,
@@ -106,6 +107,7 @@ typedef enum {
     int32_t:    TERM_addVarSigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
 	bool:		TERM_addVarBool(&var, name, description, rw, listHandle), \
     float:      TERM_addVarFloat(&var, min, max, name, description, rw, listHandle), \
+	float*:		TERM_addVarArrayFloat(&var, sizeof(var),  min, max, name, description, rw, listHandle), \
     char:       TERM_addVarChar(&var, name, description, rw, listHandle), \
     char*:      TERM_addVarString(&var, sizeof(var), name, description, rw, listHandle))
 

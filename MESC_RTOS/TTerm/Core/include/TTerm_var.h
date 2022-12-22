@@ -41,6 +41,7 @@ TermVariableDescriptor * TERM_addVarFloat(void* variable, float min, float max, 
 TermVariableDescriptor * TERM_addVarString(void* variable, uint16_t typeSize, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head);
 TermVariableDescriptor * TERM_addVarChar(void* variable, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head);
 TermVariableDescriptor * TERM_addVarBool(void* variable, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head);
+TermVariableDescriptor * TERM_addVarArrayFloat(void* variable, uint32_t size,  float min, float max, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head);
 
 TermVariableHandle * TERM_VAR_init(TERMINAL_HANDLE * handle, void * nvm_address, uint32_t nvm_size, nvm_clear, nvm_start_write, nvm_write, nvm_end_write);
 
