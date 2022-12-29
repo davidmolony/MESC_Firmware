@@ -106,6 +106,10 @@
 #endif
 #endif
 
+#ifndef ADC_OFFSET_DEFAULT
+#define ADC_OFFSET_DEFAULT 2048.0f
+#endif
+
 typedef struct {
 	int Iu;
 	int Iv;
@@ -257,6 +261,7 @@ typedef struct {
   float eHz;
   float Ldq_now[2];
   float Ldq_now_dboost[2];
+  int d_polarity; //With this, we can swap the PLL polarity and therefore make it track Q instead of D. This is useful for detection
 
   float IIR[2];
 } MESCfoc_s;
@@ -270,6 +275,8 @@ typedef struct{
 	TIM_HandleTypeDef *mtimer; //3 phase PWM timer
 	TIM_HandleTypeDef *stimer; //Timer that services the slowloop
 	motor_state_e MotorState;
+	motor_sensor_mode_e MotorSensorMode;
+	HFI_type_e HFIType;
 	MESC_raw_typedef Raw;
 	MESC_Converted_typedef Conv;
 	MESC_offset_typedef offset;
@@ -460,5 +467,5 @@ void LRObserverCollect(MESC_motor_typedef *_motor);
 void HallFluxMonitor(MESC_motor_typedef *_motor);
 void logVars(MESC_motor_typedef *_motor);
 void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma);
-
+void RunHFI(MESC_motor_typedef *_motor);
 #endif

@@ -9,7 +9,7 @@
 #define INC_STM32FXXX_HAL_H_
 
 #include "stm32f3xx_hal.h"
-#include "MESC_FOC_ESC_V0.5.h"
+#include "MESC_F303.h"
 
 
 // TODO move all the 303 specific defines (STM32F303xC) into this from:

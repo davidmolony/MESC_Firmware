@@ -47,8 +47,6 @@
 #define HFI_THRESHOLD 2.5f
 #define HFI45
 
-
-
 //#define USE_HALL_START
 #define HALL_VOLTAGE_THRESHOLD 1.5f
 
