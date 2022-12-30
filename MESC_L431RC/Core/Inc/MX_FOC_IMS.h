@@ -42,6 +42,7 @@
 
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
 #define INTERPOLATE_V7_ANGLE
+#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_SENSORLESS
 
 #define USE_HFI
 #define HFI_VOLTAGE 4.0f

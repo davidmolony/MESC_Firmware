@@ -129,7 +129,7 @@ static void cmd_parameter_setup( void )
 {
     MotorState = MOTOR_STATE_DETECTING;
 
-    cli_reply( "Vbus%.2f" "\r" "\n", measurement_buffers.ConvertedADC[0][1] );
+    cli_reply( "Vbus%.2f" "\r" "\n", &motor1.Conv.Vbus );
 }
 
 static void cmd_reset( void )
@@ -174,7 +174,7 @@ void uart_init( void )
 	cli_register_variable_rw( "Idq_req", &input_vars.Idq_req_UART.q, sizeof(input_vars.Idq_req_UART.q), CLI_VARIABLE_FLOAT );
     cli_register_variable_rw( "Id"       , &motor1.FOC.Idq_req.d                   , sizeof(motor1.FOC.Idq_req.d                   ), CLI_VARIABLE_FLOAT );
     cli_register_variable_rw( "Iq"        , &motor1.FOC.Idq_req.q                   , sizeof(motor1.FOC.Idq_req.q                   ), CLI_VARIABLE_FLOAT );
-    cli_register_variable_ro( "Vbus"      , &measurement_buffers.ConvertedADC[0][1], sizeof(measurement_buffers.ConvertedADC[0][1]), CLI_VARIABLE_FLOAT );
+    cli_register_variable_ro( "Vbus"      , &motor1.Conv.Vbus, sizeof(&motor1.Conv.Vbus), CLI_VARIABLE_FLOAT );
 
     cli_register_function( "hall_dec"     , cmd_hall_dec        );
     cli_register_function( "hall_inc"     , cmd_hall_inc        );
