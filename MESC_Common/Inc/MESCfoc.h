@@ -462,7 +462,7 @@ void MESC_Slow_IRQ_handler(MESC_motor_typedef *_motor); 	//This loop should run 
 void slowLoop(MESC_motor_typedef *_motor);
 void MESCTrack(MESC_motor_typedef *_motor);
 void deadshort(MESC_motor_typedef *_motor);
-void tle5012();
+void tle5012(MESC_motor_typedef *_motor);
 void getDeadtime(MESC_motor_typedef *_motor);
 void LRObserver(MESC_motor_typedef *_motor);
 void LRObserverCollect(MESC_motor_typedef *_motor);

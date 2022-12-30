@@ -444,7 +444,7 @@ void hyperLoop(MESC_motor_typedef *_motor) {
       LRObserverCollect();
 #endif
 #ifdef USE_ENCODER
-tle5012();
+tle5012(_motor);
 #endif
 //RunPLL for all angle options
 _motor->FOC.angle_error = _motor->FOC.angle_error-0.02f*(int16_t)((_motor->FOC.angle_error+(int)(last_angle - _motor->FOC.FOCAngle)));
@@ -690,14 +690,13 @@ if(phasebalance){
     	_motor->FOC.flux_b = -motor.motor_flux;}
 #endif
 
-#ifdef USE_ENCODER
-    //This does not apply the encoder angle,
-    //It tracks the difference between the encoder and the observer.
-    _motor->FOC.enc_obs_angle = angle - _motor->FOC.enc_angle;
-#else
     if(_motor->FOC.inject==0){
     _motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_b, _motor->FOC.flux_a)) - 32768;
     }
+#ifdef USE_ENCODER
+    //This does not apply the encoder angle,
+    //It tracks the difference between the encoder and the observer.
+    _motor->FOC.enc_obs_angle = _motor->FOC.FOCAngle - _motor->FOC.enc_angle;
 #endif
   }
 
@@ -2122,7 +2121,7 @@ switch(_motor->HFIType){
   typedef struct SamplePacket SamplePacket;
 	  SamplePacket pkt;
 
-  void tle5012(void)
+  void tle5012(MESC_motor_typedef *_motor)
   {
 #ifdef USE_ENCODER
 	  uint16_t const len = sizeof(pkt) / sizeof(uint16_t);
