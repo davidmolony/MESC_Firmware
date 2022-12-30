@@ -1161,8 +1161,9 @@ static int carryU, carryV, carryW;
   static int PWM_cycles = 0;
 
   void measureResistance(MESC_motor_typedef *_motor) {
-
+static HFI_type_e previous_HFI_type;
     if (PWM_cycles < 2) {
+    	previous_HFI_type = _motor->HFIType;
       uint16_t half_ARR = htim1.Instance->ARR / 2;
       htim1.Instance->CCR1 = half_ARR;
       htim1.Instance->CCR2 = half_ARR;
@@ -1258,9 +1259,10 @@ static int carryU, carryV, carryW;
 /////////////////////////// Collect Ld variable//////////////////////////
     else if (PWM_cycles < 80001) {
       // generateBreak();
+	  _motor->HFIType = HFI_TYPE_SPECIAL;
       _motor->FOC.inject = 1;  // flag to the SVPWM writer to inject at top
-      _motor->FOC.Vd_injectionV = V_MEASURE;
-      _motor->FOC.Vq_injectionV = 0.0f;
+      _motor->FOC.special_injectionVd = V_MEASURE;
+      _motor->FOC.special_injectionVq = 0.0f;
 
       _motor->FOC.Vdq.d = Vd_temp;
       _motor->FOC.Vdq.q = 0.0f;
@@ -1278,7 +1280,7 @@ static int carryU, carryV, carryW;
     else if (PWM_cycles < 80002) {
       generateBreak(_motor);
       motor.Lphase =
-          fabsf((_motor->FOC.Vd_injectionV) /
+          fabsf((_motor->FOC.special_injectionVd) /
           ((top_I_L - bottom_I_L) / (count_top * _motor->FOC.pwm_period)));
       top_I_Lq = 0.0f;
       bottom_I_Lq = 0.0f;
@@ -1293,8 +1295,8 @@ static int carryU, carryV, carryW;
 ////////////////////////// Collect Lq variable//////////////////////////////
     } else if (PWM_cycles < 100003) {
       //			generateBreak();
-      _motor->FOC.Vd_injectionV = 0.0f;
-      _motor->FOC.Vq_injectionV = V_MEASURE;
+      _motor->FOC.special_injectionVd = 0.0f;
+      _motor->FOC.special_injectionVq = V_MEASURE;
       _motor->FOC.inject = 1;  // flag to the SVPWM writer to update at top
       _motor->FOC.Vdq.d = Vd_temp;  // Vd_temp to keep it aligned with D axis
       _motor->FOC.Vdq.q = 0.0f;
@@ -1311,15 +1313,18 @@ static int carryU, carryV, carryW;
 
     else {
       generateBreak(_motor);
+      _motor->HFIType = previous_HFI_type;
       motor.Lqphase =
-          fabsf((_motor->FOC.Vq_injectionV) /
+          fabsf((_motor->FOC.special_injectionVq) /
           ((top_I_Lq - bottom_I_Lq) / (count_top * _motor->FOC.pwm_period)));
 
       _motor->MotorState = MOTOR_STATE_IDLE;
       motor.uncertainty = 0;
 
       _motor->FOC.inject = 0;  // flag to the SVPWM writer stop injecting at top
-      _motor->FOC.Vd_injectionV = HFI_VOLTAGE;
+      _motor->FOC.special_injectionVd = 0.0f;
+      _motor->FOC.special_injectionVq = 0.0f;
+      _motor->FOC.Vd_injectionV = 0.0f;
       _motor->FOC.Vq_injectionV = 0.0f;
       calculateGains(_motor);
       _motor->MotorState = MOTOR_STATE_TRACKING;
@@ -2431,6 +2436,12 @@ void RunHFI(MESC_motor_typedef *_motor){
 		break;
 		case HFI_TYPE_SPECIAL:
 			__NOP();
+			if(_motor->FOC.inject_high_low_now ==1){
+			  _motor->FOC.Vd_injectionV = _motor->FOC.special_injectionVd;
+			  _motor->FOC.Vq_injectionV = _motor->FOC.special_injectionVq;
+			}else{
+				_motor->FOC.Vd_injectionV = -_motor->FOC.special_injectionVd;
+				_motor->FOC.Vq_injectionV = -_motor->FOC.special_injectionVq;			}
 		break;
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	}

@@ -255,6 +255,8 @@ typedef struct {
   uint16_t inject_high_low_now;
   float Vd_injectionV;
   float Vq_injectionV;
+  float special_injectionVd;
+  float special_injectionVq;
   float HFI_Threshold;
   uint32_t FLrun, VFLrun;
   float angle_error;
