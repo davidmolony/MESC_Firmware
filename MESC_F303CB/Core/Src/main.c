@@ -238,9 +238,6 @@ int main(void)
 	motor1.mtimer = &htim1;
 	motor1.stimer = &htim3;
     MESCInit(&motor1);
-    MotorControlType = MOTOR_CONTROL_TYPE_FOC;
-
-
 
     char message[20];
     int length = sprintf( message, "%s", "startup!!\r\n" );

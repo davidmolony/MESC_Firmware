@@ -468,4 +468,6 @@ void HallFluxMonitor(MESC_motor_typedef *_motor);
 void logVars(MESC_motor_typedef *_motor);
 void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma);
 void RunHFI(MESC_motor_typedef *_motor);
+void ToggleHFI(MESC_motor_typedef *_motor);
+
 #endif

@@ -86,16 +86,10 @@
 //#define USE_FIELD_WEAKENINGV2
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
-//#define USE_HFI
-#define HFI_VOLTAGE 4.0f
-#define HFI_TEST_CURRENT 20.0f
 
 
-#ifdef USE_HFI
-#define CURRENT_BANDWIDTH 1000.0f //HFI does not work if the current controller is strong enough to squash the HFI
-#else
-#define CURRENT_BANDWIDTH 5000.0f
-#endif
+
+
 //Highhopes Phase Balancing
 //Preliminary, not sure if this is effective yet, based on discussion https://endless-sphere.com/forums/viewtopic.php?f=30&t=89056&sid=2c5e2c887b59df4b41bc293b388dfaf3&start=600#p1731139
 #define USE_HIGHHOPES_PHASE BALANCING
@@ -113,6 +107,16 @@
 
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
 //#define INTERPOLATE_V7_ANGLE //Caution  with this one,
+
+//#define USE_HFI
+#define HFI_VOLTAGE 4.0f
+#define HFI_TEST_CURRENT 0.0f
+#define HFI_THRESHOLD 2.5f
+#define HFI45
+#define DEFAULT_HFI_TYPE HFI_TYPE_NONE
+//#define DEFAULT_HFI_TYPE HFI_TYPE_45
+//#define DEFAULT_HFI_TYPE HFI_TYPE_D
+//#define DEFAULT_HFI_TYPE HFI_TYPE_SPECIAL
 
 #define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
 #define POLE_PAIRS 10

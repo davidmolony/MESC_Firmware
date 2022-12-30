@@ -96,6 +96,11 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
 	_motor->MotorState = MOTOR_STATE_INITIALISING;
 
+	//At this stage, we initialise the options
+    MotorControlType = MOTOR_CONTROL_TYPE_FOC;
+	_motor->MotorSensorMode = DEFAULT_SENSOR_MODE;
+	_motor->HFIType = DEFAULT_HFI_TYPE;
+
 	mesc_init_1(_motor);
 
 	HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle,
@@ -1626,7 +1631,6 @@ __NOP();
 #ifdef USE_SQRT_CIRCLE_LIM
     _motor->FOC.Vd_max = _motor->FOC.Vmag_max;
     _motor->FOC.Vq_max = _motor->FOC.Vmag_max;
-
 #endif
 
     _motor->FOC.Vdint_max = _motor->FOC.Vd_max * 0.9f; //Logic in this is to always ensure headroom for the P term
@@ -1640,9 +1644,9 @@ __NOP();
     // Pole zero cancellation for series PI control
     _motor->FOC.Iq_pgain = _motor->FOC.Id_pgain;
     _motor->FOC.Iq_igain = _motor->FOC.Id_igain;
-    //This is the expected current magnitude we would see based on the average inductance and the injected voltage
+    //This is the expected current magnitude we would see based on the average inductance and the injected voltage. Not particularly reliable currently.
     //_motor->FOC.HFI_Threshold = ((HFI_VOLTAGE*sqrt2*2.0f)*_motor->FOC.pwm_period)/((motor.Lphase+motor.Lqphase)*0.5f);
-    _motor->FOC.HFI_Threshold = 2.50f;
+    _motor->FOC.HFI_Threshold = HFI_THRESHOLD;
     #endif
   }
 
@@ -1849,14 +1853,17 @@ if(_motor->FOC.Idq_req.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_req.q = i
     	_motor->FOC.flux_b = 0.5f * motor.motor_flux;
     }
 
-//////////////////////Run the LR observer
+//////////////////////Run the LR observer////////////////////
 #ifdef USE_LR_OBSERVER
     LRObserver();
 #endif
-    //////Set tracking
+
+//////////////////////////Set tracking////////////////////
 static int was_last_tracking;
 
-if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STATE_DETECTING)||(_motor->MotorState==MOTOR_STATE_GET_KV)||(_motor->MotorState==MOTOR_STATE_TEST)||(_motor->MotorState==MOTOR_STATE_INITIALISING)||(_motor->MotorState==MOTOR_STATE_SLAMBRAKE))){
+if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STATE_DETECTING)||
+		(_motor->MotorState==MOTOR_STATE_GET_KV)||(_motor->MotorState==MOTOR_STATE_TEST)||
+		(_motor->MotorState==MOTOR_STATE_INITIALISING)||(_motor->MotorState==MOTOR_STATE_SLAMBRAKE))){
 	if(fabsf(_motor->FOC.Idq_req.q)>0.1f){
 
 		if(_motor->MotorState != MOTOR_STATE_ERROR){
@@ -1893,52 +1900,50 @@ if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STA
 }
 //_motor->FOC.Idq_req[0] = 10; //for aligning encoder
 /////////////Set and reset the HFI////////////////////////
-#ifdef USE_HFI
-    if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) > HFI_THRESHOLD)||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) < -HFI_THRESHOLD)||(_motor->MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
-    	_motor->FOC.inject = 0;
-    	_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
-    } else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) < (HFI_THRESHOLD-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) > -(HFI_THRESHOLD-1.0f)) &&(_motor->HFIType !=HFI_TYPE_NONE)){
-    	_motor->FOC.inject = 1;
-    	_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH*0.1f;
-//  	  _motor->FOC.Vd_injectionV = HFI_VOLTAGE;
-//  	  _motor->FOC.Vq_injectionV = 0.0f;
-    }
-
-    if(_motor->FOC.inject==1){
-    	static int HFI_countdown;
-    	//static int no_q;
-    	if(was_last_tracking==1){
-    		HFI_countdown = 4; //resolve the ambiguity immediately
-    		//_motor->FOC.Idq_req.q = 0.0f;
-    		//no_q=1;
-    		mag45avg = 5.50f;
-    		was_last_tracking = 0;
-    	}
-#ifdef HFID
-		if(HFI_countdown==3){
-			_motor->FOC.Idq_req.d = HFI_TEST_CURRENT;
-		}else if(HFI_countdown==2){
-			_motor->FOC.Ldq_now_dboost[0] = _motor->FOC.IIR[0]; //Find the effect of d-axis current
-			_motor->FOC.Idq_req.d = 1.0f;
-		}else if(HFI_countdown == 1){
-			_motor->FOC.Idq_req.d = -HFI_TEST_CURRENT;
-		}else if(HFI_countdown == 0){
-			_motor->FOC.Ldq_now[0] = _motor->FOC.IIR[0];//_motor->FOC.Vd_injectionV;
-			_motor->FOC.Idq_req.d = 1.0f;
-		if(_motor->FOC.Ldq_now[0]>_motor->FOC.Ldq_now_dboost[0]){_motor->FOC.FOCAngle+=32768;}
-		HFI_countdown = 200;
-		//no_q = 0;
-		}else{
-			_motor->FOC.Idq_req.d = 0.0f;
+switch(_motor->HFIType){
+	static int HFI_countdown;
+	case HFI_TYPE_45:
+	ToggleHFI(_motor);
+		if(_motor->FOC.inject==1){
+			//static int no_q;
+			if(was_last_tracking==1){
+				HFI_countdown = 4; //resolve the ambiguity immediately
+				//_motor->FOC.Idq_req.q = 0.0f;
+				//no_q=1;
+				mag45avg = 5.50f;
+				was_last_tracking = 0;
+			}
 		}
-		HFI_countdown--;
-	    if(no_q){_motor->FOC.Idq_req.q=0.0f;}
-#endif
-    }
-#else
-    _motor->FOC.inject = 0;
-#endif
+	break;
 
+	case HFI_TYPE_D:
+		ToggleHFI(_motor);
+		if(_motor->FOC.inject==1){
+		if(HFI_countdown==3){
+				_motor->FOC.Idq_req.d = HFI_TEST_CURRENT;
+				_motor->FOC.Idq_req.q=0.0f;
+			}else if(HFI_countdown==2){
+				_motor->FOC.Ldq_now_dboost[0] = _motor->FOC.IIR[0]; //Find the effect of d-axis current
+				_motor->FOC.Idq_req.d = 1.0f;
+				_motor->FOC.Idq_req.q=0.0f;
+			}else if(HFI_countdown == 1){
+				_motor->FOC.Idq_req.d = -HFI_TEST_CURRENT;
+				_motor->FOC.Idq_req.q=0.0f;
+			}else if(HFI_countdown == 0){
+				_motor->FOC.Ldq_now[0] = _motor->FOC.IIR[0];//_motor->FOC.Vd_injectionV;
+				_motor->FOC.Idq_req.d = 0.0f;
+			if(_motor->FOC.Ldq_now[0]>_motor->FOC.Ldq_now_dboost[0]){_motor->FOC.FOCAngle+=32768;}
+			HFI_countdown = 200;
+			//no_q = 0;
+			}
+			HFI_countdown--;
+		}
+	break;
+
+	case HFI_TYPE_NONE:
+		_motor->FOC.inject = 0;
+	break;
+}
     //Speed tracker
     if(abs(_motor->FOC.angle_error)>6000){
     	_motor->FOC.angle_error = 0;
@@ -2495,4 +2500,15 @@ void RunHFI(MESC_motor_typedef *_motor){
 //#endif
 //}
 }
+
+void ToggleHFI(MESC_motor_typedef *_motor){
+	if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) > HFI_THRESHOLD)||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) < -HFI_THRESHOLD)||(_motor->MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
+		_motor->FOC.inject = 0;
+		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
+	} else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) < (HFI_THRESHOLD-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*motor.Rphase) > -(HFI_THRESHOLD-1.0f)) &&(_motor->HFIType !=HFI_TYPE_NONE)){
+		_motor->FOC.inject = 1;
+		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH*0.1f;
+	}
+}
+
   // clang-format on
