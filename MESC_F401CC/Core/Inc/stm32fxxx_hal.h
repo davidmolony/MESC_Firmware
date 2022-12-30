@@ -9,7 +9,8 @@
 #define INC_STM32FXXX_HAL_H_
 
 #include "stm32f4xx_hal.h"
-#include "MESC_F401_MP2.h"
+//#include "MESC_F401_MP2.h"
+#include "MESC_F401.h"
 // TODO move all the 401 specific defines (STM32F401xx) into this from:
 // MESCfoc.c
 // MESC_Comms.c

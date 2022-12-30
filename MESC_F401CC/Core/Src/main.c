@@ -128,30 +128,30 @@ int main(void)
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 #endif
 //  uart_init();
-  //Set up the input capture for throttle
-  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1);
-  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_2);
-  __HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
-  // Here we can auto set the prescaler to get the us input regardless of the main clock
-  __HAL_TIM_SET_PRESCALER(&htim2, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
+
+  //Set motor timer
+	motor1.mtimer = &htim1;
+	motor1.stimer = &htim2;
+	motor2.mtimer = &htim1;
+	motor2.stimer = &htim2;
+
 
 //Initialise MESC
-MESCInit();
+MESCInit(&motor1);
 motor_init(NULL);
-motor.Rphase = DEFAULT_MOTOR_R;
-motor.Lphase = DEFAULT_MOTOR_Ld;
-motor.Lqphase = DEFAULT_MOTOR_Lq;
-motor.motor_flux = DEFAULT_FLUX_LINKAGE;
+motor.Rphase = motor_profile->R;
+motor.Lphase = motor_profile->L_D;
+motor.Lqphase = motor_profile->L_Q;
+motor.motor_flux = motor_profile->flux_linkage;
 //motor_profile->Pmax = 50.0f;
 motor.uncertainty = 1;
 
 HAL_TIM_PWM_Start_IT(&htim2, TIM_CHANNEL_1);
 
-calculateGains();
-calculateVoltageGain();
+calculateGains(&motor1);
+calculateVoltageGain(&motor1);
 MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
-MotorSensorMode = MOTOR_SENSOR_MODE_ENCODER;
 
   /* USER CODE END 2 */
 
@@ -255,8 +255,8 @@ static void MX_ADC1_Init(void)
   /** Configure the analog watchdog
   */
   AnalogWDGConfig.WatchdogMode = ADC_ANALOGWATCHDOG_ALL_INJEC;
-  AnalogWDGConfig.HighThreshold = 4000;
-  AnalogWDGConfig.LowThreshold = 0;
+  AnalogWDGConfig.HighThreshold = 4048;
+  AnalogWDGConfig.LowThreshold = 48;
   AnalogWDGConfig.ITMode = ENABLE;
   if (HAL_ADC_AnalogWDGConfig(&hadc1, &AnalogWDGConfig) != HAL_OK)
   {
@@ -302,7 +302,7 @@ static void MX_ADC1_Init(void)
 
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
-  sConfig.Channel = ADC_CHANNEL_8;
+  sConfig.Channel = ADC_CHANNEL_7;
   sConfig.Rank = 5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {

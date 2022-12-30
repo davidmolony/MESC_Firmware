@@ -35,6 +35,7 @@
 #include "stm32fxxx_hal.h"
 
 #include <stdint.h>
+#include "MESC_MOTOR_DEFAULTS.h"
 
 MOTORProfile  * motor_profile = NULL;
 

@@ -91,8 +91,15 @@ typedef enum {
   MOTOR_SENSOR_MODE_HALL,
   MOTOR_SENSOR_MODE_OPENLOOP,
   MOTOR_SENSOR_MODE_ENCODER,
+  MOTOR_SENSOR_MODE_HFI,
+  } motor_sensor_mode_e;
 
-} motor_sensor_mode_e;
+typedef enum {
+  HFI_TYPE_NONE,
+  HFI_TYPE_45,
+  HFI_TYPE_D,
+  HFI_TYPE_SPECIAL,
+}HFI_type_e;
 
 extern motor_sensor_mode_e MotorSensorMode;
 

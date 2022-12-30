@@ -28,6 +28,8 @@
 #include "MESChw_setup.h"
 #include "MESCmotor_state.h"
 
+foc_measurement_t measurement_buffers;
+
 extern TIM_HandleTypeDef htim1;
 
 MESCBLDCVars_s BLDCVars;
@@ -88,9 +90,9 @@ void BLDCCommuteHall() {
     // Disable the drivers, freewheel
     // fixme: misleading function name. If this is freewheel, then it should
     // be named as such.
-    phU_Break();
-    phV_Break();
-    phW_Break();
+    phU_Break(&motor1);
+    phV_Break(&motor1);
+    phW_Break(&motor1);
   }
 }
 
@@ -134,59 +136,59 @@ void writeBLDC() {
   switch (BLDCVars.BLDCEstate) {
     case 0:
       // disable phase first
-      phW_Break();
+      phW_Break(&motor1);
       // WritePWM values
       htim1.Instance->CCR1 = BLDCVars.BLDCduty;
       htim1.Instance->CCR2 = 0;
-      phU_Enable();
-      phV_Enable();
+      phU_Enable(&motor1);
+      phV_Enable(&motor1);
       BLDCVars.CurrentChannel =
           1;  // Write the field into which the lowside current will flow,
               // to be retrieved from the FOC_measurement_vars
       break;
 
     case 1:
-      phV_Break();
+      phV_Break(&motor1);
       htim1.Instance->CCR1 = BLDCVars.BLDCduty;
       htim1.Instance->CCR3 = 0;
-      phU_Enable();
-      phW_Enable();
+      phU_Enable(&motor1);
+      phW_Enable(&motor1);
       BLDCVars.CurrentChannel = 2;
       break;
 
     case 2:
-      phU_Break();
+      phU_Break(&motor1);
       htim1.Instance->CCR2 = BLDCVars.BLDCduty;
       htim1.Instance->CCR3 = 0;
-      phV_Enable();
-      phW_Enable();
+      phV_Enable(&motor1);
+      phW_Enable(&motor1);
       BLDCVars.CurrentChannel = 2;
       break;
 
     case 3:
-      phW_Break();
+      phW_Break(&motor1);
       htim1.Instance->CCR1 = 0;
       htim1.Instance->CCR2 = BLDCVars.BLDCduty;
-      phU_Enable();
-      phV_Enable();
+      phU_Enable(&motor1);
+      phV_Enable(&motor1);
       BLDCVars.CurrentChannel = 0;
       break;
 
     case 4:
-      phV_Break();
+      phV_Break(&motor1);
       htim1.Instance->CCR1 = 0;
       htim1.Instance->CCR3 = BLDCVars.BLDCduty;
-      phU_Enable();
-      phW_Enable();
+      phU_Enable(&motor1);
+      phW_Enable(&motor1);
       BLDCVars.CurrentChannel = 0;
       break;
 
     case 5:
-      phU_Break();
+      phU_Break(&motor1);
       htim1.Instance->CCR2 = 0;
       htim1.Instance->CCR3 = BLDCVars.BLDCduty;
-      phV_Enable();
-      phW_Enable();
+      phV_Enable(&motor1);
+      phW_Enable(&motor1);
       BLDCVars.CurrentChannel = 1;
       break;
     default:
