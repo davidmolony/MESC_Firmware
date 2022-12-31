@@ -47,6 +47,7 @@ void motor_init( MOTORProfile const * const profile )
         motor_profile_default.Pmax = DEFAULT_MOTOR_POWER;
         motor_profile_default.L_D = DEFAULT_MOTOR_Ld;
         motor_profile_default.L_Q = DEFAULT_MOTOR_Lq;
+        motor_profile_default.L_QD = DEFAULT_MOTOR_Lq-DEFAULT_MOTOR_Ld;
         motor_profile_default.R = DEFAULT_MOTOR_R;
 		motor_profile_default.flux_linkage = DEFAULT_FLUX_LINKAGE;
 		motor_profile_default.flux_linkage_min = MIN_FLUX_LINKAGE;

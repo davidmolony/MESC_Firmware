@@ -51,7 +51,7 @@ void handleError(MESC_motor_typedef *_motor, uint32_t error_code){
 	error_log.current_B = _motor->Conv.Iv;
 	error_log.current_C = _motor->Conv.Iw;
 	error_log.voltage = _motor->Conv.Vbus;
-	error_log.motor_flux = motor.motor_flux;
+	error_log.motor_flux = _motor->m.flux_linkage;
 	error_log.flux_a = _motor->FOC.flux_a;
 	error_log.flux_b = _motor->FOC.flux_b;
 	}

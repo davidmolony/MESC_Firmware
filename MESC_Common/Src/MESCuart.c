@@ -96,7 +96,7 @@ static void cmd_hall_dec( void )
 {
     for (int i = 0; i < 6; i++)
     {
-        motor1.FOC.hall_table[i][2] -= 100;
+        motor1.m.hall_table[i][2] -= 100;
     }
 }
 
@@ -104,7 +104,7 @@ static void cmd_hall_inc( void )
 {
     for (int i = 0; i < 6; i++)
     {
-    	motor1.FOC.hall_table[i][2] += 100;
+    	motor1.m.hall_table[i][2] += 100;
     }
 }
 

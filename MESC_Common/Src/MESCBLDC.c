@@ -41,7 +41,7 @@ void BLDCInit() {
   BLDCVars.CurrentChannel = 0;
   BLDCVars.currentCurrent = 0;
   BLDCVars.pGain =
-      1023 * motor.Rphase /
+      1023 * motor1.m.R /
       8;  // wtf should I set the gain as by default... V/Amp error...Perhaps
           // base it on Rphase and the bus voltage (nominally 48V)? But we don;t
           // know the exact bus voltage yet...

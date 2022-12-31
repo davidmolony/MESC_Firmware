@@ -40,6 +40,7 @@
 
 #include "stm32fxxx_hal.h"
 #include "MESCmotor_state.h"
+#include "MESCmotor.h"
 
 
 #define FOC_PERIODS                (1)
@@ -209,12 +210,8 @@ typedef struct {
   float La_last;
   float Lb_last;
 
-  uint16_t hall_table[6][4];
-  	  	  	  	  	  	  // Lookup table, populated by the getHallTable()
-                          // function and used in estimating the rotor position
-                          // from hall sensors in HallAngleEstimator()
-  float hall_flux[6][2];
-  	  	  	  	  	  	  //Lookup table for alpha beta fluxes per hall state
+
+
   int hall_initialised;
   int hall_forwards_adjust;
   int hall_backwards_adjust;
@@ -283,6 +280,7 @@ typedef struct{
 	MESC_Converted_typedef Conv;
 	MESC_offset_typedef offset;
 	MESCfoc_s FOC;
+	MOTORProfile m;
 }MESC_motor_typedef;
 
 extern MESC_motor_typedef motor1;
