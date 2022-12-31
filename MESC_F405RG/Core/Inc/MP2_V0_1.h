@@ -13,7 +13,7 @@
 
 #define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 100.0f
+#define ABS_MAX_PHASE_CURRENT 120.0f
 #define ABS_MAX_BUS_VOLTAGE 45.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
 #define R_SHUNT 0.00033f
@@ -24,7 +24,7 @@
 
 
 #define MAX_ID_REQUEST 2.0f
-#define MAX_IQ_REQUEST 50.0f
+#define MAX_IQ_REQUEST 70.0f
 
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
 //#define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.

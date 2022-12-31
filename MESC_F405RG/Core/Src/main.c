@@ -74,7 +74,6 @@ I2C_HandleTypeDef hi2c2;
 uint16_t MPU_present, MPU_present2;
 MPU6050_data_t MPU_instance_1, MPU_instance_2;
 #define MPU6050_ADDR 0xD0
-
 COMS_data_t com1;
 
 
@@ -238,6 +237,8 @@ HAL_TIM_Base_Start(&htim7);
 
   while (1) {
 	  SimpleComsProcess(&com1);
+
+detectHFI();
 
     /* USER CODE END WHILE */
 

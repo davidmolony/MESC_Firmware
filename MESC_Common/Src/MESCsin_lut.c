@@ -189,9 +189,10 @@ const float inductance_map[321] = {
 };
 //Populate this with the shape of the motor inductance as a proportion 0.0f-1.0f based on normal inductance shape
 //Lq-Ld is multiplied by this and added to the Ld, which is assumed to be the minimum
+//Currently, this is just a sinewave offset to all values positive; range 0-2.
 
 void getLabFast( uint16_t angle, float Ld, float Lq_Ld , float * La, float * Lb)
 {
-	*La = motor.Lphase+motor.Lqd_diff*inductance_map[angle >> 8];
-	*Lb = motor.Lphase+motor.Lqd_diff*inductance_map[(angle >> 8) + 64];
+	*La = Ld + Lq_Ld * inductance_map[angle >> 8];
+	*Lb = Ld + Lq_Ld * inductance_map[(angle >> 8) + 64];
 }
