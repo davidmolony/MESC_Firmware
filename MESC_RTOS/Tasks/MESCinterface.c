@@ -16,8 +16,8 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	motor.measure_current = I_MEASURE;
 	motor.measure_voltage = V_MEASURE;
 
-	bool old_hfi_state = foc_vars.hfi_enable;
-	foc_vars.hfi_enable = true;
+	bool old_hfi_state = motor1.FOC.hfi_enable;
+	motor1.FOC.hfi_enable = true;
 
 	if(argCount==1){
 		if(strcmp(args[0], "-?")==0){
@@ -51,20 +51,20 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     	R = motor.Rphase;
     	Runit = "Ohm";
     }else{
-    	R = motor.Rphase*1000.0;
+    	R = motor.Rphase*1000.0f;
     	Runit = "mOhm";
     }
-    if(motor.Lphase > 0.001){
-		Ld = motor.Lphase*1000.0;
-		Lq = motor.Lqphase*1000.0;
+    if(motor.Lphase > 0.001f){
+		Ld = motor.Lphase*1000.0f;
+		Lq = motor.Lqphase*1000.0f;
 		Lunit = "mH";
 	}else{
-		Ld = motor.Lphase*1000.0*1000.0;
-		Lq = motor.Lqphase*1000.0*1000.0;
+		Ld = motor.Lphase*1000.0f*1000.0f;
+		Lq = motor.Lqphase*1000.0f*1000.0f;
 		Lunit = "uH";
 	}
 
-    foc_vars.hfi_enable = old_hfi_state;
+    motor1.FOC.hfi_enable = old_hfi_state;
 
     motor_profile->R = motor.Rphase;
     motor_profile->L_D = motor.Lphase;
@@ -187,7 +187,7 @@ void MESCinterface_init(void){
 	TERM_addVar(motor.Lqphase, 0.0f, 10.0f, "lq_phase", "Phase inductance", 0, &TERM_varList);
 	//TERM_addVar(motor.motor_flux, 0.0f, 100.0f, "flux", "Flux linkage", 0, &TERM_varList);
 	TERM_addVar(buff, 0, 0, "name", "ESC name", 0, &TERM_varList);
-	TERM_addVar(foc_vars.hfi_enable, 0, 0, "hfi", "Enable HFI", 0, &TERM_varList);
+	TERM_addVar(motor1.FOC.hfi_enable, 0, 0, "hfi", "Enable HFI", 0, &TERM_varList);
 	TERM_addVar(input_vars.Idq_req_UART.q, -100.0f, 100.0f, "iq_req", "IQ request", 0, &TERM_varList);
 	TERM_addVar(hall, -10.0f, 10.0f, "hall", "Hall array", 0, &TERM_varList);
 

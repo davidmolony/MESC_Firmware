@@ -114,7 +114,7 @@ static void TASK_main(void *pvParameters){
     	TERM_setCursorPos(handle, 1, 0);
     	highlight(handle, "ADC1:", 0, selected);
     	TERM_setCursorPos(handle, 2, 0);
-    	bargraph(handle, 0, 4095, measurement_buffers.RawADC[1][3]);
+    	bargraph(handle, 0, 4095, motor1.Raw.ADC_in_ext1);
     	ttprintf("MIN: %6d MAX: %6d", input_vars.adc1_MIN, input_vars.adc1_MAX);
 
     	if(selected==0){
@@ -123,10 +123,10 @@ static void TASK_main(void *pvParameters){
 				input_vars.adc1_MAX=4095;
 			}
 			if(c=='-'){
-				input_vars.adc1_MIN=measurement_buffers.RawADC[1][3];
+				input_vars.adc1_MIN=motor1.Raw.ADC_in_ext1;
 			}
 			if(c=='+'){
-				input_vars.adc1_MAX=measurement_buffers.RawADC[1][3];
+				input_vars.adc1_MAX=motor1.Raw.ADC_in_ext1;
 			}
     	}
 

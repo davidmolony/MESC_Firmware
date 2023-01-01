@@ -76,6 +76,7 @@ input_vars_t input_vars;
 sampled_vars_t sampled_vars;
 
 int print_samples_now, lognow;
+
 //Debug
 #define DEMCR_TRCENA    0x01000000
 #define DEMCR           (*((volatile uint32_t *)0xE000EDFC))
@@ -83,6 +84,8 @@ int print_samples_now, lognow;
 #define CYCCNTENA       (1<<0)
 #define DWT_CYCCNT      ((volatile uint32_t *)0xE0001004)
 #define CPU_CYCLES      *DWT_CYCCNT
+
+void MESCInit(MESC_motor_typedef *_motor) {
 #ifdef STM32L4 // For some reason, ST have decided to have a different name for the L4 timer DBG freeze...
 	DBGMCU->APB2FZ |= DBGMCU_APB2FZ_DBG_TIM1_STOP;
 #else
@@ -224,18 +227,19 @@ static int Iuoff, Ivoff, Iwoff;
 // for MESC to run Ensure that it is followed by the clear timer update
 // interrupt
 void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor) {
+  uint32_t cycles = CPU_CYCLES;
   if (_motor->mtimer->Instance->CNT > 512) {
     //_motor->FOC.IRQentry = debugtim.Instance->CNT;
     fastLoop(_motor);
     //_motor->FOC.IRQexit = debugtim.Instance->CNT - _motor->FOC.IRQentry;
     //_motor->FOC.FLrun++;
-    foc_vars.cycles_fastloop = CPU_CYCLES - cycles;
+    _motor->FOC.cycles_fastloop = CPU_CYCLES - cycles;
   } else {
     //_motor->FOC.IRQentry = debugtim.Instance->CNT;
     hyperLoop(_motor);
     //_motor->FOC.IRQexit = debugtim.Instance->CNT - _motor->FOC.IRQentry;
     //_motor->FOC.VFLrun++;
-    foc_vars.cycles_hyperloop = CPU_CYCLES - cycles;
+    _motor->FOC.cycles_hyperloop = CPU_CYCLES - cycles;
   }
 }
 
@@ -1148,12 +1152,6 @@ static int carryU, carryV, carryW;
     phV_Enable(_motor);
     phW_Enable(_motor);
   }
-
-	phU_Enable();
-	phV_Enable();
-	phW_Enable();
-
-}
 
   static float top_V;
   static float bottom_V;
@@ -2242,7 +2240,10 @@ uint16_t test_counts;
   //low frequency Id signal into the PID input and observing the change in Vd and Vq
   //Does not work too well, requires some care in use.
   //Original work to MESC project.
-  float Vd_obs_high, Vd_obs_low, R_observer, Vq_obs_high, Vq_obs_low, L_observer, Last_eHz;
+  float Vd_obs_high, Vd_obs_low, R_observer, Vq_obs_high, Vq_obs_low, L_observer, Last_eHz, LR_collect_count;
+  float Vd_obs_high_filt, Vd_obs_low_filt,Vq_obs_high_filt,Vq_obs_low_filt;
+  static int plusminus = 1;
+
   void LRObserver(MESC_motor_typedef *_motor){
 	  if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->FOC.inject ==0)){
 

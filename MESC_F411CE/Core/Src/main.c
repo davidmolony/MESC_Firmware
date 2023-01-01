@@ -48,6 +48,8 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
+I2C_HandleTypeDef hi2c1;
+
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim10;
@@ -76,6 +78,7 @@ static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM10_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_I2C1_Init(void);
 void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -121,27 +124,39 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM10_Init();
   MX_USART1_UART_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
-  //Set up the input capture for throttle
-  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_1);
-  HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_2);
-  __HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
-  // Here we can auto set the prescaler to get the us input regardless of the main clock
-  __HAL_TIM_SET_PRESCALER(&htim2, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
+#ifdef USE_ENCODER
+  HAL_SPI_Init(&hspi3);
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  /*Configure GPIO pins : PC6 PC7 PC8 */
+    GPIO_InitStruct.Pin = GPIO_PIN_8;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+#endif
 
-  // Attach flash IO to profile
-  flash_register_profile_io();
-  // Load stored profile
-  ProfileStatus const sts = profile_init();
-  motor_init( PROFILE_DEFAULT );
+  //Set motor timer
+	motor1.mtimer = &htim1;
+	motor1.stimer = &htim2;
+	motor2.mtimer = &htim1;
+	motor2.stimer = &htim2;
 
-//Initialise MESC
-MESCInit();
+	//Initialise MESC
+	MESCInit(&motor1);
+	//motor.Rphase = motor_profile->R;
+	//motor.Lphase = motor_profile->L_D;
+	//motor.Lqphase = motor_profile->L_Q;
+	//motor.motor_flux = motor_profile->flux_linkage;
+	//motor_profile->Pmax = 50.0f;
+	motor.uncertainty = 1;
 
-calculateGains();
-calculateVoltageGain();
-MotorControlType = MOTOR_CONTROL_TYPE_FOC;
+	HAL_TIM_PWM_Start_IT(&htim2, TIM_CHANNEL_1);
+
+	calculateGains(&motor1);
+	calculateVoltageGain(&motor1);
+	MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
   /* USER CODE END 2 */
 
@@ -389,6 +404,40 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
 
 }
 
