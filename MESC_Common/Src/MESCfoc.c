@@ -1186,7 +1186,7 @@ static HFI_type_e previous_HFI_type;
       phU_Enable(_motor);
       phV_Enable(_motor);
       phW_Enable(_motor);
-      _motor->FOC.Idq_req.d = I_MEASURE;
+      _motor->FOC.Idq_req.d = motor.measure_current;
       _motor->FOC.Idq_req.q = 0.0f;
       _motor->FOC.FOCAngle = 0;
 
@@ -1209,7 +1209,7 @@ static HFI_type_e previous_HFI_type;
     }
 
     else if (PWM_cycles < 35000) {  // Align the rotor for ~1 second
-      _motor->FOC.Idq_req.d = I_MEASURE;
+      _motor->FOC.Idq_req.d = motor.measure_current;
       _motor->FOC.Idq_req.q = 0.0f;
 
       _motor->FOC.inject = 0;

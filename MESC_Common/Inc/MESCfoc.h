@@ -72,7 +72,7 @@
 #endif
 
 #ifndef I_MEASURE
-#define I_MEASURE 10.0f //Higher setpoint for resistance measurement
+#define I_MEASURE 4.0f //Higher setpoint for resistance measurement
 #endif
 #ifndef IMEASURE_CLOSEDLOOP
 #define IMEASURE_CLOSEDLOOP 4.5f 	//After spinning up openloop and getting an approximation,
@@ -105,7 +105,7 @@
 #define CURRENT_BANDWIDTH 10000.0f
 #else
 #ifndef CURRENT_BANDWIDTH
-#define CURRENT_BANDWIDTH 10000.0f
+#define CURRENT_BANDWIDTH 1000.0f
 #endif
 #endif
 
@@ -265,7 +265,6 @@ typedef struct {
   int d_polarity; //With this, we can swap the PLL polarity and therefore make it track Q instead of D. This is useful for detection
 
   float IIR[2];
-  bool hfi_enable;
   uint32_t cycles_fastloop;
   uint32_t cycles_hyperloop;
 } MESCfoc_s;

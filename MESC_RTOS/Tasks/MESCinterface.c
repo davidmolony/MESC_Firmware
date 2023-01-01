@@ -16,9 +16,6 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	motor.measure_current = I_MEASURE;
 	motor.measure_voltage = V_MEASURE;
 
-	bool old_hfi_state = motor1.FOC.hfi_enable;
-	motor1.FOC.hfi_enable = true;
-
 	if(argCount==1){
 		if(strcmp(args[0], "-?")==0){
 			ttprintf("Usage: measure   - optional: [measure current] [optional: measure voltage]\r\n");
@@ -31,11 +28,11 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		motor.measure_voltage = atoff(args[1]);
 	}
 
-	MESCmotor_state_set(MOTOR_STATE_MEASURING);
+	motor1.MotorState = MOTOR_STATE_MEASURING;
     ttprintf("Waiting for result");
 
     port_str * port = handle->port;
-    while(MotorState == MOTOR_STATE_MEASURING){
+    while(motor1.MotorState == MOTOR_STATE_MEASURING){
     	xSemaphoreGive(port->term_block);
     	vTaskDelay(200);
     	xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
@@ -47,28 +44,26 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     float R, Lq, Ld;
     char* Runit;
     char* Lunit;
-    if(motor.Rphase > 0){
-    	R = motor.Rphase;
+    if(motor1.m.R > 0){
+    	R = motor1.m.R;
     	Runit = "Ohm";
     }else{
-    	R = motor.Rphase*1000.0f;
+    	R = motor1.m.R*1000.0f;
     	Runit = "mOhm";
     }
-    if(motor.Lphase > 0.001f){
-		Ld = motor.Lphase*1000.0f;
-		Lq = motor.Lqphase*1000.0f;
+    if(motor1.m.L_Q > 0.001f){
+		Ld = motor1.m.L_D*1000.0f;
+		Lq = motor1.m.L_Q*1000.0f;
 		Lunit = "mH";
 	}else{
-		Ld = motor.Lphase*1000.0f*1000.0f;
-		Lq = motor.Lqphase*1000.0f*1000.0f;
+		Ld = motor1.m.L_D*1000.0f*1000.0f;
+		Lq = motor1.m.L_Q*1000.0f*1000.0f;
 		Lunit = "uH";
 	}
 
-    motor1.FOC.hfi_enable = old_hfi_state;
-
-    motor_profile->R = motor.Rphase;
-    motor_profile->L_D = motor.Lphase;
-    motor_profile->L_Q = motor.Lqphase;
+  //  motor_profile->R = motor.Rphase;
+  //  motor_profile->L_D = motor.Lphase;
+  //  motor_profile->L_Q = motor.Lqphase;
 
     ttprintf("R = %f %s\r\nLd = %f %s\r\nLq = %f %s\r\n", R, Runit, Ld, Lunit, Lq, Lunit);
 
@@ -89,11 +84,11 @@ uint8_t CMD_getkv(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	}
 
-	MESCmotor_state_set(MOTOR_STATE_GET_KV);
+	motor1.MotorState = MOTOR_STATE_GET_KV;
     ttprintf("Waiting for result");
 
     port_str * port = handle->port;
-    while(MotorState == MOTOR_STATE_GET_KV){
+    while(motor1.MotorState == MOTOR_STATE_GET_KV){
     	xSemaphoreGive(port->term_block);
     	vTaskDelay(200);
     	xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
@@ -102,9 +97,9 @@ uint8_t CMD_getkv(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	ttprintf("\r\nResult:\r\n");
 
-	motor_profile->flux_linkage = motor.motor_flux;
+	//motor_profile->flux_linkage = motor.motor_flux;
 
-    ttprintf("Flux = %f mWb\r\n", motor.motor_flux * 1000.0);
+    ttprintf("Flux = %f mWb\r\n", motor1.m.flux_linkage * 1000.0);
 
     return TERM_CMD_EXIT_SUCCESS;
 }
@@ -118,7 +113,7 @@ uint8_t CMD_detect(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	ttprintf("Waiting for result");
 
 	port_str * port = handle->port;
-	while(MotorState == MOTOR_STATE_TEST){
+	while(motor1.MotorState == MOTOR_STATE_TEST){
 		xSemaphoreGive(port->term_block);
 		vTaskDelay(200);
 		xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
@@ -182,12 +177,11 @@ void MESCinterface_init(void){
 
 
 
-	TERM_addVar(motor.Rphase, 0.0f, 10.0f, "r_phase", "Phase resistance", 0, &TERM_varList);
-	TERM_addVar(motor.Lphase, 0.0f, 10.0f, "ld_phase", "Phase inductance", 0, &TERM_varList);
-	TERM_addVar(motor.Lqphase, 0.0f, 10.0f, "lq_phase", "Phase inductance", 0, &TERM_varList);
-	//TERM_addVar(motor.motor_flux, 0.0f, 100.0f, "flux", "Flux linkage", 0, &TERM_varList);
+	TERM_addVar(motor1.m.R, 0.0f, 10.0f, "r_phase", "Phase resistance", 0, &TERM_varList);
+	TERM_addVar(motor1.m.L_D, 0.0f, 10.0f, "ld_phase", "Phase inductance", 0, &TERM_varList);
+	TERM_addVar(motor1.m.L_Q, 0.0f, 10.0f, "lq_phase", "Phase inductance", 0, &TERM_varList);
+	TERM_addVar(motor1.HFIType, 0, 3, "hfi", "HFI type", 0, &TERM_varList);
 	TERM_addVar(buff, 0, 0, "name", "ESC name", 0, &TERM_varList);
-	TERM_addVar(motor1.FOC.hfi_enable, 0, 0, "hfi", "Enable HFI", 0, &TERM_varList);
 	TERM_addVar(input_vars.Idq_req_UART.q, -100.0f, 100.0f, "iq_req", "IQ request", 0, &TERM_varList);
 	TERM_addVar(hall, -10.0f, 10.0f, "hall", "Hall array", 0, &TERM_varList);
 
