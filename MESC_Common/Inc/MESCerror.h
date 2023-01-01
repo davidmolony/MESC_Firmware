@@ -32,6 +32,7 @@
 
 //Includes
 #include "stm32fxxx_hal.h"
+#include "MESCfoc.h"
 
 //Variables
 
@@ -42,8 +43,8 @@ struct MESC_log_vars
 	float current_C;
 	float voltage;
 	float motor_flux;
-	float flux_linked_alpha;
-	float flux_linked_beta;
+	float flux_a;
+	float flux_b;
 	int count;
 };
 
@@ -77,6 +78,6 @@ struct MESC_log_vars
 #define ERROR_HALL7 25
 
 
-void handleError(uint32_t error_code);
+void handleError(MESC_motor_typedef *_motor, uint32_t error_code);
 
 #endif /* INC_MESCERROR_H_ */

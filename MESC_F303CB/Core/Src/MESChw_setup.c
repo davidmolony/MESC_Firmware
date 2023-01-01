@@ -49,7 +49,7 @@ extern COMP_HandleTypeDef hcomp7;
 hw_setup_s g_hw_setup;
 motor_s motor;
 
-void hw_init()
+void hw_init(MESC_motor_typedef *_motor)
 {
     g_hw_setup.Imax = ABS_MAX_PHASE_CURRENT;  // Imax is the current at which we are either no longer able to read it, or hardware "don't ever exceed to avoid breakage"
     g_hw_setup.Vmax = ABS_MAX_BUS_VOLTAGE;  // Headroom beyond which likely to get avalanche of MOSFETs or DCDC converter
@@ -74,66 +74,80 @@ void hw_init()
 
 void setAWDVals()
 {
-    uint32_t AWD_top_set_point = g_hw_setup.RawCurrLim - 2048 + measurement_buffers.ADCOffset[0];
-    if (AWD_top_set_point > 4000)
-    {
-        AWD_top_set_point = 4000;
-    }
-
-    uint32_t AWD_bottom_set_point = measurement_buffers.ADCOffset[0] - (g_hw_setup.RawCurrLim - 2048);
-    if (AWD_bottom_set_point<96 || AWD_bottom_set_point> measurement_buffers.ADCOffset[0])
-    {
-        AWD_bottom_set_point = 96;
-    }
-
-    uint32_t AWD_setpoints = 0;
-    AWD_setpoints |= AWD_bottom_set_point;
-    AWD_setpoints |= (AWD_top_set_point << 16);
-
-    hadc1.Instance->TR1 = AWD_setpoints;
-    AWD_top_set_point = g_hw_setup.RawCurrLim - 2048 + measurement_buffers.ADCOffset[1];
-    if (AWD_top_set_point > 4000)
-    {
-        AWD_top_set_point = 4000;
-    }
-
-    AWD_bottom_set_point = measurement_buffers.ADCOffset[1] - (g_hw_setup.RawCurrLim - 2048);
-    if (AWD_bottom_set_point<96 || AWD_bottom_set_point> measurement_buffers.ADCOffset[1])
-    {
-        AWD_bottom_set_point = 96;
-    }
-
-    AWD_setpoints = 0;
-    AWD_setpoints |= AWD_bottom_set_point;
-    AWD_setpoints |= (AWD_top_set_point << 16);
-    hadc2.Instance->TR1 = AWD_setpoints;
-
-    AWD_top_set_point = g_hw_setup.RawCurrLim - 2048 + measurement_buffers.ADCOffset[2];
-    if (AWD_top_set_point > 4000)
-    {
-        AWD_top_set_point = 4000;
-    }
-
-    AWD_bottom_set_point = measurement_buffers.ADCOffset[2] - (g_hw_setup.RawCurrLim - 2048);
-    if (AWD_bottom_set_point<96 || AWD_bottom_set_point> measurement_buffers.ADCOffset[2])
-    {
-        AWD_bottom_set_point = 96;
-    }
-
-    AWD_setpoints = 0;
-    AWD_setpoints |= AWD_bottom_set_point;
-    AWD_setpoints |= (AWD_top_set_point << 16);
-    hadc3.Instance->TR1 = AWD_setpoints;
-    // Over Voltage
-    hadc1.Instance->TR2 = (g_hw_setup.RawVoltLim << 12);  // AWD2 is an oddity since it only uses the top 8 bits
-    hadc1.Instance->AWD2CR = 0x2;                         // Set channel 0 as the guarded channel
+//    uint32_t AWD_top_set_point = g_hw_setup.RawCurrLim - 2048 + measurement_buffers.ADCOffset[0];
+//    if (AWD_top_set_point > 4000)
+//    {
+//        AWD_top_set_point = 4000;
+//    }
+//
+//    uint32_t AWD_bottom_set_point = measurement_buffers.ADCOffset[0] - (g_hw_setup.RawCurrLim - 2048);
+//    if (AWD_bottom_set_point<96 || AWD_bottom_set_point> measurement_buffers.ADCOffset[0])
+//    {
+//        AWD_bottom_set_point = 96;
+//    }
+//
+//    uint32_t AWD_setpoints = 0;
+//    AWD_setpoints |= AWD_bottom_set_point;
+//    AWD_setpoints |= (AWD_top_set_point << 16);
+//
+//    hadc1.Instance->TR1 = AWD_setpoints;
+//    AWD_top_set_point = g_hw_setup.RawCurrLim - 2048 + measurement_buffers.ADCOffset[1];
+//    if (AWD_top_set_point > 4000)
+//    {
+//        AWD_top_set_point = 4000;
+//    }
+//
+//    AWD_bottom_set_point = measurement_buffers.ADCOffset[1] - (g_hw_setup.RawCurrLim - 2048);
+//    if (AWD_bottom_set_point<96 || AWD_bottom_set_point> measurement_buffers.ADCOffset[1])
+//    {
+//        AWD_bottom_set_point = 96;
+//    }
+//
+//    AWD_setpoints = 0;
+//    AWD_setpoints |= AWD_bottom_set_point;
+//    AWD_setpoints |= (AWD_top_set_point << 16);
+//    hadc2.Instance->TR1 = AWD_setpoints;
+//
+//    AWD_top_set_point = g_hw_setup.RawCurrLim - 2048 + measurement_buffers.ADCOffset[2];
+//    if (AWD_top_set_point > 4000)
+//    {
+//        AWD_top_set_point = 4000;
+//    }
+//
+//    AWD_bottom_set_point = measurement_buffers.ADCOffset[2] - (g_hw_setup.RawCurrLim - 2048);
+//    if (AWD_bottom_set_point<96 || AWD_bottom_set_point> measurement_buffers.ADCOffset[2])
+//    {
+//        AWD_bottom_set_point = 96;
+//    }
+//
+//    AWD_setpoints = 0;
+//    AWD_setpoints |= AWD_bottom_set_point;
+//    AWD_setpoints |= (AWD_top_set_point << 16);
+//    hadc3.Instance->TR1 = AWD_setpoints;
+//    // Over Voltage
+//    hadc1.Instance->TR2 = (g_hw_setup.RawVoltLim << 12);  // AWD2 is an oddity since it only uses the top 8 bits
+//    hadc1.Instance->AWD2CR = 0x2;                         // Set channel 0 as the guarded channel
 }
 
-void getRawADC(void)
+void getRawADC(MESC_motor_typedef *_motor)
 {
-    // Do not need to do anything here; handled by DMA
-}
+	  _motor->Raw.Iu = hadc1.Instance->JDR1;  // U Current
+	  _motor->Raw.Iv = hadc2.Instance->JDR1;  // V Current
+	  _motor->Raw.Iw = hadc3.Instance->JDR1;  // W Current
+	  _motor->Raw.Vbus = hadc1.Instance->JDR2;  // DC Link Voltage
 
+	  GET_THROTTLE_INPUT; //Define a similar macro in the header file for your board that maps the throttle
+
+	  _motor->Raw.MOSu_T = hadc4.Instance->JDR1; //Temperature on PB1
+  }
+
+
+void getRawADCVph(MESC_motor_typedef *_motor){
+	//Voltage sense
+	  _motor->Raw.Vu = hadc1.Instance->JDR3; //PhaseU Voltage
+	  _motor->Raw.Vv = hadc2.Instance->JDR2; //PhaseV Voltage
+	  _motor->Raw.Vw = hadc2.Instance->JDR3; //PhaseW Voltage
+}
 uint32_t getFlashBaseAddress( void )
 {
 /*
@@ -195,23 +209,28 @@ ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
     }
 }
 
-void mesc_init_1( void )
-{
+void mesc_init_1( MESC_motor_typedef *_motor ){
     HAL_ADCEx_Calibration_Start( &hadc1, ADC_SINGLE_ENDED );
     HAL_ADCEx_Calibration_Start( &hadc2, ADC_SINGLE_ENDED );
     HAL_ADCEx_Calibration_Start( &hadc3, ADC_SINGLE_ENDED );
     HAL_ADCEx_Calibration_Start( &hadc4, ADC_SINGLE_ENDED );
 }
 
-void mesc_init_2( void )
-{
+void mesc_init_2( MESC_motor_typedef *_motor ){
+#ifdef USE_INTERNAL_OPAMPS
     HAL_OPAMP_Start( &hopamp1 );
     HAL_OPAMP_Start( &hopamp2 );
     HAL_OPAMP_Start( &hopamp3 );
+#endif
 }
 
-void mesc_init_3( void )
-{
+void mesc_init_3( MESC_motor_typedef *_motor ){
+	//Start ADCs
+	HAL_ADCEx_InjectedStart(&hadc1);
+	HAL_ADCEx_InjectedStart(&hadc2);
+	HAL_ADCEx_InjectedStart(&hadc3);
+	HAL_ADCEx_InjectedStart(&hadc4);
+
     HAL_TIM_PWM_Start(     &htim1, TIM_CHANNEL_1 );
     HAL_TIMEx_PWMN_Start(  &htim1, TIM_CHANNEL_1 );
     __HAL_TIM_SET_COUNTER( &htim1, 10);
@@ -236,23 +255,15 @@ void mesc_init_3( void )
 
     __HAL_TIM_SET_COUNTER(&htim1, 10);
 
-    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&measurement_buffers.RawADC[0][0], 3);
-    __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-    HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&measurement_buffers.RawADC[1][0], 4);
-    __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-    HAL_ADC_Start_DMA(&hadc3, (uint32_t *)&measurement_buffers.RawADC[2][0], 1);
-    __HAL_TIM_SET_COUNTER(&htim1, 10);
-
-    HAL_ADC_Start_DMA(&hadc4, (uint32_t *)&measurement_buffers.RawADC[3][0], 1);
-
+    // Using the ADC AWD to detect overcurrent events.
     __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD1);
-    __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD2);
+    //__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD2); //No ADC watchdog 2 for now
     __HAL_ADC_ENABLE_IT(&hadc2, ADC_IT_AWD1);
     __HAL_ADC_ENABLE_IT(&hadc3, ADC_IT_AWD1);
-    // Using the ADC AWD to detect overcurrent events.
 
+    //Don't enable the timer interrupt until the ADC has had a chance to complete a conversion
+    HAL_Delay(10);
+
+	// Using the timer updates to commute the motor
     __HAL_TIM_ENABLE_IT(&htim1, TIM_IT_UPDATE);
-    // Using the timer updates to commute the motor
 }
