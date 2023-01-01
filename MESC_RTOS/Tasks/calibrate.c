@@ -100,6 +100,9 @@ static void highlight(TERMINAL_HANDLE * handle, char * text ,int index, int coun
 
 
 static void TASK_main(void *pvParameters){
+
+	MESC_motor_typedef * motor_curr = &mtr[0];
+
     TERMINAL_HANDLE * handle = (TERMINAL_HANDLE*)pvParameters;
     TERM_sendVT100Code(handle,_VT100_CURSOR_DISABLE, 0);
     uint16_t c=0;
@@ -114,7 +117,7 @@ static void TASK_main(void *pvParameters){
     	TERM_setCursorPos(handle, 1, 0);
     	highlight(handle, "ADC1:", 0, selected);
     	TERM_setCursorPos(handle, 2, 0);
-    	bargraph(handle, 0, 4095, motor1.Raw.ADC_in_ext1);
+    	bargraph(handle, 0, 4095, motor_curr->Raw.ADC_in_ext1);
     	ttprintf("MIN: %6d MAX: %6d", input_vars.adc1_MIN, input_vars.adc1_MAX);
 
     	if(selected==0){
@@ -123,10 +126,10 @@ static void TASK_main(void *pvParameters){
 				input_vars.adc1_MAX=4095;
 			}
 			if(c=='-'){
-				input_vars.adc1_MIN=motor1.Raw.ADC_in_ext1;
+				input_vars.adc1_MIN=motor_curr->Raw.ADC_in_ext1;
 			}
 			if(c=='+'){
-				input_vars.adc1_MAX=motor1.Raw.ADC_in_ext1;
+				input_vars.adc1_MAX=motor_curr->Raw.ADC_in_ext1;
 			}
     	}
 

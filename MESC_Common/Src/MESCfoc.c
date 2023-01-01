@@ -66,10 +66,7 @@ float sqrt3_on_2 = 0.866025f;
 float two_on_sqrt3 = 1.73205f;
 int adc_conv_end;
 
-
-MESC_motor_typedef motor1;
-MESC_motor_typedef motor2;
-
+MESC_motor_typedef mtr[NUM_MOTORS];
 
 MESCtest_s test_vals;
 input_vars_t input_vars;
@@ -1151,6 +1148,12 @@ static int carryU, carryV, carryW;
     phU_Enable(_motor);
     phV_Enable(_motor);
     phW_Enable(_motor);
+  }
+
+  void generateBreakAll() {
+    for(int i=0;i<NUM_MOTORS;i++){
+    	generateBreak(&mtr[i]);
+    }
   }
 
   static float top_V;
@@ -2533,21 +2536,20 @@ void ToggleHFI(MESC_motor_typedef *_motor){
 }
 
 static float dinductance, qinductance;
-static volatile int start_detection;
 
-void detectHFI(){
+float detectHFI(MESC_motor_typedef *_motor){
 	  ///Try out a new detection routine
 #if 1
 
-if(start_detection){
-	motor1.HFIType = HFI_TYPE_D;
+
+	_motor->HFIType = HFI_TYPE_D;
 	input_vars.Idq_req_UART.q = 0.25f;
 	int a = 0;
 	dinductance = 0;
 	qinductance = 0;
 	while(a<1000){
 		a++;
-		motor1.HFIType = HFI_TYPE_D;
+		_motor->HFIType = HFI_TYPE_D;
 		dinductance = dinductance + dIdq.d;
 		HAL_Delay(0);
 		//input_vars.input_options = 0b
@@ -2555,23 +2557,23 @@ if(start_detection){
 	dinductance = dinductance/1000.0f;
 	//dinductance = motor1.FOC.pwm_period*motor1.FOC.Vd_injectionV/(motor1.Conv.Vbus*dinductance);
 	//Vdt/di = L
-	motor1.FOC.d_polarity = -1;
+	_motor->FOC.d_polarity = -1;
 	a=0;
 	while(a<1000){
 		a++;
-		motor1.HFIType = HFI_TYPE_D;
+		_motor->HFIType = HFI_TYPE_D;
 		qinductance = qinductance + dIdq.d;
 		HAL_Delay(0);
 		//input_vars.input_options = 0b
 	}
 	qinductance = qinductance/1000.0f;
-	motor1.FOC.HFI_Threshold = sqrtf(qinductance*qinductance+dinductance*dinductance);
+	_motor->FOC.HFI_Threshold = sqrtf(qinductance*qinductance+dinductance*dinductance);
 	input_vars.Idq_req_UART.q = 0.0f;
-	motor1.FOC.d_polarity = 1;
-	start_detection = 0;
-	motor1.HFIType = HFI_TYPE_45;
+	_motor->FOC.d_polarity = 1;
 
-}
+	_motor->HFIType = HFI_TYPE_45;
+
+	return _motor->FOC.HFI_Threshold;
 
 #endif
 }

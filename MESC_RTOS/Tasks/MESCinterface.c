@@ -13,6 +13,9 @@
 #include <string.h>
 
 uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+
+	MESC_motor_typedef * motor_curr = &mtr[0];
+
 	motor.measure_current = I_MEASURE;
 	motor.measure_voltage = V_MEASURE;
 
@@ -28,11 +31,11 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		motor.measure_voltage = atoff(args[1]);
 	}
 
-	motor1.MotorState = MOTOR_STATE_MEASURING;
+	motor_curr->MotorState = MOTOR_STATE_MEASURING;
     ttprintf("Waiting for result");
 
     port_str * port = handle->port;
-    while(motor1.MotorState == MOTOR_STATE_MEASURING){
+    while(motor_curr->MotorState == MOTOR_STATE_MEASURING){
     	xSemaphoreGive(port->term_block);
     	vTaskDelay(200);
     	xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
@@ -44,20 +47,20 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     float R, Lq, Ld;
     char* Runit;
     char* Lunit;
-    if(motor1.m.R > 0){
-    	R = motor1.m.R;
+    if(motor_curr->m.R > 0){
+    	R = motor_curr->m.R;
     	Runit = "Ohm";
     }else{
-    	R = motor1.m.R*1000.0f;
+    	R = motor_curr->m.R*1000.0f;
     	Runit = "mOhm";
     }
-    if(motor1.m.L_Q > 0.001f){
-		Ld = motor1.m.L_D*1000.0f;
-		Lq = motor1.m.L_Q*1000.0f;
+    if(motor_curr->m.L_Q > 0.001f){
+		Ld = motor_curr->m.L_D*1000.0f;
+		Lq = motor_curr->m.L_Q*1000.0f;
 		Lunit = "mH";
 	}else{
-		Ld = motor1.m.L_D*1000.0f*1000.0f;
-		Lq = motor1.m.L_Q*1000.0f*1000.0f;
+		Ld = motor_curr->m.L_D*1000.0f*1000.0f;
+		Lq = motor_curr->m.L_Q*1000.0f*1000.0f;
 		Lunit = "uH";
 	}
 
@@ -71,6 +74,9 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 }
 
 uint8_t CMD_getkv(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+
+	MESC_motor_typedef * motor_curr = &mtr[0];
+
 	motor.measure_current = I_MEASURE;
 	motor.measure_voltage = V_MEASURE;
 
@@ -84,11 +90,11 @@ uint8_t CMD_getkv(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	}
 
-	motor1.MotorState = MOTOR_STATE_GET_KV;
+	motor_curr->MotorState = MOTOR_STATE_GET_KV;
     ttprintf("Waiting for result");
 
     port_str * port = handle->port;
-    while(motor1.MotorState == MOTOR_STATE_GET_KV){
+    while(motor_curr->MotorState == MOTOR_STATE_GET_KV){
     	xSemaphoreGive(port->term_block);
     	vTaskDelay(200);
     	xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
@@ -99,7 +105,7 @@ uint8_t CMD_getkv(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	//motor_profile->flux_linkage = motor.motor_flux;
 
-    ttprintf("Flux = %f mWb\r\n", motor1.m.flux_linkage * 1000.0);
+    ttprintf("Flux = %f mWb\r\n", motor_curr->m.flux_linkage * 1000.0);
 
     return TERM_CMD_EXIT_SUCCESS;
 }
@@ -107,13 +113,16 @@ uint8_t CMD_getkv(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 extern uint16_t deadtime_comp;
 uint8_t CMD_detect(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+
+	MESC_motor_typedef * motor_curr = &mtr[0];
+
 	TestMode = TEST_TYPE_DEAD_TIME_IDENT;
 	MESCmotor_state_set(MOTOR_STATE_TEST);
 
 	ttprintf("Waiting for result");
 
 	port_str * port = handle->port;
-	while(motor1.MotorState == MOTOR_STATE_TEST){
+	while(motor_curr->MotorState == MOTOR_STATE_TEST){
 		xSemaphoreGive(port->term_block);
 		vTaskDelay(200);
 		xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
@@ -122,6 +131,17 @@ uint8_t CMD_detect(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	ttprintf("Deadtime register: %d\r\n", deadtime_comp);
 
+
+    return TERM_CMD_EXIT_SUCCESS;
+}
+
+uint8_t CMD_detectHFI(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+
+	MESC_motor_typedef * motor_curr = &mtr[0];
+
+	float HFI_Threshold = detectHFI(motor_curr);
+
+	ttprintf("HFI threshold: %f\r\n", HFI_Threshold);
 
     return TERM_CMD_EXIT_SUCCESS;
 }
@@ -177,10 +197,10 @@ void MESCinterface_init(void){
 
 
 
-	TERM_addVar(motor1.m.R, 0.0f, 10.0f, "r_phase", "Phase resistance", 0, &TERM_varList);
-	TERM_addVar(motor1.m.L_D, 0.0f, 10.0f, "ld_phase", "Phase inductance", 0, &TERM_varList);
-	TERM_addVar(motor1.m.L_Q, 0.0f, 10.0f, "lq_phase", "Phase inductance", 0, &TERM_varList);
-	TERM_addVar(motor1.HFIType, 0, 3, "hfi", "HFI type", 0, &TERM_varList);
+	TERM_addVar(mtr[0].m.R, 0.0f, 10.0f, "r_phase", "Phase resistance", 0, &TERM_varList);
+	TERM_addVar(mtr[0].m.L_D, 0.0f, 10.0f, "ld_phase", "Phase inductance", 0, &TERM_varList);
+	TERM_addVar(mtr[0].m.L_Q, 0.0f, 10.0f, "lq_phase", "Phase inductance", 0, &TERM_varList);
+	TERM_addVar(mtr[0].HFIType, 0, 3, "hfi", "HFI type", 0, &TERM_varList);
 	TERM_addVar(buff, 0, 0, "name", "ESC name", 0, &TERM_varList);
 	TERM_addVar(input_vars.Idq_req_UART.q, -100.0f, 100.0f, "iq_req", "IQ request", 0, &TERM_varList);
 	TERM_addVar(hall, -10.0f, 10.0f, "hall", "Hall array", 0, &TERM_varList);
@@ -198,6 +218,7 @@ void MESCinterface_init(void){
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
 	TERM_addCommand(profile_cli_info, "profile", "Profile info", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_flash, "flash", "Flash write", 0, &TERM_defaultList);
+	TERM_addCommand(CMD_detectHFI, "hfi_detect", "Detect HFI", 0, &TERM_defaultList);
 
 
 	REGISTER_apps(&TERM_defaultList);

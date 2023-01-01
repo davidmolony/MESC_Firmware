@@ -138,13 +138,11 @@ int main(void)
 #endif
 
   //Set motor timer
-	motor1.mtimer = &htim1;
-	motor1.stimer = &htim2;
-	motor2.mtimer = &htim1;
-	motor2.stimer = &htim2;
+    mtr[0].mtimer = &htim1;
+    mtr[0].stimer = &htim2;
 
 	//Initialise MESC
-	MESCInit(&motor1);
+	MESCInit(&mtr[0]);
 	//motor.Rphase = motor_profile->R;
 	//motor.Lphase = motor_profile->L_D;
 	//motor.Lqphase = motor_profile->L_Q;
@@ -154,8 +152,8 @@ int main(void)
 
 	HAL_TIM_PWM_Start_IT(&htim2, TIM_CHANNEL_1);
 
-	calculateGains(&motor1);
-	calculateVoltageGain(&motor1);
+	calculateGains(&mtr[0]);
+	calculateVoltageGain(&mtr[0]);
 	MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
   /* USER CODE END 2 */

@@ -287,8 +287,7 @@ typedef struct{
 	MOTORProfile m;
 }MESC_motor_typedef;
 
-extern MESC_motor_typedef motor1;
-extern MESC_motor_typedef motor2;
+extern MESC_motor_typedef mtr[NUM_MOTORS];
 
 
 enum MESCADC
@@ -438,11 +437,13 @@ void writePWM(MESC_motor_typedef *_motor);  // Offset the PWM to voltage centred
 void generateBreak(MESC_motor_typedef *_motor);  // Software break that does not stop the PWM timer but
                        // disables the outputs, sum of phU,V,W_Break();
 void generateEnable(MESC_motor_typedef *_motor); // Opposite of generateBreak
+void generateBreakAll();	//Disables all drives
 
 
 void measureResistance(MESC_motor_typedef *_motor);
 void measureInductance(MESC_motor_typedef *_motor);
 void getkV(MESC_motor_typedef *_motor);
+float detectHFI(MESC_motor_typedef *_motor);
 
 void getHallTable(MESC_motor_typedef *_motor);
 void phU_Break(MESC_motor_typedef *_motor);   // Turn all phase U FETs off, Tristate the ouput - For BLDC

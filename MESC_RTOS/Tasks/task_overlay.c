@@ -59,6 +59,8 @@
 
 void show_overlay(TERMINAL_HANDLE * handle){
 
+	MESC_motor_typedef * motor_curr = &mtr[0];
+
 	TERM_sendVT100Code(handle, _VT100_CURSOR_SAVE_POSITION,0);
 	TERM_sendVT100Code(handle, _VT100_CURSOR_DISABLE,0);
 
@@ -66,21 +68,21 @@ void show_overlay(TERMINAL_HANDLE * handle){
 	uint8_t col_pos = 90;
 	TERM_Box(handle, row_pos, col_pos, row_pos + 6, col_pos + 31);
 	TERM_setCursorPos(handle, row_pos + 1, col_pos + 1);
-	ttprintf("Bus Voltage:       %10.1fV", motor1.Conv.Vbus);
+	ttprintf("Bus Voltage:       %10.1fV", motor_curr->Conv.Vbus);
 
 	TERM_setCursorPos(handle, row_pos + 2, col_pos + 1);
-	ttprintf("Bus Current:      %10.2f A", motor1.FOC.Ibus);
+	ttprintf("Bus Current:      %10.2f A", motor_curr->FOC.Ibus);
 
 	TERM_setCursorPos(handle, row_pos + 3, col_pos + 1);
-	ttprintf("Speed:         %10.2f ERPM", motor1.FOC.eHz*60.0);
+	ttprintf("Speed:         %10.2f ERPM", motor_curr->FOC.eHz*60.0);
 
 	TERM_setCursorPos(handle, row_pos + 4, col_pos + 1);
-	ttprintf("Power:            %10.2f W", motor1.FOC.currentPower.q);
+	ttprintf("Power:            %10.2f W", motor_curr->FOC.currentPower.q);
 
 	TERM_setCursorPos(handle, row_pos + 5, col_pos + 1);
 	ttprintf("MESC status: ");
 
-	switch(motor1.MotorState){
+	switch(motor_curr->MotorState){
 	case MOTOR_STATE_INITIALISING:
 		ttprintf("     INITIALISING");
 		break;
@@ -119,6 +121,9 @@ void show_overlay(TERMINAL_HANDLE * handle){
 		break;
 	case MOTOR_STATE_IDLE:
 		ttprintf("             IDLE");
+		break;
+	case MOTOR_STATE_SLAMBRAKE:
+		ttprintf("        SLAMBRAKE");
 		break;
 	}
 
