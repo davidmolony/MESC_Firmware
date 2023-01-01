@@ -35,6 +35,8 @@
 #define TERM_VERSION_STRING "V0.9"
 #define TERM_PROG_BUFFER_SIZE 32
 
+#define NO_OUTPUT 0xFF
+
 #define CTRL_C 0x03
 
 #if PIC32 == 1 
@@ -145,6 +147,7 @@ typedef struct __TermVariableHandle__ TermVariableHandle;
 
 struct __TermVariableHandle__{
 	TermVariableDescriptor * varListHead;
+	uint32_t nvm_revision;
 	uint32_t nvm_size;
 	void * nvm_address;
 	nvm_clear nvm_clear;

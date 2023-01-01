@@ -750,6 +750,7 @@ struct _FlashHeader_{
 	uint32_t num_entries;
 	uint32_t size;
 	uint32_t version;
+	uint32_t revision
 } __attribute__((packed));
 
 struct _FlashFooter_{
@@ -864,6 +865,10 @@ uint8_t CMD_varSave(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		return TERM_CMD_EXIT_SUCCESS;
 	}
 
+	//Find last active header and increment revision
+	FlashHeader * last_header = (FlashHeader*)find_last_active_header(address, storage_size);
+	handle->varHandle->nvm_revision = last_header->revision + 1;
+
 	header_section = find_next_free_memory(address, storage_size);
 
 	//Check if new dataset fits into memory
@@ -881,6 +886,7 @@ uint8_t CMD_varSave(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	header.num_entries = head->nameLength;
 	header.version = HEADER_VERSION;
 	header.size = n_bytes;
+	header.revision = handle->varHandle->nvm_revision;
 
 	written += var->nvm_start_write(header_section, &header, sizeof(header));
 	footer.crc = TTERM_fnv1a_process_data(footer.crc, &header, sizeof(header));
@@ -971,6 +977,7 @@ static void print_var_flash(TERMINAL_HANDLE * handle, FlashVariable * flashVar){
 	print_var_helperfunc(handle, &var, HELPER_FLAG_FLASH);
 }
 
+
 uint8_t CMD_varLoad(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	if(var_system_is_init(handle) == false) return TERM_CMD_EXIT_SUCCESS;
@@ -981,7 +988,7 @@ uint8_t CMD_varLoad(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	FlashHeader * header = (FlashHeader*)find_last_active_header(address, storage_size);
 
 	if(header->start != HEADER_START || header->version != HEADER_VERSION){
-		ttprintf("No dataset found\r\n");
+			ttprintf("No dataset found\r\n");
 		return TERM_CMD_EXIT_SUCCESS;
 	}
 	FlashFooter * footer = (FlashFooter *)((uint8_t*)header + header->size - sizeof(FlashFooter));
@@ -1004,6 +1011,8 @@ uint8_t CMD_varLoad(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	currPos = 0;
 	currFlashVar = FlashVar;
 	print_var_header_update(handle);
+
+	handle->varHandle->nvm_revision = header->revision;
 	for(;currPos < header->num_entries; currPos++){
 		if(argCount){
 			if(strcmp(currFlashVar->name, args[0]) != 0){
