@@ -126,6 +126,7 @@ struct __TermVariableDescriptor__{
     void * variable;
     TermVariableType type;
     uint16_t typeSize;
+    const char * prefix;
     const char * name;
     uint32_t nameLength;
     const char * variableDescription;
@@ -239,6 +240,8 @@ extern TermCommandDescriptor TERM_defaultList;
 #if TERM_SUPPORT_VARIABLES
 extern TermVariableDescriptor TERM_varList;
 #endif
+
+extern TERMINAL_HANDLE null_handle;
 
 #if EXTENDED_PRINTF == 1
 TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, void * port, unsigned echoEnabled, TermCommandDescriptor * cmdListHead, TermErrorPrinter errorPrinter, const char * usr);

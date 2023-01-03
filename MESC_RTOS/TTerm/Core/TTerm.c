@@ -135,7 +135,7 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
         
        // REGISTER_apps(&TERM_defaultList);
     }
-    
+
 #ifdef TERM_ENABLE_STARTUP_TEXT
     //TODO VT100 reset at boot
     //TODO add min start frame to signal that debugging started and print this again

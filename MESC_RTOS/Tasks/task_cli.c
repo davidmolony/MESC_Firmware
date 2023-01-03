@@ -213,7 +213,7 @@ void task_cli(void * argument)
 			break;
 	}
 
-	TERM_VAR_init(term_cli, (uint8_t*)getFlashBaseAddress(), FLASH_SIZE, flash_clear, flash_start_write, flash_write, flash_end_write);
+	null_handle.varHandle = TERM_VAR_init(term_cli, (uint8_t*)getFlashBaseAddress(), FLASH_SIZE, flash_clear, flash_start_write, flash_write, flash_end_write);
 
 	MESCinterface_init();
 

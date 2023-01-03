@@ -8,6 +8,8 @@
 #include "task_cli.h"
 #include "main.h"
 #include "usbd_def.h"
+#include "stdarg.h"
+#include "TTerm/Core/include/TTerm.h"
 
 extern UART_HandleTypeDef huart1;
 extern USBD_HandleTypeDef hUsbDeviceFS;
@@ -26,10 +28,32 @@ port_str main_usb = {	.hw = &hUsbDeviceFS,
 						.task_handle = NULL
 };
 
+
+
+#if EXTENDED_PRINTF == 1
+uint32_t null_printf(void * port, const char* format, ...) {
+	va_list arg;
+	va_start (arg, format);
+	va_end (arg);
+	return 0;
+}
+#else
+uint32_t null_printf(const char* format, ...) {
+	va_list arg;
+	va_start (arg, format);
+	va_end (arg);
+	return 0;
+}
+#endif
+
+
+TERMINAL_HANDLE null_handle = {
+		.print=null_printf
+};
+
+
 void init_system(void){
 
 	task_cli_init(&main_usb);
 	task_cli_init(&main_uart);
-
 }
-

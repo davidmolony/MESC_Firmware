@@ -175,52 +175,49 @@ uint8_t CMD_flash(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     return TERM_CMD_EXIT_SUCCESS;
 }
 
-char buff[16];
-float hall[6] = {1,2,3,4,5,6};
+
+void populate_vars(){
+
+	TERM_addVar(mtr[0].m.R, 0.0f, 10.0f, "r_phase", "Phase resistance", 0, &TERM_varList);
+	TERM_addVar(mtr[0].m.L_D, 0.0f, 10.0f, "ld_phase", "Phase inductance", 0, &TERM_varList);
+	TERM_addVar(mtr[0].m.L_Q, 0.0f, 10.0f, "lq_phase", "Phase inductance", 0, &TERM_varList);
+	TERM_addVar(mtr[0].HFIType, 0, 3, "hfi", "HFI type [0=None, 1=45deg, 2=d axis]", 0, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.HFI_Threshold, 0.0f, 2.0f, "hfi_thresh", "HFI Threshold", 0, &TERM_varList);
+	TERM_addVar(motor_profile->flux_linkage, 0.0f, 200.0f, "flux", "Flux linkage", 0, &TERM_varList);
+}
+
+
 
 void MESCinterface_init(void){
 	static bool is_init=false;
 	if(is_init) return;
 
-//	cli_register_var_rw("idq_req" 	, input_vars.Idq_req_UART.q, NULL);
-//    cli_register_var_rw( "id"     	, foc_vars.Idq_req.d, NULL);
-//    cli_register_var_rw( "iq"     	, foc_vars.Idq_req.q, NULL);
-//    cli_register_var_ro( "vbus"   	, measurement_buffers.ConvertedADC[0][1], NULL);
-//    cli_register_var_rw( "ld"     	, motor.Lphase, calculateGains);
-//    cli_register_var_rw( "lq"     	, motor.Lqphase, calculateGains);
-//    cli_register_var_rw( "r"      	, motor.Rphase, calculateGains);
-//    cli_register_var_rw( "flux"     , motor.motor_flux, calculateGains);
-//    cli_register_var_rw( "pwm_freq" , foc_vars.pwm_frequency, calculateGains);
-//    cli_register_var_rw( "hfi"      , foc_vars.hfi_enable, NULL);
+	populate_vars();
 
-	memcpy(buff, "Hello World", sizeof("Hello World"));
+	CMD_varLoad(&null_handle, 0, NULL);
 
+	calculateGains(&mtr[0]);
+	calculateVoltageGain(&mtr[0]);
 
+	motor_profile->L_QD = motor_profile->L_Q-motor_profile->L_D;
+	motor_profile->flux_linkage_max = 1.3f*motor_profile->flux_linkage;
+	motor_profile->flux_linkage_min = 0.7f*motor_profile->flux_linkage;
+	motor_profile->flux_linkage_gain = 10.0f * sqrtf(motor_profile->flux_linkage);
 
-	TERM_addVar(mtr[0].m.R, 0.0f, 10.0f, "r_phase", "Phase resistance", 0, &TERM_varList);
-	TERM_addVar(mtr[0].m.L_D, 0.0f, 10.0f, "ld_phase", "Phase inductance", 0, &TERM_varList);
-	TERM_addVar(mtr[0].m.L_Q, 0.0f, 10.0f, "lq_phase", "Phase inductance", 0, &TERM_varList);
-	TERM_addVar(mtr[0].HFIType, 0, 3, "hfi", "HFI type", 0, &TERM_varList);
-	TERM_addVar(buff, 0, 0, "name", "ESC name", 0, &TERM_varList);
-	TERM_addVar(input_vars.Idq_req_UART.q, -100.0f, 100.0f, "iq_req", "IQ request", 0, &TERM_varList);
-	TERM_addVar(hall, -10.0f, 10.0f, "hall", "Hall array", 0, &TERM_varList);
+	mtr[0].m.flux_linkage_max = motor_profile->flux_linkage_max;
+	mtr[0].m.flux_linkage_min = motor_profile->flux_linkage_min;
+	mtr[0].m.flux_linkage_gain = motor_profile->flux_linkage_gain;
 
-
-//	TERM_addVarFloat(&motor.Rphase, TERM_VARIABLE_FLOAT, sizeof(motor.Rphase),"r_phase", "Phase resistance", 0, &TERM_varList);
-//	TERM_addVarFloat(&motor.Lphase, TERM_VARIABLE_FLOAT, sizeof(motor.Lphase),"lq_phase", "Phase inductance", 0, &TERM_varList);
+	//mtr[0].m.flux_linkage = motor_profile->flux_linkage;
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_getkv, "getkv", "Measure motor kV", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_detect, "deadtime", "Detect deadtime compensation", 0, &TERM_defaultList);
-//	TERM_addCommand(cli_read, "read", "Read variable", 0, &TERM_defaultList);
-//	TERM_addCommand(cli_write, "write", "Write variable", 0, &TERM_defaultList);
-//	TERM_addCommand(cli_list, "list", "List all variables", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
-	TERM_addCommand(profile_cli_info, "profile", "Profile info", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_flash, "flash", "Flash write", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_detectHFI, "hfi_detect", "Detect HFI", 0, &TERM_defaultList);
 
-
 	REGISTER_apps(&TERM_defaultList);
+
 	is_init=true;
 }

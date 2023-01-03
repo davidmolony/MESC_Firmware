@@ -106,6 +106,16 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	_motor->MotorSensorMode = DEFAULT_SENSOR_MODE;
 	_motor->HFIType = DEFAULT_HFI_TYPE;
 
+	//Init Hall sensor
+	_motor->hall.dir = 1.0f;
+	_motor->hall.ticks_since_last_observer_change = 65535.0f;
+	_motor->hall.last_observer_period = 65536.0f;
+	_motor->hall.one_on_last_observer_period = 1.0f;
+	_motor->hall.angular_velocity = 0;
+	_motor->hall.angle_step = 0;
+
+	_motor->hall.hall_error = 0;
+
 	mesc_init_1(_motor);
 
 	HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle,
@@ -246,11 +256,9 @@ void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor) {
 // since the currents require approximately 1us = 144 clock cycles (f405) and 72
 // clock cycles (f303) to convert.
 
-static int current_hall_state;
-
 void fastLoop(MESC_motor_typedef *_motor) {
   // Call this directly from the TIM top IRQ
-  current_hall_state = getHallState(); //ToDo, this macro is not applicable to dual motors
+  _motor->hall.current_hall_state = getHallState(); //ToDo, this macro is not applicable to dual motors
   // First thing we ever want to do is convert the ADC values
   // to real, useable numbers.
   ADCConversion(_motor);
@@ -346,10 +354,10 @@ void fastLoop(MESC_motor_typedef *_motor) {
 
     case MOTOR_STATE_DETECTING:
 
-      if ((current_hall_state == 7)) { // no hall sensors detected, all GPIO pulled high
+      if ((_motor->hall.current_hall_state == 7)) { // no hall sensors detected, all GPIO pulled high
     	_motor->MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
         _motor->MotorState = MOTOR_STATE_GET_KV;
-      } else if (current_hall_state == 0) {
+      } else if (_motor->hall.current_hall_state == 0) {
         _motor->MotorState = MOTOR_STATE_ERROR;
         MotorError = MOTOR_ERROR_HALL0;
       } else {
@@ -740,55 +748,45 @@ if(phasebalance){
 
   /////////////////////////////////////////////////////////////////////////////
   ////////Hall Sensor Implementation///////////////////////////////////////////
-  static float dir = 1;
-  static uint16_t current_hall_angle;
-  static int last_hall_state;
-  static uint16_t last_hall_angle;
-  static float ticks_since_last_observer_change = 65535;
-  static float last_observer_period = 65536;
-  static float one_on_last_observer_period = 1;
-  float angular_velocity = 0;
-  static float angle_step = 0;
 
-  static int hall_error = 0;
   void hallAngleEstimator(MESC_motor_typedef *_motor) {  // Implementation using the mid point of the hall
                                // sensor angles, which should be much more
                                // reliable to generate that the edges
 
-    if (current_hall_state != last_hall_state) {
+    if (_motor->hall.current_hall_state != _motor->hall.last_hall_state) {
       _motor->FOC.hall_update = 1;
-      if (current_hall_state == 0) {
+      if (_motor->hall.current_hall_state == 0) {
         _motor->MotorState = MOTOR_STATE_ERROR;
         MotorError = MOTOR_ERROR_HALL0;
-      } else if (current_hall_state == 7) {
+      } else if (_motor->hall.current_hall_state == 7) {
         _motor->MotorState = MOTOR_STATE_ERROR;
         MotorError = MOTOR_ERROR_HALL7;
       }
       //////////Implement the Hall table here, but the vector can be dynamically
       /// created/filled by another function/////////////
-      current_hall_angle = _motor->m.hall_table[current_hall_state - 1][2];
+      _motor->hall.current_hall_angle = _motor->m.hall_table[_motor->hall.current_hall_state - 1][2];
 
       // Calculate Hall error
 
       uint16_t a;
-      if ((a = current_hall_angle - last_hall_angle) < 32000)  // Forwards
+      if ((a = _motor->hall.current_hall_angle - _motor->hall.last_hall_angle) < 32000)  // Forwards
       {
-        hall_error =
-            _motor->FOC.FOCAngle - _motor->m.hall_table[current_hall_state - 1][0];
-        dir = 1.0f;
+    	  _motor->hall.hall_error =
+    			  _motor->FOC.FOCAngle - _motor->m.hall_table[_motor->hall.current_hall_state - 1][0];
+    	  _motor->hall.dir = 1.0f;
         // _motor->FOC.HallAngle = _motor->FOC.HallAngle - 5460;
       } else  // Backwards
       {
-        hall_error =
-            _motor->FOC.FOCAngle - _motor->m.hall_table[current_hall_state - 1][1];
-        dir = -1.0f;
+    	_motor->hall.hall_error =
+    			_motor->FOC.FOCAngle - _motor->m.hall_table[_motor->hall.current_hall_state - 1][1];
+    	_motor->hall.dir = -1.0f;
         // _motor->FOC.HallAngle = _motor->FOC.HallAngle + 5460;
       }
-      if (hall_error > 32000) {
-        hall_error = hall_error - 65536;
+      if (_motor->hall.hall_error > 32000) {
+    	  _motor->hall.hall_error = _motor->hall.hall_error - 65536;
       }
-      if (hall_error < -32000) {
-        hall_error = hall_error + 65536;
+      if (_motor->hall.hall_error < -32000) {
+    	  _motor->hall.hall_error = _motor->hall.hall_error + 65536;
       }
     }
   }
@@ -798,56 +796,56 @@ if(phasebalance){
     // etc...) and process it with a PLL type mechanism
     if (_motor->FOC.hall_update == 1) {
       _motor->FOC.hall_update = 0;
-      last_observer_period = ticks_since_last_observer_change;
-      float one_on_ticks = (1.0f / ticks_since_last_observer_change);
-      one_on_last_observer_period =
-          (4.0f * one_on_last_observer_period + (one_on_ticks)) * 0.2f;  // ;
-      angle_step =
-          (4.0f * angle_step +
-           (one_on_ticks)*_motor->m.hall_table[last_hall_state - 1][3]) *
+      _motor->hall.last_observer_period = _motor->hall.ticks_since_last_observer_change;
+      float one_on_ticks = (1.0f / _motor->hall.ticks_since_last_observer_change);
+      _motor->hall.one_on_last_observer_period =
+          (4.0f * _motor->hall.one_on_last_observer_period + (one_on_ticks)) * 0.2f;  // ;
+      _motor->hall.angle_step =
+          (4.0f * _motor->hall.angle_step +
+           (one_on_ticks)*_motor->m.hall_table[_motor->hall.last_hall_state - 1][3]) *
           0.2f;
 
       // Reset the counters, track the previous state
-      last_hall_state = current_hall_state;
-      last_hall_angle = current_hall_angle;
-      ticks_since_last_observer_change = 0;
+      _motor->hall.last_hall_state = _motor->hall.current_hall_state;
+      _motor->hall.last_hall_angle = _motor->hall.current_hall_angle;
+      _motor->hall.ticks_since_last_observer_change = 0;
     }
 
     // Run the counter
-    ticks_since_last_observer_change = ticks_since_last_observer_change + 1;
+    _motor->hall.ticks_since_last_observer_change = _motor->hall.ticks_since_last_observer_change + 1;
 
-    if (ticks_since_last_observer_change <= 2.0f * last_observer_period) {
+    if (_motor->hall.ticks_since_last_observer_change <= 2.0f * _motor->hall.last_observer_period) {
       /*      _motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (uint16_t)(dir*angle_step
          + one_on_last_observer_period * (-0.9f * hall_error)); //Does not
          work...
            //Why?
  */
-      if (dir > 0) {  // Apply a gain to the error as well as the feed forward
+      if (_motor->hall.dir > 0) {  // Apply a gain to the error as well as the feed forward
         // from the last hall period. Gain of 0.9-1.1 seems to work
         // well when using corrected hall positions and spacings
         _motor->FOC.FOCAngle =
             _motor->FOC.FOCAngle +
-            (uint16_t)(angle_step - one_on_last_observer_period * hall_error);
+            (uint16_t)(_motor->hall.angle_step - _motor->hall.one_on_last_observer_period * _motor->hall.hall_error);
         // one_on_last_observer_period * (-0.2f * hall_error));
-      } else if (dir < 0.0f) {
+      } else if (_motor->hall.dir < 0.0f) {
         _motor->FOC.FOCAngle =
             _motor->FOC.FOCAngle +
-            (uint16_t)(-angle_step +
-                       one_on_last_observer_period * (-0.9f * hall_error));
+            (uint16_t)(-_motor->hall.angle_step +
+            		_motor->hall.one_on_last_observer_period * (-0.9f * _motor->hall.hall_error));
         // Also does not work,
         // Why??
         _motor->FOC.FOCAngle =
             _motor->FOC.FOCAngle -
-            (uint16_t)(angle_step +
-                       one_on_last_observer_period * (0.2f * hall_error));
+            (uint16_t)(_motor->hall.angle_step +
+            		_motor->hall.one_on_last_observer_period * (0.2f * _motor->hall.hall_error));
       }
     }
-    if (ticks_since_last_observer_change > 1500.0f) {
-      ticks_since_last_observer_change = 1500.0f;
-      last_observer_period = 1500.0f;  //(ticks_since_last_hall_change);
-      one_on_last_observer_period =
-          1.0f / last_observer_period;  // / ticks_since_last_hall_change;
-      _motor->FOC.FOCAngle = current_hall_angle;
+    if (_motor->hall.ticks_since_last_observer_change > 1500.0f) {
+    	_motor->hall.ticks_since_last_observer_change = 1500.0f;
+    	_motor->hall.last_observer_period = 1500.0f;  //(ticks_since_last_hall_change);
+    	_motor->hall.one_on_last_observer_period =
+          1.0f / _motor->hall.last_observer_period;  // / ticks_since_last_hall_change;
+      _motor->FOC.FOCAngle = _motor->hall.current_hall_angle;
     }
   }
 
@@ -1156,27 +1154,10 @@ static int carryU, carryV, carryW;
     }
   }
 
-  static float top_V;
-  static float bottom_V;
-  static float top_I;
-  static float bottom_I;
-  static float count_top;
-  static float count_topq;
-  static float count_bottom;
-  static float count_bottomq;
 
-  static float Vd_temp;
-  static float Vq_temp;
-  static float top_I_L;
-  static float bottom_I_L;
-  static float top_I_Lq;
-  static float bottom_I_Lq;
-  static int PWM_cycles = 0;
-
-  void measureResistance(MESC_motor_typedef *_motor) {
-static HFI_type_e previous_HFI_type;
-    if (PWM_cycles < 2) {
-    	previous_HFI_type = _motor->HFIType;
+ void measureResistance(MESC_motor_typedef *_motor) {
+    if (_motor->meas.PWM_cycles < 2) {
+    	_motor->meas.previous_HFI_type = _motor->HFIType;
       uint16_t half_ARR = htim1.Instance->ARR / 2;
       htim1.Instance->CCR1 = half_ARR;
       htim1.Instance->CCR2 = half_ARR;
@@ -1198,20 +1179,20 @@ static HFI_type_e previous_HFI_type;
       MESCFOC(_motor);
       writePWM(_motor);
 
-      top_V = 0;
-      bottom_V = 0;
-      top_I = 0;
-      bottom_I = 0;
-      top_I_L = 0;
-      bottom_I_L = 0;
-      top_I_Lq = 0;
-      bottom_I_Lq = 0;
+      _motor->meas.top_V = 0;
+      _motor->meas.bottom_V = 0;
+      _motor->meas.top_I = 0;
+      _motor->meas.bottom_I = 0;
+      _motor->meas.top_I_L = 0;
+      _motor->meas.bottom_I_L = 0;
+      _motor->meas.top_I_Lq = 0;
+      _motor->meas.bottom_I_Lq = 0;
 
-      count_top = 0.0f;
-      count_bottom = 0.0f;
+      _motor->meas.count_top = 0.0f;
+      _motor->meas.count_bottom = 0.0f;
     }
 
-    else if (PWM_cycles < 35000) {  // Align the rotor for ~1 second
+    else if (_motor->meas.PWM_cycles < 35000) {  // Align the rotor for ~1 second
       _motor->FOC.Idq_req.d = motor.measure_current;
       _motor->FOC.Idq_req.q = 0.0f;
 
@@ -1220,20 +1201,20 @@ static HFI_type_e previous_HFI_type;
       writePWM(_motor);
     }
 
-    else if (PWM_cycles < 40000) {  // Lower setpoint
+    else if (_motor->meas.PWM_cycles < 40000) {  // Lower setpoint
       _motor->FOC.Idq_req.d = 0.20f*motor.measure_current;
       _motor->FOC.inject = 0;
       MESCFOC(_motor);
       writePWM(_motor);
 
-      bottom_V = bottom_V + _motor->FOC.Vdq.d;
-      bottom_I = bottom_I + _motor->FOC.Idq.d;
-      count_bottom++;
-      Vd_temp = _motor->FOC.Vdq.d * 1.0f;  // Store the voltage required for the low setpoint, to
+      _motor->meas.bottom_V = _motor->meas.bottom_V + _motor->FOC.Vdq.d;
+      _motor->meas.bottom_I = _motor->meas.bottom_I + _motor->FOC.Idq.d;
+      _motor->meas.count_bottom++;
+      _motor->meas.Vd_temp = _motor->FOC.Vdq.d * 1.0f;  // Store the voltage required for the low setpoint, to
                        	   	   	   	   	 // use as an offset for the inductance
     }
 
-    else if (PWM_cycles < 45000) {  // Upper setpoint stabilisation
+    else if (_motor->meas.PWM_cycles < 45000) {  // Upper setpoint stabilisation
       _motor->FOC.Idq_req.d = motor.measure_current;
       _motor->FOC.inject = 0;
       MESCFOC(_motor);
@@ -1241,95 +1222,95 @@ static HFI_type_e previous_HFI_type;
 
     }
 
-    else if (PWM_cycles < 50000) {  // Upper setpoint
+    else if (_motor->meas.PWM_cycles < 50000) {  // Upper setpoint
       _motor->FOC.Idq_req.d = motor.measure_current;
       _motor->FOC.inject = 0;
       MESCFOC(_motor);
       writePWM(_motor);
 
-      top_V = top_V + _motor->FOC.Vdq.d;
-      top_I = top_I + _motor->FOC.Idq.d;
-      count_top++;
-    } else if (PWM_cycles < 50001) {  // Calculate R
+      _motor->meas.top_V = _motor->meas.top_V + _motor->FOC.Vdq.d;
+      _motor->meas.top_I = _motor->meas.top_I + _motor->FOC.Idq.d;
+      _motor->meas.count_top++;
+    } else if (_motor->meas.PWM_cycles < 50001) {  // Calculate R
 
       generateBreak(_motor);
-      _motor->m.R = (top_V - bottom_V) / (top_I - bottom_I);
+      _motor->m.R = (_motor->meas.top_V - _motor->meas.bottom_V) / (_motor->meas.top_I - _motor->meas.bottom_I);
 
       //Initialise the variables for the next measurement
       //Vd_temp = _motor->FOC.Vdq.d * 1.0f;  // Store the voltage required for the high setpoint, to
                        	   	   	   	   	 // use as an offset for the inductance
-      Vq_temp = 0.0f;
+      _motor->meas.Vq_temp = 0.0f;
       _motor->FOC.Vdq.q = 0.0f;//
       _motor->FOC.Idq_int_err.d = 0.0f;
       _motor->FOC.Idq_int_err.q = 0.0f;
-      count_top = 0.0f;
-      count_bottom = 0.0f;
-      top_I_L = 0.0f;
-      bottom_I_L = 0.0f;
+      _motor->meas.count_top = 0.0f;
+      _motor->meas.count_bottom = 0.0f;
+      _motor->meas.top_I_L = 0.0f;
+      _motor->meas.bottom_I_L = 0.0f;
 
       generateEnable(_motor);
     }
 /////////////////////////// Collect Ld variable//////////////////////////
-    else if (PWM_cycles < 80001) {
+    else if (_motor->meas.PWM_cycles < 80001) {
       // generateBreak();
 	  _motor->HFIType = HFI_TYPE_SPECIAL;
       _motor->FOC.inject = 1;  // flag to the SVPWM writer to inject at top
       _motor->FOC.special_injectionVd = motor.measure_voltage;
       _motor->FOC.special_injectionVq = 0.0f;
 
-      _motor->FOC.Vdq.d = Vd_temp;
+      _motor->FOC.Vdq.d = _motor->meas.Vd_temp;
       _motor->FOC.Vdq.q = 0.0f;
 
 
       if (_motor->FOC.inject_high_low_now == 1) {
-        top_I_L = top_I_L + _motor->FOC.Idq.d;
-        count_top++;
+    	  _motor->meas.top_I_L = _motor->meas.top_I_L + _motor->FOC.Idq.d;
+    	  _motor->meas.count_top++;
       } else if (_motor->FOC.inject_high_low_now == 0) {
-        bottom_I_L = bottom_I_L + _motor->FOC.Idq.d;
-        count_bottom++;
+    	  _motor->meas.bottom_I_L = _motor->meas.bottom_I_L + _motor->FOC.Idq.d;
+    	  _motor->meas.count_bottom++;
       }
     }
 
-    else if (PWM_cycles < 80002) {
+    else if (_motor->meas.PWM_cycles < 80002) {
       generateBreak(_motor);
       _motor->m.L_D =
           fabsf((_motor->FOC.special_injectionVd) /
-          ((top_I_L - bottom_I_L) / (count_top * _motor->FOC.pwm_period)));
-      top_I_Lq = 0.0f;
-      bottom_I_Lq = 0.0f;
-      count_topq = 0.0f;
-      count_bottomq = 0.0f;
+          ((_motor->meas.top_I_L - _motor->meas.bottom_I_L) / (_motor->meas.count_top * _motor->FOC.pwm_period)));
+      _motor->meas.top_I_Lq = 0.0f;
+      _motor->meas.bottom_I_Lq = 0.0f;
+      _motor->meas.count_topq = 0.0f;
+      _motor->meas.count_bottomq = 0.0f;
       __NOP();  // Put a break point on it...
-    } else if (PWM_cycles < 80003) {
+    } else if (_motor->meas.PWM_cycles < 80003) {
       phU_Enable(_motor);
       phV_Enable(_motor);
       phW_Enable(_motor);
 
 ////////////////////////// Collect Lq variable//////////////////////////////
-    } else if (PWM_cycles < 100003) {
+    } else if (_motor->meas.PWM_cycles < 100003) {
       //			generateBreak();
       _motor->FOC.special_injectionVd = 0.0f;
       _motor->FOC.special_injectionVq = motor.measure_voltage;
       _motor->FOC.inject = 1;  // flag to the SVPWM writer to update at top
-      _motor->FOC.Vdq.d = Vd_temp;  // Vd_temp to keep it aligned with D axis
+      _motor->FOC.Vdq.d = _motor->meas.Vd_temp;  // Vd_temp to keep it aligned with D axis
       _motor->FOC.Vdq.q = 0.0f;
 
 
       if (_motor->FOC.inject_high_low_now == 1) {
-        top_I_Lq = top_I_Lq + _motor->FOC.Idq.q;
-        count_topq++;
+    	  _motor->meas.top_I_Lq = _motor->meas.top_I_Lq + _motor->FOC.Idq.q;
+    	  _motor->meas.count_topq++;
       } else if (_motor->FOC.inject_high_low_now == 0) {
-        bottom_I_Lq = bottom_I_Lq + _motor->FOC.Idq.q;
-        count_bottomq++;
+    	  _motor->meas.bottom_I_Lq = _motor->meas.bottom_I_Lq + _motor->FOC.Idq.q;
+        _motor->meas.count_bottomq++;
       }
     }
 
     else {
       generateBreak(_motor);
-      _motor->HFIType = previous_HFI_type;
+      _motor->HFIType = _motor->meas.previous_HFI_type;
       _motor->m.L_Q =
           fabsf((_motor->FOC.special_injectionVq) /
-          ((top_I_Lq - bottom_I_Lq) / (count_top * _motor->FOC.pwm_period)));
+          ((_motor->meas.top_I_Lq - _motor->meas.bottom_I_Lq) / (_motor->meas.count_top * _motor->FOC.pwm_period)));
 
       _motor->MotorState = MOTOR_STATE_IDLE;
 
@@ -1340,12 +1321,12 @@ static HFI_type_e previous_HFI_type;
       _motor->FOC.Vq_injectionV = 0.0f;
       calculateGains(_motor);
       _motor->MotorState = MOTOR_STATE_TRACKING;
-      PWM_cycles = 0;
+      _motor->meas.PWM_cycles = 0;
       phU_Enable(_motor);
       phV_Enable(_motor);
       phW_Enable(_motor);
     }
-    PWM_cycles++;
+    _motor->meas.PWM_cycles++;
   }
 
 
@@ -1358,7 +1339,7 @@ static HFI_type_e previous_HFI_type;
     static int anglestep = 5;  // This defines how fast the motor spins
     static uint32_t hallangles[7][2];
     static int rollover;
-    hallstate = current_hall_state;
+    hallstate = _motor->hall.current_hall_state;
     if (firstturn) {
     	generateEnable(_motor);
       lasthallstate = hallstate;
@@ -1407,7 +1388,7 @@ static HFI_type_e previous_HFI_type;
           dir = 0;
           rollover = 0;
         }
-        if ((_motor->FOC.FOCAngle < (12000)) && (hallstate != last_hall_state)) {
+        if ((_motor->FOC.FOCAngle < (12000)) && (hallstate != _motor->hall.last_hall_state)) {
           rollover = hallstate;
         }
         if ((_motor->FOC.FOCAngle < (65535)) &&
@@ -1458,10 +1439,7 @@ static HFI_type_e previous_HFI_type;
                             // RESISTANCE... no point in 2 functions really...
 __NOP();
   }
-  int angle_delta;
-  static volatile float temp_flux;
-  static volatile float temp_FLA;
-  static volatile float temp_FLB;
+
 
   void getkV(MESC_motor_typedef *_motor) {
   	_motor->FOC.inject = 0;
@@ -1484,20 +1462,20 @@ __NOP();
     if (cycles < 60002) {
         _motor->FOC.Idq_req.d = motor.measure_current*0.5f;  //
         _motor->FOC.Idq_req.q = 0.0f;
-    	angle_delta = temp_angle-_motor->FOC.FOCAngle;
+    	_motor->meas.angle_delta = temp_angle-_motor->FOC.FOCAngle;
     	_motor->FOC.openloop_step = (uint16_t)(ERPM_MEASURE*65536.0f/(_motor->FOC.pwm_frequency*60.0f)*(float)cycles/65000.0f);
     	_motor->FOC.FOCAngle = temp_angle;
         OLGenerateAngle(_motor);
         temp_angle = _motor->FOC.FOCAngle;
         if(cycles==60001){
-        	temp_flux = sqrtf(_motor->FOC.Vdq.d*_motor->FOC.Vdq.d+_motor->FOC.Vdq.q*_motor->FOC.Vdq.q)/(6.28f * (float)_motor->FOC.openloop_step * (float)_motor->FOC.pwm_frequency/65536.0f);
-        	_motor->m.flux_linkage  = temp_flux;
+        	_motor->meas.temp_flux = sqrtf(_motor->FOC.Vdq.d*_motor->FOC.Vdq.d+_motor->FOC.Vdq.q*_motor->FOC.Vdq.q)/(6.28f * (float)_motor->FOC.openloop_step * (float)_motor->FOC.pwm_frequency/65536.0f);
+        	_motor->m.flux_linkage  = _motor->meas.temp_flux;
         	_motor->FOC.flux_a = _motor->FOC.sincosangle.cos*_motor->m.flux_linkage;
         	_motor->FOC.flux_b = _motor->FOC.sincosangle.sin*_motor->m.flux_linkage;
         	motor_profile->flux_linkage_max = 1.7f*_motor->m.flux_linkage;
         	motor_profile->flux_linkage_min = 0.5f*_motor->m.flux_linkage;
-        	temp_FLA = _motor->FOC.flux_a;
-        	temp_FLB = _motor->FOC.flux_b;
+        	_motor->meas.temp_FLA = _motor->FOC.flux_a;
+        	_motor->meas.temp_FLB = _motor->FOC.flux_b;
         }
         MESCFOC(_motor);
     }
@@ -2307,15 +2285,15 @@ uint16_t test_counts;
 
   void HallFluxMonitor(MESC_motor_typedef *_motor){
 	  if(fabsf(_motor->FOC.Vdq.q)>10.0f){ //Are we actually spinning at a reasonable pace?
-		  if((current_hall_state>0)&&(current_hall_state<7)){
-	  _motor->m.hall_flux[current_hall_state - 1][0] =
-			  0.999f*_motor->m.hall_flux[current_hall_state - 1][0] +
+		  if((_motor->hall.current_hall_state>0)&&(_motor->hall.current_hall_state<7)){
+	  _motor->m.hall_flux[_motor->hall.current_hall_state - 1][0] =
+			  0.999f*_motor->m.hall_flux[_motor->hall.current_hall_state - 1][0] +
 			  0.001f*_motor->FOC.flux_a;
 	  //take a slow average of the alpha flux linked and store it for later preloading
 	  //the observer during very low speed conditions. There is a slight bias towards
 	  //later values of flux linked, which is probably good.
-	  _motor->m.hall_flux[current_hall_state - 1][1] =
-			  0.999f*_motor->m.hall_flux[current_hall_state - 1][1] +
+	  _motor->m.hall_flux[_motor->hall.current_hall_state - 1][1] =
+			  0.999f*_motor->m.hall_flux[_motor->hall.current_hall_state - 1][1] +
 			  0.001f*_motor->FOC.flux_b;
 		  }
 		  _motor->FOC.hall_initialised = 1;

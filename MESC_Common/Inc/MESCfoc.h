@@ -271,6 +271,48 @@ typedef struct {
 
 extern MESCfoc_s foc_vars;
 
+typedef struct {
+	//Measure resistance
+	float top_V;
+	float bottom_V;
+	float top_I;
+	float bottom_I;
+	float count_top;
+	float count_topq;
+	float count_bottom;
+	float count_bottomq;
+
+	float Vd_temp;
+	float Vq_temp;
+	float top_I_L;
+	float bottom_I_L;
+	float top_I_Lq;
+	float bottom_I_Lq;
+	int PWM_cycles;
+	HFI_type_e previous_HFI_type;
+
+	//getkV
+	int angle_delta;
+	float temp_flux;
+	float temp_FLA;
+	float temp_FLB;
+} MESCmeas_s;
+
+typedef struct {
+	float dir;
+	int current_hall_state;
+	uint16_t current_hall_angle;
+	int last_hall_state;
+	uint16_t last_hall_angle;
+	float ticks_since_last_observer_change;
+	float last_observer_period;
+	float one_on_last_observer_period;
+	float angular_velocity;
+	float angle_step;
+
+	int hall_error;
+} MESChall_s;
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////Main typedef for starting a motor instance////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -285,6 +327,8 @@ typedef struct{
 	MESC_offset_typedef offset;
 	MESCfoc_s FOC;
 	MOTORProfile m;
+	MESCmeas_s meas;
+	MESChall_s hall;
 }MESC_motor_typedef;
 
 extern MESC_motor_typedef mtr[NUM_MOTORS];
