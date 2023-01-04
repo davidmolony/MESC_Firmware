@@ -7,6 +7,7 @@
 #include "MESCmotor_state.h"
 #include "MESCmotor.h"
 #include "MESCflash.h"
+#include "MESCinterface.h"
 //#include "MESCcli.h"
 
 #include <stdlib.h>
@@ -15,97 +16,130 @@
 uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	MESC_motor_typedef * motor_curr = &mtr[0];
+	port_str * port = handle->port;
 
 	motor.measure_current = I_MEASURE;
 	motor.measure_voltage = V_MEASURE;
 
-	if(argCount==1){
-		if(strcmp(args[0], "-?")==0){
-			ttprintf("Usage: measure   - optional: [measure current] [optional: measure voltage]\r\n");
+	bool measure_res = false;
+	bool measure_kv  = false;
+	bool measure_hfi = false;
+
+	if(argCount==0){
+		measure_res =true;
+		measure_kv  =true;
+		measure_hfi =true;
+	}
+
+	for(int i=0;i<argCount;i++){
+		if(strcmp(args[i], "-a")==0){
+			measure_res =true;
+			measure_kv  =true;
+			measure_hfi =true;
+		}
+		if(strcmp(args[i], "-r")==0){
+			measure_res =true;
+		}
+		if(strcmp(args[i], "-h")==0){
+			measure_hfi =true;
+		}
+		if(strcmp(args[i], "-f")==0){
+			measure_kv =true;
+		}
+		if(strcmp(args[i], "-?")==0){
+			ttprintf("Usage: measure [flags]\r\n");
+			ttprintf("\t -a\t Measure all\r\n");
+			ttprintf("\t -r\t Measure resistance and inductance\r\n");
+			ttprintf("\t -f\t Measure flux linkage\r\n");
+			ttprintf("\t -h\t Measure HFI threshold\r\n");
+			ttprintf("\t -c\t Specify openloop current\r\n");
+			ttprintf("\t -v\t Specify HFI voltage\r\n");
 			return TERM_CMD_EXIT_SUCCESS;
+		}
+		if(strcmp(args[i], "-v")==0){
+			if(i+1 < argCount){
+				motor.measure_voltage = atoff(args[i+1]);
+			}
+		}
+		if(strcmp(args[i], "-c")==0){
+			if(i+1 < argCount){
+				motor.measure_current = atoff(args[i+1]);
+			}
 		}
 	}
 
-	if(argCount==2){
-		motor.measure_current = atoff(args[0]);
-		motor.measure_voltage = atoff(args[1]);
-	}
+	if(measure_res){
+		//Measure resistance and inductance
+		motor_curr->MotorState = MOTOR_STATE_MEASURING;
+		ttprintf("Measuring resistance and inductance\r\nWaiting for result");
 
-	motor_curr->MotorState = MOTOR_STATE_MEASURING;
-    ttprintf("Waiting for result");
-
-    port_str * port = handle->port;
-    while(motor_curr->MotorState == MOTOR_STATE_MEASURING){
-    	xSemaphoreGive(port->term_block);
-    	vTaskDelay(200);
-    	xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
-    	ttprintf(".");
-    }
-
-    ttprintf("\r\nResult:\r\n");
-
-    float R, Lq, Ld;
-    char* Runit;
-    char* Lunit;
-    if(motor_curr->m.R > 0){
-    	R = motor_curr->m.R;
-    	Runit = "Ohm";
-    }else{
-    	R = motor_curr->m.R*1000.0f;
-    	Runit = "mOhm";
-    }
-    if(motor_curr->m.L_Q > 0.001f){
-		Ld = motor_curr->m.L_D*1000.0f;
-		Lq = motor_curr->m.L_Q*1000.0f;
-		Lunit = "mH";
-	}else{
-		Ld = motor_curr->m.L_D*1000.0f*1000.0f;
-		Lq = motor_curr->m.L_Q*1000.0f*1000.0f;
-		Lunit = "uH";
-	}
-
-  //  motor_profile->R = motor.Rphase;
-  //  motor_profile->L_D = motor.Lphase;
-  //  motor_profile->L_Q = motor.Lqphase;
-
-    ttprintf("R = %f %s\r\nLd = %f %s\r\nLq = %f %s\r\n", R, Runit, Ld, Lunit, Lq, Lunit);
-
-    return TERM_CMD_EXIT_SUCCESS;
-}
-
-uint8_t CMD_getkv(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
-
-	MESC_motor_typedef * motor_curr = &mtr[0];
-
-	motor.measure_current = I_MEASURE;
-	motor.measure_voltage = V_MEASURE;
-
-	if(argCount==1){
-		if(strcmp(args[0], "-?")==0){
-			ttprintf("Usage: getkv [optional: measure current]\r\n");
-			return TERM_CMD_EXIT_SUCCESS;
+		while(motor_curr->MotorState == MOTOR_STATE_MEASURING){
+			xSemaphoreGive(port->term_block);
+			vTaskDelay(200);
+			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			ttprintf(".");
 		}
 
-		motor.measure_current = atoff(args[0]);
+		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
+		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
 
+		float R, Lq, Ld;
+		char* Runit;
+		char* Lunit;
+		if(motor_curr->m.R > 0){
+			R = motor_curr->m.R;
+			Runit = "Ohm";
+		}else{
+			R = motor_curr->m.R*1000.0f;
+			Runit = "mOhm";
+		}
+		if(motor_curr->m.L_Q > 0.001f){
+			Ld = motor_curr->m.L_D*1000.0f;
+			Lq = motor_curr->m.L_Q*1000.0f;
+			Lunit = "mH";
+		}else{
+			Ld = motor_curr->m.L_D*1000.0f*1000.0f;
+			Lq = motor_curr->m.L_Q*1000.0f*1000.0f;
+			Lunit = "uH";
+		}
+
+
+		ttprintf("R = %f %s\r\nLd = %f %s\r\nLq = %f %s\r\n\r\n", R, Runit, Ld, Lunit, Lq, Lunit);
+
+		vTaskDelay(1000);
 	}
 
-	motor_curr->MotorState = MOTOR_STATE_GET_KV;
-    ttprintf("Waiting for result");
+	if(measure_kv){
+		//Measure kV
 
-    port_str * port = handle->port;
-    while(motor_curr->MotorState == MOTOR_STATE_GET_KV){
-    	xSemaphoreGive(port->term_block);
-    	vTaskDelay(200);
-    	xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
-		ttprintf(".");
+		motor_curr->MotorState = MOTOR_STATE_GET_KV;
+		ttprintf("Measuring flux linkage\r\nWaiting for result");
+
+		while(motor_curr->MotorState == MOTOR_STATE_GET_KV){
+			xSemaphoreGive(port->term_block);
+			vTaskDelay(200);
+			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			ttprintf(".");
+		}
+
+		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
+		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
+
+		//motor_profile->flux_linkage = motor.motor_flux;
+
+		ttprintf("Flux linkage = %f mWb\r\n\r\n", motor_curr->m.flux_linkage * 1000.0);
+
+		vTaskDelay(2000);
 	}
 
-	ttprintf("\r\nResult:\r\n");
 
-	//motor_profile->flux_linkage = motor.motor_flux;
+	if(measure_hfi){
+		ttprintf("Measuring HFI threshold\r\n");
+		float HFI_Threshold = detectHFI(motor_curr);
 
-    ttprintf("Flux = %f mWb\r\n", motor_curr->m.flux_linkage * 1000.0);
+		ttprintf("HFI threshold: %f\r\n", HFI_Threshold);
+	}
+
 
     return TERM_CMD_EXIT_SUCCESS;
 }
@@ -135,16 +169,6 @@ uint8_t CMD_detect(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     return TERM_CMD_EXIT_SUCCESS;
 }
 
-uint8_t CMD_detectHFI(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
-
-	MESC_motor_typedef * motor_curr = &mtr[0];
-
-	float HFI_Threshold = detectHFI(motor_curr);
-
-	ttprintf("HFI threshold: %f\r\n", HFI_Threshold);
-
-    return TERM_CMD_EXIT_SUCCESS;
-}
 
 extern TIM_HandleTypeDef htim1;
 
@@ -211,11 +235,9 @@ void MESCinterface_init(void){
 	//mtr[0].m.flux_linkage = motor_profile->flux_linkage;
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
-	TERM_addCommand(CMD_getkv, "getkv", "Measure motor kV", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_detect, "deadtime", "Detect deadtime compensation", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_flash, "flash", "Flash write", 0, &TERM_defaultList);
-	TERM_addCommand(CMD_detectHFI, "hfi_detect", "Detect HFI", 0, &TERM_defaultList);
 
 	REGISTER_apps(&TERM_defaultList);
 
