@@ -130,6 +130,7 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	HAL_TIM_IC_Start(_motor->stimer, TIM_CHANNEL_2);
 	// Here we can auto set the prescaler to get the us input regardless of the main clock
 	__HAL_TIM_SET_PRESCALER(_motor->stimer, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
+	__HAL_TIM_SET_AUTORELOAD(_motor->stimer,10000); //Run slowloop at 100Hz
 	__HAL_TIM_ENABLE_IT(_motor->stimer, TIM_IT_UPDATE);
 
   InputInit();
@@ -431,11 +432,12 @@ static volatile float nrm_avg;
 static uint16_t last_angle;
 
 void hyperLoop(MESC_motor_typedef *_motor) {
-  if (_motor->FOC.inject) {
+  if ((_motor->FOC.inject)&&(_motor->MotorState != MOTOR_STATE_TRACKING)) {
 	  RunHFI(_motor);
   }else {
-	  _motor->FOC.Vd_injectionV = 0;
-	  _motor->FOC.Vq_injectionV = 0;
+	  _motor->FOC.Vd_injectionV = 0.0f;
+	  _motor->FOC.Vq_injectionV = 0.0f;
+	  _motor->FOC.HFI_int_err = 0.0f;
   }
 #ifdef USE_LR_OBSERVER
       LRObserverCollect();
@@ -636,9 +638,9 @@ if(phasebalance){
 	  //changes the flux limits accordingly, ignoring using a sqrt for computational efficiency
 	  float flux_linked_norm = _motor->FOC.flux_a*_motor->FOC.flux_a+_motor->FOC.flux_b*_motor->FOC.flux_b;
 	  float flux_err = flux_linked_norm-_motor->m.flux_linkage*_motor->m.flux_linkage;
-	  _motor->m.flux_linkage = _motor->m.flux_linkage+ motor_profile->flux_linkage_gain*flux_err;
-	  if(_motor->m.flux_linkage>motor_profile->flux_linkage_max){_motor->m.flux_linkage = motor_profile->flux_linkage_max;}
-	  if(_motor->m.flux_linkage<motor_profile->flux_linkage_min){_motor->m.flux_linkage = motor_profile->flux_linkage_min;}
+	  _motor->m.flux_linkage = _motor->m.flux_linkage+ _motor->m.flux_linkage_gain*flux_err;
+	  if(_motor->m.flux_linkage>_motor->m.flux_linkage_max){_motor->m.flux_linkage = _motor->m.flux_linkage_max;}
+	  if(_motor->m.flux_linkage<_motor->m.flux_linkage_min){_motor->m.flux_linkage = _motor->m.flux_linkage_min;}
 #endif
 	// This is the actual observer function.
 	// We are going to integrate Va-Ri and clamp it positively and negatively
@@ -673,8 +675,8 @@ if(phasebalance){
 #ifdef USE_NONLINEAR_OBSERVER_CENTERING
 ///Try directly applying the centering using the same method as the flux linkage observer
     float err = _motor->m.flux_linkage*_motor->m.flux_linkage-_motor->FOC.flux_a*_motor->FOC.flux_a-_motor->FOC.flux_b*_motor->FOC.flux_b;
-    _motor->FOC.flux_b = _motor->FOC.flux_b+err*_motor->FOC.flux_b*motor_profile->non_linear_centering_gain;
-    _motor->FOC.flux_a = _motor->FOC.flux_a+err*_motor->FOC.flux_a*motor_profile->non_linear_centering_gain;
+    _motor->FOC.flux_b = _motor->FOC.flux_b+err*_motor->FOC.flux_b*_motor->m.non_linear_centering_gain;
+    _motor->FOC.flux_a = _motor->FOC.flux_a+err*_motor->FOC.flux_a*_motor->m.non_linear_centering_gain;
 #endif
 #ifdef USE_CLAMPED_OBSERVER_CENTERING
     if (_motor->FOC.flux_a > _motor->m.flux_linkage) {
@@ -1449,12 +1451,14 @@ __NOP();
   void getkV(MESC_motor_typedef *_motor) {
   	_motor->FOC.inject = 0;
     static int cycles = 0;
-
+    static HFI_type_e old_HFI_type;
     if (cycles < 2) {
-    	motor_profile->flux_linkage_max = 0.1f;
-    	motor_profile->flux_linkage_min = 0.00001f;//Set really wide limits
+    	_motor->m.flux_linkage_max = 0.1f;
+    	_motor->m.flux_linkage_min = 0.00001f;//Set really wide limits
     	_motor->FOC.openloop_step = 0;
-    	_motor->m.flux_linkage = motor_profile->flux_linkage_max;
+    	_motor->m.flux_linkage = _motor->m.flux_linkage_max;
+    	old_HFI_type = _motor->HFIType;
+    	_motor->HFIType = HFI_TYPE_NONE;
         phU_Enable(_motor);
         phV_Enable(_motor);
         phW_Enable(_motor);
@@ -1477,8 +1481,8 @@ __NOP();
         	_motor->m.flux_linkage  = temp_flux;
         	_motor->FOC.flux_a = _motor->FOC.sincosangle.cos*_motor->m.flux_linkage;
         	_motor->FOC.flux_b = _motor->FOC.sincosangle.sin*_motor->m.flux_linkage;
-        	motor_profile->flux_linkage_max = 1.7f*_motor->m.flux_linkage;
-        	motor_profile->flux_linkage_min = 0.5f*_motor->m.flux_linkage;
+        	_motor->m.flux_linkage_max = 1.7f*_motor->m.flux_linkage;
+        	_motor->m.flux_linkage_min = 0.5f*_motor->m.flux_linkage;
         	temp_FLA = _motor->FOC.flux_a;
         	temp_FLB = _motor->FOC.flux_b;
         }
@@ -1505,10 +1509,11 @@ __NOP();
       MESCFOC(_motor);
     } else {
        generateBreak(_motor);
-    	motor_profile->flux_linkage_max = 1.3f*_motor->m.flux_linkage;
-    	motor_profile->flux_linkage_min = 0.7f*_motor->m.flux_linkage;
-    	motor_profile->flux_linkage = _motor->m.flux_linkage;
+       _motor->m.flux_linkage_max = 1.3f*_motor->m.flux_linkage;
+       _motor->m.flux_linkage_min = 0.7f*_motor->m.flux_linkage;
+       _motor->m.flux_linkage = _motor->m.flux_linkage;
       _motor->MotorState = MOTOR_STATE_TRACKING;
+      _motor->HFIType = old_HFI_type;
       cycles = 0;
       if (_motor->m.flux_linkage > 0.0001f && _motor->m.flux_linkage < 200.0f) {
     	_motor->MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
@@ -1638,16 +1643,28 @@ __NOP();
 
     _motor->FOC.field_weakening_threshold = _motor->FOC.Vq_max * FIELD_WEAKENING_THRESHOLD;
     _motor->FOC.field_weakening_multiplier = 1.0f/(_motor->FOC.Vq_max*(1.0f-FIELD_WEAKENING_THRESHOLD));
-#ifdef USE_HFI //When running HFI we want the bandwidth low, so we calculate it with each slow loop depending on whether we are HFIing or not
-    _motor->FOC.Id_pgain = _motor->FOC.Current_bandwidth * _motor->m.L_D;
-    _motor->FOC.Id_igain = _motor->m.R / _motor->m.L_D;
-    // Pole zero cancellation for series PI control
-    _motor->FOC.Iq_pgain = _motor->FOC.Id_pgain;
-    _motor->FOC.Iq_igain = _motor->FOC.Id_igain;
-    //This is the expected current magnitude we would see based on the average inductance and the injected voltage. Not particularly reliable currently.
-    //_motor->FOC.HFI_Threshold = ((HFI_VOLTAGE*sqrt2*2.0f)*_motor->FOC.pwm_period)/((_motor->m.L_D+_motor->m.L_Q)*0.5f);
-    //_motor->FOC.HFI_Threshold = HFI_THRESHOLD;
-    #endif
+
+    switch(_motor->HFIType){//When running HFI we want the bandwidth low, so we calculate it with each slow loop depending on whether we are HFIing or not
+
+    case HFI_TYPE_45:
+    	//fallthrough
+    case HFI_TYPE_D:
+    	//fallthrough
+    case HFI_TYPE_SPECIAL:
+
+		_motor->FOC.Id_pgain = _motor->FOC.Current_bandwidth * _motor->m.L_D;
+		_motor->FOC.Id_igain = _motor->m.R / _motor->m.L_D;
+		// Pole zero cancellation for series PI control
+		_motor->FOC.Iq_pgain = _motor->FOC.Id_pgain;
+		_motor->FOC.Iq_igain = _motor->FOC.Id_igain;
+		//This is the expected current magnitude we would see based on the average inductance and the injected voltage. Not particularly reliable currently.
+		//_motor->FOC.HFI_Threshold = ((HFI_VOLTAGE*sqrt2*2.0f)*_motor->FOC.pwm_period)/((_motor->m.L_D+_motor->m.L_Q)*0.5f);
+		//_motor->FOC.HFI_Threshold = HFI_THRESHOLD;
+		break;
+    case HFI_TYPE_NONE:
+    	__NOP();
+    	break;
+    }
   }
 
 
@@ -1834,11 +1851,11 @@ if(_motor->FOC.Idq_req.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_req.q = i
     }
 /////// Clamp the max power taken from the battery
     _motor->FOC.reqPower = 1.5f*fabsf(_motor->FOC.Vdq.q * _motor->FOC.Idq_req.q);
-    if (_motor->FOC.reqPower > motor_profile->Pmax) {
+    if (_motor->FOC.reqPower > _motor->m.Pmax) {
     	if(_motor->FOC.Idq_req.q > 0.0f){
-    		_motor->FOC.Idq_req.q = motor_profile->Pmax / (fabsf(_motor->FOC.Vdq.q)*1.5f);
+    		_motor->FOC.Idq_req.q = _motor->m.Pmax / (fabsf(_motor->FOC.Vdq.q)*1.5f);
     	}else{
-    		_motor->FOC.Idq_req.q = -motor_profile->Pmax / (fabsf(_motor->FOC.Vdq.q)*1.5f);
+    		_motor->FOC.Idq_req.q = -_motor->m.Pmax / (fabsf(_motor->FOC.Vdq.q)*1.5f);
     	}
     }
 
@@ -1900,52 +1917,51 @@ if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STA
 }
 //_motor->FOC.Idq_req[0] = 10; //for aligning encoder
 /////////////Set and reset the HFI////////////////////////
-switch(_motor->HFIType){
-	static int HFI_countdown;
-	case HFI_TYPE_45:
-	ToggleHFI(_motor);
-		if(_motor->FOC.inject==1){
-			//static int no_q;
-			if(was_last_tracking==1){
-				HFI_countdown = 4; //resolve the ambiguity immediately
-				//_motor->FOC.Idq_req.q = 0.0f;
-				//no_q=1;
-				//mag45avg = 5.50f;
-				was_last_tracking = 0;
-			}
-		}
-	break;
-
-	case HFI_TYPE_D:
+	switch(_motor->HFIType){
+		static int HFI_countdown;
+		case HFI_TYPE_45:
 		ToggleHFI(_motor);
-		if(_motor->FOC.inject==1){
-		if(HFI_countdown==3){
-				_motor->FOC.Idq_req.d = HFI_TEST_CURRENT;
-				_motor->FOC.Idq_req.q=0.0f;
-			}else if(HFI_countdown==2){
-				_motor->FOC.Ldq_now_dboost[0] = _motor->FOC.IIR[0]; //Find the effect of d-axis current
-				_motor->FOC.Idq_req.d = 1.0f;
-				_motor->FOC.Idq_req.q=0.0f;
-			}else if(HFI_countdown == 1){
-				_motor->FOC.Idq_req.d = -HFI_TEST_CURRENT;
-				_motor->FOC.Idq_req.q=0.0f;
-			}else if(HFI_countdown == 0){
-				_motor->FOC.Ldq_now[0] = _motor->FOC.IIR[0];//_motor->FOC.Vd_injectionV;
-				_motor->FOC.Idq_req.d = 0.0f;
-			if(_motor->FOC.Ldq_now[0]>_motor->FOC.Ldq_now_dboost[0]){_motor->FOC.FOCAngle+=32768;}
-			HFI_countdown = 200;
-			//no_q = 0;
+			if(_motor->FOC.inject==1){
+				//static int no_q;
+				if(was_last_tracking==1){
+					HFI_countdown = 4; //resolve the ambiguity immediately
+					was_last_tracking = 0;
+				}
 			}
-			HFI_countdown--;
-		}
-	break;
+		break;
 
-	case HFI_TYPE_NONE:
-		_motor->FOC.inject = 0;
-	break;
-}
+		case HFI_TYPE_D:
+			ToggleHFI(_motor);
+			if(_motor->FOC.inject==1){
+			if(HFI_countdown==3){
+					_motor->FOC.Idq_req.d = HFI_TEST_CURRENT;
+					_motor->FOC.Idq_req.q=0.0f;//Override the inputs to set Q current to zero
+				}else if(HFI_countdown==2){
+					_motor->FOC.Ldq_now_dboost[0] = _motor->FOC.IIR[0]; //Find the effect of d-axis current
+					_motor->FOC.Idq_req.d = 1.0f;
+					_motor->FOC.Idq_req.q=0.0f;
+				}else if(HFI_countdown == 1){
+					_motor->FOC.Idq_req.d = -HFI_TEST_CURRENT;
+					_motor->FOC.Idq_req.q=0.0f;
+				}else if(HFI_countdown == 0){
+					_motor->FOC.Ldq_now[0] = _motor->FOC.IIR[0];//_motor->FOC.Vd_injectionV;
+					_motor->FOC.Idq_req.d = 0.0f;
+				if(_motor->FOC.Ldq_now[0]>_motor->FOC.Ldq_now_dboost[0]){_motor->FOC.FOCAngle+=32768;}
+				HFI_countdown = 200;
+				}
+				HFI_countdown--;
+			}
+		break;
+
+		case HFI_TYPE_NONE:
+			_motor->FOC.inject = 0;
+			_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
+		break;
+	}
     //Speed tracker
-    if(abs(_motor->FOC.angle_error)>6000){
+    if(abs(_motor->FOC.angle_error)>10000){
+    	//The PLL has run away locking on to aliases; 10000 implies 6.5 pwm periods per sin wave, which is ~3000eHz, 180kerpm at 20kHz PWM frequency.
+    	//While it IS possible to run faster than this, it is not a sensible use case and will not be supported.
     	_motor->FOC.angle_error = 0;
     }
   }
@@ -2381,7 +2397,7 @@ void RunHFI(MESC_motor_typedef *_motor){
 		  Idq[1].d = _motor->FOC.Idq.d;
 		  Idq[1].q = _motor->FOC.Idq.q;
 	  }
-	dIdq.d = (Idq[0].d - Idq[1].d);
+	dIdq.d = (Idq[0].d - Idq[1].d); //Calculate the changing current levels
 	dIdq.q = (Idq[0].q - Idq[1].q);
 
 	switch(_motor->HFIType){
@@ -2409,12 +2425,25 @@ void RunHFI(MESC_motor_typedef *_motor){
 			}
 			//Run the bang bang PLL
 			magnitude45 = sqrtf(dIdq.d*dIdq.d+dIdq.q*dIdq.q);
-				if(magnitude45>_motor->FOC.HFI_Threshold){//_motor->FOC.HFI_Threshold){//Maybe make this inverting with Iq direction?
-					_motor->FOC.FOCAngle =_motor->FOC.FOCAngle +250*Idqreq_dir; //deal with gains later... bang bang for now and maybe evermore
-				}else{
-					_motor->FOC.FOCAngle =_motor->FOC.FOCAngle -250*Idqreq_dir;
-				}
-		break;
+
+			float error;
+			//Estimate the angle error, the gain to be determined in the HFI detection and setup based on the HFI current and the max iteration allowable
+			error = _motor->FOC.HFI_Gain*(magnitude45-_motor->FOC.HFI_Threshold);
+			if(error>500.0f){error = 500.0f;}
+			if(error<-500.0f){error = -500.0f;}
+			_motor->FOC.HFI_int_err = _motor->FOC.HFI_int_err +0.05*error;
+			if(_motor->FOC.HFI_int_err>1000.0f){_motor->FOC.HFI_int_err = 1000.0f;}
+			if(_motor->FOC.HFI_int_err<-1000.0f){_motor->FOC.HFI_int_err = -1000.0f;}
+			_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (error + _motor->FOC.HFI_int_err)*Idqreq_dir;
+//				if(magnitude45>_motor->FOC.HFI_Threshold){//_motor->FOC.HFI_Threshold){//Maybe make this inverting with Iq direction?
+//					_motor->FOC.FOCAngle =_motor->FOC.FOCAngle +250*Idqreq_dir; //deal with gains later... bang bang for now and maybe evermore
+//				}else{
+//					_motor->FOC.FOCAngle =_motor->FOC.FOCAngle -250*Idqreq_dir;
+//				}
+			#if 0 //Sometimes for investigation we want to just lock the angle, this is an easy bodge
+							_motor->FOC.FOCAngle = 62000;
+			#endif
+				break;
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		case HFI_TYPE_D:
 			if(_motor->FOC.inject_high_low_now ==1){
@@ -2549,8 +2578,9 @@ if(start_detection){
 		HAL_Delay(0);
 		//input_vars.input_options = 0b
 	}
-	qinductance = qinductance/1000.0f;
+	qinductance = qinductance/1000.0f; //Note that this is not yet an inductance, but an inverse of inductance*voltage
 	motor1.FOC.HFI_Threshold = sqrtf(qinductance*qinductance+dinductance*dinductance);
+	motor1.FOC.HFI_Gain = 5000.0f/motor1.FOC.HFI_Threshold; //Magic numbers that seem to work
 	input_vars.Idq_req_UART.q = 0.0f;
 	motor1.FOC.d_polarity = 1;
 	start_detection = 0;
