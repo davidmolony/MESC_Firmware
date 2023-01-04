@@ -296,6 +296,8 @@ typedef struct {
 	float temp_flux;
 	float temp_FLA;
 	float temp_FLB;
+
+	float hfi_voltage;
 } MESCmeas_s;
 
 typedef struct {

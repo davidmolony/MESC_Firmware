@@ -707,8 +707,10 @@ if(phasebalance){
 #endif
 
     if(_motor->FOC.inject==0){
-    _motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_b, _motor->FOC.flux_a)) - 32768;
+    	_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_b, _motor->FOC.flux_a)) - 32768;
     }
+
+
 #ifdef USE_ENCODER
     //This does not apply the encoder angle,
     //It tracks the difference between the encoder and the observer.
@@ -1442,7 +1444,10 @@ __NOP();
 
 
   void getkV(MESC_motor_typedef *_motor) {
+	_motor->meas.previous_HFI_type = _motor->HFIType;
+	_motor->HFIType=HFI_TYPE_NONE;
   	_motor->FOC.inject = 0;
+
     static int cycles = 0;
 
     if (cycles < 2) {
@@ -1505,6 +1510,7 @@ __NOP();
     	motor_profile->flux_linkage = _motor->m.flux_linkage;
       _motor->MotorState = MOTOR_STATE_TRACKING;
       cycles = 0;
+      _motor->HFIType = _motor->meas.previous_HFI_type;
       if (_motor->m.flux_linkage > 0.0001f && _motor->m.flux_linkage < 200.0f) {
     	_motor->MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
       } else {
@@ -1595,6 +1601,8 @@ __NOP();
 
     _motor->FOC.ADC_duty_threshold = htim1.Instance->ARR * 0.85f;
 
+
+    _motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
     //PID controller gains
     _motor->FOC.Id_pgain = _motor->FOC.Current_bandwidth * _motor->m.L_D;
     _motor->FOC.Id_igain = _motor->m.R / _motor->m.L_D;
@@ -1604,8 +1612,8 @@ __NOP();
 
     _motor->FOC.field_weakening_curr_max = FIELD_WEAKENING_CURRENT;  // test number, to be stored in user settings
   _motor->m.L_QD = _motor->m.L_Q-_motor->m.L_D;
-  _motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
   _motor->FOC.d_polarity = 1;
+  	  _motor->meas.hfi_voltage = HFI_VOLTAGE;
   }
 
   void calculateVoltageGain(MESC_motor_typedef *_motor) {
@@ -1896,6 +1904,7 @@ if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STA
 }
 //_motor->FOC.Idq_req[0] = 10; //for aligning encoder
 /////////////Set and reset the HFI////////////////////////
+
 switch(_motor->HFIType){
 	static int HFI_countdown;
 	case HFI_TYPE_45:
@@ -1940,6 +1949,7 @@ switch(_motor->HFIType){
 		_motor->FOC.inject = 0;
 	break;
 }
+
     //Speed tracker
     if(abs(_motor->FOC.angle_error)>6000){
     	_motor->FOC.angle_error = 0;
@@ -2387,20 +2397,20 @@ void RunHFI(MESC_motor_typedef *_motor){
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		case HFI_TYPE_45:
 			if(_motor->FOC.inject_high_low_now ==1){
-				_motor->FOC.Vd_injectionV = +HFI_VOLTAGE;
+				_motor->FOC.Vd_injectionV = +_motor->meas.hfi_voltage;
 				if(_motor->FOC.Idq_req.q>0.0f){
 					Idqreq_dir = 1;
-					_motor->FOC.Vq_injectionV = +HFI_VOLTAGE;
+					_motor->FOC.Vq_injectionV = +_motor->meas.hfi_voltage;
 				}else{
-					_motor->FOC.Vq_injectionV = -HFI_VOLTAGE;
+					_motor->FOC.Vq_injectionV = -_motor->meas.hfi_voltage;
 					Idqreq_dir = -1;
 				}
 			}else{
-			_motor->FOC.Vd_injectionV = -HFI_VOLTAGE;
+			_motor->FOC.Vd_injectionV = -_motor->meas.hfi_voltage;
 				if(_motor->FOC.Idq_req.q>0.0f){
-					_motor->FOC.Vq_injectionV = -HFI_VOLTAGE;
+					_motor->FOC.Vq_injectionV = -_motor->meas.hfi_voltage;
 				}else{
-					_motor->FOC.Vq_injectionV = +HFI_VOLTAGE;
+					_motor->FOC.Vq_injectionV = +_motor->meas.hfi_voltage;
 				}
 			}
 			//Run the bang bang PLL
@@ -2414,9 +2424,9 @@ void RunHFI(MESC_motor_typedef *_motor){
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		case HFI_TYPE_D:
 			if(_motor->FOC.inject_high_low_now ==1){
-			  _motor->FOC.Vd_injectionV = +HFI_VOLTAGE;
+			  _motor->FOC.Vd_injectionV = +_motor->meas.hfi_voltage;
 			}else{
-			  _motor->FOC.Vd_injectionV = -HFI_VOLTAGE;
+			  _motor->FOC.Vd_injectionV = -_motor->meas.hfi_voltage;
 			}
 			if(dIdq.q>1.0f){dIdq.q = 1.0f;}
 			if(dIdq.q<-1.0f){dIdq.q = -1.0f;}
@@ -2504,10 +2514,10 @@ void RunHFI(MESC_motor_typedef *_motor){
 }
 
 void ToggleHFI(MESC_motor_typedef *_motor){
-	if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > HFI_THRESHOLD)||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < -HFI_THRESHOLD)||(_motor->MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
+	if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > _motor->FOC.HFI_Threshold)||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < -_motor->FOC.HFI_Threshold)||(_motor->MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
 		_motor->FOC.inject = 0;
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
-	} else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < (HFI_THRESHOLD-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > -(HFI_THRESHOLD-1.0f)) &&(_motor->HFIType !=HFI_TYPE_NONE)){
+	} else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < (_motor->FOC.HFI_Threshold-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > -(_motor->FOC.HFI_Threshold-1.0f)) &&(_motor->HFIType !=HFI_TYPE_NONE)){
 		_motor->FOC.inject = 1;
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH*0.1f;
 	}

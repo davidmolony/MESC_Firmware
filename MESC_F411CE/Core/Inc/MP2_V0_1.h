@@ -10,7 +10,7 @@
 //Pick a motor for default
 #define MCMASTER_70KV_8080//QS165
 
-#define PWM_FREQUENCY 20000
+#define PWM_FREQUENCY 25000
 
 #define SHUNT_POLARITY -1.0f
 

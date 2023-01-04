@@ -28,6 +28,7 @@
 
 #include "top.h"
 #include "calibrate.h"
+#include "hfi.h"
 
 uint8_t REGISTER_apps(TermCommandDescriptor * desc);
 

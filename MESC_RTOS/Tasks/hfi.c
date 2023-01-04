@@ -21,12 +21,13 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include "calibrate.h"
+#include "hfi.h"
 #include "string.h"
 #include "MESCfoc.h"
+#include "MESChw_setup.h"
 
-#define APP_NAME "calibrate"
-#define APP_DESCRIPTION "Calibrates inputs"
+#define APP_NAME "hfi"
+#define APP_DESCRIPTION "HFI test"
 #define APP_STACK 512
 
 static uint8_t CMD_main(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
@@ -34,7 +35,7 @@ static void TASK_main(void *pvParameters);
 static uint8_t INPUT_handler(TERMINAL_HANDLE * handle, uint16_t c);
 
 
-uint8_t REGISTER_calibrate(TermCommandDescriptor * desc){
+uint8_t REGISTER_hfi(TermCommandDescriptor * desc){
     TERM_addCommand(CMD_main, APP_NAME, APP_DESCRIPTION, 0, desc); 
     return pdTRUE;
 }
@@ -76,7 +77,7 @@ static void bargraph(TERMINAL_HANDLE * handle, float min, float max, float val){
 		buffer[i+1] = i<norm? '#' : '_';
 	}
 	buffer[41]='|';
-	ttprintf("%s %10.0f ", buffer, val);
+	ttprintf("%s %f ", buffer, val);
 
 }
 
@@ -107,60 +108,64 @@ static void TASK_main(void *pvParameters){
     TERM_sendVT100Code(handle,_VT100_CURSOR_DISABLE, 0);
     uint16_t c=0;
     int selected=0;
-    int test=0;
 
     TERM_setCursorPos(handle, MAX_ITEMS*2+3, 0);
-    ttprintf("Keys: [UP/DOWN] Select item, [-/+] Save min/max value, [r] Reset MIN/MAX, [CTRL+C] Quit");
+    ttprintf("Keys: [UP/DOWN] Select item, [-/+] Modify values, [r] Reset value, [CTRL+C] Quit");
 
     do{
     	TERM_sendVT100Code(handle,_VT100_CURSOR_DISABLE, 0);
     	TERM_setCursorPos(handle, 1, 0);
-    	highlight(handle, "ADC1:", 0, selected);
+    	highlight(handle, "Angle:", 0, selected);
     	TERM_setCursorPos(handle, 2, 0);
-    	bargraph(handle, 0, 4095, motor_curr->Raw.ADC_in_ext1);
-    	ttprintf("MIN: %6d MAX: %6d", input_vars.adc1_MIN, input_vars.adc1_MAX);
+    	bargraph(handle, 0, 65536, motor_curr->FOC.FOCAngle);
 
     	if(selected==0){
-			if(c=='r'){
-				input_vars.adc1_MIN=0;
-				input_vars.adc1_MAX=4095;
-			}
+    		if(c=='r'){
+    			motor_curr->FOC.FOCAngle=32768;
+    		}
 			if(c=='-'){
-				input_vars.adc1_MIN=motor_curr->Raw.ADC_in_ext1;
+				motor_curr->FOC.FOCAngle-=100;
 			}
 			if(c=='+'){
-				input_vars.adc1_MAX=motor_curr->Raw.ADC_in_ext1;
+				motor_curr->FOC.FOCAngle+=100;
 			}
     	}
 
 
     	TERM_setCursorPos(handle, 3, 0);
-    	highlight(handle, "ADC2:", 1, selected);
+    	highlight(handle, "Voltage:", 1, selected);
 		TERM_setCursorPos(handle, 4, 0);
-		bargraph(handle, 0, 4095, 0);
-		ttprintf("MIN: %6d MAX: %6d", input_vars.adc2_MIN, input_vars.adc2_MAX);
+		bargraph(handle, 0, motor_curr->Conv.Vbus, motor_curr->meas.hfi_voltage);
 
 		if(selected==1){
 			if(c=='r'){
-				input_vars.adc2_MIN=0;
-				input_vars.adc2_MAX=4095;
+				motor_curr->meas.hfi_voltage = HFI_VOLTAGE;
 			}
 			if(c=='-'){
-				input_vars.adc2_MIN=100;
+				motor_curr->meas.hfi_voltage -= 1.0f;
+				if(motor_curr->meas.hfi_voltage<0) motor_curr->meas.hfi_voltage=0;
 			}
 			if(c=='+'){
-				input_vars.adc2_MAX=100;
+				motor_curr->meas.hfi_voltage += 1.0f;
 			}
 		}
 
 		TERM_setCursorPos(handle, 5, 0);
-		highlight(handle, "Test:", 2, selected);
+		highlight(handle, "Threshold:", 2, selected);
 		TERM_setCursorPos(handle, 6, 0);
-		bargraph(handle, 0, 4095, test++);
-		ttprintf("MIN: %6d MAX: %6d", 0, 4095);
-		if(test==4095) test=0;
+		bargraph(handle, 0, 4095, motor_curr->FOC.HFI_Threshold);
 
-
+		if(selected==2){
+			if(c=='r'){
+				motor_curr->FOC.HFI_Threshold = HFI_THRESHOLD;
+			}
+			if(c=='-'){
+				motor_curr->FOC.HFI_Threshold -= 0.1f;
+			}
+			if(c=='+'){
+				motor_curr->FOC.HFI_Threshold += 0.1f;
+			}
+		}
 
 		if(c==ARROW_DOWN){
 			selected++;
@@ -170,7 +175,6 @@ static void TASK_main(void *pvParameters){
 			selected--;
 			if(selected<0) selected = MAX_ITEMS-1;
 		}
-
 
         c=0;
         xStreamBufferReceive(handle->currProgram->inputStream,&c,sizeof(c),pdMS_TO_TICKS(100));

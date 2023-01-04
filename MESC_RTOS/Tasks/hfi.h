@@ -20,11 +20,12 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-#include "apps.h"
 
-uint8_t REGISTER_apps(TermCommandDescriptor * desc){
-    REGISTER_top(desc);
-    REGISTER_calibrate(desc);
-    REGISTER_hfi(desc);
-    return pdTRUE;
-}
+#if !defined(app_hfi_H)
+#define app_hfi_H
+
+#include "TTerm/Core/include/TTerm.h"
+
+uint8_t REGISTER_hfi(TermCommandDescriptor * desc);
+
+#endif
