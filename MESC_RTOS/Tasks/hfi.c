@@ -153,7 +153,7 @@ static void TASK_main(void *pvParameters){
 		TERM_setCursorPos(handle, 5, 0);
 		highlight(handle, "Threshold:", 2, selected);
 		TERM_setCursorPos(handle, 6, 0);
-		bargraph(handle, 0, 4095, motor_curr->FOC.HFI_Threshold);
+		bargraph(handle, 0, 10, motor_curr->FOC.HFI_Threshold);
 
 		if(selected==2){
 			if(c=='r'){
