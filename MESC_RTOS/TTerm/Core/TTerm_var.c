@@ -151,7 +151,7 @@ void TERM_VAR_LIST_add(TermVariableDescriptor * item, TermVariableDescriptor * h
 //    return newVAR;
 //}
 
-TermVariableDescriptor * TERM_addVarUnsigned(void* variable, uint16_t typeSize, uint32_t min, uint32_t max, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head){
+TermVariableDescriptor * TERM_addVarUnsigned(void* variable, uint16_t typeSize, uint32_t min, uint32_t max, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * cb, TermVariableDescriptor * head){
     //if(head == NULL) head = TERM_defaultList;
     if(head->nameLength == 0xff) return 0;
 
@@ -163,6 +163,7 @@ TermVariableDescriptor * TERM_addVarUnsigned(void* variable, uint16_t typeSize, 
     newVAR->type = TERM_VARIABLE_UINT;
     newVAR->typeSize = typeSize;
     newVAR->name = name;
+    newVAR->cb = cb;
     newVAR->nameLength = strlen(name);
     newVAR->variableDescription = description;
     newVAR->rw = rw;
@@ -171,7 +172,7 @@ TermVariableDescriptor * TERM_addVarUnsigned(void* variable, uint16_t typeSize, 
     return newVAR;
 }
 
-TermVariableDescriptor * TERM_addVarSigned(void* variable, uint16_t typeSize, int32_t min, int32_t max, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head){
+TermVariableDescriptor * TERM_addVarSigned(void* variable, uint16_t typeSize, int32_t min, int32_t max, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * cb, TermVariableDescriptor * head){
     //if(head == NULL) head = TERM_defaultList;
     if(head->nameLength == 0xff) return 0;
 
@@ -183,6 +184,7 @@ TermVariableDescriptor * TERM_addVarSigned(void* variable, uint16_t typeSize, in
     newVAR->type = TERM_VARIABLE_INT;
     newVAR->typeSize = typeSize;
     newVAR->name = name;
+    newVAR->cb = cb;
     newVAR->nameLength = strlen(name);
     newVAR->variableDescription = description;
     newVAR->rw = rw;
@@ -191,7 +193,7 @@ TermVariableDescriptor * TERM_addVarSigned(void* variable, uint16_t typeSize, in
     return newVAR;
 }
 
-TermVariableDescriptor * TERM_addVarFloat(void* variable, float min, float max, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head){
+TermVariableDescriptor * TERM_addVarFloat(void* variable, float min, float max, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * cb, TermVariableDescriptor * head){
     //if(head == NULL) head = TERM_defaultList;
     if(head->nameLength == 0xff) return 0;
 
@@ -203,6 +205,7 @@ TermVariableDescriptor * TERM_addVarFloat(void* variable, float min, float max, 
     newVAR->type = TERM_VARIABLE_FLOAT;
     newVAR->typeSize = sizeof(float);
     newVAR->name = name;
+    newVAR->cb = cb;
     newVAR->nameLength = strlen(name);
     newVAR->variableDescription = description;
     newVAR->rw = rw;
@@ -211,7 +214,7 @@ TermVariableDescriptor * TERM_addVarFloat(void* variable, float min, float max, 
     return newVAR;
 }
 
-TermVariableDescriptor * TERM_addVarArrayFloat(void* variable, uint32_t size,  float min, float max, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head){
+TermVariableDescriptor * TERM_addVarArrayFloat(void* variable, uint32_t size,  float min, float max, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * cb, TermVariableDescriptor * head){
     //if(head == NULL) head = TERM_defaultList;
     if(head->nameLength == 0xff) return 0;
 
@@ -223,6 +226,7 @@ TermVariableDescriptor * TERM_addVarArrayFloat(void* variable, uint32_t size,  f
     newVAR->type = TERM_VARIABLE_FLOAT_ARRAY;
     newVAR->typeSize = size;
     newVAR->name = name;
+    newVAR->cb = cb;
     newVAR->nameLength = strlen(name);
     newVAR->variableDescription = description;
     newVAR->rw = rw;
@@ -231,7 +235,7 @@ TermVariableDescriptor * TERM_addVarArrayFloat(void* variable, uint32_t size,  f
     return newVAR;
 }
 
-TermVariableDescriptor * TERM_addVarString(void* variable, uint16_t typeSize, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head){
+TermVariableDescriptor * TERM_addVarString(void* variable, uint16_t typeSize, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * cb, TermVariableDescriptor * head){
     //if(head == NULL) head = TERM_defaultList;
     if(head->nameLength == 0xff) return 0;
 
@@ -243,6 +247,7 @@ TermVariableDescriptor * TERM_addVarString(void* variable, uint16_t typeSize, co
     newVAR->type = TERM_VARIABLE_STRING;
     newVAR->typeSize = typeSize;
     newVAR->name = name;
+    newVAR->cb = cb;
     newVAR->nameLength = strlen(name);
     newVAR->variableDescription = description;
     newVAR->rw = rw;
@@ -251,7 +256,7 @@ TermVariableDescriptor * TERM_addVarString(void* variable, uint16_t typeSize, co
     return newVAR;
 }
 
-TermVariableDescriptor * TERM_addVarChar(void* variable, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head){
+TermVariableDescriptor * TERM_addVarChar(void* variable, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * cb, TermVariableDescriptor * head){
     //if(head == NULL) head = TERM_defaultList;
     if(head->nameLength == 0xff) return 0;
 
@@ -263,6 +268,7 @@ TermVariableDescriptor * TERM_addVarChar(void* variable, const char * name, cons
     newVAR->type = TERM_VARIABLE_CHAR;
     newVAR->typeSize = 1;
     newVAR->name = name;
+    newVAR->cb = cb;
     newVAR->nameLength = strlen(name);
     newVAR->variableDescription = description;
     newVAR->rw = rw;
@@ -271,7 +277,7 @@ TermVariableDescriptor * TERM_addVarChar(void* variable, const char * name, cons
     return newVAR;
 }
 
-TermVariableDescriptor * TERM_addVarBool(void* variable, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head){
+TermVariableDescriptor * TERM_addVarBool(void* variable, const char * name, const char * description, uint8_t rw, TermVariableDescriptor * cb, TermVariableDescriptor * head){
     //if(head == NULL) head = TERM_defaultList;
     if(head->nameLength == 0xff) return 0;
 
@@ -283,6 +289,7 @@ TermVariableDescriptor * TERM_addVarBool(void* variable, const char * name, cons
     newVAR->type = TERM_VARIABLE_BOOL;
     newVAR->typeSize = sizeof(bool);
     newVAR->name = name;
+    newVAR->cb = cb;
     newVAR->nameLength = strlen(name);
     newVAR->variableDescription = description;
     newVAR->rw = rw;
@@ -721,6 +728,9 @@ uint8_t CMD_varSet(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     for(;currPos < head->nameLength; currPos++){
     	if(strcmp(args[0], currVar->name)==0){
     		bool truncated = set_value(currVar, args[1]);
+    		if(currVar->cb != NULL){
+    			currVar->cb(currVar);
+    		}
     		print_var_header(handle);
     		print_var_helperfunc(handle, currVar, HELPER_FLAG_DETAIL);
     		if(truncated){
@@ -750,7 +760,7 @@ struct _FlashHeader_{
 	uint32_t num_entries;
 	uint32_t size;
 	uint32_t version;
-	uint32_t revision
+	uint32_t revision;
 } __attribute__((packed));
 
 struct _FlashFooter_{

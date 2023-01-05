@@ -244,6 +244,7 @@ typedef struct {
 
   float flux_a;
   float flux_b;
+  float flux_observed;
   uint16_t state[4];  // current state, last state, angle change occurred
   uint16_t hall_update;
   uint32_t IRQentry;

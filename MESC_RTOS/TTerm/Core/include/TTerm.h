@@ -100,18 +100,18 @@ typedef enum {
 	TERM_VARIABLE_BOOL,
 } TermVariableType;
 
-#define TERM_addVar(var, min, max, name, description, rw, listHandle) _Generic((var), \
-    uint8_t:    TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
-    uint16_t:   TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
-    uint32_t:   TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
-    int8_t:     TERM_addVarSigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
-    int16_t:    TERM_addVarSigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
-    int32_t:    TERM_addVarSigned(&var, sizeof(var), min, max, name, description, rw, listHandle), \
-	bool:		TERM_addVarBool(&var, name, description, rw, listHandle), \
-    float:      TERM_addVarFloat(&var, min, max, name, description, rw, listHandle), \
-	float*:		TERM_addVarArrayFloat(&var, sizeof(var),  min, max, name, description, rw, listHandle), \
-    char:       TERM_addVarChar(&var, name, description, rw, listHandle), \
-    char*:      TERM_addVarString(&var, sizeof(var), name, description, rw, listHandle))
+#define TERM_addVar(var, min, max, name, description, rw, cb, listHandle) _Generic((var), \
+    uint8_t:    TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
+    uint16_t:   TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
+    uint32_t:   TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
+    int8_t:     TERM_addVarSigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
+    int16_t:    TERM_addVarSigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
+    int32_t:    TERM_addVarSigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
+	bool:		TERM_addVarBool(&var, name, description, rw, cb, listHandle), \
+    float:      TERM_addVarFloat(&var, min, max, name, description, rw, cb, listHandle), \
+	float*:		TERM_addVarArrayFloat(&var, sizeof(var),  min, max, name, description, rw, cb, listHandle), \
+    char:       TERM_addVarChar(&var, name, description, rw, cb, listHandle), \
+    char*:      TERM_addVarString(&var, sizeof(var), name, description, rw, cb, listHandle))
 
 
 typedef uint32_t (* nvm_clear)(void * address, uint32_t len);
@@ -119,8 +119,10 @@ typedef uint32_t (* nvm_start_write)(void * address, void * buffer, uint32_t len
 typedef uint32_t (* nvm_write)(void * address, void * buffer, uint32_t len);
 typedef uint32_t (* nvm_end_write)(void * address, void * buffer, uint32_t len);
 
+
 typedef struct __TermVariableDescriptor__ TermVariableDescriptor;
 
+typedef void (* term_var_cb)(TermVariableDescriptor * var);
 
 struct __TermVariableDescriptor__{
     void * variable;
@@ -141,6 +143,7 @@ struct __TermVariableDescriptor__{
    		float max_float;
     };
     uint8_t rw;
+    term_var_cb cb;
     TermVariableDescriptor * nextVar;
 };
 
