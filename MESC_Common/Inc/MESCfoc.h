@@ -72,10 +72,10 @@
 #endif
 
 #ifndef I_MEASURE
-#define I_MEASURE 4.0f //Higher setpoint for resistance measurement
+#define I_MEASURE 20.0f //Higher setpoint for resistance measurement
 #endif
 #ifndef IMEASURE_CLOSEDLOOP
-#define IMEASURE_CLOSEDLOOP 4.5f 	//After spinning up openloop and getting an approximation,
+#define IMEASURE_CLOSEDLOOP 8.5f 	//After spinning up openloop and getting an approximation,
 									//this current is used to driver the motor and collect a refined flux linkage
 #endif
 #ifndef V_MEASURE
@@ -257,6 +257,8 @@ typedef struct {
   float special_injectionVd;
   float special_injectionVq;
   float HFI_Threshold;
+  float HFI_Gain;
+  float HFI_int_err;
   uint32_t FLrun, VFLrun;
   float angle_error;
   float eHz;
