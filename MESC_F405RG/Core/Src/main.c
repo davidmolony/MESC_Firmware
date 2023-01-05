@@ -209,10 +209,10 @@ int main(void)
   */
 
   //Set motor timer
-	motor1.mtimer = &htim1;
-	motor1.stimer = &htim2;
+  mtr[0].mtimer = &htim1;
+  mtr[0].stimer = &htim2;
 
-  MESCInit(&motor1);
+  MESCInit(&mtr[0]);
 
   // MESC_Init();
 
@@ -240,7 +240,7 @@ int main(void)
 
   while (1) {
 	  SimpleComsProcess(&com1);
-	  detectHFI();
+	  detectHFI(&mtr[0]);
 	  HAL_Delay(0);
     /* USER CODE END WHILE */
 

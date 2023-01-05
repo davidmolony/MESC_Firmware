@@ -32,6 +32,7 @@
 
 #include "MESCmotor_state.h"
 #include "MESC_Comms.h"
+#include "MPU6050.h"
 #include "Simple_coms.h"
 /* USER CODE END Includes */
 
@@ -122,10 +123,10 @@ int main(void)
   SimpleComsInit(&huart3, &com1);
 HAL_TIM_Base_Start(&htim7);
   //Set motor timer
-  motor1.mtimer = &htim1;
-  motor1.stimer = &htim2;
+  mtr[0].mtimer = &htim1;
+  mtr[0].stimer = &htim2;
 
-  MESCInit(&motor1);
+  MESCInit(&mtr[0]);
   motor_init(NULL);
 
 

@@ -6,6 +6,7 @@
 
 #define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!
 
+#define NUM_MOTORS	1
 
 //#define MISSING_UCURRSENSOR //You can run two current sensors ONLY if they are phase sensors.
 //#define MISSING_VCURRSENSOR //Running this with low side sensors may result in fire.

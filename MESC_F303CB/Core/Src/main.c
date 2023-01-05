@@ -235,9 +235,9 @@ int main(void)
     __HAL_TIM_SET_PRESCALER(&htim3, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
 
     //Initialise MESC
-	motor1.mtimer = &htim1;
-	motor1.stimer = &htim3;
-    MESCInit(&motor1);
+	mtr[0].mtimer = &htim1;
+	mtr[0].stimer = &htim3;
+    MESCInit(&mtr[0]);
 
     char message[20];
     int length = sprintf( message, "%s", "startup!!\r\n" );

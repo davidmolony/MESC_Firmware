@@ -300,6 +300,9 @@ typedef struct {
 	float temp_FLB;
 
 	float hfi_voltage;
+
+	float measure_current;
+	float measure_voltage;
 } MESCmeas_s;
 
 typedef struct {
