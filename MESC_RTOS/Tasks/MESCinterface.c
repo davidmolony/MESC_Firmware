@@ -58,12 +58,12 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		}
 		if(strcmp(args[i], "-v")==0){
 			if(i+1 < argCount){
-				motor.measure_voltage = atoff(args[i+1]);
+				motor.measure_voltage = strtof(args[i+1], NULL);
 			}
 		}
 		if(strcmp(args[i], "-c")==0){
 			if(i+1 < argCount){
-				motor.measure_current = atoff(args[i+1]);
+				motor.measure_current = strtof(args[i+1], NULL);
 			}
 		}
 	}
@@ -137,7 +137,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		ttprintf("Measuring HFI threshold\r\n");
 		float HFI_Threshold = detectHFI(motor_curr);
 
-		ttprintf("HFI threshold: %f\r\n", HFI_Threshold);
+		ttprintf("HFI threshold: %f\r\n", (double)HFI_Threshold);
 	}
 
 
@@ -205,23 +205,23 @@ void callback(TermVariableDescriptor * var){
 
 
 void populate_vars(){
-
-	TERM_addVar(mtr[0].m.Imax, 0.0f, 500.0f, "i_max", "Max current", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].m.Pmax, 0.0f, 50000.0f, "p_max", "Max power", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].m.direction, 0, 1, "direction", "Motor direction", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].m.pole_pairs, 0, 255, "pole_pairs", "Motor pole pairs", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].m.RPMmax, 0, 300000, "rpm_max", "Max RPM", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].m.Vmax, 0.0f, 600.0f, "v_max", "Max voltage", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].m.flux_linkage, 0.0f, 100.0f, "flux", "Flux linkage", 0, callback, &TERM_varList);
-	TERM_addVar(mtr[0].m.flux_linkage_gain, 0.0f, 100.0f, "flux_gain", "Flux linkage gain", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].m.flux_linkage_min, 0.0f, 100.0f, "flux_min", "Flux linkage min", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].m.flux_linkage_max, 0.0f, 100.0f, "flux_max", "Flux linkage max", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].m.non_linear_centering_gain, 0.0f, 10000.0f, "flux_n_lin", "Flux centering gain0.0", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].m.R, 0.0f, 10.0f, "r_phase", "Phase resistance", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].m.L_D, 0.0f, 10.0f, "ld_phase", "Phase inductance", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].m.L_Q, 0.0f, 10.0f, "lq_phase", "Phase inductance", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].HFIType, 0, 3, "hfi", "HFI type [0=None, 1=45deg, 2=d axis]", 0, NULL, &TERM_varList);
-	TERM_addVar(mtr[0].FOC.HFI_Threshold, 0.0f, 2.0f, "hfi_thresh", "HFI Threshold", 0, NULL, &TERM_varList);
+	//		   | Variable							| MIN		| MAX		| NAME			| DESCRIPTION							| RW			| CALLBACK	| VAR LIST HANDLE
+	TERM_addVar(mtr[0].m.Imax						, 0.0f		, 500.0f	, "i_max"		, "Max current"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.Pmax						, 0.0f		, 50000.0f	, "p_max"		, "Max power"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.direction					, 0			, 1			, "direction"	, "Motor direction"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.pole_pairs					, 0			, 255		, "pole_pairs"	, "Motor pole pairs"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.RPMmax						, 0			, 300000	, "rpm_max"		, "Max RPM"								, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.Vmax						, 0.0f		, 600.0f	, "v_max"		, "Max voltage"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.flux_linkage				, 0.0f		, 100.0f	, "flux"		, "Flux linkage"						, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].m.flux_linkage_gain			, 0.0f		, 100.0f	, "flux_gain"	, "Flux linkage gain"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.flux_linkage_min			, 0.0f		, 100.0f	, "flux_min"	, "Flux linkage min"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.flux_linkage_max			, 0.0f		, 100.0f	, "flux_max"	, "Flux linkage max"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.non_linear_centering_gain	, 0.0f		, 10000.0f	, "flux_n_lin"	, "Flux centering gain0.0"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.R							, 0.0f		, 10.0f		, "r_phase"		, "Phase resistance"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.L_D						, 0.0f		, 10.0f		, "ld_phase"	, "Phase inductance"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.L_Q						, 0.0f		, 10.0f		, "lq_phase"	, "Phase inductance"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].HFIType						, 0			, 3			, "hfi"			, "HFI type [0=None, 1=45deg, 2=d axis]", VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.HFI_Threshold			, 0.0f		, 2.0f		, "hfi_thresh"	, "HFI Threshold"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 
 }
 

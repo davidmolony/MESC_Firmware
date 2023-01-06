@@ -169,6 +169,19 @@ char toLowerCase(char c);
 
 #if TERM_SUPPORT_VARIABLES
 #include <TTerm/Core/include/TTerm_var.h>
+
+enum TTermVarAccess
+{
+    VAR_ACCESS_NONE = 0x0,
+
+    VAR_ACCESS_R    = 0x1,
+    VAR_ACCESS_W    = 0x2,
+
+    VAR_ACCESS_RO   = VAR_ACCESS_R,
+    VAR_ACCESS_WO   = VAR_ACCESS_W,
+    VAR_ACCESS_RW   = (VAR_ACCESS_R | VAR_ACCESS_W),
+};
+
 #endif
 
 typedef uint8_t (* TermCommandFunction)(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);

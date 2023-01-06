@@ -509,6 +509,7 @@ void phW_Enable(MESC_motor_typedef *_motor);
 
 void calculateGains(MESC_motor_typedef *_motor);
 void calculateVoltageGain(MESC_motor_typedef *_motor);
+void calculateFlux(MESC_motor_typedef *_motor);
 
 void doublePulseTest(MESC_motor_typedef *_motor);
 

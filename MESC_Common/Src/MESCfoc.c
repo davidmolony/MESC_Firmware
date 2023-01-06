@@ -82,6 +82,15 @@ int print_samples_now, lognow;
 #define DWT_CYCCNT      ((volatile uint32_t *)0xE0001004)
 #define CPU_CYCLES      *DWT_CYCCNT
 
+
+static void SlowHFI(MESC_motor_typedef *_motor);
+static void calculatePower(MESC_motor_typedef *_motor);
+static void LimitFWCurrent(MESC_motor_typedef *_motor);
+static void houseKeeping(MESC_motor_typedef *_motor);
+static void clampBatteryPower(MESC_motor_typedef *_motor);
+static void ThrottleTemperature(MESC_motor_typedef *_motor);
+static void FWRampDown(MESC_motor_typedef *_motor);
+
 void MESCInit(MESC_motor_typedef *_motor) {
 #ifdef STM32L4 // For some reason, ST have decided to have a different name for the L4 timer DBG freeze...
 	DBGMCU->APB2FZ |= DBGMCU_APB2FZ_DBG_TIM1_STOP;
@@ -2240,7 +2249,7 @@ void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma){
 }
 
 void RunHFI(MESC_motor_typedef *_motor){
-	int Idqreq_dir;
+	int Idqreq_dir=0;
 	if (_motor->FOC.inject_high_low_now == 0){//First we create the toggle
 		_motor->FOC.inject_high_low_now = 1;
 		  Idq[0].d = _motor->FOC.Idq.d;
@@ -2284,7 +2293,7 @@ void RunHFI(MESC_motor_typedef *_motor){
 			error = _motor->FOC.HFI_Gain*(magnitude45-_motor->FOC.HFI_Threshold);
 			if(error>500.0f){error = 500.0f;}
 			if(error<-500.0f){error = -500.0f;}
-			_motor->FOC.HFI_int_err = _motor->FOC.HFI_int_err +0.05*error;
+			_motor->FOC.HFI_int_err = _motor->FOC.HFI_int_err +0.05f*error;
 			if(_motor->FOC.HFI_int_err>1000.0f){_motor->FOC.HFI_int_err = 1000.0f;}
 			if(_motor->FOC.HFI_int_err<-1000.0f){_motor->FOC.HFI_int_err = -1000.0f;}
 			_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (int)(error + _motor->FOC.HFI_int_err)*Idqreq_dir;
@@ -2364,6 +2373,8 @@ void SlowHFI(MESC_motor_typedef *_motor){
 			case HFI_TYPE_NONE:
 				_motor->FOC.inject = 0;
 				_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
+			break;
+			case HFI_TYPE_SPECIAL:
 			break;
 		}
 }
@@ -2542,9 +2553,9 @@ void houseKeeping(MESC_motor_typedef *_motor){
 	// as it oscillates around zero. Solution... just kludge it back out.
 	// This only happens at stationary when it is useless anyway.
 	if ((_motor->FOC.flux_a * _motor->FOC.flux_a + _motor->FOC.flux_b * _motor->FOC.flux_b) <
-		0.25f * _motor->m.flux_linkage * _motor->m.flux_linkage) {
-		_motor->FOC.flux_a = 0.5f * _motor->m.flux_linkage;
-		_motor->FOC.flux_b = 0.5f * _motor->m.flux_linkage;
+		0.25f * _motor->FOC.flux_observed * _motor->FOC.flux_observed) {
+		_motor->FOC.flux_a = 0.5f * _motor->FOC.flux_observed;
+		_motor->FOC.flux_b = 0.5f * _motor->FOC.flux_observed;
 	}
 
 	//Speed tracker
