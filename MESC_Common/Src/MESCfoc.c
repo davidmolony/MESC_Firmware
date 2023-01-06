@@ -2504,7 +2504,8 @@ void LimitFWCurrent(MESC_motor_typedef *_motor){
 			}
     	}else{//Negative result, FW larger than allowable current
     		_motor->MotorState = MOTOR_STATE_ERROR;
-    	    generateBreak(_motor);
+    		handleError(_motor, ERROR_MATH);
+    		_motor->FOC.FW_current = 0.0f;
     	}
     }
 
@@ -2524,7 +2525,7 @@ void clampBatteryPower(MESC_motor_typedef *_motor){
 void houseKeeping(MESC_motor_typedef *_motor){
 	////// Unpuc the observer kludge
 	// The observer gets into a bit of a state if it gets close to
-	// flux linked = 0 for both accumuators, the angle rapidly changes
+	// flux linked = 0 for both accumulators, the angle rapidly changes
 	// as it oscillates around zero. Solution... just kludge it back out.
 	// This only happens at stationary when it is useless anyway.
 	if ((_motor->FOC.flux_a * _motor->FOC.flux_a + _motor->FOC.flux_b * _motor->FOC.flux_b) <
