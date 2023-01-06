@@ -130,7 +130,7 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	HAL_TIM_IC_Start(_motor->stimer, TIM_CHANNEL_2);
 	// Here we can auto set the prescaler to get the us input regardless of the main clock
 	__HAL_TIM_SET_PRESCALER(_motor->stimer, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
-	__HAL_TIM_SET_AUTORELOAD(_motor->stimer,10000); //Run slowloop at 100Hz
+	//__HAL_TIM_SET_AUTORELOAD(_motor->stimer,10000); //Run slowloop at 100Hz
 	__HAL_TIM_ENABLE_IT(_motor->stimer, TIM_IT_UPDATE);
 
   InputInit();
@@ -1735,239 +1735,78 @@ __NOP();
   }
   extern uint32_t ADC_buffer[6];
 
+float  Square(float x){ return((x)*(x));}
+
   void slowLoop(MESC_motor_typedef *_motor) {
-    // The slow loop runs at either 20Hz or at the PWM input frequency.
     // In this loop, we will fetch the throttle values, and run functions that
     // are critical, but do not need to be executed very often e.g. adjustment
     // for battery voltage change
-if(_motor->MotorState != MOTOR_STATE_MEASURING){
-	  //Collect the requested throttle inputs
-	  //UART input
-	  if(0 == (input_vars.input_options & 0b1000)){
-		  input_vars.Idq_req_UART.q = 0.0f;
-	  }
 
-	  //RCPWM input
-	  if(input_vars.input_options & 0b0100){
-		  if(input_vars.pulse_recieved){
-			  if((input_vars.IC_duration > input_vars.IC_duration_MIN) && (input_vars.IC_duration < input_vars.IC_duration_MAX)){
-				  if(input_vars.IC_pulse>(input_vars.IC_pulse_MID + input_vars.IC_pulse_DEADZONE)){
-					  input_vars.Idq_req_RCPWM.d = 0.0f;
-					  input_vars.Idq_req_RCPWM.q = (float)(input_vars.IC_pulse - (input_vars.IC_pulse_MID + input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
-				  }
-				  else if(input_vars.IC_pulse<(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE)){
-					  input_vars.Idq_req_RCPWM.d = 0.0f;
-					  input_vars.Idq_req_RCPWM.q = ((float)input_vars.IC_pulse - (float)(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
-				  }
-				  else{
-					  input_vars.Idq_req_RCPWM.d = 0.0f;
-					  input_vars.Idq_req_RCPWM.q = 0.0f;
-				  }
-			  }	else {//The duration of the IC was wrong; trap it and write no current request
-				  //Todo maybe want to implement a timeout on this, allowing spurious pulses to not wiggle the current?
-				  input_vars.Idq_req_RCPWM.d = 0.0f;
-				  input_vars.Idq_req_RCPWM.q = 0.0f;
-			  }
-		  }
-		  else {//No pulse received flag
-			  input_vars.Idq_req_RCPWM.d = 0.0f;
-			  input_vars.Idq_req_RCPWM.q = 0.0f;
-		  }
-	  }
+	  houseKeeping(_motor);	//General dross that keeps things ticking over, like nudging the observer
+	  collectInputs(_motor); //Get all the throttle inputs
+	  _motor->FOC.Idq_req.q = input_vars.Idq_req_UART.q + input_vars.Idq_req_RCPWM.q + input_vars.Idq_req_ADC1.q + input_vars.Idq_req_ADC2.q;
+	  //Clamp the Q component; d component is not directly requested
+		if(_motor->FOC.Idq_req.q>input_vars.max_request_Idq.q){_motor->FOC.Idq_req.q = input_vars.max_request_Idq.q;}
+		if(_motor->FOC.Idq_req.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_req.q = input_vars.min_request_Idq.q;}
 
-	  //ADC1 input
-	  if(input_vars.input_options & 0b0010){
-		  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
-			  input_vars.Idq_req_ADC1.d = 0.0f;
-			  input_vars.Idq_req_ADC1.q = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
-		  }
-		  else{
-			  input_vars.Idq_req_ADC1.d = 0.0f;
-			  input_vars.Idq_req_ADC1.q = 0.0f;
-		  }
-	  }
-	  if(input_vars.input_options & 0b0001){
-		  //ADC2 input
-		  //placeholder
-	  }
-
-_motor->FOC.Idq_req.q = input_vars.Idq_req_UART.q + input_vars.Idq_req_RCPWM.q + input_vars.Idq_req_ADC1.q + input_vars.Idq_req_ADC2.q;
-
-///////////// Clamp the overall request
-if(_motor->FOC.Idq_req.d>input_vars.max_request_Idq.d){_motor->FOC.Idq_req.d = input_vars.max_request_Idq.d;}
-if(_motor->FOC.Idq_req.d<input_vars.min_request_Idq.d){_motor->FOC.Idq_req.d = input_vars.min_request_Idq.d;}
-if(_motor->FOC.Idq_req.q>input_vars.max_request_Idq.q){_motor->FOC.Idq_req.q = input_vars.max_request_Idq.q;}
-if(_motor->FOC.Idq_req.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_req.q = input_vars.min_request_Idq.q;}
-
-////// Adjust the SVPWM gains to account for the change in battery voltage etc
-
-////// Calculate the current power
-    _motor->FOC.currentPower.d = 1.5f*(_motor->FOC.Vdq.d*_motor->FOC.Idq_smoothed.d);
-    _motor->FOC.currentPower.q = 1.5f*(_motor->FOC.Vdq.q*_motor->FOC.Idq_smoothed.q);
-    //_motor->FOC.currentPowerab = _motor->FOC.Vab.a*_motor->FOC.Iab.a + _motor->FOC.Vab.b*_motor->FOC.Iab.b;
-    _motor->FOC.Ibus = (_motor->FOC.currentPower.d + _motor->FOC.currentPower.q) /_motor->Conv.Vbus;
-
-//Run MTPA (Field weakening seems to have to go in  the fast loop to be stable)
-#ifdef USE_MTPA
-
-    if(_motor->m.L_QD>0){
-    	_motor->FOC.id_mtpa = _motor->m.flux_linkage/(4.0f*_motor->m.L_QD) - sqrtf((_motor->m.flux_linkage*_motor->m.flux_linkage/(16.0f*_motor->m.L_QD*_motor->m.L_QD))+_motor->FOC.Idq_req.q*_motor->FOC.Idq_req.q*0.5f);
-    	if(fabsf(_motor->FOC.Idq_req.q)>fabsf(_motor->FOC.id_mtpa)){
-    	_motor->FOC.iq_mtpa = sqrtf(_motor->FOC.Idq_req.q*_motor->FOC.Idq_req.q-_motor->FOC.id_mtpa*_motor->FOC.id_mtpa);
-    	}
-    	else{
-    		_motor->FOC.iq_mtpa = 0;
-    	}
-    _motor->FOC.Idq_req.d = _motor->FOC.id_mtpa;
-    if(_motor->FOC.Idq_req.q>0.0f){
-    _motor->FOC.Idq_req.q = _motor->FOC.iq_mtpa;}
-    else{
-    	_motor->FOC.Idq_req.q = -_motor->FOC.iq_mtpa;}
-    }
-
-
-#endif
-
-
-    if(getHallState()==0){//This happens when the hall sensors overheat it seems.
-  	  if (MotorError == MOTOR_ERROR_NONE) {
-  		    speed_motor_limiter();
-  	  }
-  	  MotorError = MOTOR_ERROR_HALL0;
-    }else /*if(getHallState()==7){
-  	  MotorError = MOTOR_ERROR_HALL7;
-    } else */{
-  	  if (MotorError != MOTOR_ERROR_NONE) {
-  		  // TODO speed_road();
-  	  }
-  	  MotorError = MOTOR_ERROR_NONE;
-    }
-
-    if(temp_check( _motor->Raw.MOSu_T ) == false){
-    	if(0){generateBreak(_motor); //ToDo Currently not loading the profile so commented out - no temp safety!
-    	_motor->MotorState = MOTOR_STATE_ERROR;
-    	MotorError = MOTOR_ERROR_OVER_LIMIT_TEMP;
-    	}
-    }
-/////// Clamp the max power taken from the battery
-    _motor->FOC.reqPower = 1.5f*fabsf(_motor->FOC.Vdq.q * _motor->FOC.Idq_req.q);
-    if (_motor->FOC.reqPower > _motor->m.Pmax) {
-    	if(_motor->FOC.Idq_req.q > 0.0f){
-    		_motor->FOC.Idq_req.q = _motor->m.Pmax / (fabsf(_motor->FOC.Vdq.q)*1.5f);
-    	}else{
-    		_motor->FOC.Idq_req.q = -_motor->m.Pmax / (fabsf(_motor->FOC.Vdq.q)*1.5f);
-    	}
-    }
-
-////// Unpuc the observer kludge
-// The observer gets into a bit of a state if it gets close to
-// flux linked = 0 for both accumuators, the angle rapidly changes
-// as it oscillates around zero. Solution... just kludge it back out.
-// This only happens at stationary when it is useless anyway.
-    if ((_motor->FOC.flux_a * _motor->FOC.flux_a + _motor->FOC.flux_b * _motor->FOC.flux_b) <
-        0.25f * _motor->m.flux_linkage * _motor->m.flux_linkage) {
-    	_motor->FOC.flux_a = 0.5f * _motor->m.flux_linkage;
-    	_motor->FOC.flux_b = 0.5f * _motor->m.flux_linkage;
-    }
-
-//////////////////////Run the LR observer////////////////////
-#ifdef USE_LR_OBSERVER
-    LRObserver();
-#endif
-
-//////////////////////////Set tracking////////////////////
-static int was_last_tracking;
-
-if(!((_motor->MotorState==MOTOR_STATE_MEASURING)||(_motor->MotorState==MOTOR_STATE_DETECTING)||
-		(_motor->MotorState==MOTOR_STATE_GET_KV)||(_motor->MotorState==MOTOR_STATE_TEST)||
-		(_motor->MotorState==MOTOR_STATE_INITIALISING)||(_motor->MotorState==MOTOR_STATE_SLAMBRAKE))){
-	if(fabsf(_motor->FOC.Idq_req.q)>0.1f){
-
-		if(_motor->MotorState != MOTOR_STATE_ERROR){
-	#ifdef HAS_PHASE_SENSORS //We can go straight to RUN if we have been tracking with phase sensors
-		_motor->MotorState = MOTOR_STATE_RUN;
-		generateEnable(_motor); //ToDo, consider whether there is a risk of enabling the inverter without the main ISR running?
-	#endif
-	if(_motor->MotorState==MOTOR_STATE_IDLE){
-	#ifdef USE_DEADSHORT
-		_motor->MotorState = MOTOR_STATE_RECOVERING;
-	#endif
+		///////////////////////Run the state machine//////////////////////////////////
+	switch(_motor->MotorState){
+		case MOTOR_STATE_TRACKING:
+			_motor->FOC.was_last_tracking = 1;
+			if(fabsf(_motor->FOC.Idq_req.q)>0.2f){
+				#ifdef HAS_PHASE_SENSORS
+				_motor->MotorState = MOTOR_STATE_RUN;
+				#else
+				_motor->MotorState = MOTOR_STATE_RECOVERING;
+				break;
+				#endif
+				//fallthrough
+			}else{
+				//Remain in tracking
+				break;
 			}
-		}
-	}else if(_motor->FOC.FW_current>-0.5f){	//Keep it running if FW current is being used. Remember, FW current is -ve!
-	#ifdef HAS_PHASE_SENSORS
-		_motor->MotorState = MOTOR_STATE_TRACKING;
-		VICheck(_motor); //Immediately return it to error state if there is still a critical fault condition active
-	#else
-	//	if(_motor->MotorState != MOTOR_STATE_ERROR){
-		_motor->MotorState = MOTOR_STATE_IDLE;
-	//	}
-	#endif
-	was_last_tracking = 1;
-	}else{	//Ramp down the field weakening current
-			//Do NOT assign motorState here, since it could override error states
-		_motor->FOC.FW_current*=0.95f;
-		if(_motor->FOC.Vdq.q <0.0f){
-			_motor->FOC.Idq_req.q = 0.2f; //Apply a brake current
-		}
-		if(_motor->FOC.Vdq.q >0.0f){
-			_motor->FOC.Idq_req.q = -0.2f; //Apply a brake current
-		}
-	}
-}
-//_motor->FOC.Idq_req[0] = 10; //for aligning encoder
-/////////////Set and reset the HFI////////////////////////
-	switch(_motor->HFIType){
-		static int HFI_countdown;
-		case HFI_TYPE_45:
-		ToggleHFI(_motor);
-			if(_motor->FOC.inject==1){
-				//static int no_q;
-				if(was_last_tracking==1){
-					HFI_countdown = 4; //resolve the ambiguity immediately
-					was_last_tracking = 0;
+
+		case MOTOR_STATE_RUN:
+			calculatePower(_motor);
+			ThrottleTemperature(_motor); //Gradually ramp down the Q current if motor or FETs are getting hot
+			RunMTPA(_motor);//Process MTPA
+			LimitFWCurrent(_motor);//Process FW -> Iq reduction
+			clampBatteryPower(_motor); //Prevent too much power being drawn from the battery
+			#ifdef USE_LR_OBSERVER
+			LRObserver();
+			#endif
+			if((fabsf(_motor->FOC.Idq_req.q)<0.1f)){//Request current small, FW not active
+				if((_motor->FOC.FW_current>-0.5f)){
+				_motor->MotorState = MOTOR_STATE_TRACKING;
+				}else{
+					FWRampDown(_motor);
 				}
 			}
-		break;
+			generateEnable(_motor);
+			SlowHFI(_motor);
+			break;
 
-		case HFI_TYPE_D:
-			ToggleHFI(_motor);
-			if(_motor->FOC.inject==1){
-			if(HFI_countdown==3){
-					_motor->FOC.Idq_req.d = HFI_TEST_CURRENT;
-					_motor->FOC.Idq_req.q=0.0f;//Override the inputs to set Q current to zero
-				}else if(HFI_countdown==2){
-					_motor->FOC.Ldq_now_dboost[0] = _motor->FOC.IIR[0]; //Find the effect of d-axis current
-					_motor->FOC.Idq_req.d = 1.0f;
-					_motor->FOC.Idq_req.q=0.0f;
-				}else if(HFI_countdown == 1){
-					_motor->FOC.Idq_req.d = -HFI_TEST_CURRENT;
-					_motor->FOC.Idq_req.q=0.0f;
-				}else if(HFI_countdown == 0){
-					_motor->FOC.Ldq_now[0] = _motor->FOC.IIR[0];//_motor->FOC.Vd_injectionV;
-					_motor->FOC.Idq_req.d = 0.0f;
-				if(_motor->FOC.Ldq_now[0]>_motor->FOC.Ldq_now_dboost[0]){_motor->FOC.FOCAngle+=32768;}
-				HFI_countdown = 200;
-				}
-				HFI_countdown--;
+		case MOTOR_STATE_ERROR:
+				//add recovery stuff
+			if(fabsf(_motor->FOC.Idq_req.q)<0.1f){
+				_motor->MotorState = MOTOR_STATE_TRACKING;
+				VICheck(_motor); //Immediately return it to error state if there is still a critical fault condition active
 			}
-		break;
-
-		case HFI_TYPE_NONE:
-			_motor->FOC.inject = 0;
-			_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
-		break;
+			break;
+		case MOTOR_STATE_SLAMBRAKE:
+			__NOP();
+			//We might want to do something if there is a handbrake state? Like exiting this state?
+			break;
+		default:
+			__NOP();
+			//This accounts for all the initialising, test, measuring... procedures.
+			//We basically just want to do nothing and let them get on with their job.
+			break;
 	}
-    //Speed tracker
-    if(abs(_motor->FOC.angle_error)>10000){
-    	//The PLL has run away locking on to aliases; 10000 implies 6.5 pwm periods per sin wave, which is ~3000eHz, 180kerpm at 20kHz PWM frequency.
-    	//While it IS possible to run faster than this, it is not a sensible use case and will not be supported.
-    	_motor->FOC.angle_error = 0;
-    }
-  }
+	/////////////////End of Switch state machine///////////////////////////////
+
 	calculateVoltageGain(_motor);
-
-  }
+}
 
 
   void MESCTrack(MESC_motor_typedef *_motor) {
@@ -2434,7 +2273,7 @@ void RunHFI(MESC_motor_typedef *_motor){
 			_motor->FOC.HFI_int_err = _motor->FOC.HFI_int_err +0.05*error;
 			if(_motor->FOC.HFI_int_err>1000.0f){_motor->FOC.HFI_int_err = 1000.0f;}
 			if(_motor->FOC.HFI_int_err<-1000.0f){_motor->FOC.HFI_int_err = -1000.0f;}
-			_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (error + _motor->FOC.HFI_int_err)*Idqreq_dir;
+			_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (int)(error + _motor->FOC.HFI_int_err)*Idqreq_dir;
 //				if(magnitude45>_motor->FOC.HFI_Threshold){//_motor->FOC.HFI_Threshold){//Maybe make this inverting with Iq direction?
 //					_motor->FOC.FOCAngle =_motor->FOC.FOCAngle +250*Idqreq_dir; //deal with gains later... bang bang for now and maybe evermore
 //				}else{
@@ -2467,73 +2306,52 @@ void RunHFI(MESC_motor_typedef *_motor){
 				_motor->FOC.Vd_injectionV = -_motor->FOC.special_injectionVd;
 				_motor->FOC.Vq_injectionV = -_motor->FOC.special_injectionVq;			}
 		break;
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	}
+}
 
-//if (_motor->FOC.inject_high_low_now == 0){///////////////LOW
-//  _motor->FOC.inject_high_low_now = 1;
-//#ifdef HFID
-//  _motor->FOC.Vd_injectionV = +HFI_VOLTAGE;
-//#else
-//  _motor->FOC.Vd_injectionV = +HFI_VOLTAGE;
-//  _motor->FOC.Vq_injectionV = +HFI_VOLTAGE;//Maybe make this inverting with Iq direction?
-//#endif
-//  Idq[0].d = _motor->FOC.Idq.d;
-//  Idq[0].q = _motor->FOC.Idq.q;
-//} else if (_motor->FOC.inject_high_low_now == 1) {//////////////HIGH
-//  _motor->FOC.inject_high_low_now = 0;
-//#ifdef HFID
-//  _motor->FOC.Vd_injectionV = -HFI_VOLTAGE;
-//#else
-//  _motor->FOC.Vd_injectionV = -HFI_VOLTAGE;
-//  _motor->FOC.Vq_injectionV = -HFI_VOLTAGE;//Maybe make this inverting with Iq direction?
-//#endif
-//  Idq[1].d = _motor->FOC.Idq.d;
-//  Idq[1].q = _motor->FOC.Idq.q;
-//}
-//if (_motor->MotorState == MOTOR_STATE_RUN) {
-//	//Find the current fluctuation
-//	  dIdq.d = (Idq[0].d - Idq[1].d);
-//	  dIdq.q = (Idq[0].q - Idq[1].q);
-//	_motor->FOC.IIR[0] *= (99.0f);
-//	_motor->FOC.IIR[1] *= (1.0f);
-//
-//	_motor->FOC.IIR[0] += dIdq.d;
-//	_motor->FOC.IIR[1] += dIdq.q;
-//
-//	_motor->FOC.IIR[0] *= 0.01f;
-//	_motor->FOC.IIR[1] *=0.5f;
-//
-//#ifdef HFID
-//	  if(dIdq.q>1.0f){dIdq.q = 1.0f;}
-//	  if(dIdq.q<-1.0f){dIdq.q = -1.0f;}
-//	  intdidq.q = (intdidq.q + dIdq.q);
-//	  if(intdidq.q>10){intdidq.q=10;}
-//	  if(intdidq.q<-10){intdidq.q=-10;}
-//
-////	  static float ffactor = 2.0f;
-//
-//
-//    _motor->FOC.FOCAngle += (int)(250.0f*_motor->FOC.IIR[1] + 10.50f*intdidq.q);
-//#endif
-//#ifdef HFI45
-//    magnitude45 = sqrtf(dIdq.d*dIdq.d+dIdq.q*dIdq.q);
-////        mag45avg = 0.0005f*_motor->FOC.HFI_Threshold+0.9995f*mag45avg;
-////        if(dIdq.d>dIdq.q){
-////        	_motor->FOC.FOCAngle =_motor->FOC.FOCAngle +10;
-////        }else{
-////        	_motor->FOC.FOCAngle =_motor->FOC.FOCAngle -10;
-////        }
-//    if(magnitude45>mag45avg){//_motor->FOC.HFI_Threshold){//Maybe make this inverting with Iq direction?
-//    	_motor->FOC.FOCAngle =_motor->FOC.FOCAngle +250; //deal with gains later... bang bang for now and maybe evermore
-//
-//    }else{
-//    	_motor->FOC.FOCAngle =_motor->FOC.FOCAngle -250;
-//
-//    }
-////        _motor->FOC.Idq_req.d = 20.0f;
-//#endif
-//}
+void SlowHFI(MESC_motor_typedef *_motor){
+	/////////////Set and reset the HFI////////////////////////
+		switch(_motor->HFIType){
+			static int HFI_countdown;
+			case HFI_TYPE_45:
+			ToggleHFI(_motor);
+				if(_motor->FOC.inject==1){
+					//static int no_q;
+					if(_motor->FOC.was_last_tracking==1){
+						HFI_countdown = 4; //resolve the ambiguity immediately
+						_motor->FOC.was_last_tracking = 0;
+					}
+				}
+			break;
+
+			case HFI_TYPE_D:
+				ToggleHFI(_motor);
+				if(_motor->FOC.inject==1){
+				if(HFI_countdown==3){
+						_motor->FOC.Idq_req.d = HFI_TEST_CURRENT;
+						_motor->FOC.Idq_req.q=0.0f;//Override the inputs to set Q current to zero
+					}else if(HFI_countdown==2){
+						_motor->FOC.Ldq_now_dboost[0] = _motor->FOC.IIR[0]; //Find the effect of d-axis current
+						_motor->FOC.Idq_req.d = 1.0f;
+						_motor->FOC.Idq_req.q=0.0f;
+					}else if(HFI_countdown == 1){
+						_motor->FOC.Idq_req.d = -HFI_TEST_CURRENT;
+						_motor->FOC.Idq_req.q=0.0f;
+					}else if(HFI_countdown == 0){
+						_motor->FOC.Ldq_now[0] = _motor->FOC.IIR[0];//_motor->FOC.Vd_injectionV;
+						_motor->FOC.Idq_req.d = 0.0f;
+					if(_motor->FOC.Ldq_now[0]>_motor->FOC.Ldq_now_dboost[0]){_motor->FOC.FOCAngle+=32768;}
+					HFI_countdown = 200;
+					}
+					HFI_countdown--;
+				}
+			break;
+
+			case HFI_TYPE_NONE:
+				_motor->FOC.inject = 0;
+				_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
+			break;
+		}
 }
 
 void ToggleHFI(MESC_motor_typedef *_motor){
@@ -2589,5 +2407,172 @@ if(start_detection){
 }
 
 #endif
+}
+
+void collectInputs(MESC_motor_typedef *_motor){
+	  //Collect the requested throttle inputs
+	  //UART input
+	  if(0 == (input_vars.input_options & 0b1000)){
+		  input_vars.Idq_req_UART.q = 0.0f;
+	  }
+
+	  //RCPWM input
+	  if(input_vars.input_options & 0b0100){
+		  if(input_vars.pulse_recieved){
+			  if((input_vars.IC_duration > input_vars.IC_duration_MIN) && (input_vars.IC_duration < input_vars.IC_duration_MAX)){
+				  if(input_vars.IC_pulse>(input_vars.IC_pulse_MID + input_vars.IC_pulse_DEADZONE)){
+					  input_vars.Idq_req_RCPWM.d = 0.0f;
+					  input_vars.Idq_req_RCPWM.q = (float)(input_vars.IC_pulse - (input_vars.IC_pulse_MID + input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
+				  }
+				  else if(input_vars.IC_pulse<(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE)){
+					  input_vars.Idq_req_RCPWM.d = 0.0f;
+					  input_vars.Idq_req_RCPWM.q = ((float)input_vars.IC_pulse - (float)(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
+				  }
+				  else{
+					  input_vars.Idq_req_RCPWM.d = 0.0f;
+					  input_vars.Idq_req_RCPWM.q = 0.0f;
+				  }
+			  }	else {//The duration of the IC was wrong; trap it and write no current request
+				  //Todo maybe want to implement a timeout on this, allowing spurious pulses to not wiggle the current?
+				  input_vars.Idq_req_RCPWM.d = 0.0f;
+				  input_vars.Idq_req_RCPWM.q = 0.0f;
+			  }
+		  }
+		  else {//No pulse received flag
+			  input_vars.Idq_req_RCPWM.d = 0.0f;
+			  input_vars.Idq_req_RCPWM.q = 0.0f;
+		  }
+	  }
+
+	  //ADC1 input
+	  if(input_vars.input_options & 0b0010){
+		  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
+			  input_vars.Idq_req_ADC1.d = 0.0f;
+			  input_vars.Idq_req_ADC1.q = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
+		  }
+		  else{
+			  input_vars.Idq_req_ADC1.d = 0.0f;
+			  input_vars.Idq_req_ADC1.q = 0.0f;
+		  }
+	  }
+	  if(input_vars.input_options & 0b0001){
+		  //ADC2 input
+		  //placeholder
+	  }
+}
+
+void RunMTPA(MESC_motor_typedef *_motor){
+	//Run MTPA (Field weakening seems to have to go in  the fast loop to be stable)
+	#ifdef USE_MTPA
+
+	    if(_motor->m.L_QD>0){
+	    	_motor->FOC.id_mtpa = _motor->m.flux_linkage/(4.0f*_motor->m.L_QD) - sqrtf((_motor->m.flux_linkage*_motor->m.flux_linkage/(16.0f*_motor->m.L_QD*_motor->m.L_QD))+_motor->FOC.Idq_req.q*_motor->FOC.Idq_req.q*0.5f);
+	    	if(fabsf(_motor->FOC.Idq_req.q)>fabsf(_motor->FOC.id_mtpa)){
+	    	_motor->FOC.iq_mtpa = sqrtf(_motor->FOC.Idq_req.q*_motor->FOC.Idq_req.q-_motor->FOC.id_mtpa*_motor->FOC.id_mtpa);
+	    	}
+	    	else{
+	    		_motor->FOC.iq_mtpa = 0;
+	    	}
+	    _motor->FOC.Idq_req.d = _motor->FOC.id_mtpa;
+	    if(_motor->FOC.Idq_req.q>0.0f){
+	    _motor->FOC.Idq_req.q = _motor->FOC.iq_mtpa;}
+	    else{
+	    	_motor->FOC.Idq_req.q = -_motor->FOC.iq_mtpa;}
+	    }
+
+
+	#endif
+}
+void calculatePower(MESC_motor_typedef *_motor){
+////// Calculate the current power
+		_motor->FOC.currentPower.d = 1.5f*(_motor->FOC.Vdq.d*_motor->FOC.Idq_smoothed.d);
+		_motor->FOC.currentPower.q = 1.5f*(_motor->FOC.Vdq.q*_motor->FOC.Idq_smoothed.q);
+		_motor->FOC.Ibus = (_motor->FOC.currentPower.d + _motor->FOC.currentPower.q) /_motor->Conv.Vbus;
+}
+
+void LimitFWCurrent(MESC_motor_typedef *_motor){
+    //Account for Field weakening current
+    //MTPA is already conservative of the current limits
+    float mag = (Square(_motor->FOC.Idq_req.q) + Square(_motor->FOC.FW_current));
+    if(mag>Square(input_vars.max_request_Idq.q)){
+    	float Iqmax2 = Square(input_vars.max_request_Idq.q)-Square(_motor->FOC.FW_current);
+    	if(Iqmax2>0){//Avoid hardfault
+			if(_motor->FOC.Idq_req.q>0){
+				_motor->FOC.Idq_req.q = sqrtf(Iqmax2);
+			}else{
+				_motor->FOC.Idq_req.q = -sqrtf(Iqmax2);
+			}
+    	}else{//Negative result, FW larger than allowable current
+    		_motor->MotorState = MOTOR_STATE_ERROR;
+    	    generateBreak(_motor);
+    	}
+    }
+
+}
+
+void clampBatteryPower(MESC_motor_typedef *_motor){
+/////// Clamp the max power taken from the battery
+    _motor->FOC.reqPower = 1.5f*fabsf(_motor->FOC.Vdq.q * _motor->FOC.Idq_req.q);
+    if (_motor->FOC.reqPower > _motor->m.Pmax) {
+    	if(_motor->FOC.Idq_req.q > 0.0f){
+    		_motor->FOC.Idq_req.q = _motor->m.Pmax / (fabsf(_motor->FOC.Vdq.q)*1.5f);
+    	}else{
+    		_motor->FOC.Idq_req.q = -_motor->m.Pmax / (fabsf(_motor->FOC.Vdq.q)*1.5f);
+    	}
+    }
+}
+void houseKeeping(MESC_motor_typedef *_motor){
+	////// Unpuc the observer kludge
+	// The observer gets into a bit of a state if it gets close to
+	// flux linked = 0 for both accumuators, the angle rapidly changes
+	// as it oscillates around zero. Solution... just kludge it back out.
+	// This only happens at stationary when it is useless anyway.
+	if ((_motor->FOC.flux_a * _motor->FOC.flux_a + _motor->FOC.flux_b * _motor->FOC.flux_b) <
+		0.25f * _motor->m.flux_linkage * _motor->m.flux_linkage) {
+		_motor->FOC.flux_a = 0.5f * _motor->m.flux_linkage;
+		_motor->FOC.flux_b = 0.5f * _motor->m.flux_linkage;
+	}
+
+	//Speed tracker
+	if(abs(_motor->FOC.angle_error)>10000){
+		//The PLL has run away locking on to aliases; 10000 implies 6.5 pwm periods per sin wave, which is ~3000eHz, 180kerpm at 20kHz PWM frequency.
+		//While it IS possible to run faster than this, it is not a sensible use case and will not be supported.
+		_motor->FOC.angle_error = 0;
+	}
+	//Shut down if we are burning the hall sensors //Legacy code, can probably be removed...
+	if(getHallState()==0){//This happens when the hall sensors overheat it seems.
+	  	  if (MotorError == MOTOR_ERROR_NONE) {
+	  		    speed_motor_limiter();
+	  	  }
+	  	  MotorError = MOTOR_ERROR_HALL0;
+	    }else /*if(getHallState()==7){
+	  	  MotorError = MOTOR_ERROR_HALL7;
+	    } else */{
+	  	  if (MotorError != MOTOR_ERROR_NONE) {
+	  		  // TODO speed_road();
+	  	  }
+	  	  MotorError = MOTOR_ERROR_NONE;
+	    }
+}
+void FWRampDown(MESC_motor_typedef *_motor){
+	//Ramp down the field weakening current
+	//Do NOT assign motorState here, since it could override error states
+	_motor->FOC.FW_current*=0.95f;
+	if(_motor->FOC.Vdq.q <0.0f){
+		_motor->FOC.Idq_req.q = 0.2f; //Apply a brake current
+	}
+	if(_motor->FOC.Vdq.q >0.0f){
+		_motor->FOC.Idq_req.q = -0.2f; //Apply a brake current
+	}
+}
+
+void ThrottleTemperature(MESC_motor_typedef *_motor){
+	//ToDo, do this properly
+    if(temp_check( _motor->Raw.MOSu_T ) == false){
+    	if(0){generateBreak(_motor); //ToDo Currently not loading the profile so commented out - no temp safety!
+    	_motor->MotorState = MOTOR_STATE_ERROR;
+    	MotorError = MOTOR_ERROR_OVER_LIMIT_TEMP;
+    	}
+    }
 }
   // clang-format on
