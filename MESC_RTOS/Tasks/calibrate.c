@@ -86,7 +86,7 @@ static void bargraph(TERMINAL_HANDLE * handle, float min, float max, float val){
 #define ARROW_LEFT 	0x1004
 #define ARROW_RIGHT 0x1003
 
-#define MAX_ITEMS	3
+#define MAX_ITEMS	2
 
 static void highlight(TERMINAL_HANDLE * handle, char * text ,int index, int count){
 	if(count==index){
@@ -107,10 +107,9 @@ static void TASK_main(void *pvParameters){
     TERM_sendVT100Code(handle,_VT100_CURSOR_DISABLE, 0);
     uint16_t c=0;
     int selected=0;
-    int test=0;
 
-    TERM_setCursorPos(handle, MAX_ITEMS*2+3, 0);
-    ttprintf("Keys: [UP/DOWN] Select item, [-/+] Save min/max value, [r] Reset MIN/MAX, [CTRL+C] Quit");
+    TERM_setCursorPos(handle, MAX_ITEMS*3+3, 0);
+    ttprintf("Keys: [UP/DOWN] Select item, [-/+] Save min/max value, [r] Reset MIN/MAX, [i] change polarity [CTRL+C] Quit");
 
     do{
     	TERM_sendVT100Code(handle,_VT100_CURSOR_DISABLE, 0);
@@ -118,7 +117,10 @@ static void TASK_main(void *pvParameters){
     	highlight(handle, "ADC1:", 0, selected);
     	TERM_setCursorPos(handle, 2, 0);
     	bargraph(handle, 0, 4095, motor_curr->Raw.ADC_in_ext1);
-    	ttprintf("MIN: %6d MAX: %6d", input_vars.adc1_MIN, input_vars.adc1_MAX);
+    	ttprintf("MIN: %6d MAX: %6d INV: %1.0f", input_vars.adc1_MIN, input_vars.adc1_MAX, input_vars.ADC1_polarity);
+    	TERM_setCursorPos(handle, 3, 0);
+    	bargraph(handle, 0.0f, input_vars.max_request_Idq.q, input_vars.Idq_req_ADC1.q);
+    	ttprintf("Request: %f", input_vars.Idq_req_ADC1.q);
 
     	if(selected==0){
 			if(c=='r'){
@@ -131,14 +133,20 @@ static void TASK_main(void *pvParameters){
 			if(c=='+'){
 				input_vars.adc1_MAX=motor_curr->Raw.ADC_in_ext1;
 			}
+			if(c=='i'){
+				input_vars.ADC1_polarity *= -1.0f;
+			}
     	}
 
 
-    	TERM_setCursorPos(handle, 3, 0);
+    	TERM_setCursorPos(handle, 4, 0);
     	highlight(handle, "ADC2:", 1, selected);
-		TERM_setCursorPos(handle, 4, 0);
+		TERM_setCursorPos(handle, 5, 0);
 		bargraph(handle, 0, 4095, 0);
-		ttprintf("MIN: %6d MAX: %6d", input_vars.adc2_MIN, input_vars.adc2_MAX);
+		ttprintf("MIN: %6d MAX: %6d INV: %1.0f", input_vars.adc2_MIN, input_vars.adc2_MAX, input_vars.ADC2_polarity);
+    	TERM_setCursorPos(handle, 6, 0);
+    	bargraph(handle, 0.0f, input_vars.max_request_Idq.q, input_vars.Idq_req_ADC2.q);
+    	ttprintf("Request: %f", input_vars.Idq_req_ADC2.q);
 
 		if(selected==1){
 			if(c=='r'){
@@ -151,16 +159,10 @@ static void TASK_main(void *pvParameters){
 			if(c=='+'){
 				input_vars.adc2_MAX=100;
 			}
+			if(c=='i'){
+				input_vars.ADC2_polarity *= -1.0f;
+			}
 		}
-
-		TERM_setCursorPos(handle, 5, 0);
-		highlight(handle, "Test:", 2, selected);
-		TERM_setCursorPos(handle, 6, 0);
-		bargraph(handle, 0, 4095, test++);
-		ttprintf("MIN: %6d MAX: %6d", 0, 4095);
-		if(test==4095) test=0;
-
-
 
 		if(c==ARROW_DOWN){
 			selected++;
