@@ -44,7 +44,9 @@ void motor_init( MOTORProfile const * const profile )
     if (profile == PROFILE_DEFAULT)
     {
         static MOTORProfile motor_profile_default;
+		motor_profile_default.Imax = MAX_MOTOR_PHASE_CURRENT;
         motor_profile_default.Pmax = DEFAULT_MOTOR_POWER;
+		motor_profile_default.pole_pairs =  DEFAULT_MOTOR_PP;
         motor_profile_default.L_D = DEFAULT_MOTOR_Ld;
         motor_profile_default.L_Q = DEFAULT_MOTOR_Lq;
         motor_profile_default.L_QD = DEFAULT_MOTOR_Lq-DEFAULT_MOTOR_Ld;
@@ -54,6 +56,7 @@ void motor_init( MOTORProfile const * const profile )
 		motor_profile_default.flux_linkage_max = MAX_FLUX_LINKAGE;
 		motor_profile_default.flux_linkage_gain = FLUX_LINKAGE_GAIN;
 		motor_profile_default.non_linear_centering_gain = NON_LINEAR_CENTERING_GAIN;
+
         uint32_t            motor_length = sizeof(motor_profile_default);
 
         ProfileStatus const ret = profile_get_entry(

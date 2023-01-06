@@ -1743,12 +1743,28 @@ float  Square(float x){ return((x)*(x));}
     // for battery voltage change
 
 	  houseKeeping(_motor);	//General dross that keeps things ticking over, like nudging the observer
-	  collectInputs(_motor); //Get all the throttle inputs
-	  _motor->FOC.Idq_req.q = input_vars.Idq_req_UART.q + input_vars.Idq_req_RCPWM.q + input_vars.Idq_req_ADC1.q + input_vars.Idq_req_ADC2.q;
-	  //Clamp the Q component; d component is not directly requested
-		if(_motor->FOC.Idq_req.q>input_vars.max_request_Idq.q){_motor->FOC.Idq_req.q = input_vars.max_request_Idq.q;}
-		if(_motor->FOC.Idq_req.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_req.q = input_vars.min_request_Idq.q;}
+	  switch(_motor->ControlMode){
+		  case MOTOR_CONTROL_MODE_TORQUE:
+			  collectInputs(_motor); //Get all the throttle inputs
+			  _motor->FOC.Idq_req.q = input_vars.Idq_req_UART.q + input_vars.Idq_req_RCPWM.q + input_vars.Idq_req_ADC1.q + input_vars.Idq_req_ADC2.q;
+			  //Clamp the Q component; d component is not directly requested
+				if(_motor->FOC.Idq_req.q>input_vars.max_request_Idq.q){_motor->FOC.Idq_req.q = input_vars.max_request_Idq.q;}
+				if(_motor->FOC.Idq_req.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_req.q = input_vars.min_request_Idq.q;}
+			break;
+		  case MOTOR_CONTROL_MODE_POSITION:
+			  //TBC, needs some kind of velocity generation curve to nest into the speed loop
+			  //fallthrough, once the position controller has generated a speed it probably wants to go straight to the speed controller
+		  case MOTOR_CONTROL_MODE_SPEED:
+			  //TBC PID loop to convert eHz feedback to an iq request
+			  break;
+		  case MOTOR_CONTROL_MODE_DUTY:
+			  //TBC, need to adjust the max modulation index to allow it to bounce off the circle limiter
+			  break;
 
+		  default:
+			  __NOP();
+			  break;
+	  }
 		///////////////////////Run the state machine//////////////////////////////////
 	switch(_motor->MotorState){
 		case MOTOR_STATE_TRACKING:
@@ -2539,6 +2555,10 @@ void houseKeeping(MESC_motor_typedef *_motor){
 		//The PLL has run away locking on to aliases; 10000 implies 6.5 pwm periods per sin wave, which is ~3000eHz, 180kerpm at 20kHz PWM frequency.
 		//While it IS possible to run faster than this, it is not a sensible use case and will not be supported.
 		_motor->FOC.angle_error = 0;
+	}
+	//Translate the eHz to eRPM
+	if(_motor->m.pole_pairs>0){//avoid divide by zero
+	_motor->FOC.mechRPM = _motor->FOC.eHz*60.0f/(float)(_motor->m.pole_pairs);
 	}
 	//Shut down if we are burning the hall sensors //Legacy code, can probably be removed...
 	if(getHallState()==0){//This happens when the hall sensors overheat it seems.

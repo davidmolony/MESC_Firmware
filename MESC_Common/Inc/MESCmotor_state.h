@@ -94,6 +94,14 @@ typedef enum {
   MOTOR_SENSOR_MODE_HFI,
   } motor_sensor_mode_e;
 
+  typedef enum {
+    MOTOR_CONTROL_MODE_TORQUE,
+	MOTOR_CONTROL_MODE_SPEED,
+	MOTOR_CONTROL_MODE_DUTY,
+	MOTOR_CONTROL_MODE_POSITION,
+	MOTOR_CONTROL_MODE_SOMETHING,
+    } motor_control_mode_e;
+
 typedef enum {
   HFI_TYPE_NONE,
   HFI_TYPE_45,

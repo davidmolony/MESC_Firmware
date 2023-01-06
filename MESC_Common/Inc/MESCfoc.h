@@ -261,6 +261,7 @@ typedef struct {
   uint32_t FLrun, VFLrun;
   float angle_error;
   float eHz;
+  float mechRPM;
   float Ldq_now[2];
   float Ldq_now_dboost[2];
   int d_polarity; //With this, we can swap the PLL polarity and therefore make it track Q instead of D. This is useful for detection
@@ -278,6 +279,7 @@ typedef struct{
 	TIM_HandleTypeDef *stimer; //Timer that services the slowloop
 	motor_state_e MotorState;
 	motor_sensor_mode_e MotorSensorMode;
+	motor_control_mode_e ControlMode;
 	HFI_type_e HFIType;
 	MESC_raw_typedef Raw;
 	MESC_Converted_typedef Conv;
