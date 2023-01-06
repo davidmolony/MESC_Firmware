@@ -260,6 +260,7 @@ typedef struct {
   float HFI_Threshold;
   float HFI_Gain;
   float HFI_int_err;
+  int was_last_tracking;
   uint32_t FLrun, VFLrun;
   float angle_error;
   float eHz;
@@ -526,5 +527,7 @@ void logVars(MESC_motor_typedef *_motor);
 void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma);
 void RunHFI(MESC_motor_typedef *_motor);
 void ToggleHFI(MESC_motor_typedef *_motor);
+void collectInputs(MESC_motor_typedef *_motor);
+void RunMTPA(MESC_motor_typedef *_motor);
 
 #endif
