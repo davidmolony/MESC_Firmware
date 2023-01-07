@@ -117,6 +117,8 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
 	_motor->meas.measure_current = I_MEASURE;
 	_motor->meas.measure_voltage = V_MEASURE;
+	_motor->FOC.pwm_frequency =PWM_FREQUENCY;
+	_motor->meas.hfi_voltage = HFI_VOLTAGE;
 
 	//Init Hall sensor
 	_motor->hall.dir = 1.0f;
@@ -487,6 +489,7 @@ if(fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency){
 	//unstable speed estimation could make it worse.
 _motor->FOC.FOCAngle = _motor->FOC.FOCAngle + 0.5f*_motor->FOC.angle_error;
 }
+
 #endif
  // _motor->FOC.FOCAngle = _motor->FOC.FOCAngle + _motor->FOC.angle_error;
 if(_motor->MotorState==MOTOR_STATE_RUN||_motor->MotorState==MOTOR_STATE_MEASURING){
@@ -1612,7 +1615,6 @@ __NOP();
   }
 
   void calculateGains(MESC_motor_typedef *_motor) {
-    _motor->FOC.pwm_frequency =PWM_FREQUENCY;
     _motor->FOC.pwm_period = 1.0f/_motor->FOC.pwm_frequency;
     _motor->mtimer->Instance->ARR = HAL_RCC_GetHCLKFreq()/(((float)htim1.Instance->PSC + 1.0f) * 2*_motor->FOC.pwm_frequency);
     _motor->mtimer->Instance->CCR4 = htim1.Instance->ARR-50; //Just short of dead center (dead center will not actually trigger the conversion)
@@ -1638,7 +1640,7 @@ __NOP();
     _motor->FOC.field_weakening_curr_max = FIELD_WEAKENING_CURRENT;  // test number, to be stored in user settings
   _motor->m.L_QD = _motor->m.L_Q-_motor->m.L_D;
   _motor->FOC.d_polarity = 1;
-  	  _motor->meas.hfi_voltage = HFI_VOLTAGE;
+
   }
 
   void calculateVoltageGain(MESC_motor_typedef *_motor) {
@@ -2248,6 +2250,9 @@ void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma){
 #endif
 }
 
+volatile float cnt1=0.0f;
+volatile float accu=0.0f;
+
 void RunHFI(MESC_motor_typedef *_motor){
 	int Idqreq_dir=0;
 	if (_motor->FOC.inject_high_low_now == 0){//First we create the toggle
@@ -2288,15 +2293,23 @@ void RunHFI(MESC_motor_typedef *_motor){
 			//Run the bang bang PLL
 			magnitude45 = sqrtf(dIdq.d*dIdq.d+dIdq.q*dIdq.q);
 
-			float error;
-			//Estimate the angle error, the gain to be determined in the HFI detection and setup based on the HFI current and the max iteration allowable
-			error = _motor->FOC.HFI_Gain*(magnitude45-_motor->FOC.HFI_Threshold);
-			if(error>500.0f){error = 500.0f;}
-			if(error<-500.0f){error = -500.0f;}
-			_motor->FOC.HFI_int_err = _motor->FOC.HFI_int_err +0.05f*error;
-			if(_motor->FOC.HFI_int_err>1000.0f){_motor->FOC.HFI_int_err = 1000.0f;}
-			if(_motor->FOC.HFI_int_err<-1000.0f){_motor->FOC.HFI_int_err = -1000.0f;}
-			_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (int)(error + _motor->FOC.HFI_int_err)*Idqreq_dir;
+
+			if(_motor->FOC.was_last_tracking==0){
+				float error;
+				//Estimate the angle error, the gain to be determined in the HFI detection and setup based on the HFI current and the max iteration allowable
+				error = _motor->FOC.HFI_Gain*(magnitude45-_motor->FOC.HFI_Threshold);
+				if(error>500.0f){error = 500.0f;}
+				if(error<-500.0f){error = -500.0f;}
+				_motor->FOC.HFI_int_err = _motor->FOC.HFI_int_err +0.05f*error;
+				if(_motor->FOC.HFI_int_err>1000.0f){_motor->FOC.HFI_int_err = 1000.0f;}
+				if(_motor->FOC.HFI_int_err<-1000.0f){_motor->FOC.HFI_int_err = -1000.0f;}
+
+					_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (int)(error + _motor->FOC.HFI_int_err)*Idqreq_dir;
+			}else{
+				_motor->FOC.FOCAngle += 10;
+				accu+=magnitude45;
+				cnt1+=1;
+			}
 //				if(magnitude45>_motor->FOC.HFI_Threshold){//_motor->FOC.HFI_Threshold){//Maybe make this inverting with Iq direction?
 //					_motor->FOC.FOCAngle =_motor->FOC.FOCAngle +250*Idqreq_dir; //deal with gains later... bang bang for now and maybe evermore
 //				}else{
@@ -2332,18 +2345,34 @@ void RunHFI(MESC_motor_typedef *_motor){
 	}
 }
 
+volatile float thres_1=0;
+volatile float thres_2=0;
+volatile float thres_3=0;
+
 void SlowHFI(MESC_motor_typedef *_motor){
 	/////////////Set and reset the HFI////////////////////////
 		switch(_motor->HFIType){
-			static int HFI_countdown;
+			static int HFI_countdown=4;
 			case HFI_TYPE_45:
 			ToggleHFI(_motor);
 				if(_motor->FOC.inject==1){
 					//static int no_q;
 					if(_motor->FOC.was_last_tracking==1){
-						HFI_countdown = 4; //resolve the ambiguity immediately
-						_motor->FOC.was_last_tracking = 0;
+						if(HFI_countdown==0){
+							HFI_countdown = 4;
+							_motor->FOC.HFI_Threshold = accu / cnt1;
+							accu=0.0f;
+							cnt1=0.0f;
+							_motor->FOC.HFI_Gain = 5000.0f/_motor->FOC.HFI_Threshold;
+							_motor->FOC.was_last_tracking = 0;
+						}else{
+							_motor->FOC.Idq_req.q=0.0f;
+							_motor->FOC.Idq_req.d=0.0f;
+							HFI_countdown--;
+						}
+
 					}
+
 				}
 			break;
 

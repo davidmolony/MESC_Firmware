@@ -206,7 +206,6 @@ void callback(TermVariableDescriptor * var){
 	calculateVoltageGain(&mtr[0]);
 }
 
-
 void populate_vars(){
 	//		   | Variable							| MIN		| MAX		| NAME			| DESCRIPTION							| RW			| CALLBACK	| VAR LIST HANDLE
 	TERM_addVar(mtr[0].m.Imax						, 0.0f		, 500.0f	, "i_max"		, "Max current"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
@@ -224,13 +223,14 @@ void populate_vars(){
 	TERM_addVar(mtr[0].HFIType						, 0			, 3			, "hfi"			, "HFI type [0=None, 1=45deg, 2=d axis]", VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.hfi_voltage				, 0.0f		, 50.0f		, "hfi_volt"	, "HFI voltage"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.HFI_Threshold			, 0.0f		, 2.0f		, "hfi_thresh"	, "HFI threshold"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].FOC.HFI_Gain					, 0.0f		, 20.0f		, "hfi_gain"	, "HFI gain"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.HFI_Gain					, 0.0f		, 5000.0f	, "hfi_gain"	, "HFI gain"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.adc1_MAX					, 0			, 4096		, "adc1_max"	, "ADC1 max val"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.adc1_MIN					, 0			, 4096		, "adc1_min"	, "ADC1 min val"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.ADC1_polarity			, -1.0f		, 1.0f		, "adc1_pol"	, "ADC1 polarity"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.adc2_MAX					, 0			, 4096		, "adc2_max"	, "ADC2 max val"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.adc2_MIN					, 0			, 4096		, "adc2_min"	, "ADC2 min val"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.ADC2_polarity			, -1.0f		, 1.0f		, "adc2_pol"	, "ADC2 polarity"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.pwm_frequency			, 0.0f		, 50000.0f	, "pwm_freq"	, "PWM frequency"						, VAR_ACCESS_RW	, callback	, &TERM_varList);
 
 }
 
