@@ -204,6 +204,7 @@ void callback(TermVariableDescriptor * var){
 	calculateFlux(&mtr[0]);
 	calculateGains(&mtr[0]);
 	calculateVoltageGain(&mtr[0]);
+	InputInit();
 }
 
 void populate_vars(){
@@ -230,6 +231,8 @@ void populate_vars(){
 	TERM_addVar(input_vars.adc2_MAX					, 0			, 4096		, "adc2_max"	, "ADC2 max val"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.adc2_MIN					, 0			, 4096		, "adc2_min"	, "ADC2 min val"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.ADC2_polarity			, -1.0f		, 1.0f		, "adc2_pol"	, "ADC2 polarity"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(input_vars.max_request_Idq.q		, 0.0f		, 300.0f	, "curr_max"	, "Max motor current"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(input_vars.min_request_Idq.q		, -300.0f	, 0.0f		, "curr_min"	, "Min motor current"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.pwm_frequency			, 0.0f		, 50000.0f	, "pwm_freq"	, "PWM frequency"						, VAR_ACCESS_RW	, callback	, &TERM_varList);
 
 }
@@ -246,6 +249,7 @@ void MESCinterface_init(void){
 
 	calculateGains(&mtr[0]);
 	calculateVoltageGain(&mtr[0]);
+	InputInit();
 
 	motor_profile->L_QD = motor_profile->L_Q-motor_profile->L_D;
 	motor_profile->flux_linkage_max = 1.3f*motor_profile->flux_linkage;

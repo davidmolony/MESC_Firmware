@@ -47,6 +47,32 @@
 #include "MESCspeed.h"
 #include "MESCerror.h"
 
+#include "pid.h"
+
+/* Controller parameters */
+#define PID_KP  2000.0f
+#define PID_KI  0.5f
+#define PID_KD  0.25f
+
+#define PID_TAU 0.02f
+
+#define PID_LIM_MIN -1000.0f
+#define PID_LIM_MAX  1000.0f
+
+#define PID_LIM_MIN_INT -1000.0f
+#define PID_LIM_MAX_INT  1000.0f
+
+#define SAMPLE_TIME_S 0.00004f
+
+#define DIR -1.0f
+
+
+PIDController pid = { PID_KP, PID_KI, PID_KD,
+					  PID_TAU,
+					  PID_LIM_MIN, PID_LIM_MAX,
+					  PID_LIM_MIN_INT, PID_LIM_MAX_INT,
+					  SAMPLE_TIME_S, DIR };
+
 
 #include <math.h>
 #include <stdlib.h>
@@ -130,6 +156,8 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
 	_motor->hall.hall_error = 0;
 
+	 PIDController_Init(&pid);
+
 	mesc_init_1(_motor);
 
 	HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle,
@@ -179,8 +207,8 @@ void InputInit(){
 
 	input_vars.max_request_Idq.d = 0.0f; //Not supporting d-axis input current for now
 	input_vars.min_request_Idq.d = 0.0f;
-	input_vars.max_request_Idq.q = MAX_IQ_REQUEST;
-	input_vars.min_request_Idq.q = -MAX_IQ_REQUEST;
+	//input_vars.max_request_Idq.q = MAX_IQ_REQUEST;
+	//input_vars.min_request_Idq.q = -MAX_IQ_REQUEST;
 
 	input_vars.IC_pulse_MAX = IC_PULSE_MAX;
 	input_vars.IC_pulse_MIN = IC_PULSE_MIN;
@@ -2252,6 +2280,17 @@ void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma){
 
 volatile float cnt1=0.0f;
 volatile float accu=0.0f;
+float err_old;
+volatile float kd = 0.5f;
+volatile float ki = 0.5f;
+
+volatile float min1=1000.0f;
+volatile float max1=0.0f;
+
+volatile float thres_1=0;
+volatile float thres_2=0;
+volatile float thres_3=0;
+
 
 void RunHFI(MESC_motor_typedef *_motor){
 	int Idqreq_dir=0;
@@ -2283,7 +2322,7 @@ void RunHFI(MESC_motor_typedef *_motor){
 					Idqreq_dir = -1;
 				}
 			}else{
-			_motor->FOC.Vd_injectionV = -_motor->meas.hfi_voltage;
+				_motor->FOC.Vd_injectionV = -_motor->meas.hfi_voltage;
 				if(_motor->FOC.Idq_req.q>0.0f){
 					_motor->FOC.Vq_injectionV = -_motor->meas.hfi_voltage;
 				}else{
@@ -2295,26 +2334,14 @@ void RunHFI(MESC_motor_typedef *_motor){
 
 
 			if(_motor->FOC.was_last_tracking==0){
-				float error;
-				//Estimate the angle error, the gain to be determined in the HFI detection and setup based on the HFI current and the max iteration allowable
-				error = _motor->FOC.HFI_Gain*(magnitude45-_motor->FOC.HFI_Threshold);
-				if(error>500.0f){error = 500.0f;}
-				if(error<-500.0f){error = -500.0f;}
-				_motor->FOC.HFI_int_err = _motor->FOC.HFI_int_err +0.05f*error;
-				if(_motor->FOC.HFI_int_err>1000.0f){_motor->FOC.HFI_int_err = 1000.0f;}
-				if(_motor->FOC.HFI_int_err<-1000.0f){_motor->FOC.HFI_int_err = -1000.0f;}
+				PIDController_Update(&pid, _motor->FOC.HFI_Threshold, magnitude45);
+				_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (int)pid.out * Idqreq_dir;
 
-					_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (int)(error + _motor->FOC.HFI_int_err)*Idqreq_dir;
 			}else{
-				_motor->FOC.FOCAngle += 10;
+				_motor->FOC.FOCAngle += 100;
 				accu+=magnitude45;
 				cnt1+=1;
 			}
-//				if(magnitude45>_motor->FOC.HFI_Threshold){//_motor->FOC.HFI_Threshold){//Maybe make this inverting with Iq direction?
-//					_motor->FOC.FOCAngle =_motor->FOC.FOCAngle +250*Idqreq_dir; //deal with gains later... bang bang for now and maybe evermore
-//				}else{
-//					_motor->FOC.FOCAngle =_motor->FOC.FOCAngle -250*Idqreq_dir;
-//				}
 			#if 0 //Sometimes for investigation we want to just lock the angle, this is an easy bodge
 							_motor->FOC.FOCAngle = 62000;
 			#endif
@@ -2345,29 +2372,26 @@ void RunHFI(MESC_motor_typedef *_motor){
 	}
 }
 
-volatile float thres_1=0;
-volatile float thres_2=0;
-volatile float thres_3=0;
 
 void SlowHFI(MESC_motor_typedef *_motor){
 	/////////////Set and reset the HFI////////////////////////
 		switch(_motor->HFIType){
-			static int HFI_countdown=4;
+			static int HFI_countdown=1;
 			case HFI_TYPE_45:
 			ToggleHFI(_motor);
 				if(_motor->FOC.inject==1){
 					//static int no_q;
 					if(_motor->FOC.was_last_tracking==1){
 						if(HFI_countdown==0){
-							HFI_countdown = 4;
+							HFI_countdown = 1;
 							_motor->FOC.HFI_Threshold = accu / cnt1;
 							accu=0.0f;
 							cnt1=0.0f;
-							_motor->FOC.HFI_Gain = 5000.0f/_motor->FOC.HFI_Threshold;
+							pid.Kp = 5000.0f/_motor->FOC.HFI_Threshold;
 							_motor->FOC.was_last_tracking = 0;
 						}else{
-							_motor->FOC.Idq_req.q=0.0f;
-							_motor->FOC.Idq_req.d=0.0f;
+							//_motor->FOC.Idq_req.q=thres_1;
+							//_motor->FOC.Idq_req.d=0.0f;
 							HFI_countdown--;
 						}
 
