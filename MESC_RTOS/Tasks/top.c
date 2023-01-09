@@ -87,9 +87,9 @@ static void TASK_main(void *pvParameters){
             uint32_t cpuLoad = SYS_getCPULoadFine(taskStats, taskCount, sysTime);
             ttprintf("%sbottom - %d\r\n%sTasks: \t%d\r\n%sCPU: \t%d,%d%%\r\n", TERM_getVT100Code(_VT100_ERASE_LINE_END, 0), xTaskGetTickCount(), TERM_getVT100Code(_VT100_ERASE_LINE_END, 0), taskCount, TERM_getVT100Code(_VT100_ERASE_LINE_END, 0), cpuLoad / 10, cpuLoad % 10);
             
-            uint32_t sum_fastloop;
-            uint32_t sum_hyperloop;
-            uint32_t max_pwm;
+            uint32_t sum_fastloop=0;
+            uint32_t sum_hyperloop=0;
+            uint32_t max_pwm=0;
 
             for(int i=0;i<NUM_MOTORS;i++){
             	sum_fastloop += mtr[i].FOC.cycles_fastloop;

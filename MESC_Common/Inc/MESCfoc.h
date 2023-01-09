@@ -260,6 +260,10 @@ typedef struct {
   float HFI_Threshold;
   float HFI_Gain;
   float HFI_int_err;
+  float HFI_accu;
+  int32_t HFI_countdown;
+  uint32_t HFI_count;
+  uint32_t HFI_test_increment;
   int was_last_tracking;
   uint32_t FLrun, VFLrun;
   float angle_error;
