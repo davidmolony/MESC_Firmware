@@ -172,6 +172,8 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	  // At this point we just let the whole thing run off into interrupt land, and
 	  // the fastLoop() starts to be triggered by the ADC conversion complete
 	  // interrupt
+
+  _motor->conf_is_valid = true;
 }
 
 void InputInit(){

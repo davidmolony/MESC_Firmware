@@ -342,6 +342,7 @@ typedef struct{
 	MOTORProfile m;
 	MESCmeas_s meas;
 	MESChall_s hall;
+	bool conf_is_valid;
 }MESC_motor_typedef;
 
 extern MESC_motor_typedef mtr[NUM_MOTORS];

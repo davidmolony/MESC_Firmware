@@ -799,13 +799,36 @@ static uint8_t * find_next_free_memory(uint8_t * address, uint32_t storage_size)
 	return header_section;
 }
 
-static uint8_t * find_last_active_header(uint8_t * address, uint32_t storage_size){
+static uint8_t * find_last_active_header(bool find_revision, uint32_t revision, uint8_t * address, uint32_t storage_size){
 	//Find last active header
 	FlashHeader * header_ptr;
 	header_ptr = (FlashHeader*)address;
 	uint32_t size_last=0;
 	uint8_t * header_section = address;
 	while(header_ptr->start == HEADER_START && header_section < address + storage_size){
+		header_section += header_ptr->size;
+		size_last = header_ptr->size;
+		if(find_revision && header_ptr->revision == revision){
+			return (uint8_t*)header_ptr;
+		}
+		header_ptr = (FlashHeader*)header_section;
+	}
+	if(find_revision){
+		return NULL;
+	}else{
+		return header_section - size_last;
+	}
+}
+
+static uint8_t * print_headers(TERMINAL_HANDLE * handle, uint8_t * address, uint32_t storage_size){
+	//Find last active header
+	FlashHeader * header_ptr;
+	header_ptr = (FlashHeader*)address;
+	uint32_t size_last=0;
+	uint8_t * header_section = address;
+	while(header_ptr->start == HEADER_START && header_section < address + storage_size){
+		FlashFooter * footer = (FlashFooter *)((uint8_t*)header_ptr + header_ptr->size - sizeof(FlashFooter));
+		ttprintf("Revision: %u Size: %u CRC: %08x \r\n", header_ptr->revision, header_ptr->size, footer->crc);
 		header_section += header_ptr->size;
 		size_last = header_ptr->size;
 		header_ptr = (FlashHeader*)header_section;
@@ -882,7 +905,7 @@ uint8_t CMD_varSave(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	}
 
 	//Find last active header and increment revision
-	FlashHeader * last_header = (FlashHeader*)find_last_active_header(address, storage_size);
+	FlashHeader * last_header = (FlashHeader*)find_last_active_header(false, 0, address, storage_size);
 	handle->varHandle->nvm_revision = last_header->revision + 1;
 
 	header_section = find_next_free_memory(address, storage_size);
@@ -998,12 +1021,46 @@ uint8_t CMD_varLoad(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	if(var_system_is_init(handle) == false) return TERM_CMD_EXIT_SUCCESS;
 
+	bool show_only = false;
+	bool load_revision = false;
+	uint32_t revision_to_load = 0;
+	char * var_to_load = NULL;
+
 	uint8_t * address = handle->varHandle->nvm_address;
 	uint32_t storage_size = handle->varHandle->nvm_size;
 
-	FlashHeader * header = (FlashHeader*)find_last_active_header(address, storage_size);
+	for(int i=0;i<argCount;i++){
+		if(strcmp(args[i], "-s")==0){
+			show_only = true;
+		}
+		if(strcmp(args[i], "-h")==0){
+			print_headers(handle, address, storage_size);
+			return TERM_CMD_EXIT_SUCCESS;
+		}
+		if(strcmp(args[i], "-r")==0){
+			if(i+1 < argCount){
+				load_revision = true;
+				revision_to_load = strtoul(args[i+1], NULL, 10);
+			}
+		}
+		if(strcmp(args[i], "-v")==0){
+			if(i+1 < argCount){
+				var_to_load = args[i+1];
+			}
+		}
+		if(strcmp(args[i], "-?")==0){
+			ttprintf("Usage: load [flags]\r\n");
+			ttprintf("\t -s\t Show only\r\n");
+			ttprintf("\t -h\t Show headers\r\n");
+			ttprintf("\t -r\t Load specific revision\r\n");
+			ttprintf("\t -v\t Load specific variable\r\n");
+			return TERM_CMD_EXIT_SUCCESS;
+		}
+	}
 
-	if(header->start != HEADER_START || header->version != HEADER_VERSION){
+	FlashHeader * header = (FlashHeader*)find_last_active_header(load_revision, revision_to_load, address, storage_size);
+
+	if(header == NULL || header->start != HEADER_START || header->version != HEADER_VERSION){
 			ttprintf("No dataset found\r\n");
 		return TERM_CMD_EXIT_SUCCESS;
 	}
@@ -1021,17 +1078,19 @@ uint8_t CMD_varLoad(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	if(footer->crc != crc){
 		ttprintf("CRC mismatch Flash: %08x Loaded: %08x\r\n", footer->crc, crc);
-		return TERM_CMD_EXIT_SUCCESS;
+		return TERM_CMD_EXIT_ERROR;
 	}
 
 	currPos = 0;
 	currFlashVar = FlashVar;
 	print_var_header_update(handle);
 
-	handle->varHandle->nvm_revision = header->revision;
+	if(show_only == false || load_revision == true){
+		handle->varHandle->nvm_revision = header->revision;
+	}
 	for(;currPos < header->num_entries; currPos++){
-		if(argCount){
-			if(strcmp(currFlashVar->name, args[0]) != 0){
+		if(var_to_load != NULL){
+			if(strcmp(currFlashVar->name, var_to_load) != 0){
 				currFlashVar = currFlashVar->nextVar;
 				continue;
 			}
@@ -1047,12 +1106,20 @@ uint8_t CMD_varLoad(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		TermVariableDescriptor * currVar = handle->varHandle->varListHead->nextVar;
 
 		for(;currUpdatePos < head->nameLength; currUpdatePos++){
-			if(strcmp(currFlashVar->name, currVar->name)==0 && currFlashVar->type == currVar->type && currFlashVar->typeSize == currVar->typeSize && (currVar->rw & VAR_ACCESS_W)){
-				if(memcmp(currVar->variable, currFlashVar->variable, currVar->typeSize) != 0){
-					memcpy(currVar->variable, currFlashVar->variable, currVar->typeSize);
-					ttprintf("Updated value from flash\r\n");
+			if(strcmp(currFlashVar->name, currVar->name)==0){
+				if(currFlashVar->type == currVar->type && currFlashVar->typeSize == currVar->typeSize){
+					if((currVar->rw & VAR_ACCESS_W)){
+						if(show_only==false && memcmp(currVar->variable, currFlashVar->variable, currVar->typeSize) != 0){
+							memcpy(currVar->variable, currFlashVar->variable, currVar->typeSize);
+							ttprintf("Updated value from flash\r\n");
+						}else{
+							ttprintf("-\r\n");
+						}
+					}else{
+						ttprintf("Not writable\r\n");
+					}
 				}else{
-					ttprintf("-\r\n");
+					ttprintf("Type or size mismatch\r\n");
 				}
 				found_var = true;
 			}
@@ -1061,6 +1128,7 @@ uint8_t CMD_varLoad(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		if(found_var==false){
 			ttprintf("Cannot find variable in firmware\r\n");
 		}
+
 
 		currFlashVar = currFlashVar->nextVar;
 	}

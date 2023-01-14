@@ -245,7 +245,11 @@ void MESCinterface_init(void){
 
 	populate_vars();
 
-	CMD_varLoad(&null_handle, 0, NULL);
+	if(CMD_varLoad(&null_handle, 0, NULL) == TERM_CMD_EXIT_ERROR){
+		for(int i = 0; i<NUM_MOTORS; i++){
+			mtr[i].conf_is_valid = false;
+		}
+	}
 
 	calculateGains(&mtr[0]);
 	calculateVoltageGain(&mtr[0]);
@@ -259,8 +263,6 @@ void MESCinterface_init(void){
 	mtr[0].m.flux_linkage_max = motor_profile->flux_linkage_max;
 	mtr[0].m.flux_linkage_min = motor_profile->flux_linkage_min;
 	mtr[0].m.flux_linkage_gain = motor_profile->flux_linkage_gain;
-
-	//mtr[0].m.flux_linkage = motor_profile->flux_linkage;
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_detect, "deadtime", "Detect deadtime compensation", 0, &TERM_defaultList);
