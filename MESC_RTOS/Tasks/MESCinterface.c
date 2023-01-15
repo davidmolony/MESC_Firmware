@@ -223,7 +223,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].m.L_Q						, 0.0f		, 10.0f		, "lq_phase"	, "Phase inductance"					, VAR_ACCESS_RW	, callback  , &TERM_varList);
 	TERM_addVar(mtr[0].HFIType						, 0			, 3			, "hfi"			, "HFI type [0=None, 1=45deg, 2=d axis]", VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.hfi_voltage				, 0.0f		, 50.0f		, "hfi_volt"	, "HFI voltage"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].FOC.HFI_Threshold			, 0.0f		, 2.0f		, "hfi_thresh"	, "HFI threshold"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.HFI45_mod_didq			, 0.0f		, 2.0f		, "hfi_mod_didq", "HFI mod didq"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.HFI_Gain					, 0.0f		, 5000.0f	, "hfi_gain"	, "HFI gain"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.adc1_MAX					, 0			, 4096		, "adc1_max"	, "ADC1 max val"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.adc1_MIN					, 0			, 4096		, "adc1_min"	, "ADC1 min val"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);

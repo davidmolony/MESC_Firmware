@@ -151,19 +151,19 @@ static void TASK_main(void *pvParameters){
 		}
 
 		TERM_setCursorPos(handle, 5, 0);
-		highlight(handle, "Threshold:", 2, selected);
+		highlight(handle, "Mod didq:", 2, selected);
 		TERM_setCursorPos(handle, 6, 0);
-		bargraph(handle, 0, 10, motor_curr->FOC.HFI_Threshold);
+		bargraph(handle, 0, 10, motor_curr->FOC.HFI45_mod_didq);
 
 		if(selected==2){
 			if(c=='r'){
-				motor_curr->FOC.HFI_Threshold = HFI_THRESHOLD;
+				motor_curr->FOC.HFI45_mod_didq = HFI_THRESHOLD;
 			}
 			if(c=='-'){
-				motor_curr->FOC.HFI_Threshold -= 0.1f;
+				motor_curr->FOC.HFI45_mod_didq -= 0.1f;
 			}
 			if(c=='+'){
-				motor_curr->FOC.HFI_Threshold += 0.1f;
+				motor_curr->FOC.HFI45_mod_didq += 0.1f;
 			}
 		}
 
