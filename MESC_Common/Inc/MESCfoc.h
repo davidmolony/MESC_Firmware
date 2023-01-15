@@ -257,7 +257,8 @@ typedef struct {
   float Vq_injectionV;
   float special_injectionVd;
   float special_injectionVq;
-  float HFI_Threshold;
+  float HFI_toggle_voltage;
+  float HFI45_mod_didq;
   float HFI_Gain;
   float HFI_int_err;
   float HFI_accu;
@@ -341,6 +342,7 @@ typedef struct{
 	MESC_Converted_typedef Conv;
 	MESC_offset_typedef offset;
 	MESCfoc_s FOC;
+	//MESCBLDC_s BLDC;
 	MOTORProfile m;
 	MESCmeas_s meas;
 	MESChall_s hall;

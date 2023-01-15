@@ -180,8 +180,10 @@ void InputInit(){
 
 	input_vars.max_request_Idq.d = 0.0f; //Not supporting d-axis input current for now
 	input_vars.min_request_Idq.d = 0.0f;
-	//input_vars.max_request_Idq.q = MAX_IQ_REQUEST;
-	//input_vars.min_request_Idq.q = -MAX_IQ_REQUEST;
+	if(!input_vars.max_request_Idq.q){
+	input_vars.max_request_Idq.q = MAX_IQ_REQUEST;
+	input_vars.min_request_Idq.q = -MAX_IQ_REQUEST;
+	}
 
 	input_vars.IC_pulse_MAX = IC_PULSE_MAX;
 	input_vars.IC_pulse_MIN = IC_PULSE_MIN;
@@ -471,7 +473,7 @@ void hyperLoop(MESC_motor_typedef *_motor) {
   }else {
 	  _motor->FOC.Vd_injectionV = 0.0f;
 	  _motor->FOC.Vq_injectionV = 0.0f;
-	  _motor->FOC.HFI_int_err = 0.0f;
+//	  _motor->FOC.HFI_int_err = 0.0f;
   }
 #ifdef USE_LR_OBSERVER
       LRObserverCollect();
@@ -1685,7 +1687,12 @@ __NOP();
 		_motor->FOC.Iq_igain = _motor->FOC.Id_igain;
 		//This is the expected current magnitude we would see based on the average inductance and the injected voltage. Not particularly reliable currently.
 		//_motor->FOC.HFI_Threshold = ((HFI_VOLTAGE*sqrt2*2.0f)*_motor->FOC.pwm_period)/((_motor->m.L_D+_motor->m.L_Q)*0.5f);
-		//_motor->FOC.HFI_Threshold = HFI_THRESHOLD;
+		if(HFI_THRESHOLD==0.0f){
+		_motor->FOC.HFI_toggle_voltage = mtr->Conv.Vbus*0.05f;
+			if(_motor->FOC.HFI_toggle_voltage<3.0f){_motor->FOC.HFI_toggle_voltage = 3.0f;}
+		}else{
+		_motor->FOC.HFI_toggle_voltage = HFI_THRESHOLD;
+		}
 		break;
     case HFI_TYPE_NONE:
     	__NOP();
@@ -2307,14 +2314,14 @@ void RunHFI(MESC_motor_typedef *_motor){
 					_motor->FOC.Vq_injectionV = +_motor->meas.hfi_voltage;
 				}
 			}
-			//Run the bang bang PLL
+			//Run the PLL
 			magnitude45 = sqrtf(dIdq.d*dIdq.d+dIdq.q*dIdq.q);
 
 			if(_motor->FOC.was_last_tracking==0){
 
 				float error;
 				//Estimate the angle error, the gain to be determined in the HFI detection and setup based on the HFI current and the max iteration allowable
-				error = _motor->FOC.HFI_Gain*(magnitude45-_motor->FOC.HFI_Threshold);
+				error = _motor->FOC.HFI_Gain*(magnitude45-_motor->FOC.HFI45_mod_didq);
 				if(error>500.0f){error = 500.0f;}
 				if(error<-500.0f){error = -500.0f;}
 				_motor->FOC.HFI_int_err = _motor->FOC.HFI_int_err +0.05f*error;
@@ -2367,8 +2374,8 @@ void SlowHFI(MESC_motor_typedef *_motor){
 					//static int no_q;
 					if(_motor->FOC.was_last_tracking==1){
 						if(_motor->FOC.HFI_countdown>0){
-							_motor->FOC.HFI_Threshold = _motor->FOC.HFI_accu / _motor->FOC.HFI_count;
-							_motor->FOC.HFI_Gain = 5000.0f/_motor->FOC.HFI_Threshold;
+							_motor->FOC.HFI45_mod_didq = _motor->FOC.HFI_accu / _motor->FOC.HFI_count;
+							_motor->FOC.HFI_Gain = 5000.0f/_motor->FOC.HFI45_mod_didq;
 							_motor->FOC.was_last_tracking = 0;
 						}else{
 							_motor->FOC.HFI_test_increment = 65536 * 20 / _motor->FOC.pwm_frequency;
@@ -2415,10 +2422,10 @@ void SlowHFI(MESC_motor_typedef *_motor){
 }
 
 void ToggleHFI(MESC_motor_typedef *_motor){
-	if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > _motor->FOC.HFI_Threshold)||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < -_motor->FOC.HFI_Threshold)||(_motor->MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
+	if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > _motor->FOC.HFI_toggle_voltage)||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < -_motor->FOC.HFI_toggle_voltage)||(_motor->MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
 		_motor->FOC.inject = 0;
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
-	} else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < (_motor->FOC.HFI_Threshold-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > -(_motor->FOC.HFI_Threshold-1.0f)) &&(_motor->HFIType !=HFI_TYPE_NONE)){
+	} else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < (_motor->FOC.HFI_toggle_voltage-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > -(_motor->FOC.HFI_toggle_voltage-1.0f)) &&(_motor->HFIType !=HFI_TYPE_NONE)){
 		_motor->FOC.inject = 1;
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH*0.1f;
 	}
@@ -2456,14 +2463,14 @@ float detectHFI(MESC_motor_typedef *_motor){
 		//input_vars.input_options = 0b
 	}
 	qinductance = qinductance/1000.0f; //Note that this is not yet an inductance, but an inverse of inductance*voltage
-	_motor->FOC.HFI_Threshold = sqrtf(qinductance*qinductance+dinductance*dinductance);
-	_motor->FOC.HFI_Gain = 5000.0f/_motor->FOC.HFI_Threshold; //Magic numbers that seem to work
+	_motor->FOC.HFI45_mod_didq = sqrtf(qinductance*qinductance+dinductance*dinductance);
+	_motor->FOC.HFI_Gain = 5000.0f/_motor->FOC.HFI45_mod_didq; //Magic numbers that seem to work
 	input_vars.Idq_req_UART.q = 0.0f;
 	_motor->FOC.d_polarity = 1;
 
 	_motor->HFIType = _motor->meas.previous_HFI_type;
 
-	return _motor->FOC.HFI_Threshold;
+	return _motor->FOC.HFI45_mod_didq;
 
 #endif
 }
