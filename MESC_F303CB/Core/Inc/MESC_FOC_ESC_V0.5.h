@@ -14,7 +14,7 @@
 #define SHUNT_POLARITY -1.0
 
 #define ABS_MAX_PHASE_CURRENT 100.0f
-#define ABS_MAX_BUS_VOLTAGE 25.0f
+#define ABS_MAX_BUS_VOLTAGE 45.0f
 #define ABS_MIN_BUS_VOLTAGE 12.0f
 #define R_SHUNT 0.0005f
 //ToDo need to define using a discrete opamp with resistors to set gain vs using one with a specified gain

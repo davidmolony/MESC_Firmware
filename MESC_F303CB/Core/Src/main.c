@@ -213,8 +213,7 @@ int main(void)
     // Initialise user Interface
     ui_init( PROFILE_DEFAULT );
 
-    static uint8_t const pole_pairs = 6;
-//    speed_register_vars( motor1.FOC.eHz, &pole_pairs );
+    //speed_register_vars( &motor1.FOC.eHz, &motor1.m.pole_pairs );
     /*
     Finished System Initialisation
     */
