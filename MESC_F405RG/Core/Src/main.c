@@ -240,7 +240,7 @@ int main(void)
 
   while (1) {
 	  SimpleComsProcess(&com1);
-	  detectHFI(&mtr[0]);
+	  //detectHFI(&mtr[0]);
 	  HAL_Delay(0);
     /* USER CODE END WHILE */
 

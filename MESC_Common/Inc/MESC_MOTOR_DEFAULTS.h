@@ -32,6 +32,7 @@
 #define DEFAULT_MOTOR_Ld 0.000085f //Henries
 #define DEFAULT_MOTOR_Lq 0.000150f//Henries
 #define DEFAULT_MOTOR_R 0.0530f //Ohms
+#define DEFAULT_MOTOR_PP 7 //Pole Pairs
 
 #elif defined(ANT_120_70_62KV) //Reliable params, but need checking
 #define MAX_MOTOR_PHASE_CURRENT 200.0f
@@ -40,6 +41,8 @@
 #define DEFAULT_MOTOR_Ld 0.000020f //Henries
 #define DEFAULT_MOTOR_Lq 0.0000250f//Henries
 #define DEFAULT_MOTOR_R 0.011f //Ohms
+#define DEFAULT_MOTOR_PP 14 //Pole Pairs
+
 
 #elif defined(CA120) //Reliable params
 #define MAX_MOTOR_PHASE_CURRENT 300.0f
@@ -48,6 +51,8 @@
 #define DEFAULT_MOTOR_Ld 0.0000060f //Henries
 #define DEFAULT_MOTOR_Lq 0.0000120f//Henries
 #define DEFAULT_MOTOR_R 0.0060f //Ohms
+#define DEFAULT_MOTOR_PP 10 //Pole Pairs
+
 
 #elif defined(ALIEN_50KV_8080) //GUESSED, UPDATE
 #define MAX_MOTOR_PHASE_CURRENT 50.0f
@@ -56,6 +61,8 @@
 #define DEFAULT_MOTOR_Ld 0.000110f //Henries
 #define DEFAULT_MOTOR_Lq 0.000170f//Henries
 #define DEFAULT_MOTOR_R 0.070f //Ohms
+#define DEFAULT_MOTOR_PP 7 //Pole Pairs
+
 
 #elif defined(JENS_SERVO)
 
@@ -68,6 +75,7 @@
 #define DEFAULT_MOTOR_Ld 0.000087f //Henries
 #define DEFAULT_MOTOR_Lq 0.000099f//Henries
 #define DEFAULT_MOTOR_R 0.0080f //Ohms
+#define DEFAULT_MOTOR_PP 7 //Pole Pairs
 //This assumes a 6.5mohm QS165 and 1.5mohm of MOS and cable. With such low resistance, it becomes important
 
 #elif defined(QS138)
@@ -77,14 +85,18 @@
 #define DEFAULT_MOTOR_Ld 0.000080f //Henries
 #define DEFAULT_MOTOR_Lq 0.000130f//Henries
 #define DEFAULT_MOTOR_R 0.0530f //Ohms
+#define DEFAULT_MOTOR_PP 5 //Pole Pairs
+
 
 #elif defined(PROPDRIVE2830_1000KV) //Can't remember, guessing.
 #define MAX_MOTOR_PHASE_CURRENT 20.0f //
 #define DEFAULT_MOTOR_POWER 400.0f //Go on, change this to 20000...
-#define DEFAULT_FLUX_LINKAGE 0.000092f//Set this to the motor linkage in wB
+#define DEFAULT_FLUX_LINKAGE 0.000098f//Set this to the motor linkage in wB
 #define DEFAULT_MOTOR_Ld 0.000020f //Henries
 #define DEFAULT_MOTOR_Lq 0.000028f//Henries
-#define DEFAULT_MOTOR_R 0.030f //Ohms
+#define DEFAULT_MOTOR_R 0.062f //Ohms
+#define DEFAULT_MOTOR_PP 6 //Pole Pairs
+
 
 #elif defined(BR3536_1200KV)
 
@@ -97,6 +109,8 @@
 #define DEFAULT_MOTOR_Ld 0.000005f //Henries Could be anything, but setting it low means the current controller P term will be more stable/slower
 #define DEFAULT_MOTOR_Lq 0.000005f//Henries
 #define DEFAULT_MOTOR_R 0.0080f //Ohms Could be anything, but setting it lower means slower I term on the PID
+#define DEFAULT_MOTOR_PP 7 //Pole Pairs
+
 #endif
 
 #endif /* INC_MESC_MOTOR_DEFAULTS_H_ */

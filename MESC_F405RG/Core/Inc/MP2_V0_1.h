@@ -49,7 +49,7 @@
 #define USE_HFI
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 0.0f
-#define HFI_THRESHOLD 4.5f
+#define HFI_THRESHOLD 0.0f
 #define HFI45
 #define DEFAULT_HFI_TYPE HFI_TYPE_NONE
 //#define DEFAULT_HFI_TYPE HFI_TYPE_45

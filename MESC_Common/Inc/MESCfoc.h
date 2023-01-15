@@ -257,7 +257,8 @@ typedef struct {
   float Vq_injectionV;
   float special_injectionVd;
   float special_injectionVq;
-  float HFI_Threshold;
+  float HFI_toggle_voltage;
+  float HFI45_mod_didq;
   float HFI_Gain;
   float HFI_int_err;
   float HFI_accu;
@@ -268,6 +269,7 @@ typedef struct {
   uint32_t FLrun, VFLrun;
   float angle_error;
   float eHz;
+  float mechRPM;
   float Ldq_now[2];
   float Ldq_now_dboost[2];
   int d_polarity; //With this, we can swap the PLL polarity and therefore make it track Q instead of D. This is useful for detection
@@ -334,11 +336,13 @@ typedef struct{
 	TIM_HandleTypeDef *stimer; //Timer that services the slowloop
 	motor_state_e MotorState;
 	motor_sensor_mode_e MotorSensorMode;
+	motor_control_mode_e ControlMode;
 	HFI_type_e HFIType;
 	MESC_raw_typedef Raw;
 	MESC_Converted_typedef Conv;
 	MESC_offset_typedef offset;
 	MESCfoc_s FOC;
+	//MESCBLDC_s BLDC;
 	MOTORProfile m;
 	MESCmeas_s meas;
 	MESChall_s hall;
