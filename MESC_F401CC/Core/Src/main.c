@@ -135,15 +135,13 @@ int main(void)
 //  uart_init();
 
   //Set motor timer
-	motor1.mtimer = &htim1;
-	motor1.stimer = &htim2;
-	motor2.mtimer = &htim1;
-	motor2.stimer = &htim2;
+	mtr[0].mtimer = &htim1;
+	mtr[0].stimer = &htim2;
 
 
 //Initialise MESC
 motor_init(NULL);
-MESCInit(&motor1);
+MESCInit(&mtr[0]);
 
   /* USER CODE END 2 */
 
@@ -152,7 +150,7 @@ MESCInit(&motor1);
   while (1)
   {
 	//SimpleComsProcess(&com1);
-	detectHFI();
+	detectHFI(&mtr[0]);
 	HAL_Delay(0);
     /* USER CODE END WHILE */
 

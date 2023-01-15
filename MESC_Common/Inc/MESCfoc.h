@@ -38,6 +38,8 @@
 #ifndef MESC_FOC_H
 #define MESC_FOC_H
 
+
+#include <stdbool.h>
 #include "stm32fxxx_hal.h"
 #include "MESCmotor_state.h"
 #include "MESCmotor.h"
@@ -103,7 +105,7 @@
 #define CURRENT_BANDWIDTH 10000.0f
 #else
 #ifndef CURRENT_BANDWIDTH
-#define CURRENT_BANDWIDTH 10000.0f
+#define CURRENT_BANDWIDTH 1000.0f
 #endif
 #endif
 
@@ -242,6 +244,7 @@ typedef struct {
 
   float flux_a;
   float flux_b;
+  float flux_observed;
   uint16_t state[4];  // current state, last state, angle change occurred
   uint16_t hall_update;
   uint32_t IRQentry;
@@ -257,6 +260,10 @@ typedef struct {
   float HFI_Threshold;
   float HFI_Gain;
   float HFI_int_err;
+  float HFI_accu;
+  int32_t HFI_countdown;
+  uint32_t HFI_count;
+  uint32_t HFI_test_increment;
   int was_last_tracking;
   uint32_t FLrun, VFLrun;
   float angle_error;
@@ -267,9 +274,58 @@ typedef struct {
   int d_polarity; //With this, we can swap the PLL polarity and therefore make it track Q instead of D. This is useful for detection
 
   float IIR[2];
+  uint32_t cycles_fastloop;
+  uint32_t cycles_hyperloop;
 } MESCfoc_s;
 
 extern MESCfoc_s foc_vars;
+
+typedef struct {
+	//Measure resistance
+	float top_V;
+	float bottom_V;
+	float top_I;
+	float bottom_I;
+	float count_top;
+	float count_topq;
+	float count_bottom;
+	float count_bottomq;
+
+	float Vd_temp;
+	float Vq_temp;
+	float top_I_L;
+	float bottom_I_L;
+	float top_I_Lq;
+	float bottom_I_Lq;
+	int PWM_cycles;
+	HFI_type_e previous_HFI_type;
+
+	//getkV
+	int angle_delta;
+	float temp_flux;
+	float temp_FLA;
+	float temp_FLB;
+
+	float hfi_voltage;
+
+	float measure_current;
+	float measure_voltage;
+} MESCmeas_s;
+
+typedef struct {
+	float dir;
+	int current_hall_state;
+	uint16_t current_hall_angle;
+	int last_hall_state;
+	uint16_t last_hall_angle;
+	float ticks_since_last_observer_change;
+	float last_observer_period;
+	float one_on_last_observer_period;
+	float angular_velocity;
+	float angle_step;
+
+	int hall_error;
+} MESChall_s;
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////Main typedef for starting a motor instance////////////////////////
@@ -286,10 +342,12 @@ typedef struct{
 	MESC_offset_typedef offset;
 	MESCfoc_s FOC;
 	MOTORProfile m;
+	MESCmeas_s meas;
+	MESChall_s hall;
+	bool conf_is_valid;
 }MESC_motor_typedef;
 
-extern MESC_motor_typedef motor1;
-extern MESC_motor_typedef motor2;
+extern MESC_motor_typedef mtr[NUM_MOTORS];
 
 
 enum MESCADC
@@ -439,11 +497,13 @@ void writePWM(MESC_motor_typedef *_motor);  // Offset the PWM to voltage centred
 void generateBreak(MESC_motor_typedef *_motor);  // Software break that does not stop the PWM timer but
                        // disables the outputs, sum of phU,V,W_Break();
 void generateEnable(MESC_motor_typedef *_motor); // Opposite of generateBreak
+void generateBreakAll();	//Disables all drives
 
 
 void measureResistance(MESC_motor_typedef *_motor);
 void measureInductance(MESC_motor_typedef *_motor);
 void getkV(MESC_motor_typedef *_motor);
+float detectHFI(MESC_motor_typedef *_motor);
 
 void getHallTable(MESC_motor_typedef *_motor);
 void phU_Break(MESC_motor_typedef *_motor);   // Turn all phase U FETs off, Tristate the ouput - For BLDC
@@ -456,6 +516,7 @@ void phW_Enable(MESC_motor_typedef *_motor);
 
 void calculateGains(MESC_motor_typedef *_motor);
 void calculateVoltageGain(MESC_motor_typedef *_motor);
+void calculateFlux(MESC_motor_typedef *_motor);
 
 void doublePulseTest(MESC_motor_typedef *_motor);
 
