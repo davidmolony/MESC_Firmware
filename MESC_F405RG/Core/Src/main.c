@@ -222,7 +222,6 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  MotorControlType = MOTOR_CONTROL_TYPE_FOC;
   HAL_Delay(1000);
   //MotorState = MOTOR_STATE_RUN;
   HAL_Delay(1000);
