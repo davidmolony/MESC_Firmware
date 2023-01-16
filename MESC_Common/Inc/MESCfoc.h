@@ -53,6 +53,10 @@
 #define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
 #endif
 
+#ifndef SLOW_LOOP_FREQUENCY
+#define SLOW_LOOP_FREQUENCY 100 //Frequency of the slow loop (MIN: 16Hz!)
+#endif
+
 #ifndef DEADTIME_COMP_V
 #define DEADTIME_COMP_V 0 	//Arbitrary value for starting, needs determining through TEST_TYP_DEAD_TIME_IDENT.
 #endif						//Basically this is half the time between MOSoff and MOSon

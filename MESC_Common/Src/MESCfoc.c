@@ -165,7 +165,7 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	HAL_TIM_IC_Start(_motor->stimer, TIM_CHANNEL_2);
 	// Here we can auto set the prescaler to get the us input regardless of the main clock
 	__HAL_TIM_SET_PRESCALER(_motor->stimer, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
-	__HAL_TIM_SET_AUTORELOAD(_motor->stimer,10000); //Run slowloop at 100Hz
+	__HAL_TIM_SET_AUTORELOAD(_motor->stimer,1000000 / SLOW_LOOP_FREQUENCY); //Run slowloop at 100Hz
 	__HAL_TIM_ENABLE_IT(_motor->stimer, TIM_IT_UPDATE);
 
   InputInit();
@@ -2396,7 +2396,7 @@ void SlowHFI(MESC_motor_typedef *_motor){
 							_motor->FOC.HFI_Gain = 5000.0f/_motor->FOC.HFI45_mod_didq;
 							_motor->FOC.was_last_tracking = 0;
 						}else{
-							_motor->FOC.HFI_test_increment = 65536 * 20 / _motor->FOC.pwm_frequency;
+							_motor->FOC.HFI_test_increment = 65536 * SLOW_LOOP_FREQUENCY / _motor->FOC.pwm_frequency;
 							_motor->FOC.HFI_countdown++;
 						}
 					}else{
