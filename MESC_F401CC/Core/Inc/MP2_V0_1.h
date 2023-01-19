@@ -11,6 +11,7 @@
 #define MCMASTER_70KV_8080//QS165
 
 #define PWM_FREQUENCY 20000
+#define CUSTOM_DEADTIME 800 //ns
 
 #define SHUNT_POLARITY -1.0f
 

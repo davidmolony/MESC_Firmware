@@ -150,7 +150,6 @@ MESCInit(&mtr[0]);
   while (1)
   {
 	//SimpleComsProcess(&com1);
-	detectHFI(&mtr[0]);
 	HAL_Delay(0);
     /* USER CODE END WHILE */
 

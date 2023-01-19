@@ -12,6 +12,7 @@
 #define MCMASTER_70KV_8080
 
 #define PWM_FREQUENCY 20000
+#define CUSTOM_DADTIME 700 //ns
 
 #define SHUNT_POLARITY -1.0f
 

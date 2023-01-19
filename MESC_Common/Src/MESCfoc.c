@@ -142,7 +142,23 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
 	hw_init(_motor);  // Populate the resistances, gains etc of the PCB - edit within
 			  // this function if compiling for other PCBs
-
+//Reconfigure dead times
+//This is only useful up to 1500ns for 168MHz clock, 3us for an 84MHz clock
+#ifdef CUSTOM_DEADTIME
+  uint32_t tempDT;
+  uint32_t tmpbdtr = 0U;
+  tmpbdtr = mtr->mtimer->Instance->BDTR;
+  tempDT = (uint32_t)(((float)CUSTOM_DEADTIME * (float)HAL_RCC_GetHCLKFreq())/(float)1000000000.0f);
+  if(tempDT<128){
+  MODIFY_REG(tmpbdtr, TIM_BDTR_DTG, tempDT);
+  }else{
+	  uint32_t deadtime = CUSTOM_DEADTIME;
+	  deadtime = deadtime-(uint32_t)(127.0f*1000000000.0f/(float)HAL_RCC_GetHCLKFreq());
+	  tempDT = 0b10000000 + (uint32_t)(((float)deadtime * (float)HAL_RCC_GetHCLKFreq())/(float)2000000000.0f);
+	  MODIFY_REG(tmpbdtr, TIM_BDTR_DTG, tempDT);
+  }
+  mtr->mtimer->Instance->BDTR = tmpbdtr;
+#endif
 
 	// Start the PWM channels, reset the counter to zero each time to avoid
 	// triggering the ADC, which in turn triggers the ISR routine and wrecks the
