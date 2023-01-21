@@ -27,9 +27,20 @@ Dead time compensation and characterisation
 Field weakening and MTPA
 Fast fault shutdown
 Parameter (Rs, Ld, Lq, flux linkage)detection
-Operation up to ~100kHz PWM (200kHz V0V7 frequency) with F405 MCU, operation to about 40kHz with F401 MCU and about 35kHz with F303. Stable to <2.5kHz PWM frequency, though this is definitely not advised for most applications.
+Operation up to ~70kHz PWM (140kHz V0V7 frequency) with F405 MCU, and some options disabled (e.g. SPI encoder). Operation to about 40kHz with F401 MCU and about 35kHz with F303. Stable to <2.5kHz PWM frequency, though this is definitely not advised for most applications.
+Most hardware cannot cope with current measurements above about 60kHz, noise becomes prohibitive.
 Easy porting to any STM32 with a floating point unit and timer1
 Probably easily portable to any other MCU with FPU, 3 phase timer and a 1MHz+ ADC
+
+## Debugging in CubeIDE
+Almost all variables of interest can be found in the struct mtr[]
+mtr[] is an array of structs containing the FOC, the raw and converted ADC values, the states, the motor parameter...
+mtr[] can contain n motors. Adding this to the live expressions allows you to view everything about the setup.
+mtr[n]->mtimer points to the instance of the ST timer.
+mtr[n]->stimer points to the timer used for the slow loop.
+Mutliple motors can be accomodated, but need patching to the correct ADC readings, which need triggering byt the associated timer.
+Some variables are assumed to be the same for multiple motors e.g. current limits, voltage limits... 
+These can be found in struct g_hw_setup
 
 ## Porting to other MCUs
 Intention is that minimal things have to be done to port:
