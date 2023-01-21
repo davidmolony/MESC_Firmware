@@ -1652,7 +1652,7 @@ __NOP();
     #endif
     _motor->FOC.PWMmid = htim1.Instance->ARR * 0.5f;
 
-    _motor->FOC.ADC_duty_threshold = htim1.Instance->ARR * 0.85f;
+    _motor->FOC.ADC_duty_threshold = htim1.Instance->ARR * 0.90f;
 
 
     calculateFlux(_motor);
