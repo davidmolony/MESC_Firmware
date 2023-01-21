@@ -137,9 +137,6 @@ HAL_TIM_Base_Start(&htim7);
   motor.uncertainty = 1;
 
 
-  MotorControlType = MOTOR_CONTROL_TYPE_FOC;
-
-
   /* USER CODE END 2 */
 
   /* Infinite loop */

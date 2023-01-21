@@ -10,6 +10,7 @@
 //Pick a motor for default
 #define MCMASTER_70KV_8080//QS165//CA120//
 #define PWM_FREQUENCY 20000
+#define CUSTOM_DEADTIME 800 //ns, MAX 1500ns! implementation in MESCInit().
 
 #define SHUNT_POLARITY -1.0f
 
@@ -27,7 +28,7 @@
 #define MAX_IQ_REQUEST 70.0f
 
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
-//#define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
+#define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
 #define DEADTIME_COMP_V 10
 //#define MAX_MODULATION 1.05f //Use this with 5 sector modulation if you want extra speed
 //Inputs
@@ -39,7 +40,7 @@
 //#define USE_LR_OBSERVER
 
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
-//#define INTERPOLATE_V7_ANGLE
+#define INTERPOLATE_V7_ANGLE
 #define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_SENSORLESS
 //#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_HALL
 //#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_OPENLOOP

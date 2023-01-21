@@ -43,6 +43,7 @@
 #include "stm32fxxx_hal.h"
 #include "MESCmotor_state.h"
 #include "MESCmotor.h"
+#include "MESC_BLDC.h"
 
 
 #define FOC_PERIODS                (1)
@@ -116,6 +117,8 @@
 #ifndef ADC_OFFSET_DEFAULT
 #define ADC_OFFSET_DEFAULT 2048.0f
 #endif
+
+
 
 typedef struct {
 	int Iu;
@@ -332,6 +335,39 @@ typedef struct {
 	int hall_error;
 } MESChall_s;
 
+typedef struct{
+	uint16_t OL_periods;
+	uint16_t OL_countdown;
+	int  closed_loop;
+	int sector;
+	int direction;
+	float PWM_period;
+
+	float I_set;
+	float I_meas;
+	float V_meas;
+	float V_meas_sect[6];
+	float rising_int;
+	float falling_int;
+	float rising_int_st;
+	float falling_int_st;
+	float last_p_error;
+
+	float I_error;
+	float int_I_error;
+	float I_pgain;
+	float I_igain;
+
+	float com_flux;
+	float flux_integral;
+	float last_flux_integral;
+
+	float V_bldc;
+	float V_bldc_to_PWM;
+	uint16_t BLDC_PWM;
+
+}MESCBLDC_s;
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////Main typedef for starting a motor instance////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -341,12 +377,13 @@ typedef struct{
 	motor_state_e MotorState;
 	motor_sensor_mode_e MotorSensorMode;
 	motor_control_mode_e ControlMode;
+	motor_control_type_e MotorControlType;
 	HFI_type_e HFIType;
 	MESC_raw_typedef Raw;
 	MESC_Converted_typedef Conv;
 	MESC_offset_typedef offset;
 	MESCfoc_s FOC;
-	//MESCBLDC_s BLDC;
+	MESCBLDC_s BLDC;
 	MOTORProfile m;
 	MESCmeas_s meas;
 	MESChall_s hall;
@@ -543,5 +580,11 @@ void RunHFI(MESC_motor_typedef *_motor);
 void ToggleHFI(MESC_motor_typedef *_motor);
 void collectInputs(MESC_motor_typedef *_motor);
 void RunMTPA(MESC_motor_typedef *_motor);
+
+
+////BLDC
+void BLDCCommute(MESC_motor_typedef *_motor);
+void CalculateBLDCGains(MESC_motor_typedef *_motor);
+
 
 #endif

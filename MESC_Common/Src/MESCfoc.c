@@ -38,7 +38,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "MESCfoc.h"
 
-#include "MESCBLDC.h"
 #include "MESChw_setup.h"
 #include "MESCmotor_state.h"
 #include "MESCsin_lut.h"
@@ -110,7 +109,9 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	_motor->MotorState = MOTOR_STATE_INITIALISING;
 
 	//At this stage, we initialise the options
-    MotorControlType = MOTOR_CONTROL_TYPE_FOC;
+	_motor->MotorControlType = MOTOR_CONTROL_TYPE_FOC;
+	//_motor->MotorControlType = MOTOR_CONTROL_TYPE_BLDC;
+
 	_motor->MotorSensorMode = DEFAULT_SENSOR_MODE;
 	_motor->HFIType = DEFAULT_HFI_TYPE;
 
@@ -128,6 +129,9 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	_motor->hall.angle_step = 0;
 
 	_motor->hall.hall_error = 0;
+//Init the BLDC
+	_motor->BLDC.com_flux = _motor->m.flux_linkage*1.65f;//0.02f;
+	_motor->BLDC.direction = -1;
 
 	 mesc_init_1(_motor);
 
@@ -138,7 +142,23 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
 	hw_init(_motor);  // Populate the resistances, gains etc of the PCB - edit within
 			  // this function if compiling for other PCBs
-
+//Reconfigure dead times
+//This is only useful up to 1500ns for 168MHz clock, 3us for an 84MHz clock
+#ifdef CUSTOM_DEADTIME
+  uint32_t tempDT;
+  uint32_t tmpbdtr = 0U;
+  tmpbdtr = mtr->mtimer->Instance->BDTR;
+  tempDT = (uint32_t)(((float)CUSTOM_DEADTIME * (float)HAL_RCC_GetHCLKFreq())/(float)1000000000.0f);
+  if(tempDT<128){
+  MODIFY_REG(tmpbdtr, TIM_BDTR_DTG, tempDT);
+  }else{
+	  uint32_t deadtime = CUSTOM_DEADTIME;
+	  deadtime = deadtime-(uint32_t)(127.0f*1000000000.0f/(float)HAL_RCC_GetHCLKFreq());
+	  tempDT = 0b10000000 + (uint32_t)(((float)deadtime * (float)HAL_RCC_GetHCLKFreq())/(float)2000000000.0f);
+	  MODIFY_REG(tmpbdtr, TIM_BDTR_DTG, tempDT);
+  }
+  mtr->mtimer->Instance->BDTR = tmpbdtr;
+#endif
 
 	// Start the PWM channels, reset the counter to zero each time to avoid
 	// triggering the ADC, which in turn triggers the ISR routine and wrecks the
@@ -441,6 +461,12 @@ void fastLoop(MESC_motor_typedef *_motor) {
     	  //This means that current measurement can continue on low side and phase shunts, so over current protection remains active.
       }
     break;
+    case MOTOR_STATE_RUN_BLDC:
+    	getRawADCVph(_motor);
+    	ADCPhaseConversion(_motor);
+    	BLDCCommute(_motor);
+		__NOP();
+    	break;
 
     default:
       _motor->MotorState = MOTOR_STATE_ERROR;
@@ -1626,7 +1652,7 @@ __NOP();
     #endif
     _motor->FOC.PWMmid = htim1.Instance->ARR * 0.5f;
 
-    _motor->FOC.ADC_duty_threshold = htim1.Instance->ARR * 0.85f;
+    _motor->FOC.ADC_duty_threshold = htim1.Instance->ARR * 0.90f;
 
 
     calculateFlux(_motor);
@@ -1804,7 +1830,12 @@ float  Square(float x){ return((x)*(x));}
 			_motor->FOC.was_last_tracking = 1;
 			if(fabsf(_motor->FOC.Idq_req.q)>0.2f){
 				#ifdef HAS_PHASE_SENSORS
+				if(_motor->MotorControlType == MOTOR_CONTROL_TYPE_FOC){
 				_motor->MotorState = MOTOR_STATE_RUN;
+				}else if(_motor->MotorControlType == MOTOR_CONTROL_TYPE_BLDC){
+					_motor->MotorState = MOTOR_STATE_RUN_BLDC;
+
+				}
 				#else
 				_motor->MotorState = MOTOR_STATE_RECOVERING;
 				break;
@@ -1833,6 +1864,9 @@ float  Square(float x){ return((x)*(x));}
 			}
 			generateEnable(_motor);
 			SlowHFI(_motor);
+			break;
+		case MOTOR_STATE_RUN_BLDC:
+			_motor->BLDC.I_set = _motor->FOC.Idq_req.q;
 			break;
 
 		case MOTOR_STATE_ERROR:
@@ -2646,4 +2680,192 @@ void ThrottleTemperature(MESC_motor_typedef *_motor){
     	}
     }
 }
+
+
+void BLDCCommute(MESC_motor_typedef *_motor){
+
+//Collect the variables required
+	switch (_motor->BLDC.sector){
+		case 0:
+		_motor->BLDC.I_meas = _motor->Conv.Iu;
+//		_motor->BLDC.V_meas = _motor->Conv.Vv;
+//		_motor->BLDC.rising_int = _motor->BLDC.rising_int + _motor->BLDC.V_meas*_motor->BLDC.PWM_period;
+		break;
+
+		case 1:
+			_motor->BLDC.I_meas = _motor->Conv.Iu;
+//			_motor->BLDC.V_meas = _motor->Conv.Vw;
+//			_motor->BLDC.falling_int = _motor->BLDC.rising_int + _motor->BLDC.V_meas*_motor->BLDC.PWM_period;
+		break;
+
+		case 2:
+			_motor->BLDC.I_meas = _motor->Conv.Iw;
+//			_motor->BLDC.V_meas = _motor->Conv.Vu;
+//			_motor->BLDC.rising_int = _motor->BLDC.rising_int + _motor->BLDC.V_meas*_motor->BLDC.PWM_period;
+		break;
+
+		case 3:
+			_motor->BLDC.I_meas = _motor->Conv.Iw;
+//			_motor->BLDC.V_meas = _motor->Conv.Vv;
+//			_motor->BLDC.falling_int = _motor->BLDC.rising_int + _motor->BLDC.V_meas*_motor->BLDC.PWM_period;
+		break;
+
+		case 4:
+			_motor->BLDC.I_meas = _motor->Conv.Iv;
+//			_motor->BLDC.V_meas = _motor->Conv.Vw;
+//			_motor->BLDC.rising_int = _motor->BLDC.rising_int + _motor->BLDC.V_meas*_motor->BLDC.PWM_period;
+		break;
+
+		case 5:
+			_motor->BLDC.I_meas = _motor->Conv.Iv;
+//			_motor->BLDC.V_meas = _motor->Conv.Vu;
+//			_motor->BLDC.falling_int = _motor->BLDC.rising_int + _motor->BLDC.V_meas*_motor->BLDC.PWM_period;
+		break;
+	}
+//	//Reduce the rising and falling integrals
+//	_motor->BLDC.rising_int = _motor->BLDC.rising_int * 0.999f;
+//	_motor->BLDC.falling_int = _motor->BLDC.rising_int * 0.999f;
+
+	//Invert the current since we are measuring the current leaving the motor but controlling the voltage where current is going in
+	_motor->BLDC.I_meas = -_motor->BLDC.I_meas;
+
+//////Run PID
+	_motor->BLDC.I_pgain = _motor->FOC.Iq_pgain;//Borrow from FOC for now
+	_motor->BLDC.I_igain = _motor->FOC.Iq_igain;//Borrow from FOC for now
+	_motor->BLDC.PWM_period = _motor->FOC.pwm_period;//Borrow from FOC for now
+
+	//Calculate the error
+	_motor->BLDC.I_error = (_motor->BLDC.I_set-_motor->BLDC.I_meas)*_motor->BLDC.I_pgain;
+	_motor->BLDC.int_I_error = //Calculate the integral error
+			_motor->BLDC.int_I_error + _motor->BLDC.I_error * _motor->BLDC.I_igain * _motor->BLDC.PWM_period;
+
+	_motor->BLDC.V_bldc = _motor->BLDC.int_I_error + _motor->BLDC.I_error;
+	//Bounding
+	if(_motor->BLDC.V_bldc > 0.95f * _motor->Conv.Vbus){
+		_motor->BLDC.V_bldc = 0.95f * _motor->Conv.Vbus;
+		if(_motor->BLDC.int_I_error > _motor->Conv.Vbus){
+			_motor->BLDC.int_I_error = _motor->Conv.Vbus;
+			_motor->BLDC.I_error = 0.05f*_motor->BLDC.int_I_error;
+		}
+	}
+	//Determine the conversion from volts to PWM
+	_motor->BLDC.V_bldc_to_PWM = _motor->mtimer->Instance->ARR/_motor->Conv.Vbus;
+	//Convert to PWM value
+	_motor->BLDC.BLDC_PWM = _motor->BLDC.V_bldc*_motor->BLDC.V_bldc_to_PWM;
+
+
+//////Integrate and determine if commutation ready, VBEMF = Vbldc-2*I*Rphase
+	_motor->BLDC.flux_integral = _motor->BLDC.flux_integral + (_motor->BLDC.V_bldc - _motor->BLDC.I_meas * 2.0f*_motor->m.R)* _motor->BLDC.PWM_period; //Volt seconds
+
+	//FUDGED
+	_motor->BLDC.closed_loop = 1;
+	if(_motor->BLDC.closed_loop){
+		//If the flux reaches a limit  then commute
+		if(_motor->BLDC.flux_integral<0.0f){_motor->BLDC.flux_integral = 0.0f;}
+		if(_motor->BLDC.flux_integral>_motor->BLDC.com_flux){
+			_motor->BLDC.V_meas_sect[_motor->BLDC.sector] = _motor->BLDC.V_meas;
+
+			_motor->BLDC.sector = _motor->BLDC.sector + _motor->BLDC.direction;
+			_motor->BLDC.last_flux_integral = _motor->BLDC.flux_integral;
+			_motor->BLDC.flux_integral = 0.0f; //Reset the integrator
+			_motor->BLDC.last_p_error = _motor->BLDC.I_error;
+			//Run a vague tuning mechanism, needs a lot of work.
+			if((_motor->BLDC.int_I_error>_motor->Conv.Vbus*0.4f) && (_motor->BLDC.int_I_error<_motor->Conv.Vbus*0.9f)){
+				if(_motor->BLDC.I_error>0.05f*_motor->BLDC.int_I_error){
+					_motor->BLDC.com_flux = _motor->BLDC.com_flux*1.005f;
+				}
+				if(_motor->BLDC.I_error<0.05f*_motor->BLDC.int_I_error){
+					_motor->BLDC.com_flux = _motor->BLDC.com_flux*0.99f;
+				}
+			}
+
+//			_motor->BLDC.rising_int_st =_motor->BLDC.rising_int;
+//			_motor->BLDC.rising_int = 0.0f;
+//			_motor->BLDC.falling_int_st = _motor->BLDC.falling_int;
+//			_motor->BLDC.falling_int = 0.0f;
+//			if(_motor->BLDC.falling_int_st > _motor->BLDC.falling_int_st){
+//				_motor->BLDC.com_flux = _motor->BLDC.com_flux * 1.01f;
+//			}else{
+//				_motor->BLDC.com_flux = _motor->BLDC.com_flux * 0.99f;
+//			}
+//
+//			if(_motor->BLDC.com_flux<0.018f){_motor->BLDC.com_flux=0.018f;}
+//			if(_motor->BLDC.com_flux>0.022f){_motor->BLDC.com_flux=0.022f;}
+
+		}
+	}else{
+		_motor->BLDC.OL_countdown--;
+		if(_motor->BLDC.OL_countdown == 0){
+			_motor->BLDC.OL_countdown =_motor->BLDC.OL_periods;
+			_motor->BLDC.sector++;
+			_motor->BLDC.last_flux_integral = _motor->BLDC.flux_integral;
+			_motor->BLDC.flux_integral = 0.0f; //Reset the integrator
+		}
+	}
+
+//////Wrap the sector
+	if(_motor->BLDC.sector>5){
+		_motor->BLDC.sector = 0;
+	}else if(_motor->BLDC.sector<0){
+		_motor->BLDC.sector = 5;
+	}
+
+//////Write PWMs
+	switch (_motor->BLDC.sector){
+		case 0:
+			phV_Break(_motor);
+			phU_Enable(_motor);
+			phW_Enable(_motor);
+			_motor->mtimer->Instance->CCR1 = 0;
+			_motor->mtimer->Instance->CCR3 = _motor->BLDC.BLDC_PWM;
+		break;
+		case 1:
+			phW_Break(_motor);
+			phU_Enable(_motor);
+			phV_Enable(_motor);
+			_motor->mtimer->Instance->CCR1 = 0;
+			_motor->mtimer->Instance->CCR2 = _motor->BLDC.BLDC_PWM;
+		break;
+		case 2:
+			phU_Break(_motor);
+			phV_Enable(_motor);
+			phW_Enable(_motor);
+			_motor->mtimer->Instance->CCR3 = 0;
+			_motor->mtimer->Instance->CCR2 = _motor->BLDC.BLDC_PWM;
+		break;
+		case 3:
+			phV_Break(_motor);
+			phU_Enable(_motor);
+			phW_Enable(_motor);
+			_motor->mtimer->Instance->CCR3 = 0;
+			_motor->mtimer->Instance->CCR1 = _motor->BLDC.BLDC_PWM;
+		break;
+		case 4:
+			phW_Break(_motor);
+			phU_Enable(_motor);
+			phV_Enable(_motor);
+			_motor->mtimer->Instance->CCR2 = 0;
+			_motor->mtimer->Instance->CCR1 = _motor->BLDC.BLDC_PWM;
+		break;
+		case 5:
+			phU_Break(_motor);
+			phV_Enable(_motor);
+			phW_Enable(_motor);
+			_motor->mtimer->Instance->CCR2 = 0;
+			_motor->mtimer->Instance->CCR3 = _motor->BLDC.BLDC_PWM;
+		break;
+		default:
+			//Reset to 0, something went wrong...
+			_motor->BLDC.sector = 0;
+		break;
+
+	}
+}
+
+void CalculateBLDCGains(MESC_motor_typedef *_motor){
+
+}
+
+
+
   // clang-format on
