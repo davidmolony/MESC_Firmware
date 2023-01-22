@@ -11,6 +11,7 @@
 #define MCMASTER_70KV_8080
 
 #define PWM_FREQUENCY 25000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
+#define CUSTOM_DEADTIME 50 //ns
 
 #define SHUNT_POLARITY -1.0f
 
@@ -67,7 +68,11 @@
 
 //#define USE_SALIENT_OBSERVER //If not defined, it assumes that Ld and Lq are equal, which is fine usually.
 
-
-
+#define FASTLED GPIOB
+#define FASTLEDIO GPIO_PIN_5
+#define FASTLEDIONO 5
+#define SLOWLED GPIOB
+#define SLOWLEDIO GPIO_PIN_7
+#define SLOWLEDIONO 7
 
 #endif /* INC_MX_FOC_GAN_H_ */

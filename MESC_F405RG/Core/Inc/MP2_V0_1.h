@@ -23,7 +23,6 @@
 #define R_VBUS_BOTTOM 3300.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 100000.0f
 
-
 #define MAX_ID_REQUEST 2.0f
 #define MAX_IQ_REQUEST 70.0f
 
@@ -66,5 +65,12 @@
 #define POLE_ANGLE (65536/POLE_PAIRS)
 
 //#define USE_SALIENT_OBSERVER //If not defined, it assumes that Ld and Lq are equal, which is fine usually.
+
+#define FASTLED GPIOC
+#define FASTLEDIO GPIO_PIN_12
+#define FASTLEDIONO 12
+#define SLOWLED GPIOC
+#define SLOWLEDIO GPIO_PIN_9
+#define SLOWLEDIONO 9
 
 #endif /* INC_MP2_V0_1_H_ */

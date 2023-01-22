@@ -291,8 +291,6 @@ void TIM3_IRQHandler(void)
 	__HAL_TIM_CLEAR_IT(&htim3, TIM_IT_CC1);
 	__HAL_TIM_CLEAR_IT(&htim3, TIM_IT_CC2);
 	__HAL_TIM_CLEAR_IT(&htim3, TIM_IT_UPDATE);
-	 // slowLoop(&htim3);
-
   /* USER CODE END TIM3_IRQn 0 */
   /* USER CODE BEGIN TIM3_IRQn 1 */
 

@@ -10,7 +10,7 @@
 //Pick a motor for default
 #define MCMASTER_70KV_8080
 #define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
-#define //CUSTOM_DEADTIME 600 //ns
+#define CUSTOM_DEADTIME 600 //ns
 
 #define SHUNT_POLARITY -1.0
 
@@ -45,7 +45,7 @@
 //#define USE_PROFILE
 
 //#define USE_FIELD_WEAKENING
-//#define USE_FIELD_WEAKENINGv2
+#define USE_FIELD_WEAKENINGv2
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
 

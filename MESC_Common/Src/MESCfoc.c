@@ -95,6 +95,15 @@ void MESCInit(MESC_motor_typedef *_motor) {
 #else
 	DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM1_STOP;
 #endif
+#ifdef FASTLED
+	FASTLED->MODER |= 0x1<<(FASTLEDIONO*2);
+	FASTLED->MODER &= ~(0x2<<(FASTLEDIONO*2));
+#endif
+#ifdef SLOWLED
+	SLOWLED->MODER |= 0x1<<(SLOWLEDIONO*2);
+	SLOWLED->MODER &= ~(0x2<<(SLOWLEDIONO*2));
+#endif
+
 	_motor->MotorState = MOTOR_STATE_IDLE;
 
 	//enable cycle counter
@@ -176,15 +185,14 @@ void MESCInit(MESC_motor_typedef *_motor) {
   _motor->FOC.enc_offset = ENCODER_E_OFFSET;
 #endif
 
-	//Set up the input capture for throttle
-	HAL_TIM_IC_Start(_motor->stimer, TIM_CHANNEL_1);
-	HAL_TIM_IC_Start(_motor->stimer, TIM_CHANNEL_2);
+  	  //Start the slowloop timer
+  	  HAL_TIM_Base_Start(_motor->stimer);
 	// Here we can auto set the prescaler to get the us input regardless of the main clock
-	__HAL_TIM_SET_PRESCALER(_motor->stimer, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
-	__HAL_TIM_SET_AUTORELOAD(_motor->stimer,1000000 / SLOW_LOOP_FREQUENCY); //Run slowloop at 100Hz
-	__HAL_TIM_ENABLE_IT(_motor->stimer, TIM_IT_UPDATE);
+	  __HAL_TIM_SET_PRESCALER(_motor->stimer, ((HAL_RCC_GetHCLKFreq())/ 1000000 - 1));
+	  __HAL_TIM_SET_AUTORELOAD(_motor->stimer,(1000000/SLOWTIM_SCALER) / SLOW_LOOP_FREQUENCY); //Run slowloop at 100Hz
+	  __HAL_TIM_ENABLE_IT(_motor->stimer, TIM_IT_UPDATE);
 
-  InputInit();
+	  InputInit();
 
   	  //htim1.Instance->BDTR |=TIM_BDTR_MOE;
 	  // initialising the comparators triggers the break state,
@@ -242,6 +250,10 @@ void InputInit(){
 	input_vars.Idq_req_ADC1.q =0;
 	input_vars.Idq_req_ADC2.q =0;
 
+	//Set up the input capture for throttle
+	//	HAL_TIM_IC_Start(_motor->stimer? RCTimer?, TIM_CHANNEL_1);//Need to plumb in the RCPWM again
+	//	HAL_TIM_IC_Start(_motor->stimer, TIM_CHANNEL_2);//Need to plumb in the RCPWM again
+
 }
 void initialiseInverter(MESC_motor_typedef *_motor){
 static int Iuoff, Ivoff, Iwoff;
@@ -272,20 +284,20 @@ static int Iuoff, Ivoff, Iwoff;
 // for MESC to run Ensure that it is followed by the clear timer update
 // interrupt
 void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor) {
-  uint32_t cycles = CPU_CYCLES;
-  if (_motor->mtimer->Instance->CNT > 512) {
-    //_motor->FOC.IRQentry = debugtim.Instance->CNT;
-    fastLoop(_motor);
-    //_motor->FOC.IRQexit = debugtim.Instance->CNT - _motor->FOC.IRQentry;
-    //_motor->FOC.FLrun++;
-    _motor->FOC.cycles_fastloop = CPU_CYCLES - cycles;
-  } else {
-    //_motor->FOC.IRQentry = debugtim.Instance->CNT;
-    hyperLoop(_motor);
-    //_motor->FOC.IRQexit = debugtim.Instance->CNT - _motor->FOC.IRQentry;
-    //_motor->FOC.VFLrun++;
-    _motor->FOC.cycles_hyperloop = CPU_CYCLES - cycles;
-  }
+#ifdef FASTLED
+	FASTLED->BSRR = FASTLEDIO;
+#endif
+	uint32_t cycles = CPU_CYCLES;
+	if (_motor->mtimer->Instance->CNT > 512) {
+		fastLoop(_motor);
+		_motor->FOC.cycles_fastloop = CPU_CYCLES - cycles;
+	} else {
+		hyperLoop(_motor);
+		_motor->FOC.cycles_hyperloop = CPU_CYCLES - cycles;
+	}
+#ifdef FASTLED
+	FASTLED->BSRR = FASTLEDIO<<16U;
+#endif
 }
 
 // The fastloop runs at PWM timer counter top, which is when the new ADC current
@@ -1774,23 +1786,26 @@ __NOP();
     }
   }
   void MESC_Slow_IRQ_handler(MESC_motor_typedef *_motor){
-
-
-	  if(_motor->stimer->Instance->SR & TIM_FLAG_CC2){
-		  input_vars.IC_duration = _motor->stimer->Instance->CCR1;// HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_1);
-		  input_vars.IC_pulse = _motor->stimer->Instance->CCR2;//HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_2);
-		  input_vars.pulse_recieved = 1;
-
-	  }else{
-		  input_vars.IC_duration = 50000;
-		  input_vars.IC_pulse = 0;
-		  input_vars.pulse_recieved = 0;
-
-	  }
-
-	    if(_motor->stimer->Instance->SR & TIM_FLAG_UPDATE){
-	    		      slowLoop(_motor);
-	    }
+#ifdef SLOWLED
+	  SLOWLED->BSRR = SLOWLEDIO;
+#endif
+//	if(_motor->stimer->Instance->SR & TIM_FLAG_CC2){
+//	  input_vars.IC_duration = _motor->stimer->Instance->CCR1;// HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_1);
+//	  input_vars.IC_pulse = _motor->stimer->Instance->CCR2;//HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_2);
+//	  input_vars.pulse_recieved = 1;
+//
+//	}else{
+//	  input_vars.IC_duration = 50000;
+//	  input_vars.IC_pulse = 0;
+//	  input_vars.pulse_recieved = 0;
+//
+//	}
+//	if(_motor->stimer->Instance->SR & TIM_FLAG_UPDATE){
+				  slowLoop(_motor);
+//	}
+#ifdef SLOWLED
+		SLOWLED->BSRR = SLOWLEDIO<<16U;
+#endif
   }
   extern uint32_t ADC_buffer[6];
 

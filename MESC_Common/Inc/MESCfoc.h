@@ -56,6 +56,9 @@
 #ifndef SLOW_LOOP_FREQUENCY
 #define SLOW_LOOP_FREQUENCY 100 //Frequency of the slow loop (MIN: 16Hz!)
 #endif
+#ifndef SLOWTIM_SCALER
+#define SLOWTIM_SCALER 1 //There is an annoying /2 on the htim2 and other random timers that is present in the F405 but not the F401 and some others. Unclear where to get this from HAL library.
+#endif
 
 #ifndef DEADTIME_COMP_V
 #define DEADTIME_COMP_V 0 	//Arbitrary value for starting, needs determining through TEST_TYP_DEAD_TIME_IDENT.
