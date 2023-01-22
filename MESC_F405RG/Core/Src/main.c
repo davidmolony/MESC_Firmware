@@ -103,6 +103,7 @@ static void MX_I2C2_Init(void);
 /* USER CODE BEGIN 0 */
 extern uint8_t b_read_flash;
 extern uint8_t b_write_flash;
+volatile uint32_t swvcounter;
 /* USER CODE END 0 */
 
 /**
@@ -148,11 +149,13 @@ int main(void)
   /* USER CODE BEGIN 2 */
   //MX_I2C2_Init();
 
+#ifdef USE_ENCODER
   HAL_SPI_Init(&hspi3);
+#endif
 
   HAL_UART_Init(&huart3);
   SimpleComsInit(&huart3, &com1);
-HAL_TIM_Base_Start(&htim7);
+  HAL_TIM_Base_Start(&htim7);
   /*
   Starting System Initialisation
   */
@@ -206,10 +209,10 @@ HAL_TIM_Base_Start(&htim7);
   */
 
   //Set motor timer
-	motor1.mtimer = &htim1;
-	motor1.stimer = &htim2;
+  mtr[0].mtimer = &htim1;
+  mtr[0].stimer = &htim2;
 
-  MESCInit(&motor1);
+  MESCInit(&mtr[0]);
 
   // MESC_Init();
 
@@ -219,7 +222,6 @@ HAL_TIM_Base_Start(&htim7);
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  MotorControlType = MOTOR_CONTROL_TYPE_FOC;
   HAL_Delay(1000);
   //MotorState = MOTOR_STATE_RUN;
   HAL_Delay(1000);
@@ -237,9 +239,8 @@ HAL_TIM_Base_Start(&htim7);
 
   while (1) {
 	  SimpleComsProcess(&com1);
-
-detectHFI();
-
+	  //detectHFI(&mtr[0]);
+	  HAL_Delay(0);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

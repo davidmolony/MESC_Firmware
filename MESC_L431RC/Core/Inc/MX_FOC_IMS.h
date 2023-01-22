@@ -12,6 +12,7 @@
 #define MCMASTER_70KV_8080
 
 #define PWM_FREQUENCY 20000
+#define CUSTOM_DEADTIME 700 //ns
 
 #define SHUNT_POLARITY -1.0f
 
@@ -47,7 +48,7 @@
 #define USE_HFI
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 0.0f
-#define HFI_THRESHOLD 2.5f
+#define HFI_THRESHOLD 4.0f
 #define HFI45
 #define DEFAULT_HFI_TYPE HFI_TYPE_NONE
 //#define DEFAULT_HFI_TYPE HFI_TYPE_45
@@ -63,7 +64,12 @@
 #define POLE_ANGLE (65536/POLE_PAIRS)
 
 //#define USE_SALIENT_OBSERVER //If not defined, it assumes that Ld and Lq are equal, which is fine usually.
-
+#define FASTLED GPIOB
+#define FASTLEDIO GPIO_PIN_5
+#define FASTLEDIONO 5
+#define SLOWLED GPIOB
+#define SLOWLEDIO GPIO_PIN_7
+#define SLOWLEDIONO 7
 //#define LOGGING
 
 #endif /* INC_MX_FOC_IMS_H_ */

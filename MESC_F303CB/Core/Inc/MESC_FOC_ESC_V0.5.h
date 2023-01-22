@@ -10,11 +10,12 @@
 //Pick a motor for default
 #define MCMASTER_70KV_8080
 #define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
+#define CUSTOM_DEADTIME 600 //ns
 
 #define SHUNT_POLARITY -1.0
 
 #define ABS_MAX_PHASE_CURRENT 100.0f
-#define ABS_MAX_BUS_VOLTAGE 25.0f
+#define ABS_MAX_BUS_VOLTAGE 45.0f
 #define ABS_MIN_BUS_VOLTAGE 12.0f
 #define R_SHUNT 0.0005f
 //ToDo need to define using a discrete opamp with resistors to set gain vs using one with a specified gain
@@ -44,7 +45,7 @@
 //#define USE_PROFILE
 
 //#define USE_FIELD_WEAKENING
-//#define USE_FIELD_WEAKENINGv2
+#define USE_FIELD_WEAKENINGv2
 #define FIELD_WEAKENING_CURRENT 10.0f
 #define FIELD_WEAKENING_THRESHOLD 0.8f
 

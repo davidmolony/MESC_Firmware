@@ -226,6 +226,11 @@ ProfileStatus profile_commit( void );
 
 bool profile_get_modified( void );
 
+#ifdef USE_TTERM
+#include "TTerm/Core/include/TTerm.h"
+uint8_t profile_cli_info(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+#endif
+
 #define PROFILE_DEFAULT NULL // Generic symbol to indicate loading of default profile
 
 #endif

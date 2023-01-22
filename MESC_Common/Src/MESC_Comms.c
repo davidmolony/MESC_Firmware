@@ -63,16 +63,16 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
       // Set the current setpoint here
       if (1) {  // Current control, ToDo convert to Enum
         if (ICVals[1] > 1600) {
-          BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 5.0;
+          BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 5.0f;
           foc_vars.Idq_req.d = 0;
-          foc_vars.Idq_req.q = ((float)ICVals[1] - 1600) / 5.0;
+          foc_vars.Idq_req.q = ((float)ICVals[1] - 1600) / 5.0f;
         }
         // Crude hack, which gets current scaled to +/-80A
         // based on 1000-2000us PWM in
         else if (ICVals[1] < 1400) {
-          BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 5.0;
+          BLDCVars.ReqCurrent = ((float)ICVals[1] - 1600) / 5.0f;
           foc_vars.Idq_req.d = 0;
-          foc_vars.Idq_req.q = ((float)ICVals[1] - 1400) / 5.0;
+          foc_vars.Idq_req.q = ((float)ICVals[1] - 1400) / 5.0f;
         }
         // Crude hack, which gets current scaled to +/-80A
         // based on 1000-2000us PWM in

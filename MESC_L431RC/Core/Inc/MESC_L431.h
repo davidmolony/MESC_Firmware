@@ -6,6 +6,8 @@
 
 #define HAS_PHASE_SENSORS //This is not actually true. Really needs to have phase sensors... Leaving this in because it enables tracking and PWM disabling for debug.
 
+#define NUM_MOTORS 1
+
 //#define MISSING_UCURRSENSOR //You can run two current sensors ONLY if they are phase sensors.
 //#define MISSING_VCURRSENSOR //Running this with low side sensors may result in fire.
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips

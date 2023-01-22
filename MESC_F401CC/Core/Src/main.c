@@ -25,6 +25,8 @@
 #include "MESCmotor.h"
 
 #include "MESCuart.h"
+#include "Simple_coms.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +59,9 @@ UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
+volatile uint32_t swvcounter;
+COMS_data_t com1;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -130,28 +135,13 @@ int main(void)
 //  uart_init();
 
   //Set motor timer
-	motor1.mtimer = &htim1;
-	motor1.stimer = &htim2;
-	motor2.mtimer = &htim1;
-	motor2.stimer = &htim2;
+	mtr[0].mtimer = &htim1;
+	mtr[0].stimer = &htim2;
 
 
 //Initialise MESC
-MESCInit(&motor1);
 motor_init(NULL);
-motor.Rphase = motor_profile->R;
-motor.Lphase = motor_profile->L_D;
-motor.Lqphase = motor_profile->L_Q;
-motor.motor_flux = motor_profile->flux_linkage;
-//motor_profile->Pmax = 50.0f;
-motor.uncertainty = 1;
-
-HAL_TIM_PWM_Start_IT(&htim2, TIM_CHANNEL_1);
-
-calculateGains(&motor1);
-calculateVoltageGain(&motor1);
-MotorControlType = MOTOR_CONTROL_TYPE_FOC;
-
+MESCInit(&mtr[0]);
 
   /* USER CODE END 2 */
 
@@ -159,8 +149,8 @@ MotorControlType = MOTOR_CONTROL_TYPE_FOC;
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  //tle5012();
-	  HAL_Delay(10);
+	//SimpleComsProcess(&com1);
+	HAL_Delay(0);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

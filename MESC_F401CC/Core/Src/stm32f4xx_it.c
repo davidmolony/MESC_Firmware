@@ -75,7 +75,7 @@ extern UART_HandleTypeDef huart1;
 void NMI_Handler(void)
 {
   /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
-  generateBreak(&motor1);
+  generateBreakAll();
 
   /* USER CODE END NonMaskableInt_IRQn 0 */
   /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
@@ -91,7 +91,7 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-  generateBreak(&motor1);
+	generateBreakAll();
 
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
@@ -107,7 +107,7 @@ void HardFault_Handler(void)
 void MemManage_Handler(void)
 {
   /* USER CODE BEGIN MemoryManagement_IRQn 0 */
-  generateBreak(&motor1);
+	generateBreakAll();
 
   /* USER CODE END MemoryManagement_IRQn 0 */
   while (1)
@@ -123,7 +123,7 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
   /* USER CODE BEGIN BusFault_IRQn 0 */
-  generateBreak(&motor1);
+	generateBreakAll();
 
   /* USER CODE END BusFault_IRQn 0 */
   while (1)
@@ -139,7 +139,7 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
   /* USER CODE BEGIN UsageFault_IRQn 0 */
-  generateBreak(&motor1);
+	generateBreakAll();
 
   /* USER CODE END UsageFault_IRQn 0 */
   while (1)
@@ -217,10 +217,10 @@ void ADC_IRQHandler(void)
   /* USER CODE BEGIN ADC_IRQn 0 */
 	//Implement break if we get here
 	if(__HAL_ADC_GET_FLAG(&hadc1,ADC_FLAG_AWD)){
-		handleError(&motor1, ERROR_ADC_OUT_OF_RANGE_IA);
-		handleError(&motor1, ERROR_ADC_OUT_OF_RANGE_IB);
-		handleError(&motor1, ERROR_ADC_OUT_OF_RANGE_IC);
-		handleError(&motor1, ERROR_ADC_OUT_OF_RANGE_VBUS);
+		handleError(&mtr[0], ERROR_ADC_OUT_OF_RANGE_IA);
+		handleError(&mtr[0], ERROR_ADC_OUT_OF_RANGE_IB);
+		handleError(&mtr[0], ERROR_ADC_OUT_OF_RANGE_IC);
+		handleError(&mtr[0], ERROR_ADC_OUT_OF_RANGE_VBUS);
 	}
 	__HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_AWD));
     //HAL_ADC_IRQHandler(&hadc1);
@@ -240,10 +240,9 @@ int counterhtim1;
 void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
-	counterhtim1++;
   /* USER CODE END TIM1_UP_TIM10_IRQn 0 */
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 1 */
-	MESC_PWM_IRQ_handler(&motor1);
+	MESC_PWM_IRQ_handler(&mtr[0]);
 	  __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
 
   /* USER CODE END TIM1_UP_TIM10_IRQn 1 */
@@ -257,8 +256,7 @@ int counterhtim2;
 void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
-	counterhtim2++;
-	MESC_Slow_IRQ_handler(&motor1);
+	MESC_Slow_IRQ_handler(&mtr[0]);
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_CC1);
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_CC2);
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);

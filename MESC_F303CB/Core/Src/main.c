@@ -213,31 +213,20 @@ int main(void)
     // Initialise user Interface
     ui_init( PROFILE_DEFAULT );
 
-    static uint8_t const pole_pairs = 6;
-//    speed_register_vars( motor1.FOC.eHz, &pole_pairs );
+    //speed_register_vars( &motor1.FOC.eHz, &motor1.m.pole_pairs );
     /*
     Finished System Initialisation
     */
+#else
+	motor_init(NULL);
 #endif
-    motor.Rphase = motor_profile->R;
-    motor.Lphase = motor_profile->L_D;
-    motor.Lqphase = motor_profile->L_Q;
 
-    motor.motor_flux = motor_profile->flux_linkage;
-    motor.uncertainty = 1;
     // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
 
-    //Set up the input capture for throttle
-    HAL_TIM_IC_Start(&htim3, TIM_CHANNEL_1);
-    HAL_TIM_IC_Start(&htim3, TIM_CHANNEL_2);
-    __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
-    // Here we can auto set the prescaler to get the us input regardless of the main clock
-    __HAL_TIM_SET_PRESCALER(&htim3, (HAL_RCC_GetHCLKFreq() / 1000000 - 1));
-
     //Initialise MESC
-	motor1.mtimer = &htim1;
-	motor1.stimer = &htim3;
-    MESCInit(&motor1);
+	mtr[0].mtimer = &htim1;
+	mtr[0].stimer = &htim3;
+    MESCInit(&mtr[0]);
 
     char message[20];
     int length = sprintf( message, "%s", "startup!!\r\n" );
@@ -250,44 +239,7 @@ int main(void)
     uint32_t i = 0;
     while (1)
     {
-        // HAL_Delay(100);
-        HAL_Delay(1000);
-        /* flash management
-         * 1. Ensure power to motor is off.
-         * 2. Write data to flash.
-         * 3. Restore motor power.
-         */
-#if 1
-        char buf[16];
-        ssd1306_SetCursor(23,15);
 
-        sprintf( buf, "%f", speed_get() );
-    	ssd1306_WriteString( buf, Font_11x18,Black);
-#else
-    	if (i & 1)
-    	{
-    		ssd1306_Fill(White);
-    	} else {
-    		ssd1306_Fill(Black);
-    	}
-#endif
-    	i = i + 1;
-    	ssd1306_UpdateScreen( &hi2c1 );
-
-        if(MotorState==MOTOR_STATE_ERROR)
-        {
-            char error_message[64];
-            int length = sprintf(error_message,
-            		"%" PRIu32
-					" %" PRIu32
-					" %" PRIu32
-					" %" PRIu32,
-					measurement_buffers.adc1,
-					measurement_buffers.adc2,
-					measurement_buffers.adc3,
-					measurement_buffers.adc4 );
-            HAL_UART_Transmit(&huart3, (uint8_t *)error_message, length, 100);
-        }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
