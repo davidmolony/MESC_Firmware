@@ -924,7 +924,7 @@ if(phasebalance){
     // Here we are going to do a PID loop to control the dq currents, converting
     // Idq into Vdq Calculate the errors
     static MESCiq_s Idq_err;
-#if defined(USE_FIELD_WEAKENING) || defined(USE_FIELD_WEAKENINGv2)
+#if defined(USE_FIELD_WEAKENING) || defined(USE_FIELD_WEAKENINGV2)
     if((_motor->FOC.FW_current<_motor->FOC.Idq_req.d)&&(_motor->MotorState==MOTOR_STATE_RUN)){//Field weakenning is -ve, but there may already be d-axis from the MTPA
     	Idq_err.d = (_motor->FOC.FW_current - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
     }else{
@@ -963,7 +963,7 @@ if(phasebalance){
 		  _motor->FOC.Vdq.q = _motor->FOC.Vdq.q*one_on_VmagnowxVmagmax;
 		  _motor->FOC.Idq_int_err.d = _motor->FOC.Idq_int_err.d*one_on_VmagnowxVmagmax;
 		  _motor->FOC.Idq_int_err.q = _motor->FOC.Idq_int_err.q*one_on_VmagnowxVmagmax;
-#ifdef USE_FIELD_WEAKENINGv2
+#ifdef USE_FIELD_WEAKENINGV2
 		  _motor->FOC.FW_current = _motor->FOC.FW_current -0.01f*_motor->FOC.field_weakening_curr_max;
       }else{
 		  _motor->FOC.FW_current = _motor->FOC.FW_current +0.01f*_motor->FOC.field_weakening_curr_max;
@@ -1010,7 +1010,7 @@ if(phasebalance){
 				  _motor->FOC.Idq_int_err.q = _motor->FOC.Vdq.q;
 			  }
     	  }
-#ifdef USE_FIELD_WEAKENINGv2
+#ifdef USE_FIELD_WEAKENINGV2
 //I have no idea if this is a good idea or not, but it makes the motor a lot faster.
     	  _motor->FOC.FW_current = _motor->FOC.FW_current -0.01f*_motor->FOC.field_weakening_curr_max;
       }else{
@@ -1707,8 +1707,8 @@ __NOP();
     _motor->FOC.Vdint_max = _motor->FOC.Vd_max * 0.9f; //Logic in this is to always ensure headroom for the P term
     _motor->FOC.Vqint_max = _motor->FOC.Vq_max * 0.9f;
 
-    _motor->FOC.field_weakening_threshold = _motor->FOC.Vq_max * FIELD_WEAKENING_THRESHOLD;
-    _motor->FOC.field_weakening_multiplier = 1.0f/(_motor->FOC.Vq_max*(1.0f-FIELD_WEAKENING_THRESHOLD));
+    _motor->FOC.field_weakening_threshold = _motor->FOC.Vmag_max * FIELD_WEAKENING_THRESHOLD;
+    _motor->FOC.field_weakening_multiplier = 1.0f/(_motor->FOC.Vmag_max*(1.0f-FIELD_WEAKENING_THRESHOLD));
 
     switch(_motor->HFIType){//When running HFI we want the bandwidth low, so we calculate it with each slow loop depending on whether we are HFIing or not
 
@@ -2475,6 +2475,8 @@ void ToggleHFI(MESC_motor_typedef *_motor){
 		_motor->FOC.inject = 0;
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
 	} else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < (_motor->FOC.HFI_toggle_voltage-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > -(_motor->FOC.HFI_toggle_voltage-1.0f)) &&(_motor->HFIType !=HFI_TYPE_NONE)){
+
+		_motor->FOC.HFI_int_err = _motor->FOC.angle_error;
 		_motor->FOC.inject = 1;
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH*0.1f;
 	}
