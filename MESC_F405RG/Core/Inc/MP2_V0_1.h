@@ -34,7 +34,7 @@
 #define GET_THROTTLE_INPUT _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR4;  // Throttle for MP2 with F405 pill
 
 //#define USE_FIELD_WEAKENING
-#define USE_FIELD_WEAKENINGv2
+#define USE_FIELD_WEAKENINGV2
 
 //#define USE_LR_OBSERVER
 

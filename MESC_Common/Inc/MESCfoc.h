@@ -68,7 +68,7 @@
 							//Not defining this uses 5 sector and overmodulation compensation
 							//5 sector is harder on the low side FETs (for now)but offers equal performance at low speed, better at high speed.
 #ifndef OVERMOD_DT_COMP_THRESHOLD
-#define OVERMOD_DT_COMP_THRESHOLD 80	//Prototype concept that allows 100% (possibly greater) modulation by
+#define OVERMOD_DT_COMP_THRESHOLD 100	//Prototype concept that allows 100% (possibly greater) modulation by
 										//skipping turn off when the modulation is close to VBus, then compensating next cycle.
 										//Only works with 5 sector (bottom clamp) - comment out #define SEVEN_SECTOR
 #endif

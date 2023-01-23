@@ -1,51 +1,57 @@
 /*
- * MX_FOC_IMS.h
+ * mxlemming_FOC_IMS.h
  *
  *  Created on: Dec 16, 2022
- *      Author: D Molony
+ *      Author: HPEnvy
  */
 
-#ifndef INC_MX_FOC_IMS_H_
-#define INC_MX_FOC_IMS_H_
+#ifndef INC_GIGAVESC_H_
+#define INC_GIGAVESC_H_
 
 //Pick a motor for default
 #define MCMASTER_70KV_8080
-
-#define PWM_FREQUENCY 20000
-#define CUSTOM_DEADTIME 700 //ns
+#define PWM_FREQUENCY 20000 //Do not go too high on MEGAVESC, gate drivers start to struggle with bootstrap
+#define CUSTOM_DEADTIME 800 //ns, MAX 1500ns! implementation in MESCInit().
 
 #define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 50.0f
-#define ABS_MAX_BUS_VOLTAGE 50.0f
+#define ABS_MAX_PHASE_CURRENT 250.0f
+#define ABS_MAX_BUS_VOLTAGE 45.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
 #define R_SHUNT 0.00025f
-#define OPGAIN 20.0f*30.0f/(4.7f+4.7f+30.0f) //Control board v0.1 has a 4.7-30-4.7 divider onto the opamp input to enable some filtering
+#define OPGAIN 20.0f*36.0f/(10.0f+10.0f+36.0f)
+//Gigavesc Control board v0.1 has a 0.25mR and 10-30-10 divider onto the opamp input to enable some filtering
+//MegaVESC has a 0.33mR and a /2 into the opamp. Overall, both basically the same
 
-#define R_VBUS_BOTTOM 3300.0f //Phase and Vbus voltage sensors
-#define R_VBUS_TOP 100000.0f
+#define R_VBUS_BOTTOM 1500.0f //Phase and Vbus voltage sensors
+#define R_VBUS_TOP 82000.0f
 
-#define DEFAULT_INPUT	0b0010 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
+
 
 #define MAX_ID_REQUEST 2.0f
-#define MAX_IQ_REQUEST 40.0f
+#define MAX_IQ_REQUEST 20.0f
 
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
-//#define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
-#define DEADTIME_COMP_V 10
+#define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
+#define DEADTIME_COMP_V 16
+//#define MAX_MODULATION 1.00f //Use this with 5 sector modulation if you want extra speed
+
 
 #define USE_FIELD_WEAKENINGV2
 
-#define GET_THROTTLE_INPUT   _motor->Raw.ADC_in_ext1 = ADC_buffer[4];  // Throttle input to L431
-
+#define GET_THROTTLE_INPUT  _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR3;  // Throttle for IMS board
 
 //#define USE_LR_OBSERVER
 
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
 #define INTERPOLATE_V7_ANGLE
 #define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_SENSORLESS
+//#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_HALL
+//#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_OPENLOOP
+//#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_ENCODER
+//#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_HFI
 
-#define USE_HFI
+//#define USE_HFI
 #define HFI_VOLTAGE 4.0f
 #define HFI_TEST_CURRENT 0.0f
 #define HFI_THRESHOLD 4.0f
@@ -64,12 +70,13 @@
 #define POLE_ANGLE (65536/POLE_PAIRS)
 
 //#define USE_SALIENT_OBSERVER //If not defined, it assumes that Ld and Lq are equal, which is fine usually.
+
+//GPIOs for LEDs
 #define FASTLED GPIOB
 #define FASTLEDIO GPIO_PIN_5
 #define FASTLEDIONO 5
 #define SLOWLED GPIOB
 #define SLOWLEDIO GPIO_PIN_7
 #define SLOWLEDIONO 7
-//#define LOGGING
 
 #endif /* INC_MX_FOC_IMS_H_ */
