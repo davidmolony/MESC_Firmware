@@ -134,13 +134,18 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	_motor->hall.ticks_since_last_observer_change = 65535.0f;
 	_motor->hall.last_observer_period = 65536.0f;
 	_motor->hall.one_on_last_observer_period = 1.0f;
-	_motor->hall.angular_velocity = 0;
-	_motor->hall.angle_step = 0;
+	_motor->hall.angular_velocity = 0.0f;
+	_motor->hall.angle_step = 0.0f;
 
 	_motor->hall.hall_error = 0;
 //Init the BLDC
 	_motor->BLDC.com_flux = _motor->m.flux_linkage*1.65f;//0.02f;
 	_motor->BLDC.direction = -1;
+
+	//Init the speed controller
+	_motor->FOC.speed_kp = DEFAULT_SPEED_KP; //0.01 = 10A/1000eHz
+	_motor->FOC.speed_ki = DEFAULT_SPEED_KI; //Trickier to set since we want this to be proportional to the ramp speed? Not intuitive? Try 0.1; ramp in 1/10 of a second @100Hz.
+
 
 	 mesc_init_1(_motor);
 
@@ -1827,6 +1832,7 @@ float  Square(float x){ return((x)*(x));}
 			  //fallthrough, once the position controller has generated a speed it probably wants to go straight to the speed controller
 		  case MOTOR_CONTROL_MODE_SPEED:
 			  //TBC PID loop to convert eHz feedback to an iq request
+			  RunSpeedControl(_motor);
 			  break;
 		  case MOTOR_CONTROL_MODE_DUTY:
 			  //TBC, need to adjust the max modulation index to allow it to bounce off the circle limiter
@@ -1841,23 +1847,36 @@ float  Square(float x){ return((x)*(x));}
 		case MOTOR_STATE_TRACKING:
 			ThrottleTemperature(_motor);
 			_motor->FOC.was_last_tracking = 1;
-			if(fabsf(_motor->FOC.Idq_req.q)>0.2f){
-				#ifdef HAS_PHASE_SENSORS
-				if(_motor->MotorControlType == MOTOR_CONTROL_TYPE_FOC){
-				_motor->MotorState = MOTOR_STATE_RUN;
-				}else if(_motor->MotorControlType == MOTOR_CONTROL_TYPE_BLDC){
-					_motor->MotorState = MOTOR_STATE_RUN_BLDC;
+			//Seperate based on control mode. We NEED to have a fallthrough here in transition state!
+			//Does not seem possible to use nested switches due to fallthrough requirement :(
+			if(_motor->ControlMode == MOTOR_CONTROL_MODE_TORQUE){
+					if(fabsf(_motor->FOC.Idq_req.q)>0.2f){
+						#ifdef HAS_PHASE_SENSORS
+						if(_motor->MotorControlType == MOTOR_CONTROL_TYPE_FOC){
+							_motor->MotorState = MOTOR_STATE_RUN;
+						}else if(_motor->MotorControlType == MOTOR_CONTROL_TYPE_BLDC){
+							_motor->MotorState = MOTOR_STATE_RUN_BLDC;
 
-				}
-				#else
-				_motor->MotorState = MOTOR_STATE_RECOVERING;
-				break;
-				#endif
-				//fallthrough
-			}else{
-				//Remain in tracking
-				break;
+						}
+						#else
+						_motor->MotorState = MOTOR_STATE_RECOVERING;
+						break;
+						#endif
+						//fallthrough to RUN, no break!
+					}else{
+						//Remain in tracking
+					break;
+					}
+			} else if(_motor->ControlMode == MOTOR_CONTROL_MODE_SPEED){
+				case MOTOR_CONTROL_MODE_SPEED:
+					if(_motor->FOC.speed_req > 10.0f){
+						_motor->MotorState = MOTOR_STATE_RUN;
+						//fallthrough to RUN, no break!
+					} else{
+					break;
+					}
 			}
+			//end of ControlMode switch
 
 		case MOTOR_STATE_RUN:
 			calculatePower(_motor);
@@ -1868,13 +1887,24 @@ float  Square(float x){ return((x)*(x));}
 			#ifdef USE_LR_OBSERVER
 			LRObserver();
 			#endif
-			if((fabsf(_motor->FOC.Idq_req.q)<0.1f)){//Request current small, FW not active
-				if((_motor->FOC.FW_current>-0.5f)){
-				_motor->MotorState = MOTOR_STATE_TRACKING;
-				}else{
-					FWRampDown(_motor);
-				}
-			}
+			switch(_motor->ControlMode){
+				case MOTOR_CONTROL_MODE_TORQUE:
+					if(((fabsf(_motor->FOC.Idq_req.q)<0.1f))){//Request current small, FW not active
+						if((_motor->FOC.FW_current>-0.5f)){
+						_motor->MotorState = MOTOR_STATE_TRACKING;
+						generateBreak(_motor);
+						}else{
+							FWRampDown(_motor);
+						}
+					}
+					break;
+
+				case MOTOR_CONTROL_MODE_SPEED:
+					if(_motor->FOC.speed_req < 10.0f){
+						_motor->MotorState = MOTOR_STATE_TRACKING;
+					}
+			}//end of ControlMode switch
+
 			generateEnable(_motor);
 			SlowHFI(_motor);
 			break;
@@ -2727,6 +2757,38 @@ void ThrottleTemperature(MESC_motor_typedef *_motor){
 // TODO rollback
 }
 
+//Speed controller
+void RunSpeedControl(MESC_motor_typedef *_motor){
+	float speed_error;
+	  if(_motor->MotorState == MOTOR_STATE_RUN){
+
+		speed_error = _motor->FOC.speed_kp*(_motor->FOC.speed_req - _motor->FOC.eHz);
+		//Bound the proportional term before we do anything with it
+		//We use the symetric terms here to allow fast PID ramps
+		if(speed_error > input_vars.max_request_Idq.q){speed_error = input_vars.max_request_Idq.q;}
+		if(speed_error < -input_vars.max_request_Idq.q){speed_error = -input_vars.max_request_Idq.q;}
+
+		_motor->FOC.speed_error_int = _motor->FOC.speed_error_int + speed_error * _motor->FOC.speed_ki;
+		//Bound the integral term...
+		//Again, using symmetric terms
+		if(_motor->FOC.speed_error_int > input_vars.max_request_Idq.q){_motor->FOC.speed_error_int = input_vars.max_request_Idq.q;}
+		if(_motor->FOC.speed_error_int < -input_vars.max_request_Idq.q){_motor->FOC.speed_error_int = -input_vars.max_request_Idq.q;}
+
+		//Apply the PID
+		_motor->FOC.Idq_req.q = _motor->FOC.speed_error_int + speed_error;
+		//Bound the overall...
+		//Now we use asymmetric terms to stop it regenerating too much
+		if(_motor->FOC.Idq_req.q > input_vars.max_request_Idq.q){_motor->FOC.Idq_req.q = input_vars.max_request_Idq.q;}
+		if(_motor->FOC.Idq_req.q < input_vars.min_request_Idq.q){_motor->FOC.Idq_req.q = input_vars.min_request_Idq.q;}
+	  } else {
+		  //Set zero
+		  _motor->FOC.Idq_req.q = 0.0f;
+		  _motor->FOC.speed_error_int = 0.0f;
+	  }
+}
+
+
+
 void BLDCCommute(MESC_motor_typedef *_motor){
 
 //Collect the variables required
@@ -2910,6 +2972,7 @@ void BLDCCommute(MESC_motor_typedef *_motor){
 void CalculateBLDCGains(MESC_motor_typedef *_motor){
 
 }
+
 
 
 

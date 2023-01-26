@@ -117,6 +117,13 @@
 #endif
 #endif
 
+#ifndef DEFAULT_SPEED_KP
+DEFAULT_SPEED_KP = 0.5f; //Amps per eHz
+#endif
+#ifndef DEFAULT_SPEED_KP
+DEFAULT_SPEED_KI = 0.1f; //Amps per eHz per slowloop period... ToDo make it per second. At 100Hz slowloop, 0.1f corresponds to a 10Hz integral.
+#endif
+
 #ifndef ADC_OFFSET_DEFAULT
 #define ADC_OFFSET_DEFAULT 2048.0f
 #endif
@@ -216,6 +223,10 @@ typedef struct {
   float currentPowerab;
   float Ibus;
   float reqPower;
+  float speed_req;
+  float speed_kp;
+  float speed_ki;
+  float speed_error_int;
 
   //Observer parameters
   float Ia_last;
@@ -584,7 +595,7 @@ void RunHFI(MESC_motor_typedef *_motor);
 void ToggleHFI(MESC_motor_typedef *_motor);
 void collectInputs(MESC_motor_typedef *_motor);
 void RunMTPA(MESC_motor_typedef *_motor);
-
+void RunSpeedControl(MESC_motor_typedef *_motor);
 
 ////BLDC
 void BLDCCommute(MESC_motor_typedef *_motor);
