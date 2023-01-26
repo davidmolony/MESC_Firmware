@@ -171,9 +171,7 @@ int main(void)
 
   // Initialise components
   bat_init( PROFILE_DEFAULT );
-  motor_init( PROFILE_DEFAULT );
   speed_init( PROFILE_DEFAULT );
-  temp_init( PROFILE_DEFAULT );
   // Initialise user Interface
   //ui_init( PROFILE_DEFAULT );
 #if 0
@@ -211,7 +209,8 @@ int main(void)
   //Set motor timer
   mtr[0].mtimer = &htim1;
   mtr[0].stimer = &htim2;
-
+  temp_init( PROFILE_DEFAULT );
+  motor_init( PROFILE_DEFAULT );
   MESCInit(&mtr[0]);
 
   // MESC_Init();

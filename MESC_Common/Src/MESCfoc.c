@@ -1699,10 +1699,6 @@ __NOP();
                       MAX_MODULATION * SVPWM_MULTIPLIER * Vd_MAX_PROPORTION;
     _motor->FOC.Vq_max = 0.5f * _motor->Conv.Vbus *
                       MAX_MODULATION * SVPWM_MULTIPLIER * Vq_MAX_PROPORTION;
-#ifdef USE_SQRT_CIRCLE_LIM
-    _motor->FOC.Vd_max = _motor->FOC.Vmag_max;
-    _motor->FOC.Vq_max = _motor->FOC.Vmag_max;
-#endif
 
     _motor->FOC.Vdint_max = _motor->FOC.Vd_max * 0.9f; //Logic in this is to always ensure headroom for the P term
     _motor->FOC.Vqint_max = _motor->FOC.Vq_max * 0.9f;
@@ -1824,7 +1820,8 @@ float  Square(float x){ return((x)*(x));}
 			  //Clamp the Q component; d component is not directly requested
 				if(_motor->FOC.Idq_req.q>input_vars.max_request_Idq.q){_motor->FOC.Idq_req.q = input_vars.max_request_Idq.q;}
 				if(_motor->FOC.Idq_req.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_req.q = input_vars.min_request_Idq.q;}
-			break;
+
+			  break;
 		  case MOTOR_CONTROL_MODE_POSITION:
 			  //TBC, needs some kind of velocity generation curve to nest into the speed loop
 			  //fallthrough, once the position controller has generated a speed it probably wants to go straight to the speed controller
@@ -1842,6 +1839,7 @@ float  Square(float x){ return((x)*(x));}
 		///////////////////////Run the state machine//////////////////////////////////
 	switch(_motor->MotorState){
 		case MOTOR_STATE_TRACKING:
+			ThrottleTemperature(_motor);
 			_motor->FOC.was_last_tracking = 1;
 			if(fabsf(_motor->FOC.Idq_req.q)>0.2f){
 				#ifdef HAS_PHASE_SENSORS
@@ -2688,16 +2686,46 @@ void FWRampDown(MESC_motor_typedef *_motor){
 	}
 }
 
-void ThrottleTemperature(MESC_motor_typedef *_motor){
-	//ToDo, do this properly
-    if(temp_check( _motor->Raw.MOSu_T ) == false){
-    	if(0){generateBreak(_motor); //ToDo Currently not loading the profile so commented out - no temp safety!
-    	_motor->MotorState = MOTOR_STATE_ERROR;
-    	MotorError = MOTOR_ERROR_OVER_LIMIT_TEMP;
-    	}
-    }
+static void handleThrottleTemperature(MESC_motor_typedef *_motor, float const T, float * const dTmax, int const errorcode )
+{
+	float dT = 0.0f;
+	TEMPState const temp_state = temp_check( T, &dT );
+#define TMAX(a,b) (((a) > (b)) ? (a) : (b))
+	*dTmax = TMAX( *dTmax, dT );
+#undef TMAX
+	if (temp_state == TEMP_STATE_OVERHEATED)
+	{
+	   handleError( _motor, errorcode );
+	}
 }
 
+float dTmax = 0.0f;
+void ThrottleTemperature(MESC_motor_typedef *_motor){
+	dTmax = 0.0f;
+	//Throttle it using last time's result, since this time's result takes a long time to calculate
+	if(_motor->FOC.Idq_req.q>(_motor->FOC.T_rollback * input_vars.max_request_Idq.q)){_motor->FOC.Idq_req.q = _motor->FOC.T_rollback * input_vars.max_request_Idq.q;}
+	if(_motor->FOC.Idq_req.q<(_motor->FOC.T_rollback * input_vars.min_request_Idq.q)){_motor->FOC.Idq_req.q = _motor->FOC.T_rollback * input_vars.min_request_Idq.q;}
+
+	_motor->Conv.MOSu_T  = 0.99f *_motor->Conv.MOSu_T + 0.01f * temp_read( _motor->Raw.MOSu_T );
+	_motor->Conv.MOSv_T  = 0.99f *_motor->Conv.MOSv_T + 0.01f * temp_read( _motor->Raw.MOSv_T );
+	_motor->Conv.MOSw_T  = 0.99f *_motor->Conv.MOSw_T + 0.01f * temp_read( _motor->Raw.MOSw_T );
+	_motor->Conv.Motor_T = 0.99f *_motor->Conv.Motor_T + 0.01f * temp_read( _motor->Raw.Motor_T );
+
+	handleThrottleTemperature( _motor, _motor->Conv.MOSu_T , &dTmax, ERROR_OVERTEMPU );
+	handleThrottleTemperature( _motor, _motor->Conv.MOSv_T , &dTmax, ERROR_OVERTEMPV );
+	handleThrottleTemperature( _motor, _motor->Conv.MOSw_T , &dTmax, ERROR_OVERTEMPW );
+	handleThrottleTemperature( _motor, _motor->Conv.Motor_T, &dTmax, ERROR_OVERTEMP_MOTOR );
+
+	_motor->FOC.T_rollback = (1.0f-dTmax/(temp_profile->limit.Tmax-temp_profile->limit.Thot));
+	if(_motor->FOC.T_rollback<=0.0f){
+		_motor->FOC.T_rollback = 0.0f;
+	}
+	if(_motor->FOC.T_rollback>1.0f){
+		_motor->FOC.T_rollback = 1.0f;
+	}
+
+// TODO rollback
+}
 
 void BLDCCommute(MESC_motor_typedef *_motor){
 

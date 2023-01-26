@@ -125,7 +125,7 @@ int main(void)
   //Set motor timer
   mtr[0].mtimer = &htim1;
   mtr[0].stimer = &htim2;
-
+  temp_init(PROFILE_DEFAULT);
   motor_init(NULL);
   MESCInit(&mtr[0]);
 

@@ -211,6 +211,7 @@ typedef struct {
 
   float inverterVoltage[3];
   MESCiq_s Idq_req;							//The input to the PI controller. Load this with the values you want.
+  float T_rollback;							//Scale the input parameters by this amount when thermal throttling
   MESCiq_s currentPower;					//Power being consumed by the motor; this does not include steady state losses and losses to switching
   float currentPowerab;
   float Ibus;
