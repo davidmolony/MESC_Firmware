@@ -93,6 +93,10 @@
 #define ERPM_MEASURE 3000.0f//Speed to do the flux linkage measurement at
 #endif
 
+#ifndef MIN_IQ_REQUEST
+#define MIN_IQ_REQUEST -0.1f
+#endif
+
 #ifndef DEADSHORT_CURRENT
 #define DEADSHORT_CURRENT 30.0f
 #endif
@@ -118,10 +122,10 @@
 #endif
 
 #ifndef DEFAULT_SPEED_KP
-DEFAULT_SPEED_KP = 0.5f; //Amps per eHz
+#define DEFAULT_SPEED_KP 0.5f //Amps per eHz
 #endif
-#ifndef DEFAULT_SPEED_KP
-DEFAULT_SPEED_KI = 0.1f; //Amps per eHz per slowloop period... ToDo make it per second. At 100Hz slowloop, 0.1f corresponds to a 10Hz integral.
+#ifndef DEFAULT_SPEED_KI
+#define DEFAULT_SPEED_KI 0.1f //Amps per eHz per slowloop period... ToDo make it per second. At 100Hz slowloop, 0.1f corresponds to a 10Hz integral.
 #endif
 
 #ifndef ADC_OFFSET_DEFAULT
@@ -218,6 +222,8 @@ typedef struct {
 
   float inverterVoltage[3];
   MESCiq_s Idq_req;							//The input to the PI controller. Load this with the values you want.
+  MESCiq_s Idq_prereq; 						//Before we set the input to the current PI controller, we want to run a series of calcs (collect variables,
+										  	  //calculate MTPA... that needs to be done without it putting jitter onto the PI input.
   float T_rollback;							//Scale the input parameters by this amount when thermal throttling
   MESCiq_s currentPower;					//Power being consumed by the motor; this does not include steady state losses and losses to switching
   float currentPowerab;
@@ -250,6 +256,7 @@ typedef struct {
   float Iq_igain;
   float Vdqres_to_Vdq;
   float Vab_to_PWM;
+  float Duty_scaler;
   float Vmag_max;
   float Vmag_max2;
   float Vd_max;
@@ -481,6 +488,10 @@ typedef struct {
 	MESCiq_s Idq_req_RCPWM;
 	MESCiq_s Idq_req_ADC1;
 	MESCiq_s Idq_req_ADC2;
+	float UART_req;
+	float RCPWM_req;
+	float ADC1_req;
+	float ADC2_req;
 
 	uint32_t input_options; //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
