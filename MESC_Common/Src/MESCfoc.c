@@ -247,14 +247,11 @@ void InputInit(){
 	input_vars.ADC1_polarity = ADC1_POLARITY;
 	input_vars.ADC2_polarity = ADC2_POLARITY;
 
-	input_vars.Idq_req_UART.d =0;
-	input_vars.Idq_req_RCPWM.d =0;
-	input_vars.Idq_req_ADC1.d =0;
-	input_vars.Idq_req_ADC2.d =0;
-	input_vars.Idq_req_UART.q =0;
-	input_vars.Idq_req_RCPWM.q =0;
-	input_vars.Idq_req_ADC1.q =0;
-	input_vars.Idq_req_ADC2.q =0;
+
+	input_vars.UART_req = 0.0f;
+	input_vars.RCPWM_req = 0.0f;
+	input_vars.ADC1_req = 0.0f;
+	input_vars.ADC2_req = 0.0f;
 
 	//Set up the input capture for throttle
 	//	HAL_TIM_IC_Start(_motor->stimer? RCTimer?, TIM_CHANNEL_1);//Need to plumb in the RCPWM again
@@ -930,16 +927,34 @@ if(phasebalance){
     // Here we are going to do a PID loop to control the dq currents, converting
     // Idq into Vdq Calculate the errors
     static MESCiq_s Idq_err;
+    Idq_err.q = (_motor->FOC.Idq_req.q - _motor->FOC.Idq.q) * _motor->FOC.Iq_pgain;
 #if defined(USE_FIELD_WEAKENING) || defined(USE_FIELD_WEAKENINGV2)
     if((_motor->FOC.FW_current<_motor->FOC.Idq_req.d)&&(_motor->MotorState==MOTOR_STATE_RUN)){//Field weakenning is -ve, but there may already be d-axis from the MTPA
     	Idq_err.d = (_motor->FOC.FW_current - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
     }else{
     	Idq_err.d = (_motor->FOC.Idq_req.d - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
     }
+#elif defined(USE_FIELD_WEAKENINGV3)
+    //If there is a Q current shortage, ramp it up, else ramp it down
+    //This appears to be identical to FW V2 in behaviour, but does not support backwards torque, so it is not preferred.
+    //Leaving as an option in case of weird FWv2 behaviour
+    if(Idq_err.q>0.1f){
+    	_motor->FOC.FW_current = _motor->FOC.FW_current -0.01f*_motor->FOC.field_weakening_curr_max;
+    }else{
+    	_motor->FOC.FW_current = _motor->FOC.FW_current +0.01f*_motor->FOC.field_weakening_curr_max;
+    }
+    //Bound it
+    if(_motor->FOC.FW_current>0.0f){_motor->FOC.FW_current=0.0f;}
+    if(_motor->FOC.FW_current<-_motor->FOC.field_weakening_curr_max){_motor->FOC.FW_current= -_motor->FOC.field_weakening_curr_max;}
+//Apply the FW current and the PID loop
+	if((_motor->FOC.FW_current<_motor->FOC.Idq_req.d)&&(_motor->MotorState==MOTOR_STATE_RUN)){//Field weakenning is -ve, but there may already be d-axis from the MTPA
+        	Idq_err.d = (_motor->FOC.FW_current - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
+        }else{
+        	Idq_err.d = (_motor->FOC.Idq_req.d - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
+        }
 #else
 	Idq_err.d = (_motor->FOC.Idq_req.d - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
 #endif
-    Idq_err.q = (_motor->FOC.Idq_req.q - _motor->FOC.Idq.q) * _motor->FOC.Iq_pgain;
 
     // Integral error
     _motor->FOC.Idq_int_err.d =
@@ -970,6 +985,9 @@ if(phasebalance){
 		  _motor->FOC.Idq_int_err.d = _motor->FOC.Idq_int_err.d*one_on_VmagnowxVmagmax;
 		  _motor->FOC.Idq_int_err.q = _motor->FOC.Idq_int_err.q*one_on_VmagnowxVmagmax;
 #ifdef USE_FIELD_WEAKENINGV2
+		  //Preferable to use FWV2 with the D axis circle limiter,
+		  //this allows the D current to ramp all the way to max, whereas
+		  //the linear sqrt circle limiter is overcome by large q axis voltage demands
 		  _motor->FOC.FW_current = _motor->FOC.FW_current -0.01f*_motor->FOC.field_weakening_curr_max;
       }else{
 		  _motor->FOC.FW_current = _motor->FOC.FW_current +0.01f*_motor->FOC.field_weakening_curr_max;
@@ -1017,7 +1035,8 @@ if(phasebalance){
 			  }
     	  }
 #ifdef USE_FIELD_WEAKENINGV2
-//I have no idea if this is a good idea or not, but it makes the motor a lot faster.
+    	  //Closed loop field weakenning that works by only applying D axis current in the case where there is no duty left.
+    	  //Seems very effective at increasing speed with good stability and maintaining max torque.
     	  _motor->FOC.FW_current = _motor->FOC.FW_current -0.01f*_motor->FOC.field_weakening_curr_max;
       }else{
 		  _motor->FOC.FW_current = _motor->FOC.FW_current +0.01f*_motor->FOC.field_weakening_curr_max;
@@ -1827,8 +1846,7 @@ float  Square(float x){ return((x)*(x));}
 
 	  switch(_motor->ControlMode){
 		  case MOTOR_CONTROL_MODE_TORQUE:
-			  //_motor->FOC.Idq_prereq.q = input_vars.Idq_req_UART.q + input_vars.Idq_req_RCPWM.q + input_vars.Idq_req_ADC1.q + input_vars.Idq_req_ADC2.q;
-			  _motor->FOC.Idq_prereq.q = input_vars.Idq_req_UART.q + input_vars.max_request_Idq.q * (input_vars.ADC1_req + input_vars.ADC2_req + input_vars.RCPWM_req + input_vars.UART_req);
+			  _motor->FOC.Idq_prereq.q = input_vars.UART_req + input_vars.max_request_Idq.q * (input_vars.ADC1_req + input_vars.ADC2_req + input_vars.RCPWM_req);
 			  //Clamp the Q component; d component is not directly requested
 				if(_motor->FOC.Idq_prereq.q>input_vars.max_request_Idq.q){_motor->FOC.Idq_prereq.q = input_vars.max_request_Idq.q;}
 				if(_motor->FOC.Idq_prereq.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_prereq.q = input_vars.min_request_Idq.q;}
@@ -2569,7 +2587,7 @@ float detectHFI(MESC_motor_typedef *_motor){
 
 	_motor->meas.previous_HFI_type = _motor->HFIType;
 	_motor->HFIType = HFI_TYPE_D;
-	input_vars.Idq_req_UART.q = 0.25f;
+	input_vars.UART_req = 0.25f;
 	int a = 0;
 	dinductance = 0;
 	qinductance = 0;
@@ -2595,7 +2613,7 @@ float detectHFI(MESC_motor_typedef *_motor){
 	qinductance = qinductance/1000.0f; //Note that this is not yet an inductance, but an inverse of inductance*voltage
 	_motor->FOC.HFI45_mod_didq = sqrtf(qinductance*qinductance+dinductance*dinductance);
 	_motor->FOC.HFI_Gain = 5000.0f/_motor->FOC.HFI45_mod_didq; //Magic numbers that seem to work
-	input_vars.Idq_req_UART.q = 0.0f;
+	input_vars.UART_req = 0.0f;
 	_motor->FOC.d_polarity = 1;
 
 	_motor->HFIType = _motor->meas.previous_HFI_type;
@@ -2609,7 +2627,7 @@ void collectInputs(MESC_motor_typedef *_motor){
 	  //Collect the requested throttle inputs
 	  //UART input
 	  if(0 == (input_vars.input_options & 0b1000)){
-		  input_vars.Idq_req_UART.q = 0.0f;
+		  input_vars.UART_req = 0.0f;
 	  }
 
 	  //RCPWM input
@@ -2617,34 +2635,24 @@ void collectInputs(MESC_motor_typedef *_motor){
 		  if(input_vars.pulse_recieved){
 			  if((input_vars.IC_duration > input_vars.IC_duration_MIN) && (input_vars.IC_duration < input_vars.IC_duration_MAX)){
 				  if(input_vars.IC_pulse>(input_vars.IC_pulse_MID + input_vars.IC_pulse_DEADZONE)){
-//					  input_vars.Idq_req_RCPWM.d = 0.0f;
-//					  input_vars.Idq_req_RCPWM.q = (float)(input_vars.IC_pulse - (input_vars.IC_pulse_MID + input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
 					  input_vars.RCPWM_req = (float)(input_vars.IC_pulse - (input_vars.IC_pulse_MID + input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
 					  if(input_vars.RCPWM_req>1.0f){input_vars.RCPWM_req=1.0f;}
 					  if(input_vars.RCPWM_req<-1.0f){input_vars.RCPWM_req=-1.0f;}
 				  }
 				  else if(input_vars.IC_pulse<(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE)){
-//					  input_vars.Idq_req_RCPWM.d = 0.0f;
-//					  input_vars.Idq_req_RCPWM.q = ((float)input_vars.IC_pulse - (float)(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
 					  input_vars.RCPWM_req = ((float)input_vars.IC_pulse - (float)(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
 					  if(input_vars.RCPWM_req>1.0f){input_vars.RCPWM_req=1.0f;}
 					  if(input_vars.RCPWM_req<-1.0f){input_vars.RCPWM_req=-1.0f;}
 				  }
 				  else{
-//					  input_vars.Idq_req_RCPWM.d = 0.0f;
-//					  input_vars.Idq_req_RCPWM.q = 0.0f;
 					  input_vars.RCPWM_req = 0.0f;
 				  }
 			  }	else {//The duration of the IC was wrong; trap it and write no current request
 				  //Todo maybe want to implement a timeout on this, allowing spurious pulses to not wiggle the current?
-//				  input_vars.Idq_req_RCPWM.d = 0.0f;
-//				  input_vars.Idq_req_RCPWM.q = 0.0f;
 				  input_vars.RCPWM_req = 0.0f;
 			  }
 		  }
 		  else {//No pulse received flag
-//			  input_vars.Idq_req_RCPWM.d = 0.0f;
-//			  input_vars.Idq_req_RCPWM.q = 0.0f;
 			  input_vars.RCPWM_req = 0.0f;
 		  }
 	  }
@@ -2652,30 +2660,22 @@ void collectInputs(MESC_motor_typedef *_motor){
 	  //ADC1 input
 	  if(input_vars.input_options & 0b0010){
 		  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
-			  input_vars.Idq_req_ADC1.d = 0.0f;
-			  input_vars.Idq_req_ADC1.q = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
 			  input_vars.ADC1_req = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
 			  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
 			  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
 		  }
 		  else{
-			  input_vars.Idq_req_ADC1.d = 0.0f;
-			  input_vars.Idq_req_ADC1.q = 0.0f;
 			  input_vars.ADC1_req = 0.0f;
 		  }
 	  }
 	  if(input_vars.input_options & 0b0001){
 		  //ADC2 input
 		  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
-			  input_vars.Idq_req_ADC1.d = 0.0f;
-			  input_vars.Idq_req_ADC1.q = ((float)_motor->Raw.ADC_in_ext2-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
 			  input_vars.ADC2_req = ((float)_motor->Raw.ADC_in_ext2-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
 			  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
 			  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
 		  }
 		  else{
-			  input_vars.Idq_req_ADC1.d = 0.0f;
-			  input_vars.Idq_req_ADC1.q = 0.0f;
 			  input_vars.ADC2_req = 0.0f;
 		  }
 	  }

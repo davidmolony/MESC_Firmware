@@ -25,10 +25,10 @@
 #define R_VBUS_BOTTOM 3300.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 100000.0f
 
-#define DEFAULT_INPUT	0b0010 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
+#define DEFAULT_INPUT	0b1010 //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
 #define MAX_ID_REQUEST 2.0f
-#define MAX_IQ_REQUEST 40.0f
+#define MAX_IQ_REQUEST 20.0f
 #define MIN_IQ_REQUEST -5.0f
 
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
@@ -36,6 +36,8 @@
 #define DEADTIME_COMP_V 10
 
 #define USE_FIELD_WEAKENINGV2
+//#define USE_FIELD_WEAKENINGV3
+
 
 #define GET_THROTTLE_INPUT   _motor->Raw.ADC_in_ext1 = ADC_buffer[4];  // Throttle input to L431
 

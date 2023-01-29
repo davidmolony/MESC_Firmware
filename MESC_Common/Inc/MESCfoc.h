@@ -484,10 +484,6 @@ typedef struct {
 	float ADC1_polarity;
 	float ADC2_polarity;
 
-	MESCiq_s Idq_req_UART;
-	MESCiq_s Idq_req_RCPWM;
-	MESCiq_s Idq_req_ADC1;
-	MESCiq_s Idq_req_ADC2;
 	float UART_req;
 	float RCPWM_req;
 	float ADC1_req;
