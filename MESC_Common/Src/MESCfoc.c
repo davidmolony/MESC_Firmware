@@ -2807,9 +2807,6 @@ static void handleThrottleTemperature(MESC_motor_typedef *_motor, float const T,
 float dTmax = 0.0f;
 void ThrottleTemperature(MESC_motor_typedef *_motor){
 	dTmax = 0.0f;
-	//Throttle it using last time's result, since this time's result takes a long time to calculate
-	if(_motor->FOC.Idq_prereq.q>(_motor->FOC.T_rollback * input_vars.max_request_Idq.q)){_motor->FOC.Idq_prereq.q = _motor->FOC.T_rollback * input_vars.max_request_Idq.q;}
-	if(_motor->FOC.Idq_prereq.q<(_motor->FOC.T_rollback * input_vars.min_request_Idq.q)){_motor->FOC.Idq_prereq.q = _motor->FOC.T_rollback * input_vars.min_request_Idq.q;}
 
 	_motor->Conv.MOSu_T  = 0.99f *_motor->Conv.MOSu_T + 0.01f * temp_read( _motor->Raw.MOSu_T );
 	_motor->Conv.MOSv_T  = 0.99f *_motor->Conv.MOSv_T + 0.01f * temp_read( _motor->Raw.MOSv_T );
@@ -2828,8 +2825,8 @@ void ThrottleTemperature(MESC_motor_typedef *_motor){
 	if(_motor->FOC.T_rollback>1.0f){
 		_motor->FOC.T_rollback = 1.0f;
 	}
-
-// TODO rollback
+	if(_motor->FOC.Idq_prereq.q>(_motor->FOC.T_rollback * input_vars.max_request_Idq.q)){_motor->FOC.Idq_prereq.q = _motor->FOC.T_rollback * input_vars.max_request_Idq.q;}
+	if(_motor->FOC.Idq_prereq.q<(_motor->FOC.T_rollback * input_vars.min_request_Idq.q)){_motor->FOC.Idq_prereq.q = _motor->FOC.T_rollback * input_vars.min_request_Idq.q;}
 }
 
 //Speed controller
