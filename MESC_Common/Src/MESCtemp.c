@@ -40,7 +40,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static TEMPProfile const * temp_profile = NULL;
+TEMPProfile const * temp_profile = NULL;
 
 void temp_init( TEMPProfile const * const profile )
 {
@@ -59,8 +59,9 @@ void temp_init( TEMPProfile const * const profile )
             .parameters.SH.T0   = CVT_CELSIUS_TO_KELVIN_F( 25.0f ),
             .parameters.SH.R0   = MESC_PROFILE_TEMP_SH_R0,
 
-            .limit.Tmin         = CVT_CELSIUS_TO_KELVIN_F(  5.0f ),
-            .limit.Tmax         = CVT_CELSIUS_TO_KELVIN_F( 80.0f ),
+            .limit.Tmin         = CVT_CELSIUS_TO_KELVIN_F( -15.0f ),
+			.limit.Thot         = CVT_CELSIUS_TO_KELVIN_F(  80.0f ),
+            .limit.Tmax         = CVT_CELSIUS_TO_KELVIN_F( 100.0f ),
         };
         uint32_t temp_length = sizeof(temp_profile_default);
 
@@ -237,8 +238,7 @@ float temp_read( uint32_t const adc_raw )
     {
         case TEMP_METHOD_STEINHART_HART_BETA_R:
         {
-            float const K = temp_calculate_SteinhartHart_Beta_r( R_T );
-            T = CVT_KELVIN_TO_CELSIUS_F( K );
+            T = temp_calculate_SteinhartHart_Beta_r( R_T );
             break;
         }
         default:
@@ -304,22 +304,48 @@ uint32_t temp_get_adc( float const T )
     return adc_raw;
 }
 
-bool temp_check( uint32_t const adc_raw )
+TEMPState temp_check( float const T, float * const dT )
 {
+	// If there is no temperature reading, assume it is OK
     if (temp_profile == NULL)
     {
-        return false;
+        return TEMP_STATE_OK;
+    }
+	// If the temperature is (suspiciously) too cold, assume it is OK
+	if (T <= temp_profile->limit.Tmin)
+	{
+		return TEMP_STATE_OK;
+	}
+	// If the temperature is below hot, it is fine
+	else if (T <= temp_profile->limit.Thot)
+	{
+		return TEMP_STATE_OK;
+	}
+	// If the temperature is hot but below the maximum return the temperature overshoot for correction
+	else if (T < temp_profile->limit.Tmax)
+	{
+		if (dT != NULL)
+		{
+			*dT = T - temp_profile->limit.Thot;
+		}
+		return TEMP_STATE_ROLLBACK;
+	}
+	// Otherwise it has overheated
+	if (dT != NULL)
+	{
+		*dT = T - temp_profile->limit.Thot;
+	}
+	return TEMP_STATE_OVERHEATED;
+}
+
+TEMPState temp_check_raw( uint32_t const adc_raw, float * const dT )
+{
+	// If there is no temperature reading, assume it is OK
+    if (temp_profile == NULL)
+    {
+        return TEMP_STATE_OK;
     }
 
     float const T = temp_read( adc_raw );
-
-    if  (
-            (T <= temp_profile->limit.Tmin)
-        ||  (temp_profile->limit.Tmax <= T)
-        )
-    {
-        return false;
-    }
-
-    return true;
+    return temp_check( T, dT );
 }
