@@ -1,0 +1,704 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Molonoy Electronic Speed Control (MESC) Documentation</title>
+        <meta name="robots" content="noindex" />
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction/INTRODUCTION.html"><strong aria-hidden="true">1.</strong> Introduction to the MESC</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introduction/FORWARD.html"><strong aria-hidden="true">1.1.</strong> Forward</a></li><li class="chapter-item expanded "><a href="introduction/LICENSE.html"><strong aria-hidden="true">1.2.</strong> License</a></li><li class="chapter-item expanded "><a href="introduction/FEATURES.html"><strong aria-hidden="true">1.3.</strong> Features</a></li></ol></li><li class="chapter-item expanded "><a href="operation/INTRODUCTION.html"><strong aria-hidden="true">2.</strong> Theory and Operation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="operation/THEORY.html"><strong aria-hidden="true">2.1.</strong> Theory of operation</a></li><li class="chapter-item expanded "><a href="operation/CONTROL.html"><strong aria-hidden="true">2.2.</strong> Control loops</a></li><li class="chapter-item expanded "><a href="operation/PORTING.html"><strong aria-hidden="true">2.3.</strong> Porting to other microprocessors</a></li></ol></li><li class="chapter-item expanded "><a href="debugging/DEBUGGING.html"><strong aria-hidden="true">3.</strong> Debugging STM32CubeIDE</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="debugging/FIRMWARE_INTRO.html"><strong aria-hidden="true">3.1.</strong> Getting started</a></li></ol></li><li class="chapter-item expanded "><a href="MP2/INTRO.html"><strong aria-hidden="true">4.</strong> Reference ESC: the MP2</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="MP2/PCB_ASSEMBLY_TESTING.html"><strong aria-hidden="true">4.1.</strong> Assembly</a></li><li class="chapter-item expanded "><a href="MP2/HIGHER_AMP_ASSEMBLY.html"><strong aria-hidden="true">4.2.</strong> Increasing amperage</a></li></ol></li><li class="chapter-item expanded "><a href="hardware.html"><strong aria-hidden="true">5.</strong> Hardware</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="hardware/QS165_MP2_WIRING.html"><strong aria-hidden="true">5.1.</strong> Additional wiring for an QS165 motor</a></li><li class="chapter-item expanded "><a href="hardware/ENCLOSURE_GALLERY.html"><strong aria-hidden="true">5.2.</strong> A gallery of enclosures</a></li><li class="chapter-item expanded "><a href="hardware/MOSFET_PARAMETERS.html"><strong aria-hidden="true">5.3.</strong> An introduction to MOSFET parameters</a></li><li class="chapter-item expanded "><a href="hardware/MOTOR_PARAM.html"><strong aria-hidden="true">5.4.</strong> Measure motor resistance and inductance</a></li><li class="chapter-item expanded "><a href="hardware/MP2_F405PILL_PINOUTS.html"><strong aria-hidden="true">5.5.</strong> Information about the F405 pill</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Molonoy Electronic Speed Control (MESC) Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="documentation-for-mp2"><a class="header" href="#documentation-for-mp2">Documentation for MP2</a></h1>
+<p>Custom FOC, speed control firmware for use with the MESC_FOC_ESC hardware project. Also now ported to work on typical F405 based hardware (e.g. VESC, FSESC, custom boards...)Also ported to work on L431RC and F401CC (Blackpill). Other STM32 ports are easy to do, and perhaps other MCU vendors.</p>
+<h2 id="topics"><a class="header" href="#topics">Topics</a></h2>
+<ul>
+<li>This is how you could access [<a href="introduction/DETAILS.html">subsection 1</a>]</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="mesc_firmware"><a class="header" href="#mesc_firmware">MESC_Firmware</a></h1>
+<h2 id="foreword"><a class="header" href="#foreword">Foreword:</a></h2>
+<p>This project is new as of 28/06/2020, and is the work of David Molony, experienced mechanical and electrical engineer, and software learner.<br />
+Contributions from others welcome, but </p>
+<ol>
+<li>The project is not intended to be an all inclusive do everything like VESC. This project is intended to be minimal FOC that &quot;just works&quot; and is trivial to understand, port and build applications from</li>
+<li>The project will remain in its entirety BSD 3 clause, MIT or other equivalent entirely permissively licenced.</li>
+<li>As the project matures, while the code style remains nothing special, there are increasing numbers of originally developed and both effective and easy to implement techniques that are offered permissively. Borrowing sections of code for other projects is allowed, but without exception, if you borrow the code, even if you rename variables or break it up/relocate into various subroutines, you MUST credit the origin, and maintain the permissive BSD licencing inline if necessary. Failure to do so means you grant a perpetual permissive licence to your project and lose your rights to using this code permissively. This statement is in response to a pernicious yet ubiquitous habit of open source projects ripping out permissive licencing or taking public domain code and re-issuing under copyleft terms. The origin of this ire was searching for python source and finding the entire cpython project online (since removed) with all trace of the BSD/PSF licence removed and replaced with GPL.</li>
+</ol>
+<p><strong>Thanks to contributors, especially:</strong>
+c0d3b453 for large amounts of helpwith C and teaching, 
+Salavat for initial STM32 setup and teaching,
+Elwin (offline) for testing, motor control idea bouncing and assistance with current controllers,
+Jens (Netzpfuscher) for tidying up and contributions to SinLUT,</p>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="licence"><a class="header" href="#licence">Licence</a></h2>
+<p>This project will initially (and perhaps perpetually) contain a lot of firmware licenced under the STM Cube licence, BSD 3 clause https://opensource.org/licenses/BSD-3-Clause. The rest of the custom code is intended to be contained primarily in the MESC files, also BSD 3 Clause. It is requested that if you borrow, port, refactor parts into your own code... etc this firmware, you may let the project owner know, But you are not compelled to.  It would also be nice if concise and focused improvements were contributed back, but again, you are not compelled to.</p>
+<p>You must retain credit for the code origin in your source, even on small segments borrowed or reimplemented. This is compelled. If this code is borrowed in part or whole for use and published in GPLV2 V3... projects, you must grant a perpetual licence for your projects GPL code to be used permissively in this project reciprocally. Otherwise, for commercial and permissively licenced projects, the code can be used as BSD-3-Clause. The intention of this project is to be useful to whoever wants to use, learn, build, sell... </p>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="noteable-features"><a class="header" href="#noteable-features">Noteable features</a></h2>
+<ul>
+<li>Simple and robust sensorless observer </li>
+<li>HFI using d-q coupled current</li>
+<li>Dead time compensation and characterisation</li>
+<li>100% modulation techniques</li>
+<li>Field weakening and MTPA</li>
+<li>Fast fault shutdown</li>
+<li>Parameter (Rs, Ld, Lq, flux linkage)detection</li>
+<li>Operation up to ~70kHz PWM (140kHz V0V7 frequency) with F405 MCU, and some opt ions disabled (e.g. SPI encoder). Operation to about 40kHz with F401 MCU and about 35kHz with F303. Stable to &lt;2.5kHz PWM frequency, though this is definitely not advised for most applications.</li>
+<li>Most hardware cannot cope with current measurements above about 60kHz, noise becomes prohibitive.</li>
+<li>Easy porting to any STM32 with a floating point unit and timer1</li>
+<li>Probably easily portable to any other MCU with FPU, 3 phase timer and a 1MHz+ ADC</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="theory-and-operation"><a class="header" href="#theory-and-operation">Theory and Operation</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="hardware"><a class="header" href="#hardware">Hardware:</a></h2>
+<p>Any STM32 based 3 phase system using Timer1 for PWM High and Low and 3 phase current plus bus voltage measurement. Canonical hardware is F303, but better results can be made with external amplification so the F303 is no longer preferred.
+Preferable to have phase voltage sensors for restart while spinning and tracking without modulation (gives reduced drag and better efficiency)
+Specifically intended for the MESC_FOC_ESC hardware, but also running on F405, F401, L431 and F411 targets.</p>
+<h3 id="pwm"><a class="header" href="#pwm">PWM</a></h3>
+<p>Timer1 set up to generate complimentary centre aligned PWM with dead time, frequency configurable.
+Owing to the number of clock cycles per PWM period for the MCU to complete math (e.g. 72M/35.2K/2= 1024 clock cycles) math occurring in the interrupt must be fast.
+Firmware will be targetting a &lt;1000 clock cycles per Fastloop and &lt;&lt;1000 cycles per hyperloop to enable high frequency operation. Therefore, many functions and precalculations are pushed into the slowloop.</p>
+<p>Space vector modulation variant &quot;mid point clamp&quot; primarily used; bottom clamp implementation exists, but less effective with sensorless at low speeds and broadly incompatible with HFI.
+Centring at 50% duty cycle has a few advantages - it allows recirculation through the high side FETs as well as the low side, which evens out the load on them, and cancels most offsets. 
+Disadvantages - reduced sampling time for currents , more switching events, all phases floating... might be worse for EMC emmisions?
+For higher modulation indices, bottom clamp implementation can be used for FOC control. Bit noisier, less FET sharing, but allows for longer current sampling periods, and therefore higher modulation. 
+SVPWM mid point clamp clips the Vd and Vq at fixed limits such that the inverse transform is limited to what will fit and is commonly seen in outrunner motors.</p>
+<p>There is no hard limit on ERPM, but eventually it trips. Has worked to over 180kerpm. This is uselessly high in practice
+Target 30000mechrpm at 6PP gives a feasible 180000erpm, with 12PWMperiods/sinwave @35kHz. ~3kHz electrical rotation frequency.
+Most motors cannot cope with this speed due to stator eddie and hysteresis losses. Typical 0.2mm laminations become very inefficient at around 1kHz.</p>
+<h3 id="adc"><a class="header" href="#adc">ADC</a></h3>
+<p>ADC conversions are triggered by timer1 overflow on TRGO. ADCs 1,2,3 are used to get fully synchronous current readings on F303 and F405. Vbus read by ADC1 immediately after current reading.<br />
+The main loop runs on the timer1 update interrupt, in which the new PWM values are calculated from an 8 bit  sin table, or calculator developed by Jens and FOC/sensorless observer<br />
+ADC interrupt is now reserved for overcurrent protection events with the analog watchdog.</p>
+<h3 id="hall"><a class="header" href="#hall">Hall</a></h3>
+<p>Hall sensors are supported, but only in forward mode (swap a pair of motor phase wires if it runs backwards) but full support will be gradually deprecated since sensorless works much better. Hall startup optioncoming.
+Timer3 or 4 available but not used. Can be set up in XOR activation reset mode, so gives a duration between each hall sensor change of state, which can be directly converted to a speed. For a minimum speed of 10eRPM, =(10/60)Hz=1 XOR changes/second, 1 seconds/XOR change, requires 16 bit TIM4 to clock at 65536/1=65.536kHz. This implies a max speed of 65536(Hz)/6(hall states)x60(RPM/Hz)=655360RPM electrical. With typical BLDC motors being 6PP, this enables 100000RPM mechanical measureable, but the PWM frequency is not high enough to support this!
+Timer XOR hall input is not currently used, instead the fastloop just samples and counts PWM cycles since the last change. This reduces accuracy, but improves portability.</p>
+<h3 id="encoder"><a class="header" href="#encoder">Encoder</a></h3>
+<p>TLE5012B crudely supported in SSC (SPI) mode. 
+ABI not currently supported. </p>
+<h3 id="pwm-input"><a class="header" href="#pwm-input">PWM Input</a></h3>
+<p>Timer3 or 4 (not used for halls) set up in reset mode, prescaler 72 (1us resolution), 65535 period, with trigger/reset mapped to TI1FP1, and channel one capturing on rising edge, direct mode, channel 2 capturing on falling edge indirect mode - remapped to TI2FP2. This gives two CC register values, CC1 timing the period of the pulses, and CC2 timing the on time.<br />
+Interrupt: update interrupt used. We expect a value very close to 20000 from an RC sender. Check CC1 is 20000+/-~10000. If outside this bounds, set input capture flag low.</p>
+<h3 id="over-current-comparators"><a class="header" href="#over-current-comparators">Over Current Comparators</a></h3>
+<p>Comparators set up to trigger Tim1 break2 state in the event of overcurrent event, which should turn off all outputs to high impedance on F303 hardware. 
+0.5mOhm shunts (2x1mohm) or 1mOhm (2x2mOhm original hardware) at 100amps gives 50mV, with a pullup to 100mV. Vrefint is 1.23V, so 1/4Vref used for comparator-ve - 310mV. This triggers the comparator at 400A nominal (a LOT of current, but the intended FETs are rated for that for 100us, which is ~2 PWM periods... If alternate FETs used, should check this, or just hope for the best, or modify the shunt resistors to have higher value.<br />
+Timer1 should have a BRK filter set to avoid switching noise<br />
+On F405 targets, the expectation is that there is a fault input on the PB12 pin, timer1 is setup to capture and stop PWM generation on this input.
+Hardware without overcurrent comparators is OK, the overcurrent and over voltage is also taken care of in the fastloop, or by the analog watchdog if set up.</p>
+<h2 id="coms"><a class="header" href="#coms">Coms</a></h2>
+<p>Primarily, initially, serial used. 
+USB CDC (serial) implemented for F303, F401 and F405 targets</p>
+<h3 id="serial"><a class="header" href="#serial">Serial</a></h3>
+<p>TBC.</p>
+<h2 id="watchdog-timer"><a class="header" href="#watchdog-timer">Watchdog timer</a></h2>
+<p>Not currently implemented. Lack of it has not presented any issue so far. ToDo...
+Watchdog timer should be kicked by the fast control loop after the VIcheck is completed to ensure response to overvoltage and current (if not on ADC watchdog) events possible.
+Period of ~1ms 
+On overflow, generate a break state on the motor and reset MCU - control loop no longer running, motor could be stopped, freewheeling, generally making a mess of currents and generating high voltages.</p>
+<h2 id="fast-control-loop"><a class="header" href="#fast-control-loop">Fast Control loop</a></h2>
+<p>Fast control loop must:<br />
+Check for over limit events if not handled in hardware
+Retrieve current values from ADC conversion<br />
+Retrieve voltage values<br />
+IF logging: write currents and voltage to logging buffer, increment logging pointer  (not yet implemented)
+IF logging pointer &gt;logging samples, set logging complete (not yet implemented)
+Check state (Idle, running, tracking, fault/BRK...)<br />
+Manipulate currents and voltages to Vab (FOC)<br />
+Calculate current position and speed (get Hallsensor values, sensorless observer, ToDo Encoder)<br />
+Calculate Field weakening
+Run FOC loop
+Run SVPWM (include inverse clark/park)
+Update inverter PWM values based on phase and voltage</p>
+<h2 id="slow-control-loop"><a class="header" href="#slow-control-loop">Slow control loop</a></h2>
+<p>Execute every 20ms on PWM input, 50ms on overflow (UART, ADC in...)
+Without RCPWM input, or with RCPWM processed elsewhere, the slowloop can be run faster (recommended &lt;&lt;1kHz) on any timer with priority second to the fastloop timer and ADC interrupt (if used)
+State machine processing (ToDo)</p>
+<p>Update parameters (e.g. volts to PWM, gains...)
+Run MTPA
+Run power and current limitations</p>
+<p>Speed Ramps etc... ToDo</p>
+<h2 id="coms-loop"><a class="header" href="#coms-loop">Coms loop</a></h2>
+<p>ToDo, currently only simple single character arguments. C0d3b453 working on an implementation...
+Runs on UART RX interrupt
+DMA used to transmit strings.</p>
+<h2 id="speeds-angles-input-params"><a class="header" href="#speeds-angles-input-params">Speeds, angles, input params...</a></h2>
+<h3 id="motor-params-demanded-will-be"><a class="header" href="#motor-params-demanded-will-be">Motor params demanded will be:</a></h3>
+<p>PP - Pole pairs
+Finds kV as mWb on detection
+Rph - Phase resistance (=1/2 phase:phase resistance) detected by measurement protocol
+Ld - Phase inductance in Ld detected by measurement protocol as Lx = Vdinjected/(di/dt)
+Lq - As Ld but found by Vq injection
+Max motor current
+Max power
+Switching frequency
+Possible future...
+OLRampCurrent - Open loop ramp current 
+OLmechRPM - open loop mechanical RPM (will ramp up to this speed in open loop, and stay there until sync'd/detected)</p>
+<h3 id="inverter-params-will-be"><a class="header" href="#inverter-params-will-be">Inverter params will be:</a></h3>
+<h3 id="controller-params-will-be"><a class="header" href="#controller-params-will-be">Controller params will be</a></h3>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="fast-control-loop-1"><a class="header" href="#fast-control-loop-1">Fast Control loop</a></h2>
+<p>Fast control loop must:<br />
+Check for over limit events if not handled in hardware
+Retrieve current values from ADC conversion<br />
+Retrieve voltage values<br />
+IF logging: write currents and voltage to logging buffer, increment logging pointer  (not yet implemented)
+IF logging pointer &gt;logging samples, set logging complete (not yet implemented)
+Check state (Idle, running, tracking, fault/BRK...)<br />
+Manipulate currents and voltages to Vab (FOC)<br />
+Calculate current position and speed (get Hallsensor values, sensorless observer, ToDo Encoder)<br />
+Calculate Field weakening
+Run FOC loop
+Run SVPWM (include inverse clark/park)
+Update inverter PWM values based on phase and voltage</p>
+<h2 id="slow-control-loop-1"><a class="header" href="#slow-control-loop-1">Slow control loop</a></h2>
+<p>Execute every 20ms on PWM input, 50ms on overflow (UART, ADC in...)
+Without RCPWM input, or with RCPWM processed elsewhere, the slowloop can be run faster (recommended &lt;&lt;1kHz) on any timer with priority second to the fastloop timer and ADC interrupt (if used)
+State machine processing (ToDo)</p>
+<p>Update parameters (e.g. volts to PWM, gains...)
+Run MTPA
+Run power and current limitations</p>
+<p>Speed Ramps etc... ToDo</p>
+<h2 id="coms-loop-1"><a class="header" href="#coms-loop-1">Coms loop</a></h2>
+<p>ToDo, currently only simple single character arguments. C0d3b453 working on an implementation...
+Runs on UART RX interrupt
+DMA used to transmit strings.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="documentation-for-mp2-1"><a class="header" href="#documentation-for-mp2-1">Documentation for MP2</a></h1>
+<h2 id="porting-to-other-mcus"><a class="header" href="#porting-to-other-mcus">Porting to other MCUs</a></h2>
+<p>Intention is that minimal things have to be done to port:</p>
+<ol>
+<li>a) 3 phase (complimentary if required)PWM out required. Timer1 typically used, Timer8 can be used but main loop currently would need manually changing.
+b) set up CUBE with minimum 4x ADC readings (3x phase current and voltage compulsory, phase voltage sensors optional but strongly recommended and input for throttle if required)
+c) The ADC readings must be triggered at top center of the PWM, which can either be triggered through CCR4 or the update event.
+d) The readings can either be made by the Injected or regular conversion manager. Recommended that the injected is used for JDR1 = Iu, JDR2 = Iv, JDR3 = Iw, JDR4 = Vbus.
+e) The ADC can be set up to include an out of range watchdog which can make a rapid overcurrent protection. This is hardware specific, set AWD interrupt and thresholds in CUBE, and populate the ADC interrupt handler with handleError(ERROR_ADC_OUT_OF_RANGE_IA)
+f) The mapping between the ADC readings and the FOC inputs are made in the getRawADC() function, which is implemented per project. Replicate appropriately, using example from F405 project.</li>
+<li>populate the timer1 update interrupt with 	MESC_PWM_IRQ_handler() and __HAL_TIM_CLEAR_IT(&amp;htim1,TIM_IT_UPDATE);</li>
+<li>populate timer 3 or 4 interrupt with MESC_Slow_IRQ_handler(&amp;htimx) and 	__HAL_TIM_CLEAR_IT(&amp;htimx,TIM_IT_UPDATE);</li>
+<li>Run MESCInit() in the main</li>
+<li>Start the slow loop timer and UART in main (Timer1 started by MESCInit())</li>
+<li>Create your own hardware conf file which includes the methods and settings and defaults for your hardware. </li>
+<li>Either hard code your motor parameters in your hardware header file, or implement the autodetection every time, or implement a variant of the flash reader/writer (this is the hard bit for new MCUs)</li>
+<li>Resolve the includes - your project must point to ../MESC_Common/Inc in Properties -&gt;C/C++ General-&gt;Paths and symbols</li>
+<li>Populate the fault handlers with handleError(ERROR_HARDFAULT) and other appropriate fault names</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="documentation-for-mp2-2"><a class="header" href="#documentation-for-mp2-2">Documentation for MP2</a></h1>
+<h2 id="topics-1"><a class="header" href="#topics-1">Topics</a></h2>
+<ul>
+<li>MESC Firmware on the MP2 -- getting started with STM32CubeIDE [<a href="debugging/FIRMWARE_INTRO.html">LINK</a>]</li>
+<li>Gathering motor parameters [<a href="debugging/MOTOR_PARAM.html">LINK</a>]</li>
+<li>Pin mappings between MP2 and the F405 pill [<a href="debugging/MP2_F405PILL_PINOUTS.html">LINK</a>]</li>
+<li>MP2 assembly, testing and firmware [<a href="debugging/PCB_ASSEMBLY_TESTING.html">LINK</a>]</li>
+<li>MP2 bus bar methods [<a href="debugging/HIGHER_AMP_ASSEMBLY.html">LINK</a>]</li>
+<li>Some (bad) examples of connecting the MP2 to a motor [<a href="debugging/QS165_MP2_WIRING.html">LINK</a>]</li>
+<li>Gallery of enclosures [<a href="debugging/ENCLOSURE_GALLERY.html">LINK</a>]</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="getting-started-install-and-debug-mesc-firmware"><a class="header" href="#getting-started-install-and-debug-mesc-firmware">GETTING STARTED: Install and Debug MESC Firmware</a></h1>
+<h2 id="debugging-in-cubeide"><a class="header" href="#debugging-in-cubeide">Debugging in CubeIDE</a></h2>
+<p>Almost all variables of interest can be found in the struct mtr[]
+mtr[] is an array of structs containing the FOC, the raw and converted ADC values, the states, the motor parameter...
+mtr[] can contain n motors. Adding this to the live expressions allows you to view everything about the setup.
+mtr[n]-&gt;mtimer points to the instance of the ST timer.
+mtr[n]-&gt;stimer points to the timer used for the slow loop.
+Mutliple motors can be accomodated, but need patching to the correct ADC readings, which need triggering byt the associated timer.
+Some variables are assumed to be the same for multiple motors e.g. current limits, voltage limits... 
+These can be found in struct g_hw_setup</p>
+<h2 id="getting-started"><a class="header" href="#getting-started">Getting started</a></h2>
+<p>Install STM32CubeIDE from https://www.st.com/en/development-tools/stm32cubeide.html</p>
+<p>On the command line clone the github repository using:</p>
+<pre><code>% git clone https://github.com/davidmolony/MESC_Firmware.git
+</code></pre>
+<p>Start up the STM32CubeIDE. A workspace area is used by STM32CubeIDE to store all of your projects. The first time you start STM32CubeIDE it will want to create a workspace, if you dont have one. </p>
+<img src="debugging/pics/IDE_1_create_workspace.png" title="Creating a workspace">
+<p>Create a name if needed, select &quot;Launch&quot; </p>
+<p>When the IDE comes up for the first time, it may show an information center.</p>
+<img src="debugging/pics/IDE_2_splashscreen.png" title="The IDE splash screen">
+<p>Close on this feature.</p>
+<p>The IDE may show a project explorer tab on the left, if you do not see the project explorer:</p>
+<p>Window--&gt;Show View--&gt;Project explorer</p>
+<p>The project explorer may show &quot;Import projects...&quot; select that, or if you do not see that function, try:</p>
+<p>File--&gt;Import...</p>
+<p>An import selector should come up:</p>
+<img src="debugging/pics/IDE_3_import_selector.png" title="Import selection tool">
+<p>Set up General--&gt;Existing Projects into Workspace, select Next</p>
+<p>Browse for the top-level github folder you created, hit open the import function will show this:</p>
+<img src="debugging/pics/IDE_4_import_projects.png" title="Importing projects">
+<p>Select finish. This should load a set of MESC projects into the Project Explorer, expand the top-level folder and you should see:</p>
+<p>At this point if you select</p>
+<p>Project--&gt;Build All (or the icons on top of the IDE also help with builds)</p>
+<p>you should see the IDE compile the MESC_firmware in all the sub directories. </p>
+<img src="debugging/pics/IDE_5_firmware_build.png" title="Compiling firmware">
+<p>When you select the .ioc file in the file browser this tool pops up. By working with the pull down menus on each pin, you can view or set the functions on that pin. This tool also allows you to change many other functions like the timers, UARTS, and ADCs. </p>
+<img src="debugging/pics/IDE_6_IOC_review1.png" title="View pin functions">
+<h2 id="debugging----getting-started"><a class="header" href="#debugging----getting-started">Debugging -- getting started</a></h2>
+<p>To connect up your pill, you will use the abundantly available ST-LINK V2 debugger, and get connected like this:</p>
+<img src="debugging/pics/IDE_7_stlink.png" title="ST-LINK pin connections">
+<p>There are a couple of settings to watch out for in the configuration of the debugger. Make sure these parameters are set up:
+<img src="debugging/pics/IDE_8_settings1.png" title="Configure the debugger"></p>
+<p>There are a couple of settings to watch out for in the configuration of the debugger. Make sure these parameters are set up:
+<img src="debugging/pics/IDE_9_settings2.png" title="Configure the debugger"></p>
+<p>Once your st-link is connected and the debugger is configured you can get started by hitting this button. Sometimes you have to use that button's pulldown menu to select the debugging style that you want: 
+<img src="debugging/pics/IDE_10_debug.png" title="ST-LINK pin connections"></p>
+<h2 id="debugging----what-to-do-next"><a class="header" href="#debugging----what-to-do-next">Debugging -- what to do next</a></h2>
+<p>There are approximately 10<sup>5</sup> google results for <a href="https://www.google.com/search?q=stm32cubeide+debugging">STM32cubeIDE debugging</a>. Do your best. </p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="mp2-considerations"><a class="header" href="#mp2-considerations">MP2 Considerations</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="mp2-assembly-and-testing"><a class="header" href="#mp2-assembly-and-testing">MP2 Assembly and Testing</a></h1>
+<h2 id="mp2-pcb-assembly"><a class="header" href="#mp2-pcb-assembly">MP2 PCB assembly</a></h2>
+<p>The following is not a step by step guide for finishing the MP2 but it still may be useful for people putting together their first PCB. </p>
+<p>Note: in this assembly we have not added any extra copper along the bus bars which is a common practice to increase the total amount of amperage used for these boards. Adding thicker bus bars is shown here <a href="MP2/../docs/HIGHER_AMP_ASSEMBLY.html">[LINK]</a>. However, <strong>we recommend that if you are going to solder bus bars on your MP2 that you begin with that step first</strong>. </p>
+<p>There are MANY tutorials on how to solder and hopefully this is not your first rodeo. At a minimum you are going to need a high wattage soldering iron, decent quality solder, hopefully some flux remover and a multimeter to be able solder this board. </p>
+<p>Looking at the top side of the board, it tends to be easiest to solder in the shorter parts first (so they rest flat on the bench when getting soldered in. So a possible order is:</p>
+<ul>
+<li>JST connectors</li>
+<li>12V to 5V DC-DC converter</li>
+<li>the larger 12V DC-DC converter</li>
+<li>20 pin headers</li>
+</ul>
+<p>When doing the 20 pin headers...</p>
+<img src="MP2/pics/PCB_ASSEMBLY01.png" title="header pin alignment">
+<p>Another suggestion:</p>
+<img src="MP2/pics/PCB_ASSEMBLY02.png" title="use flux remover">
+<p>The 12V-5V DC converter sits funny:</p>
+<img src="MP2/pics/PCB_ASSEMBLY03.png" title="DC-DC sits funny">
+<p>Heat shrink tubing is your friend!</p>
+<img src="MP2/pics/PCB_ASSEMBLY04.png" title="soldering Vbat and GND">
+<p>Use precision:</p>
+<img src="MP2/pics/PCB_ASSEMBLY05.png" title="watch out for components">
+<img src="MP2/pics/PCB_ASSEMBLY06.png" title="watch out for solder bridges">
+<p><strong>NOTE:</strong> These pics are included to talk about soldering issues, <strong>BUT BE ADVISED WE STRONGLY RECOMMEND</strong> users take advantage of the three holes on each phase to solder in larger wires and get improved current sharing with the MOSFETs. A better example is shown here [<a href="MP2/pics/HIGH_AMP_ASSEMBLY02.jpeg">LINK</a>] and take a look at [THIS FUTURE DOCUMENTATION] for other higher amperage connections. </p>
+<img src="MP2/pics/PCB_ASSEMBLY07.png" title="it aint pretty">
+<h2 id="mp2-continuity-testing"><a class="header" href="#mp2-continuity-testing">MP2 continuity testing</a></h2>
+<p>Before you're finished with soldering be sure to do some important testing of your board. One set of tests involved using a continuity checker on your multimeter. This is a <strong>short video</strong> to help you get started:</p>
+<p><a href="https://www.youtube.com/watch?v=L9bziAqBU64"><img src="https://img.youtube.com/vi/L9bziAqBU64/0.jpg" alt="MP2 continuity checking" /></a></p>
+<p>Once your set up for testing run through the following tests:</p>
+<img src="MP2/pics/PCB_ASSEMBLY08.png" title="pcb continuity chart">
+<img src="MP2/pics/PCB_ASSEMBLY09.png" title="VBat continuity check">
+<img src="MP2/pics/PCB_ASSEMBLY10.png" title="GND continuity check">
+<img src="MP2/pics/PCB_ASSEMBLY11.png" title="Phase wire continuity check">
+<h2 id="mp2-resistance-testing"><a class="header" href="#mp2-resistance-testing">MP2 resistance testing</a></h2>
+<p>Since you have your multimeter out there are some other useful measurements to take. These tests can vary based on what type of meter you have. Also sometimes the readings will take a while to settle down to the final value.</p>
+<img src="MP2/pics/PCB_ASSEMBLY12.png" title="Phase wire resistance check1">
+<img src="MP2/pics/PCB_ASSEMBLY13.png" title="Phase wire resistance check2">
+<img src="MP2/pics/PCB_ASSEMBLY14.png" title="Ground to testpoint check">
+<img src="MP2/pics/PCB_ASSEMBLY15.png" title="Ground to VBat check">
+<h2 id="mp2-powering-up"><a class="header" href="#mp2-powering-up">MP2 powering up</a></h2>
+<p>Hopefully you have experience powering up a PCB for the first time, but here a subset of things you can do when starting up the MP2. </p>
+<p>Connect a switch or put in a jumper over on the <a href="MP2/pics/PCB_ASSEMBLY16.png">middle-left side of the board</a>. Then: </p>
+<ul>
+<li>First remove the pill from the MP</li>
+<li>Connect your multimeter to GND</li>
+<li>Apply power to VBat</li>
+<li>Note that in some cases the DC-DC converter wont activate at &lt;42 volts</li>
+<li>Test for voltages on the points shown...</li>
+</ul>
+<img src="MP2/pics/PCB_ASSEMBLY17.png" title="Voltage check">
+<p>If youre voltages look good, power off, plug in the pill and hopefully you'll see a comforting power light on the pill.</p>
+<h2 id="mp2-loading-the-firmware"><a class="header" href="#mp2-loading-the-firmware">MP2 loading the firmware.</a></h2>
+<ul>
+<li>Disconnect the F405 pill from the MP2 board;</li>
+<li>Search the internet and break a record ($2USD) for the most inexpensive <a href="https://www.google.com/search?q=st-link+v2">&quot;st-link v2&quot;</a> in existence;</li>
+<li>Search on <a href="https://www.google.com/search?q=STM32CubeProgrammer+software+STM32&amp;oq=STM32CubeProgrammer+software+STM32">&quot;STM32CubeProgrammer software STM32&quot;</a>, download and install the programmer code;</li>
+<li>Search, find, 'request from a friend' or compile for yourself a copy of the VESC bin file for the F405 pill;</li>
+<li>Search <a href="https://www.google.com/search?q=st-link2+STM32+programming+bluepill">&quot;st-link V2 STM32 programming bluepill&quot;</a> to learn how to <a href="MP2/pics/IDE_7_stlink.png">connect</a> your st-link to a pill;</li>
+<li>Use the STM32CubeProgrammer to upload the bin file;</li>
+<li>Search, find, 'request from a friend' or compile for yourself a copy of the VESCtool;</li>
+<li>Do not plug the pill into the MP2, upload the VESC firmware to the pill, connect the USB and start VESCtool;</li>
+</ul>
+<p>Select &quot;Connection&quot; on the left hand side of VESCtool. If you see this on your screen:
+<img src="MP2/pics/PCB_ASSEMBLY18.png" title="VESC tool"></p>
+<p>That is good news.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="mp2-assembly-and-testing-high-amperage-methods"><a class="header" href="#mp2-assembly-and-testing-high-amperage-methods">MP2 Assembly and Testing: high amperage methods</a></h1>
+<p>Items to note if you plan to run the MP2 at high amperage</p>
+<ul>
+<li>If you're using a hot plate or oven, add bus bars first</li>
+<li>Design bus bars to attach to heavy gauge wire</li>
+<li>Avoid bending, see below</li>
+<li>The mosfests MUST get some form of heat sinking</li>
+<li>None of this is easy for a beginner</li>
+</ul>
+<p>Soldering big bus bars to the MP2 board is challenging: the larger the bar, the more heat is dissipated from your soldering iron so smaller irons will not work; another issue is that if youre not careful it you can start tacking down your bar, the bar expands and puts a bending force on your PCB. In some cases this creates a dangerous situation where the PCB is bent and has an increased likelihood of breaking thea ceramic caps.</p>
+<p>One method of soldering bus bars that works very well is to use a soldering oven or hot plate. Take the hot plate or oven up to ~270°C, let the bars, solder and PCB all come up to temperature and allow to cool slowly. Because the expansion coefficient of the PCB (which has a lot of copper) and your bars is very similar, heating them all to the same temperature seems to reduce PCB bending.</p>
+<p>Some successful examples:</p>
+<img src="MP2/pics/HIGH_AMP_ASSEMBLY01.jpeg" title="example1">
+<img src="MP2/pics/HIGH_AMP_ASSEMBLY02.jpeg" title="example2">
+<h2 id="how-not-to-do-it"><a class="header" href="#how-not-to-do-it">How not to do it.</a></h2>
+<p>In this case the problem is the large tabs of copper are likely to break off from the board if they receive lateral force. </p>
+<img src="MP2/pics/HIGH_AMP_ASSEMBLY03.png" title="dont do this">
+<h2 id="department-of-overkill"><a class="header" href="#department-of-overkill">Department of overkill</a></h2>
+<p>This is an example of using laser cut copper to add copper bus bars that solder directly to wires. Soldering was done in an oven. </p>
+<img src="MP2/pics/HIGH_AMP_ASSEMBLY04.png" title="laser cut busbars">
+<p>Messing with heat sinks sucks as much as all the other assembly. In this case laser cut aluminium was used, and then threaded to receive the heatsink bolts and &quot;High-Strength High-Temperature PEEK&quot; bolts were used for attaching to heatsink plate. PEEK is type of plastic and reliable in harsh environments up to 260° C. The blue stuff is 3M thermal pad (Mfr# 5583S-10). Normal human beings use kaptan tape and M3 insulation grommets. </p>
+<img src="MP2/pics/HIGH_AMP_ASSEMBLY05.png" title="laser cut heatsinks">
+<p>Final assembly with 2.5mm solid wire supports that have been soldered to threaded, copper pads. 
+<img src="MP2/pics/HIGH_AMP_ASSEMBLY06.png" title="assembly"></p>
+<p>In addition to the added expense the downside of this method is soldering in all the MOSFETs with the big bus bars and phase wiring already in place is overly complicated.</p>
+<img src="MP2/pics/HIGH_AMP_ASSEMBLY07.jpeg" title="assembly">
+Nicely done.
+<div style="break-before: page; page-break-before: always;"></div><h1 id="hardware-1"><a class="header" href="#hardware-1">Hardware</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="ignore-most-of-this-material"><a class="header" href="#ignore-most-of-this-material">IGNORE MOST OF THIS MATERIAL</a></h1>
+<p>**At present the main problem with these connections is there is no flex between the wiring and the board. These pics are included for the purpose of ridicule and discussion. ** </p>
+<h2 id="wiring-qs165-to-mp2"><a class="header" href="#wiring-qs165-to-mp2">Wiring QS165 to MP2</a></h2>
+<p><strong>MP2 temporarily mounted into position.</strong></p>
+<p>This position will be nice because heat block will be forward facing. </p>
+<img src="https://i.imgur.com/ovU7XVF.png" title="MP2 mounts">
+<hr />
+<p><strong>Lengthened the stock QS wires.</strong></p>
+<p>Big fan of heat shrinking TF out of everything. </p>
+<img src="https://i.imgur.com/Z5pO8w4.png" title="QS165 side view">
+<hr />
+<p><strong>Reused the stock rubber boot from QS for my wires.</strong></p>
+<img src="https://i.imgur.com/6lMgTI5.png" title="Rubber boot">
+<hr />
+<p><strong>Top view of the battery box.</strong></p>
+<p>Connectors are in series and in potted epoxy.</p>
+<img src="https://i.imgur.com/fvVpQaJ.png" title="Battery box">
+<hr />
+<p><strong>5mm thick blocks of copper are soldered in for phase wires.</strong></p>
+<p>Blocks span the length of phase connection area and are threaded to receive M5 bolts. Bullet connectors attach to Vbat+/-</p>
+<img src="https://i.imgur.com/mnVLzf7.png" title="Battery terminals">
+<hr />
+<p><strong>Male end of bullet connector.</strong></p>
+<img src="https://i.imgur.com/D5GRRtR.png" title="Bullet connector">
+<div style="break-before: page; page-break-before: always;"></div><h1 id="a-gallery-of-enclosures"><a class="header" href="#a-gallery-of-enclosures">A gallery of enclosures</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="choosing-mosfets-for-the-mp2-controller"><a class="header" href="#choosing-mosfets-for-the-mp2-controller">Choosing MOSFETs for the MP2 Controller</a></h1>
+<h2 id="relevant-mosfet-specifications"><a class="header" href="#relevant-mosfet-specifications">Relevant MOSFET Specifications</a></h2>
+<p>Drain-source Breakdown Voltage (BVdss) refers to the voltage across the drain-source terminal that causes the drain current (ID) to suddenly rise. Drain-source on-resistance (RDS(on)) refers to the effective resistance between the drain and the source when the MOSFET is in the on state. RDS(on) impacts the max current rating of the MOSFET and the heat generated by the MOSFET is directly proportional to this value. RDS(on) is also associated with current loss. So when choosing a TO220 MOSFET package for the MP2, follow these values closely. </p>
+<p>For MOSFETs on the MP2, you want:</p>
+<p>BVdss = 20% margin over your battery’s max voltage 
+RDS(on) &lt;= 4mOhm </p>
+<img src="hardware/pics/MOSFET_PARAM01.png" title="Table 1">
+<h2 id="avoiding-parasitic-activation"><a class="header" href="#avoiding-parasitic-activation">Avoiding Parasitic Activation</a></h2>
+<p>The gate of a MOSFET is insulated by a thin silicon oxide which results in a capacitance between the gate-drain, gate-source and drain-source terminals. The capacitance values are described by the Input Capacitance (Ciss) and  Reverse transfer capacitance (Crss) directly reflect the switching performance of a MOSFET. (Other factors like reverse recovery charge can also be considered). These Ciss/Crss capacitances form a potential divider between the battery and the MOSFET source. Much like resistors, they have the effect of pulling the gate up or down when the MOSFET switches. Figure 1 shows that when the gate voltage bumps above the threshold, current starts to flow and it short circuits the battery. This is a problem. Quoting <a href="https://drive.google.com/file/d/1NGAKFHYZfCwJLpQ9wMGC9iVUuzCymuSV/view">this document</a>, “parasitic, or unwanted, turn-on of the power MOSFET is a phenomenon which happens in the reality more often and can cause more damage then usually known. Its appearance often leads to the destruction of the MOSFET…”. To avoid unusual destruction from parasitic turn on, select a MOSFET with a high Ciss/Crss ratio. You are looking for something like what is shown in Table 1 -- as long as that data is true -- we have a ratio of ~200, and the MOSFET should be immune to parasitic turn-on. </p>
+<p>Another consideration is the Gate Threshold Voltage (Vgs) which characterizes the voltage between the gate and source that will switch on the MOSFET. When Vgs is exceeded, the MOSFET turns on and Drain Current (e.g., &quot;ID&quot;) begins to flow. The Transfer Characteristics of a MOSFET shown in Figure 1, displays a knee in the curve around 4V which is good because at this level the MOSFET is more resistant to parasitic turn on.  But be careful -- a higher Vgs is usually at the expense of some RDS(on) -- which we want to minimize. </p>
+<img src="hardware/pics/MOSFET_PARAM02.png" title="Figure 1">
+<h2 id="optimum-dead-time-values"><a class="header" href="#optimum-dead-time-values">Optimum Dead Time Values</a></h2>
+<p>The MP2 uses a half bridge configuration shown in Figure 2 with two N-channel MOSFETs between Vbat and ground to drive each motor phase. The two half bridge MOSFETs are referred to as “high-side” and “low-side”. During its operation the high-side and low-side MOSFETs trade switching between each other in order to drive current to each motor phase. Shoot through refers to a situation where both high-side and low-side MOSFETs are simultaneously fully or partially turned on, allowing current to flow between Vbat to ground. Dead time, refers to the period of time between switching the MOSFETs to protect against shoot through. </p>
+<img src="hardware/pics/MOSFET_PARAM03.png" title="Figure 2">
+<p>Factors that control how quickly MOSFET switching also important to setting the correct dead-time. For example, depending on the selection of the parts you’re using, the MP2 may have 4.7 ohm gate resistor with 3 x 7.4nF capacitance. This combination of factors gives a time constant of 104ns. Turn on threshold is usually reached within 1 time constant and turn off in 1.5 to 2.5 time constant. MP2 users will therefore need at minimum 1 time constant dead time to avoid the high and low side MOSFETs coming on at the same time. There is additional resistance coming from the MOSFET driver which impacts switching, and the capacitance between the drain and gate (i.e., &quot;Miller capacitance&quot;) also reduces the switching speed.  Rise time for the MOSFET is also associated with Ciss as well as the package temperature. Taken all together, in practice, 3 time constants dead time is minimum, 4 usually optimal, and 5 is safe.</p>
+<h2 id="snubber-resistors"><a class="header" href="#snubber-resistors">Snubber Resistors</a></h2>
+<p>Surges of voltage between the MOSFET drain and source are able to feed back through the gate because of electromagnetic induction and parasitic capacitance resulting in unwanted oscillation, which is often referred to as &quot;ringing&quot;.  These transient voltages are shown in Figure 3. Ringing is inevitable with fast switching, but snubbers in the circuit reduce the overall gain of oscillation and will decay the oscillation more rapidly. Depending on the choice of MOSFET you select, the MP2 may not need snubbers, but as you can see in the <a href="https://drive.google.com/file/d/1S_ANmKU4OLiC335F1DV1td9k-rrzCTln/view">MP2 schematic</a> it is equipped with snubber resistors (RS1, RS2, RS3) and capacitors (CS1, CS2, CS3). </p>
+<p>In situations where you get ringing on the MP2, you will need to dampen the oscillation by choosing the R and C snubber values, and soldering in these components. (Dont panic, the footprints for these components are 2.0 x 1.2 mm.) Look at the behavior of the MOSFETs on the MP2 by running it at moderately high current, and putting an oscilloscope probe on the test points connected to the MOSFET gates. (The test points are labeled with “TpGS” on the schematic.) The ringing frequency will be in the 20 to 150MHz region. You then tune the snubber so that it dampens the targeted ringing frequency. To achieve this, set C to roughly half the MOSFET total Coss (output capacitance) and the R such that the RC frequency is equal to the ringing frequency. If that doesn't solve ringing problems, you may have to increase the gate resistors (labeled RG1-6 on the schematic) which currently are 4.7 ohm. Changing these resistors may also require modifying the dead time. </p>
+<img src="hardware/pics/MOSFET_PARAM04.png" title="Figure 3">
+<p>A practical example (text taken from the <a href="https://drive.google.com/file/d/1S_ANmKU4OLiC335F1DV1td9k-rrzCTln/view">MP2 schematic</a>)
+Rough approximation: RC = 1/2 ringing period, e.g. 30MHz ringing -&gt; 3ns period -&gt;1.5ns RC, 2nF 1ohm is a good starting point. Typically, C = 1-5nF, R = 0.5-5 ohms. The capacitor determines the power dissipated, the resistor dissipates the power. The highest damping factor usually where Csnub ~=Coss MOS.</p>
+<p>Other MOSFET Properties: Switching Losses
+Earlier we said RDS(on) is associated with the MOSFET’s current loss, which translates to a power loss in heat which can be described by this equation:</p>
+<p>P=(√2xI)² x RDS(on)</p>
+<p>Where I represents currents and the units for P is in watts. This is time shared between high and low side so a further division by 2 is required.</p>
+<p>Switching losses are described by:</p>
+<p>Vbus x Iphase x switching time.</p>
+<p>Where Iphase is average (not RMS) and switching time will be measured using a scope. Body diode conduction losses are given by:</p>
+<p>Dead time x Iphase(avg) x Vdiode x Fpwm x 2 </p>
+<p>Where dead time is the effective dead time where both MOSFETs are actually off, ~200ns if set up well, Vdiode is usually 1volt, Fpwm x 2 is per phase. </p>
+<p>Note, loss to the gate resistors is negligible and overall, RDS(on) usually dominates switching losses. </p>
+<h2 id="suggested-mosfet-part-numbers-from-endless-sphere"><a class="header" href="#suggested-mosfet-part-numbers-from-endless-sphere">Suggested MOSFET Part Numbers (from <a href="https://endless-sphere.com/forums/viewtopic.php?t=117045">Endless sphere</a>)</a></h2>
+<p>100V</p>
+<ul>
+<li>CRST030N10N (Initial boards built with these)</li>
+<li>MDP10N027 (another initial board built with these)</li>
+<li>NCEP039N10</li>
+<li>IPP026N10NF2S</li>
+<li>DMTH10H005SCT</li>
+</ul>
+<p>150V</p>
+<ul>
+<li>CRST073N15N</li>
+<li>NCEP15T14</li>
+<li>NTP5D0N15MC</li>
+<li>SUP70042E</li>
+</ul>
+<h2 id="issues-with-ncep039n10"><a class="header" href="#issues-with-ncep039n10">Issues With NCEP039N10</a></h2>
+<p>These MOSFETs have about 2/3 the gate charge of ones previously tested. This may result in ringing problems, and they may have excess dead time that will reduce sensorless startup performance and waste a bit of power.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="calculation-of-bldc-motor-parameters"><a class="header" href="#calculation-of-bldc-motor-parameters">Calculation of BLDC Motor Parameters</a></h1>
+<p>The MP2 as well as other VESC-based systems provide the capability to measure motor parameters using the controller. For example, <a href="https://vesc-project.com/vesc_tool">vesc-tool</a> collects several motor values from a connected motor and controller by selecting &quot;FOC&quot; on left panel, going to the &quot;General&quot; tab, and following the &quot;Detect and Calculate Parameters&quot; directions on that page. </p>
+<p>So vesc-tool is great for retreiving parameters. However, in cases where you want to measure the parameters yourself or check if your VESC is gathering up the right numbers, this document is for you. </p>
+<h2 id="preamble"><a class="header" href="#preamble">PREAMBLE</a></h2>
+<p>Some notes before beginning.</p>
+<p><strong>Expertise.</strong> This document assumes you have a reasonable understanding of concepts such as Ohm's law and inductance. It also assume that you're comfortable connecting up high amperage equipment which should be not any more complex than wiring your motor to a controller. You're also going to need to have a lot of familiarity with using VESC-based controllers. </p>
+<p><strong>Equipment.</strong> In order to do what is described here you'll need the following: </p>
+<ul>
+<li>A multimeter</li>
+<li>A current limiting power supply</li>
+<li>A LCR meter</li>
+<li>An oscilloscope</li>
+</ul>
+<p>You'll also need some way to turn your disconnected motor at a relatively precise rpm. More about that later. </p>
+<p><strong>BLDC motor configuration.</strong> BLDC motors have two basic achitectures:</p>
+<img src="hardware/pics/MOTOR_PARAM_wye_v_delta.png" title="Figure 1: motor configurations">
+<p>If your BLDC has three big wires coming out of it, we are going to assume that motor is in Wye configuration for the sake of simplifying the math used here.</p>
+<h2 id="resistance"><a class="header" href="#resistance">RESISTANCE</a></h2>
+<p>The copper wires inside of a BLDC are long, and the resistance found in those windings is an important number. In some cases the resistance can be measure direcly with an ohmmeter, but cheap commerical ohmmeters often will not get down to the range needed to get a good value. Instead, perform the following:</p>
+<ul>
+<li>Find the rated amperage of your motor</li>
+<li>Select a value around 10% of this rating</li>
+<li>Set your current limited power supply to your selected amperage</li>
+</ul>
+<p>Your motor has three wires -- these are referred to as &quot;phase wires&quot; and are connected to the the termination points of the windings shown in <strong>Figure 2</strong>. Arbitrarily choose two wires, and connect them to your power supply. Note: the motor will <a href="https://www.youtube.com/watch?v=oRXPFaZ0nJI">jump</a> and then freeze to a holding position when you connect the power supply.</p>
+<p>Now, at the same connection point of each phase wire, connect your multimeter to measure volts (you'll probably need something in the millivolt range). Get a number. Your results may look something like this:</p>
+<img src="hardware/pics/MOTOR_PARAM_resistance.png" title="Figure 1. Capturing resistance based on Ohm's law">
+<p>Notice that it would NOT work well to use the measurement that is coming from the power supply itself. Better to use what your multimeter is telling you. The connection used for this measurement is referred to as &quot;phase to phase&quot; because you're actually connecting between two phases of the motor to get your value. Grab your phase to phase voltage, and use Ohm's law to calculate the resistance. In our case:</p>
+<ul>
+<li>R = V / I</li>
+<li>R = 129 mV / 10A</li>
+<li>R = 12.9</li>
+<li>Convert to single phase resistance: R = 12.9 / 2, or 6.45mOhms</li>
+</ul>
+<h2 id="inductance-values-lq-and-ld"><a class="header" href="#inductance-values-lq-and-ld">INDUCTANCE VALUES Lq AND Ld</a></h2>
+<p>In our case we're going to measure inductance using an LCR meter. LCR meters measures inductance (L), capacitance (C), and resistance (R) and commercial meters are not particularly expensive.</p>
+<p>Gathering inductance values requires that we find two important positions inside of your motor that have to do with the position of the stator coils and the rotor magnets. To find these positions you can use the power supply set at the values as before (or less). These positions are described below:</p>
+<img src="hardware/pics/MOTOR_PARAM_Ld_Lq1.png" title="Figure 3. D-axis and Q-axis motor positions">
+<p>Also see <a href="https://youtu.be/oRXPFaZ0nJI">this video</a> which shows a motor jumping around when the phase wires are connected to a power supply. The marked positions are referred to as d-axis and q-axis (note the above figure). Once you have these positions, do the following:</p>
+<ul>
+<li>Disconnect power supply</li>
+<li>Turn the motor to d-axis position</li>
+<li>Set your LCR to measure inductance</li>
+<li>Using the same phase wires as when connected to the power supply, connect LCR</li>
+<li>Get a reading for Ld</li>
+<li>Turn motor to q-axis position</li>
+<li>Get a reading for Lq</li>
+</ul>
+<p>Note, the motor may have residual inductance, or something, that means it takes a while for the L value to settle. In some cases metalic desk tops and placement of hands on the motor have influenced the L value. Take your time, and shorting the leads on the motor also helps to settle residual inductance.</p>
+<p>Your measurements for Ld and Lq are phase to phase. Divide by 2 to get single phase Ld and Lq. To get total L for the motor calculate their average, or L = (Ld + Lq) / 2.</p>
+<p>In our example here we get the following; (notice the position of the motor in each of the pics):
+<img src="hardware/pics/MOTOR_PARAM_Ld_Lq2.png" title="Figure 4. Ld/Lq results"></p>
+<ul>
+<li>Phase to phase Ld measure = 174 uH</li>
+<li>Phase to phase Lq measure = 199 uH</li>
+<li>Thus, for single phase:  Ld = 87uH, Lq = 99.5uH, and L = 93uH</li>
+</ul>
+<h2 id="flux-linkage"><a class="header" href="#flux-linkage">FLUX LINKAGE</a></h2>
+<p>You'll discover there is an abundance of ways to measure flux linkage out on the internet. In our case we're going to use an oscilloscope to emperically measure amplitude and period of the volts generated by your BLDC. From this we'll calculate lambda, which is the integral of volt x seconds. </p>
+<p>To get this measurement you're going to need some way to turn your disconnected motor at a relatively precise rpm. You'll probably need to mount the motor, and then connect it to an electric drill or another motor. One method of turning a motor is <a href="https://youtube.com/shorts/YvglKtxUaCQ">shown here</a>. Turn the motor and collect the output of the motor on your scope.</p>
+<p>Connect the ground end of your oscilloscope to one phase of the motor, and the probe to another phase. Be sure to note the scope settings for volts / div for the amplitude and ms / div for period. Once you have all this extract values for Vpeak and period of your sine wave. Here's an example:</p>
+<img src="hardware/pics/MOTOR_PARAM_scope.png" title="Figure 5. Oscilloscope measurements of BLDC motor output">
+<p>The scope is set to 2V / div for voltage and and 5ms / div for period. In our pic, Vpeak = 5V, and period, or T = 28ms. The formula to calculate lambda is:</p>
+<img src="hardware/pics/MOTOR_PARAM_lambda.png" title="equation for flux linkage">
+<p>Note: your measurement for the scope is collected from phase to phase; however, this formula does not require that you convert to single phase lambda, the formula handles it for you. </p>
+<h2 id="comparison-to-vesc-values"><a class="header" href="#comparison-to-vesc-values">COMPARISON TO VESC VALUES</a></h2>
+<p>Let's compare these values to what was collected using a 75V 100A single ESC single ubox from Spintend. For the motor used here, this is what you get in vesc-tool by selecting &quot;FOC&quot; on left panel, going to the &quot;General&quot; tab, and following the &quot;Detect and Calculate Parameters&quot; directions on that page:</p>
+<img src="hardware/pics/MOTOR_PARAM_vesc-tool.png" title="Figure 6. vesc-tool detection results">
+<p>Comparing to our emperical values, we get:</p>
+<img src="hardware/pics/MOTOR_PARAM_table.png" title="comparing results">
+<p>These are values are very close. Note that your results are always going to vary based on your controller, wiring, and motor parameters. </p>
+<p>(*) One exception is the resistance. In this example the resistance of the motor is relatively low and the discrepancy here is probably due to added resistance of the MOSFETs in the ubox. The MOSFET resistance would not be as significant for motors with a higher resistance. </p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="mp2-v03-jst-pinouts"><a class="header" href="#mp2-v03-jst-pinouts">MP2 V0.3 JST PINOUTS</a></h1>
+<h2 id="translation-table-for-vesc-users"><a class="header" href="#translation-table-for-vesc-users">Translation table for VESC users</a></h2>
+<img src="hardware/pics/MP2_CONNECTOR_MAPPING.png" alt="Pins to MP2" title="Function of MP2 pins">
+<div class="table-wrapper"><table><thead><tr><th style="text-align: left"></th><th style="text-align: left">VESC F405 Pill</th><th style="text-align: left"></th></tr></thead><tbody>
+<tr><td style="text-align: left">Header</td><td style="text-align: left">MCU pin</td><td style="text-align: left">Name</td></tr>
+<tr><td style="text-align: left">J3 - 1</td><td style="text-align: left">N/A</td><td style="text-align: left">GND</td></tr>
+<tr><td style="text-align: left">J3 - 2</td><td style="text-align: left">PC8</td><td style="text-align: left">HALL_A</td></tr>
+<tr><td style="text-align: left">J3 - 3</td><td style="text-align: left">PC7</td><td style="text-align: left">HALL_B</td></tr>
+<tr><td style="text-align: left">J3 - 4</td><td style="text-align: left">PC6</td><td style="text-align: left">HALL_C</td></tr>
+<tr><td style="text-align: left">J3 - 5</td><td style="text-align: left">PA7 (opt)</td><td style="text-align: left">MOTOR_TEMP</td></tr>
+<tr><td style="text-align: left">J3 - 6</td><td style="text-align: left">N/A</td><td style="text-align: left">5V5</td></tr>
+<tr><td style="text-align: left"></td><td style="text-align: left"></td><td style="text-align: left"></td></tr>
+<tr><td style="text-align: left">J2 - 1</td><td style="text-align: left">N/A</td><td style="text-align: left">Vaux (5v or 3v3)</td></tr>
+<tr><td style="text-align: left">J2 - 2</td><td style="text-align: left">N/A</td><td style="text-align: left">GND</td></tr>
+<tr><td style="text-align: left">J2 - 3</td><td style="text-align: left">PB9</td><td style="text-align: left">CAN_TX</td></tr>
+<tr><td style="text-align: left">J2 - 4</td><td style="text-align: left">PB8</td><td style="text-align: left">CAN_RX</td></tr>
+<tr><td style="text-align: left">J2 - 5</td><td style="text-align: left">PB11</td><td style="text-align: left">USART3_RX</td></tr>
+<tr><td style="text-align: left">J2 - 6</td><td style="text-align: left">PB10</td><td style="text-align: left">USART3_TX</td></tr>
+<tr><td style="text-align: left"></td><td style="text-align: left"></td><td style="text-align: left"></td></tr>
+<tr><td style="text-align: left">J4 - 1</td><td style="text-align: left">N/A</td><td style="text-align: left">GND</td></tr>
+<tr><td style="text-align: left">J4 - 2</td><td style="text-align: left">N/A</td><td style="text-align: left">Vaux</td></tr>
+<tr><td style="text-align: left">J4 - 3</td><td style="text-align: left">PB4</td><td style="text-align: left">TIM3 / MISO</td></tr>
+<tr><td style="text-align: left">J4 - 4</td><td style="text-align: left">PB5</td><td style="text-align: left">TIM3 / MOSI / CAN2_RX</td></tr>
+<tr><td style="text-align: left">J4 - 5</td><td style="text-align: left">PB6</td><td style="text-align: left">TIM4 / CAN2_TX / USART1_TX</td></tr>
+<tr><td style="text-align: left">J4 - 6</td><td style="text-align: left">PB7</td><td style="text-align: left">TIM4 / USART1_RX</td></tr>
+<tr><td style="text-align: left"></td><td style="text-align: left"></td><td style="text-align: left"></td></tr>
+<tr><td style="text-align: left">J1 - 1</td><td style="text-align: left">N/A</td><td style="text-align: left">GND</td></tr>
+<tr><td style="text-align: left">J1 - 2</td><td style="text-align: left">PA4</td><td style="text-align: left">A_THROTTLE</td></tr>
+<tr><td style="text-align: left">J1 - 3</td><td style="text-align: left">PA7 (opt)</td><td style="text-align: left">A_BRAKE</td></tr>
+<tr><td style="text-align: left">J1 - 4</td><td style="text-align: left">N/A</td><td style="text-align: left">5V</td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+
+    </body>
+</html>

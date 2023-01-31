@@ -1,0 +1,109 @@
+## Hardware:
+Any STM32 based 3 phase system using Timer1 for PWM High and Low and 3 phase current plus bus voltage measurement. Canonical hardware is F303, but better results can be made with external amplification so the F303 is no longer preferred.
+Preferable to have phase voltage sensors for restart while spinning and tracking without modulation (gives reduced drag and better efficiency)
+Specifically intended for the MESC_FOC_ESC hardware, but also running on F405, F401, L431 and F411 targets.  
+
+### PWM
+Timer1 set up to generate complimentary centre aligned PWM with dead time, frequency configurable.
+Owing to the number of clock cycles per PWM period for the MCU to complete math (e.g. 72M/35.2K/2= 1024 clock cycles) math occurring in the interrupt must be fast.
+Firmware will be targetting a <1000 clock cycles per Fastloop and <<1000 cycles per hyperloop to enable high frequency operation. Therefore, many functions and precalculations are pushed into the slowloop.
+
+Space vector modulation variant "mid point clamp" primarily used; bottom clamp implementation exists, but less effective with sensorless at low speeds and broadly incompatible with HFI.
+Centring at 50% duty cycle has a few advantages - it allows recirculation through the high side FETs as well as the low side, which evens out the load on them, and cancels most offsets. 
+Disadvantages - reduced sampling time for currents , more switching events, all phases floating... might be worse for EMC emmisions?
+For higher modulation indices, bottom clamp implementation can be used for FOC control. Bit noisier, less FET sharing, but allows for longer current sampling periods, and therefore higher modulation. 
+SVPWM mid point clamp clips the Vd and Vq at fixed limits such that the inverse transform is limited to what will fit and is commonly seen in outrunner motors.
+
+There is no hard limit on ERPM, but eventually it trips. Has worked to over 180kerpm. This is uselessly high in practice
+Target 30000mechrpm at 6PP gives a feasible 180000erpm, with 12PWMperiods/sinwave @35kHz. ~3kHz electrical rotation frequency.
+Most motors cannot cope with this speed due to stator eddie and hysteresis losses. Typical 0.2mm laminations become very inefficient at around 1kHz.
+
+### ADC
+ADC conversions are triggered by timer1 overflow on TRGO. ADCs 1,2,3 are used to get fully synchronous current readings on F303 and F405. Vbus read by ADC1 immediately after current reading.   
+The main loop runs on the timer1 update interrupt, in which the new PWM values are calculated from an 8 bit  sin table, or calculator developed by Jens and FOC/sensorless observer  
+ADC interrupt is now reserved for overcurrent protection events with the analog watchdog.
+
+### Hall
+Hall sensors are supported, but only in forward mode (swap a pair of motor phase wires if it runs backwards) but full support will be gradually deprecated since sensorless works much better. Hall startup optioncoming.
+Timer3 or 4 available but not used. Can be set up in XOR activation reset mode, so gives a duration between each hall sensor change of state, which can be directly converted to a speed. For a minimum speed of 10eRPM, =(10/60)Hz=1 XOR changes/second, 1 seconds/XOR change, requires 16 bit TIM4 to clock at 65536/1=65.536kHz. This implies a max speed of 65536(Hz)/6(hall states)x60(RPM/Hz)=655360RPM electrical. With typical BLDC motors being 6PP, this enables 100000RPM mechanical measureable, but the PWM frequency is not high enough to support this!
+Timer XOR hall input is not currently used, instead the fastloop just samples and counts PWM cycles since the last change. This reduces accuracy, but improves portability.
+
+### Encoder
+TLE5012B crudely supported in SSC (SPI) mode. 
+ABI not currently supported. 
+
+### PWM Input
+Timer3 or 4 (not used for halls) set up in reset mode, prescaler 72 (1us resolution), 65535 period, with trigger/reset mapped to TI1FP1, and channel one capturing on rising edge, direct mode, channel 2 capturing on falling edge indirect mode - remapped to TI2FP2. This gives two CC register values, CC1 timing the period of the pulses, and CC2 timing the on time.  
+Interrupt: update interrupt used. We expect a value very close to 20000 from an RC sender. Check CC1 is 20000+/-~10000. If outside this bounds, set input capture flag low.
+
+### Over Current Comparators
+Comparators set up to trigger Tim1 break2 state in the event of overcurrent event, which should turn off all outputs to high impedance on F303 hardware. 
+0.5mOhm shunts (2x1mohm) or 1mOhm (2x2mOhm original hardware) at 100amps gives 50mV, with a pullup to 100mV. Vrefint is 1.23V, so 1/4Vref used for comparator-ve - 310mV. This triggers the comparator at 400A nominal (a LOT of current, but the intended FETs are rated for that for 100us, which is ~2 PWM periods... If alternate FETs used, should check this, or just hope for the best, or modify the shunt resistors to have higher value.  
+Timer1 should have a BRK filter set to avoid switching noise  
+On F405 targets, the expectation is that there is a fault input on the PB12 pin, timer1 is setup to capture and stop PWM generation on this input.
+Hardware without overcurrent comparators is OK, the overcurrent and over voltage is also taken care of in the fastloop, or by the analog watchdog if set up.
+
+## Coms
+Primarily, initially, serial used. 
+USB CDC (serial) implemented for F303, F401 and F405 targets
+
+### Serial 
+TBC.
+
+## Watchdog timer
+Not currently implemented. Lack of it has not presented any issue so far. ToDo...
+Watchdog timer should be kicked by the fast control loop after the VIcheck is completed to ensure response to overvoltage and current (if not on ADC watchdog) events possible.
+Period of ~1ms 
+On overflow, generate a break state on the motor and reset MCU - control loop no longer running, motor could be stopped, freewheeling, generally making a mess of currents and generating high voltages.
+
+## Fast Control loop
+Fast control loop must:  
+Check for over limit events if not handled in hardware
+Retrieve current values from ADC conversion  
+Retrieve voltage values  
+  IF logging: write currents and voltage to logging buffer, increment logging pointer  (not yet implemented)
+  IF logging pointer >logging samples, set logging complete (not yet implemented)
+Check state (Idle, running, tracking, fault/BRK...)  
+Manipulate currents and voltages to Vab (FOC)  
+Calculate current position and speed (get Hallsensor values, sensorless observer, ToDo Encoder)  
+Calculate Field weakening
+Run FOC loop
+Run SVPWM (include inverse clark/park)
+Update inverter PWM values based on phase and voltage  
+
+## Slow control loop
+Execute every 20ms on PWM input, 50ms on overflow (UART, ADC in...)
+Without RCPWM input, or with RCPWM processed elsewhere, the slowloop can be run faster (recommended <<1kHz) on any timer with priority second to the fastloop timer and ADC interrupt (if used)
+State machine processing (ToDo)
+
+Update parameters (e.g. volts to PWM, gains...)
+Run MTPA
+Run power and current limitations
+
+Speed Ramps etc... ToDo
+
+
+## Coms loop
+
+ToDo, currently only simple single character arguments. C0d3b453 working on an implementation...
+Runs on UART RX interrupt
+DMA used to transmit strings.
+
+## Speeds, angles, input params...
+### Motor params demanded will be:  
+PP - Pole pairs
+Finds kV as mWb on detection
+Rph - Phase resistance (=1/2 phase:phase resistance) detected by measurement protocol
+Ld - Phase inductance in Ld detected by measurement protocol as Lx = Vdinjected/(di/dt)
+Lq - As Ld but found by Vq injection
+Max motor current
+Max power
+Switching frequency
+Possible future...
+OLRampCurrent - Open loop ramp current 
+OLmechRPM - open loop mechanical RPM (will ramp up to this speed in open loop, and stay there until sync'd/detected)
+
+### Inverter params will be:
+
+
+### Controller params will be

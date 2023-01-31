@@ -1,0 +1,13 @@
+## Noteable features
+* Simple and robust sensorless observer 
+* HFI using d-q coupled current
+* Dead time compensation and characterisation
+* 100% modulation techniques
+* Field weakening and MTPA
+* Fast fault shutdown
+* Parameter (Rs, Ld, Lq, flux linkage)detection
+* Operation up to ~70kHz PWM (140kHz V0V7 frequency) with F405 MCU, and some opt ions disabled (e.g. SPI encoder). Operation to about 40kHz with F401 MCU and about 35kHz with F303. Stable to <2.5kHz PWM frequency, though this is definitely not advised for most applications.
+* Most hardware cannot cope with current measurements above about 60kHz, noise becomes prohibitive.
+* Easy porting to any STM32 with a floating point unit and timer1
+* Probably easily portable to any other MCU with FPU, 3 phase timer and a 1MHz+ ADC
+
