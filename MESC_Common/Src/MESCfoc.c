@@ -1715,7 +1715,7 @@ __NOP();
     // We need a number to convert between Va Vb and raw PWM register values
     // This number should be the bus voltage divided by the ARR register
     _motor->FOC.Vab_to_PWM =
-        htim1.Instance->ARR / _motor->Conv.Vbus;
+        _motor->mtimer->Instance->ARR / _motor->Conv.Vbus;
     // We also need a number to set the maximum voltage that can be effectively
     // used by the SVPWM This is equal to
     // 0.5*Vbus*MAX_MODULATION*SVPWM_MULTIPLIER*Vd_MAX_PROPORTION

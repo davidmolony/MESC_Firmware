@@ -119,8 +119,8 @@ static void TASK_main(void *pvParameters){
     	bargraph(handle, 0, 4095, motor_curr->Raw.ADC_in_ext1);
     	ttprintf("MIN: %6d MAX: %6d INV: %1.0f", input_vars.adc1_MIN, input_vars.adc1_MAX, input_vars.ADC1_polarity);
     	TERM_setCursorPos(handle, 3, 0);
-    	bargraph(handle, 0.0f, input_vars.max_request_Idq.q, input_vars.Idq_req_ADC1.q);
-    	ttprintf("Request: %f", input_vars.Idq_req_ADC1.q);
+    	bargraph(handle, 0.0f, input_vars.max_request_Idq.q, input_vars.ADC1_req);
+    	ttprintf("Request: %f", input_vars.ADC1_req);
 
     	if(selected==0){
 			if(c=='r'){
@@ -145,8 +145,8 @@ static void TASK_main(void *pvParameters){
 		bargraph(handle, 0, 4095, 0);
 		ttprintf("MIN: %6d MAX: %6d INV: %1.0f", input_vars.adc2_MIN, input_vars.adc2_MAX, input_vars.ADC2_polarity);
     	TERM_setCursorPos(handle, 6, 0);
-    	bargraph(handle, 0.0f, input_vars.max_request_Idq.q, input_vars.Idq_req_ADC2.q);
-    	ttprintf("Request: %f", input_vars.Idq_req_ADC2.q);
+    	bargraph(handle, 0.0f, input_vars.max_request_Idq.q, input_vars.ADC1_req);
+    	ttprintf("Request: %f", input_vars.ADC1_req);
 
 		if(selected==1){
 			if(c=='r'){
