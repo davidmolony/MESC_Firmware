@@ -15,7 +15,9 @@ MESC is a project for embedded BLDC FOC, serving a number of purposes
 MESC runs primarily on any STM32 target with an FPU. Tested with the targets in the repo, but easily portable to any other STM. Compatibility with other MCU brands TBC.
 
 The reference hardware is now the [MP2 ESC](https://github.com/badgineer/MP2-ESC), since it allows testing with many targets by simply swapping the MCU pill. It also offers adequate performance for most light EV applications (high power scooters and ~10kW E-motorbikes.
+
 The original hardware based on F303 target [MESC_FOC_ESC](https://github.com/davidmolony/MESC_FOC_ESC) will be supported for some time, but not encouraged.
+
 All STM32F405RG hardware (AKA VESC compatible hardware e.g. Trampa, SHUL, Triforce, FSESC and many others) compatible with MESC_firmware.
 
 With thanks to all that have helped in the creation of MESC.

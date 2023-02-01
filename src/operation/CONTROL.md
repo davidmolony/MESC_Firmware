@@ -1,33 +1,54 @@
 ## Fast Control loop
-Fast control loop must:  
-Check for over limit events if not handled in hardware
-Retrieve current values from ADC conversion  
-Retrieve voltage values  
-  IF logging: write currents and voltage to logging buffer, increment logging pointer  (not yet implemented)
-  IF logging pointer >logging samples, set logging complete (not yet implemented)
-Check state (Idle, running, tracking, fault/BRK...)  
-Manipulate currents and voltages to Vab (FOC)  
-Calculate current position and speed (get Hallsensor values, sensorless observer, ToDo Encoder)  
-Calculate Field weakening
-Run FOC loop
-Run SVPWM (include inverse clark/park)
-Update inverter PWM values based on phase and voltage  
+
+### The geometric transforms
+
+### The Sensorless Observer
+
+### The FOC PI
+
+### The Field Weakening
+
+### The Circle Limiter
+
+### The Hall start
+
+### Tracking
+
+
+## The Hyperloop
+
+### HFI
+
+#### HFI D
+
+#### HFI45
+
+### PLL and Speed estimation
+
+### Interpolation
+
 
 ## Slow control loop
-Execute every 20ms on PWM input, 50ms on overflow (UART, ADC in...)
-Without RCPWM input, or with RCPWM processed elsewhere, the slowloop can be run faster (recommended <<1kHz) on any timer with priority second to the fastloop timer and ADC interrupt (if used)
-State machine processing (ToDo)
 
-Update parameters (e.g. volts to PWM, gains...)
-Run MTPA
-Run power and current limitations
+### Input collection
 
-Speed Ramps etc... ToDo
+### Duty cycle control
+
+### The Speed Controller
+
+### Temperature limiting
+
+### MTPA
+
+### Field weakening q-current rollback
+
+### Power limiting
 
 
-## Coms loop
 
-ToDo, currently only simple single character arguments. C0d3b453 working on an implementation...
-Runs on UART RX interrupt
-DMA used to transmit strings.
+
+
+## SimpleComs loop
+
+## RTOS and terminal
 

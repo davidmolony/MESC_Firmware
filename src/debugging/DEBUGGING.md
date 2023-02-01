@@ -1,4 +1,5 @@
-# Documentation for MP2
+# Debugging MESC and setting up hardware 
+MP2 used as example
 
 ## Topics
 * MESC Firmware on the MP2 -- getting started with STM32CubeIDE [[LINK](FIRMWARE_INTRO.md)]
