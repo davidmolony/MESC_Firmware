@@ -11,6 +11,10 @@ $$\begin{matrix}I\alpha \\ I\beta \\ I\gamma \end{matrix} = 2/3 \begin{matrix}1 
 
 ### The Sensorless Observer
 
+When $a \ne 0$, there are two solutions to $(ax^2 + bx + c = 0)$ and they are 
+$$ x = {-b \pm \sqrt{b^2-4ac} \over 2a} $$
+This is the reference github mathjax example...
+
 ### The FOC PI
 
 ### The Field Weakening
