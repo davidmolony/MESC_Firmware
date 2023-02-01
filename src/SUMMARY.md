@@ -1,6 +1,6 @@
 # Summary
 - [Introduction to the MESC](./introduction/INTRODUCTION.md)
-    - [Forward](./introduction/FORWARD.md)
+    - [Foreword](./introduction/FOREWORD.md)
     - [License](./introduction/LICENSE.md)
     - [Features](./introduction/FEATURES.md)
 - [Theory and Operation](./operation/INTRODUCTION.md)
