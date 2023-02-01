@@ -6,8 +6,19 @@ All the FOC gets done in the fastLoop. This is the only critical part of the MES
 If you remove the slowloop, you can write directly to mtr[n]->FOC.Idq_req.q, set the mtr[n]->MotorState to MOTOR_STATE_RUN and enable the inverter.
 
 ### The geometric transforms
+The forward transforms take place in the ADCConversion(_motor) function. This converts the read currents firstly from 3 phase to two phase (Clarke) and then rotates them to the estimated/read from encoder rotor reference frame (Park).
+
 Geometric transforms are the Clark and Park, which take the form:
+Clarke:
 \\[\begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix} = 2/3 \begin{bmatrix} 1 & -0.5 & -0.5\cr0 & \sqrt{3}/2 & -\sqrt{3}/2 \cr 0.5 & 0.5 & 0.5 \end{bmatrix} \begin{bmatrix}Iu \cr Iv \cr Iw \end{bmatrix}  \\]
+where MESC selects for the lower of the PWM values at high modulation using the substitution \\( Iu + Iv + Iw = 0\\) .
+And Park (rotation matrix around \\( \gamma\\)):
+\\[ \begin{bmatrix}Id \cr Iq \cr I0 \end{bmatrix} = \begin{bmatrix}cos\theta & sin\theta & 0 \cr -sin\theta & cos\theta & 0 \cr 0 & 0 & 1\end{bmatrix} \begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix}\\]
+Where the bottom and right rows of the matrix are ignored (we assume gamma is zero).
+
+\begin{bmatrix} a &b \cr c &d\end{bmatrix}
+\theta
+
 
 ### The Sensorless Observer
 
