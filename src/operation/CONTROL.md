@@ -7,11 +7,11 @@ If you remove the slowloop, you can write directly to mtr[n]->FOC.Idq_req.q, set
 
 ### The geometric transforms
 Geometric transforms are the Clark and Park, which take the form:
-$\begin{bmatrix}I\alpha \\ I\beta \\ I\gamma \end{bmatrix} = 2/3 \begin{bmatrix}1 & -0.5 & -0.5\\0 & \sqrt{3}/2 & -\sqrt{3}/2 \\ 0.5 & 0.5 & 0.5 \end{bmatrix} \begin{bmatrix}Iu \\Iv \\Iw \end{bmatrix} $
+\\[$\begin{bmatrix}I\alpha \\ I\beta \\ I\gamma \end{bmatrix}$ = 2/3 $\begin{bmatrix} 1 & -0.5 & -0.5\\0 & \sqrt{3}/2 & -\sqrt{3}/2 \\ 0.5 & 0.5 & 0.5 \end{bmatrix}$ $\begin{bmatrix}Iu \\Iv \\Iw \end{bmatrix} $ \\]
 
 ### The Sensorless Observer
 
-When \\(a \ne 0$\\), there are two solutions to \\(ax^2 + bx + c = 0\\) and they are: 
+When \\(a \ne 0\\), there are two solutions to \\(ax^2 + bx + c = 0\\) and they are: 
 
 $ x = {-b \pm \sqrt{b^2-4ac} \over 2a} $
 
