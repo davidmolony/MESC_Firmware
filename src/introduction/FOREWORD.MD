@@ -9,8 +9,8 @@ Contributions from others welcome, but
 
 **Thanks to contributors, especially:**
 
-* c0d3b453 for large amounts of helpwith C and teaching, motor, speed temp and other profiles
-* Salavat for initial STM32 setup and teaching
-* Elwin (offline) for testing, motor control idea bouncing and assistance with current controllers
-* Jens (Netzpfuscher) for RTOS, Terminal and variable save v2, tidying up and contributions to SinLUT
-* OWhite for creating the Github Pages
+c0d3b453 for large amounts of helpwith C and teaching, motor, speed temp and other profiles
+Salavat for initial STM32 setup and teaching
+Elwin (offline) for testing, motor control idea bouncing and assistance with current controllers
+Jens (Netzpfuscher) for RTOS, Terminal and variable save v2, tidying up and contributions to SinLUT
+OWhite for creating the Github Pages
