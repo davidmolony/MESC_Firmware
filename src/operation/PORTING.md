@@ -1,4 +1,4 @@
-## Porting to other MCUs
+# Porting to other MCUs
 Intention is that minimal things have to be done to port:
 1) 	a) 3 phase (complimentary if required)PWM out required. Timer1 typically used, Timer8 can be used but main loop currently would need manually changing.
 	b) set up CUBE with minimum 4x ADC readings (3x phase current and voltage compulsory, phase voltage sensors optional but strongly recommended and input for throttle if required)

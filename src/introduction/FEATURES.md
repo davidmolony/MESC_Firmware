@@ -1,3 +1,5 @@
+# MESC_Firmware
+
 ## Noteable features
 * Simple and robust sensorless observer 
 * PWM-Synchronous Encoder readings

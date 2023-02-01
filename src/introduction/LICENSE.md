@@ -1,3 +1,5 @@
+# MESC_Firmware
+
 ## Licence
 This project will initially (and perhaps perpetually) contain a lot of firmware licenced under the STM Cube licence, BSD 3 clause https://opensource.org/licenses/BSD-3-Clause. The rest of the custom code is intended to be contained primarily in the MESC files, also BSD 3 Clause. It is requested that if you borrow, port, refactor parts into your own code... etc this firmware, you may let the project owner know, But you are not compelled to.  It would also be nice if concise and focused improvements were contributed back, but again, you are not compelled to.
 
