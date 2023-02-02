@@ -8,7 +8,7 @@ If you remove the slowloop, you can write directly to mtr[n]->FOC.Idq_req.q, set
 ### The geometric transforms
 The forward transforms take place in the ADCConversion(_motor) function. This converts the read currents firstly from 3 phase to two phase (Clarke) and then rotates them to the estimated/read from encoder rotor reference frame (Park).
 
-Geometric transforms are the Clark and Park, which take the form:
+Geometric transforms are the Clark and Park, which take the forward form are used to transform currents:
 
 Clarke:
 \\[\begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix} = 2/3 \begin{bmatrix} 1 & -0.5 & -0.5\cr0 & \sqrt{3}/2 & -\sqrt{3}/2 \cr 0.5 & 0.5 & 0.5 \end{bmatrix} \begin{bmatrix}Iu \cr Iv \cr Iw \end{bmatrix}  \\]
@@ -17,6 +17,15 @@ where MESC selects for the lower of the PWM values at high modulation using the 
 Park (rotation matrix around \\( \gamma\\)):
 \\[ \begin{bmatrix}Id \cr Iq \cr I0 \end{bmatrix} = \begin{bmatrix}cos\theta & sin\theta & 0 \cr -sin\theta & cos\theta & 0 \cr 0 & 0 & 1\end{bmatrix} \begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix}\\]
 Where \\( \theta\\) is the electrical angle of the rotor; the mechanical angle divided by pole pairs and where the bottom and right rows of the matrix are ignored (we assume \\( \gamma\\) is zero).
+
+The backward, or inverse, form of the transform is used on the voltages to create a 2 phase stator reference and then a 3 phase stator reference voltage from the 2 phase rotor reference. These are performed in the function writePWM(_motor) which is run in the fast AND hyperloop to enable voltage injection for HFI.
+
+Inverse Park:
+\\[ \begin{bmatrix}V\alpha \cr V\beta \cr V\gamma \end{bmatrix} = \begin{bmatrix}cos\theta & -sin\theta & 0 \cr sin\theta & cos\theta & 0 \cr 0 & 0 & 1\end{bmatrix} \begin{bmatrix}Vd \cr Vq \cr V0 \end{bmatrix}\\]
+Inverse Clarke:
+\\[ \begin{bmatrix}Vu \cr Vv \cr Vw \end{bmatrix}=  \begin{bmatrix} 1 & 0 & 1\cr -0.5 & \sqrt{3}/2 & 1\cr 1-.5 & -\sqrt{3}/2 & 1 \end{bmatrix} \begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix}\\]
+MESC uses the full form of the inverse clark where many other implementations skip it and use a SVPWM routine. MESC does this to enable a variety of clamping and over modulation methods, and because it is easier to understand, with no unexplained leaps of faith.
+The end result is identical.
 
 \\( sin\theta\\) and \\( cos\theta\\) are calculated from a lookup table 320 elements (=256x1.25) long optionally with interpolation. With interpolation, the maximum error from this is very small; less than the ADC or PWM resolution.
 
