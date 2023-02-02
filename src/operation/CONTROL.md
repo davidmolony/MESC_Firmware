@@ -49,12 +49,17 @@ Further, the addition of noise on the incoming voltage signal is effectively fil
 and so noise and higher harmonics are greatly reduced.
 
 Within MESC, we choose to carry out this integral in alpha beta frame, so we first remove the effects of resistance and inductance, and then integrate the resulting voltage as:
-\\[ V\alpha = VBEMF\alpha + Ri\alpha + \frac{Ldi\alpha}{dt}\\]
-\\[ V\beta = VBEMF\beta + Ri\beta + \frac{Ldi\beta}{dt}\\]
-where \\(V\alpha \\) and \\(V\beta \\) are the electrical voltage output by the inverter and \\(i\alpha\\) and \\(i\beta\\) is the clarke transformed current measured by the ADC.
+\\[ V_\alpha = V_{BEMF\alpha} + Ri_\alpha + \frac{Ldi_\alpha}{dt}\\]
+\\[ V_\beta = V_{BEMF\beta} + Ri_\beta + \frac{Ldi_\beta}{dt}\\]
+where \\(V_\alpha \\) and \\(V_\beta \\) are the electrical voltage output by the inverter and \\(i\alpha\\) and \\(i\beta\\) is the clarke transformed current measured by the ADC.
 Thusly, we generate two estimated back EMF voltages which we can integrate to get two flux linkages with a 90 degree phase shift.
+
+\\[ \phi_\alpha = \intV_{BEMF\alpha} \\]
+\\[ \phi_\beta = \intV_{BEMF\beta} \\]
+
 We have to deal with teh +C term in the integral, and also with integration drift which would result in arctangent not working. MESC simply clamps the flux integral at hard limits which can either be fixed or calculated in realtime by the flux linkage observer. 
 Since they are shifted by 90 degrees and already filtered by integration, we need only find the arctangent of the two to calculate an estimated angle.
+\\[ \theta = arctan(\frac{\phi_\beta}{\phi_\alpha}) + \pi\\]
 
 #### Alternatives MESC chose not to do
 Alternative to treating the inductance as a piecewise integral, the Lia term can be lumped. This would remove the need to store previous state information to calculate \\( \frac{di}{dt}\\) and is the method commonly used in literature. 
