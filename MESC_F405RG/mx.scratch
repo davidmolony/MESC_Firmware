@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ScratchFile FileVersion="3.0">
+  <FileVersion>3.0</FileVersion>
+  <Workspace>
+    <WorkspaceType>Single-project</WorkspaceType>
+    <WorkspacePath>C:\Users\HPEnvy\Documents\MESC_Firmware\MESC_F405RG\</WorkspacePath>
+    <underRoot>true</underRoot>
+    <TrustZone>0</TrustZone>
+    <HAL_Driver>C:\Users\HPEnvy\STM32Cube\Repository\STM32Cube_FW_F4_V1.27.1</HAL_Driver>
+    <CMSIS>Drivers/CMSIS</CMSIS>
+    <Toolchain>STM32CubeIDE</Toolchain>
+    <IocFile>MESC_F405RG.ioc</IocFile>
+    <Project>
+      <ProjectName>MESC_F405RG</ProjectName>
+      <ProjectNature>C</ProjectNature>
+      <Secure />
+      <filestoremove />
+      <sourceEntriesToRemove>
+        <sourceEntry />
+      </sourceEntriesToRemove>
+      <configs>
+        <config>
+          <name>MESC_F405RG</name>
+          <mainSourceRepo>Core</mainSourceRepo>
+          <sourceStructure>Advanced</sourceStructure>
+          <device>STM32F405RGTx</device>
+          <cpucore>Arm Cortex-M4</cpucore>
+          <fpu>SP</fpu>
+          <memories>
+            <memory access="xrw" name="RAM" size="128" start="0x20000000" />
+            <memory access="xrw" name="CCMRAM" size="64" start="0x10000000" />
+            <memory access="rx" name="FLASH" size="1024" start="0x8000000" />
+          </memories>
+          <startup>C:\Users\HPEnvy\STM32Cube\Repository\STM32Cube_FW_F4_V1.27.1\Drivers\CMSIS\Device\ST\STM32F4xx\Source\Templates\gcc\startup_stm32f405xx.s</startup>
+          <LinkSettings>
+            <LinkAdditionalLibs />
+          </LinkSettings>
+          <heapSize>0x200</heapSize>
+          <stackSize>0x400</stackSize>
+          <board>custom</board>
+          <debugprobe>swd</debugprobe>
+          <optimization />
+          <Aincludes>
+            <include />
+          </Aincludes>
+          <Adefines />
+          <Cdefines>
+            <define>USE_HAL_DRIVER</define>
+            <define>STM32F405xx</define>
+          </Cdefines>
+          <Ldefines />
+          <Cincludes>
+            <include>Core\Inc</include>
+            <include>USB_DEVICE\App</include>
+            <include>USB_DEVICE\Target</include>
+            <include>Drivers\STM32F4xx_HAL_Driver\Inc</include>
+            <include>Drivers\STM32F4xx_HAL_Driver\Inc\Legacy</include>
+            <include>Middlewares\Third_Party\FreeRTOS\Source\include</include>
+            <include>Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2</include>
+            <include>Middlewares\Third_Party\FreeRTOS\Source\portable\GCC\ARM_CM4F</include>
+            <include>Middlewares\ST\STM32_USB_Device_Library\Core\Inc</include>
+            <include>Middlewares\ST\STM32_USB_Device_Library\Class\CDC\Inc</include>
+            <include>Drivers\CMSIS\Device\ST\STM32F4xx\Include</include>
+            <include>Drivers\CMSIS\Include</include>
+          </Cincludes>
+          <definestoremove>
+            <Adefines />
+            <Cdefines>
+              <define>USE_FULL_LL_DRIVER</define>
+              <define>MBEDTLS_CONFIG_FILE="mbedtls_config.h"</define>
+              <define>USE_FULL_ASSERT=1U</define>
+            </Cdefines>
+            <Ldefines />
+          </definestoremove>
+          <inctoremove>
+            <Aincludes>
+              <include />
+            </Aincludes>
+            <Cincludes />
+          </inctoremove>
+        </config>
+      </configs>
+      <copyAsReference>false</copyAsReference>
+      <sourceEntries>
+        <sourceEntry>
+          <name>Core</name>
+        </sourceEntry>
+        <sourceEntry>
+          <name>USB_DEVICE</name>
+        </sourceEntry>
+        <sourceEntry>
+          <name>Drivers</name>
+        </sourceEntry>
+        <sourceEntry>
+          <name>Middlewares</name>
+        </sourceEntry>
+      </sourceEntries>
+      <Groups />
+    </Project>
+  </Workspace>
+</ScratchFile>
+
