@@ -21,6 +21,7 @@ Where \\( \theta\\) is the electrical angle of the rotor; the mechanical angle d
 \\( sin\theta\\) and \\( cos\theta\\) are calculated from a lookup table 320 elements (=256x1.25) long optionally with interpolation. With interpolation, the maximum error from this is very small; less than the ADC or PWM resolution.
 
 ### The Sensorless Observer
+#### What MESC Does
 The sensorless observer is very simple. The implementation is unique to MESC and was developed without recourse to appnotes or papers. It is probably not unique in industry, but so far I have not seen it in any other open source or commercial source project.
 It works (as most successful observers do) on the basis of flux integration, that is the assumption that for a spinning magnet passing a coil, the voltage is given by:
 \\[V = nd \phi \over dt\\] 
@@ -32,39 +33,43 @@ We do not need to care for n, and C varies only dependent on where we start the 
 The key recognition is that \\( \phi \\) is a constant dependent on the magnets, and therefore the max and min of the resulting integral are symetric and constant.
 Since the voltage is sinusoidal, the flux integral will thus also be sinusoidal, with a phase shift of 90 degrees.
 (remember to insert pics of sin and integral...)
-Further, the addition of noise on the incoming voltage signal is effectively filtered out by this integral since \\( \int cosn\theta dt = cosn\theta\n (+C) \\) and so noise and higher harmonics are greatly reduced.
+Further, the addition of noise on the incoming voltage signal is effectively filtered out by this integral since 
+\\[ \int cosn\theta dt = \frac{cosn\theta}{n} (+C) \\] 
+and so noise and higher harmonics are greatly reduced.
 
 Within MESC, we choose to carry out this integral in alpha beta frame, so we first remove the effects of resistance and inductance, and then integrate the resulting voltage as:
 \\[ V\alpha = VBEMF\alpha + Ri\alpha + \frac{Ldi\alpha}{dt}\\]
-\\[ V\beta = VBEMF\beta + Ri\beta + Ldi\beta \over dt\\]
-where \\(V\alpha \\) is the electrical voltage output by the inverter and \\(i\alpha\\) is the clarke transformed current measured by the ADC.
+\\[ V\beta = VBEMF\beta + Ri\beta + \frac{Ldi\beta}{dt}\\]
+where \\(V\alpha \\) and \\(V\beta \\) are the electrical voltage output by the inverter and \\(i\alpha\\) and \\(i\beta\\) is the clarke transformed current measured by the ADC.
 Thusly, we generate two estimated back EMF voltages which we can integrate to get two flux linkages with a 90 degree phase shift.
 We have to deal with teh +C term in the integral, and also with integration drift which would result in arctangent not working. MESC simply clamps the flux integral at hard limits which can either be fixed or calculated in realtime by the flux linkage observer. 
 Since they are shifted by 90 degrees and already filtered by integration, we need only find the arctangent of the two to calculate an estimated angle.
 
+#### Alternatives MESC chose not to do
 Alternatively to the arctangent we could construct a true observer:
 \\[ \theta est_{n+1} = \theta est_n + d\theta + k_p*(\theta calc-\theta est)\\]
-where
+Where:
 \\[ d\theta_{n+1} = d\theta_n + k_i*((\theta est_n + d\theta)-\theta calc_{n+1})\\]
-(here we calculate theta-calc through arctangent as above and forward predict/correct our prediction each cycle)
-or: 
-\\[ \theta-est_(n+1) = \theta-est_n + d\theta + k_p*\phi_d\\]
+(here we calculate \\(\theta calc \\) through arctangent as above and forward predict/correct our prediction each cycle)
+
+Or: 
+\\[ \theta est_{n+1} = \theta est_n + d\theta + k_p*\phi_d\\]
 where
-\\[ d\theta_(n+1) = d\theta_n + k_i*(\phi_d))\\] 
-(here we use the d axis flux linkage, which we derive from a rotation of the alpha beta flux linkage as an estimate of the error to be corrected )
+\\[ d\theta_{n+1} = d\theta_n + k_i*\phi_d\\] 
+(here we use the d axis flux linkage, which we derive from a rotation of the alpha beta flux linkage as an estimate of the error to be corrected)
 
-MESC chooses not to use a true observer, since there is absolutely no measurable advantage, there are gains to be "tuned" with a true observer and there are additional calculation steps.
+MESC chooses not to use a true observer, since there is no obvious measurable advantage, there are gains to be "tuned" which can result in instability with a true observer and there are additional calculation steps.
+Noteable users of true observers include ST Micro's FOC library who use a Leunburger observer and Alex Evers' UNIMOC which uses a Kalman filter.
+Using a true observer of any kind does not deal with the three most fundamental problems facing sensorless observers: 
+* Initially estimating parameters R and L, 
+* Changing resistance with temperature and 
+* Changing inductance with saturation at high current.
 
+#### The MESC Salient Observer
 MESC contains an observer for salient motors, which accounts for the differing d and q inductances. This is not usually required, is not well tested and will not work for outrunner motors since they saturate so heavily.
 It relies on the assumption that the salience travels with the dq frame, and can be transformed into the alpha beta frame, then:
-\\[ D[Li] = Ldi\over dt + idL\over dt\\]
+\\[ \frac{dLi}{dt} = Ldi\over dt + idL\over dt\\]
 And therefore the above estimates for VBEMF can be modified to account for this changing salience in alpha beta frame.
-
-When \\(a \ne 0\\), there are two solutions to \\(ax^2 + bx + c = 0\\) and they are: 
-
-\\[ x = {-b \pm \sqrt{b^2-4ac} \over 2a} \\]
-
-This is the reference github mathjax example...
 
 ### The FOC PI
 
