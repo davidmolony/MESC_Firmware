@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Control loops - Molonoy Electronic Speed Control (MESC) Documentation</title>
+        <title>Control loops - Molony Electronic Speed Control (MESC) Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -30,6 +30,8 @@
 
         <!-- Custom theme stylesheets -->
 
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     </head>
     <body>
         <!-- Provide site root to javascript -->
@@ -80,7 +82,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction/INTRODUCTION.html"><strong aria-hidden="true">1.</strong> Introduction to the MESC</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../introduction/FORWARD.html"><strong aria-hidden="true">1.1.</strong> Forward</a></li><li class="chapter-item expanded "><a href="../introduction/LICENSE.html"><strong aria-hidden="true">1.2.</strong> License</a></li><li class="chapter-item expanded "><a href="../introduction/FEATURES.html"><strong aria-hidden="true">1.3.</strong> Features</a></li></ol></li><li class="chapter-item expanded "><a href="../operation/INTRODUCTION.html"><strong aria-hidden="true">2.</strong> Theory and Operation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../operation/THEORY.html"><strong aria-hidden="true">2.1.</strong> Theory of operation</a></li><li class="chapter-item expanded "><a href="../operation/CONTROL.html" class="active"><strong aria-hidden="true">2.2.</strong> Control loops</a></li><li class="chapter-item expanded "><a href="../operation/PORTING.html"><strong aria-hidden="true">2.3.</strong> Porting to other microprocessors</a></li></ol></li><li class="chapter-item expanded "><a href="../debugging/DEBUGGING.html"><strong aria-hidden="true">3.</strong> Debugging STM32CubeIDE</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../debugging/FIRMWARE_INTRO.html"><strong aria-hidden="true">3.1.</strong> Getting started</a></li></ol></li><li class="chapter-item expanded "><a href="../MP2/INTRO.html"><strong aria-hidden="true">4.</strong> Reference ESC: the MP2</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../MP2/PCB_ASSEMBLY_TESTING.html"><strong aria-hidden="true">4.1.</strong> Assembly</a></li><li class="chapter-item expanded "><a href="../MP2/HIGHER_AMP_ASSEMBLY.html"><strong aria-hidden="true">4.2.</strong> Increasing amperage</a></li></ol></li><li class="chapter-item expanded "><a href="../hardware.html"><strong aria-hidden="true">5.</strong> Hardware</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../hardware/QS165_MP2_WIRING.html"><strong aria-hidden="true">5.1.</strong> Additional wiring for an QS165 motor</a></li><li class="chapter-item expanded "><a href="../hardware/ENCLOSURE_GALLERY.html"><strong aria-hidden="true">5.2.</strong> A gallery of enclosures</a></li><li class="chapter-item expanded "><a href="../hardware/MOSFET_PARAMETERS.html"><strong aria-hidden="true">5.3.</strong> An introduction to MOSFET parameters</a></li><li class="chapter-item expanded "><a href="../hardware/MOTOR_PARAM.html"><strong aria-hidden="true">5.4.</strong> Measure motor resistance and inductance</a></li><li class="chapter-item expanded "><a href="../hardware/MP2_F405PILL_PINOUTS.html"><strong aria-hidden="true">5.5.</strong> Information about the F405 pill</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction/INTRODUCTION.html"><strong aria-hidden="true">1.</strong> Introduction to the MESC</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../introduction/FOREWORD.html"><strong aria-hidden="true">1.1.</strong> Foreword</a></li><li class="chapter-item expanded "><a href="../introduction/LICENSE.html"><strong aria-hidden="true">1.2.</strong> License</a></li><li class="chapter-item expanded "><a href="../introduction/FEATURES.html"><strong aria-hidden="true">1.3.</strong> Features</a></li></ol></li><li class="chapter-item expanded "><a href="../operation/INTRODUCTION.html"><strong aria-hidden="true">2.</strong> Theory and Operation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../operation/THEORY.html"><strong aria-hidden="true">2.1.</strong> Theory of operation</a></li><li class="chapter-item expanded "><a href="../operation/CONTROL.html" class="active"><strong aria-hidden="true">2.2.</strong> Control loops</a></li><li class="chapter-item expanded "><a href="../operation/PORTING.html"><strong aria-hidden="true">2.3.</strong> Porting to other microprocessors</a></li></ol></li><li class="chapter-item expanded "><a href="../debugging/DEBUGGING.html"><strong aria-hidden="true">3.</strong> Debugging STM32CubeIDE</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../debugging/FIRMWARE_INTRO.html"><strong aria-hidden="true">3.1.</strong> Getting started</a></li></ol></li><li class="chapter-item expanded "><a href="../MP2/INTRO.html"><strong aria-hidden="true">4.</strong> Reference ESC: the MP2</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -109,7 +111,7 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">Molonoy Electronic Speed Control (MESC) Documentation</h1>
+                    <h1 class="menu-title">Molony Electronic Speed Control (MESC) Documentation</h1>
 
                     <div class="right-buttons">
                         <a href="../print.html" title="Print this book" aria-label="Print this book">
@@ -141,32 +143,103 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h2 id="fast-control-loop"><a class="header" href="#fast-control-loop">Fast Control loop</a></h2>
-<p>Fast control loop must:<br />
-Check for over limit events if not handled in hardware
-Retrieve current values from ADC conversion<br />
-Retrieve voltage values<br />
-IF logging: write currents and voltage to logging buffer, increment logging pointer  (not yet implemented)
-IF logging pointer &gt;logging samples, set logging complete (not yet implemented)
-Check state (Idle, running, tracking, fault/BRK...)<br />
-Manipulate currents and voltages to Vab (FOC)<br />
-Calculate current position and speed (get Hallsensor values, sensorless observer, ToDo Encoder)<br />
-Calculate Field weakening
-Run FOC loop
-Run SVPWM (include inverse clark/park)
-Update inverter PWM values based on phase and voltage</p>
+                        <h1 id="control-loops"><a class="header" href="#control-loops">Control Loops</a></h1>
+<h2 id="fast-control-loop"><a class="header" href="#fast-control-loop">Fast Control loop</a></h2>
+<p>All the FOC gets done in the fastLoop. This is the only critical part of the MESC, the rest can actually be removed providing the parameters get set and MESC is initialised correctly .
+If you remove the slowloop, you can write directly to mtr[n]-&gt;FOC.Idq_req.q, set the mtr[n]-&gt;MotorState to MOTOR_STATE_RUN and enable the inverter.</p>
+<h3 id="the-geometric-transforms"><a class="header" href="#the-geometric-transforms">The geometric transforms</a></h3>
+<p>The forward transforms take place in the ADCConversion(_motor) function. This converts the read currents firstly from 3 phase to two phase (Clarke) and then rotates them to the estimated/read from encoder rotor reference frame (Park).</p>
+<p>Geometric transforms are the Clark and Park, which take the forward form are used to transform currents:</p>
+<p>Clarke:
+\[\begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix} = 2/3 \begin{bmatrix} 1 &amp; -0.5 &amp; -0.5\cr0 &amp; \sqrt{3}/2 &amp; -\sqrt{3}/2 \cr 0.5 &amp; 0.5 &amp; 0.5 \end{bmatrix} \begin{bmatrix}Iu \cr Iv \cr Iw \end{bmatrix}  \]
+where MESC selects for the lower of the PWM values at high modulation using the substitution \( Iu + Iv + Iw = 0\) .</p>
+<p>Park (rotation matrix around \( \gamma\)):
+\[ \begin{bmatrix}Id \cr Iq \cr I0 \end{bmatrix} = \begin{bmatrix}cos\theta &amp; sin\theta &amp; 0 \cr -sin\theta &amp; cos\theta &amp; 0 \cr 0 &amp; 0 &amp; 1\end{bmatrix} \begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix}\]
+Where \( \theta\) is the electrical angle of the rotor; the mechanical angle divided by pole pairs and where the bottom and right rows of the matrix are ignored (we assume \( \gamma\) is zero).</p>
+<p>The backward, or inverse, form of the transform is used on the voltages to create a 2 phase stator reference and then a 3 phase stator reference voltage from the 2 phase rotor reference. These are performed in the function writePWM(_motor) which is run in the fast AND hyperloop to enable voltage injection for HFI.</p>
+<p>Inverse Park:
+\[ \begin{bmatrix}V\alpha \cr V\beta \cr V\gamma \end{bmatrix} = \begin{bmatrix}cos\theta &amp; -sin\theta &amp; 0 \cr sin\theta &amp; cos\theta &amp; 0 \cr 0 &amp; 0 &amp; 1\end{bmatrix} \begin{bmatrix}Vd \cr Vq \cr V0 \end{bmatrix}\]
+Inverse Clarke:
+\[ \begin{bmatrix}Vu \cr Vv \cr Vw \end{bmatrix}=  \begin{bmatrix} 1 &amp; 0 &amp; 1\cr -0.5 &amp; \sqrt{3}/2 &amp; 1\cr 1-.5 &amp; -\sqrt{3}/2 &amp; 1 \end{bmatrix} \begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix}\]
+MESC uses the full form of the inverse clark where many other implementations skip it and use a SVPWM routine. MESC does this to enable a variety of clamping and over modulation methods, and because it is easier to understand, with no unexplained leaps of faith.
+The end result is identical.</p>
+<p>\( sin\theta\) and \( cos\theta\) are calculated from a lookup table 320 elements (=256x1.25) long optionally with interpolation. With interpolation, the maximum error from this is very small; less than the ADC or PWM resolution.</p>
+<h3 id="the-sensorless-observer"><a class="header" href="#the-sensorless-observer">The Sensorless Observer</a></h3>
+<p>The MESC sensorless observer is also known as the MXLEMMING observer and is now the default on the VESC project.</p>
+<h4 id="what-mesc-does"><a class="header" href="#what-mesc-does">What MESC Does</a></h4>
+<p>The sensorless observer is very simple. The implementation is unique to MESC and was developed without recourse to appnotes or papers. It is probably not unique in industry, but so far I have not seen it in any other open source or commercial source project.
+It works (as most successful observers do) on the basis of flux integration, that is the assumption that for a spinning magnet passing a coil, the voltage is given by:
+\[V = turns x \frac{d\phi}{dt} \] 
+and we observe from watching the motor on a scope that the voltages are sinusoidal.</p>
+<p>Therefore, in general, if we ignore the number of turns and make \(\theta = \omega t\):
+\[ V = \phi\omega sin(\omega t)\]
+\[\int V dt = turns x \phi +C -&gt; -\phi\cos\theta +C\] 
+We do not need to care for turns, and C varies only dependent on where we start the integration for a sin wave.
+The key recognition is that \( \phi \) is a constant dependent on the magnets, and therefore the max and min of the resulting integral are symetric and constant.
+Since the voltage is sinusoidal, the flux integral will thus also be sinusoidal, with a phase shift of 90 degrees.
+(remember to insert pics of sin and integral...)
+Further, the addition of noise on the incoming voltage signal is effectively filtered out by this integral since 
+\[ \int cosn\theta dt = \frac{cosn\theta}{n} (+C) \] 
+and so noise and higher harmonics are greatly reduced.</p>
+<p>Within MESC, we choose to carry out this integral in alpha beta frame, so we first remove the effects of resistance and inductance, and then integrate the resulting voltage as:
+\[ V_\alpha = V_{BEMF\alpha} + Ri_\alpha + \frac{Ldi_\alpha}{dt}\]
+\[ V_\beta = V_{BEMF\beta} + Ri_\beta + \frac{Ldi_\beta}{dt}\]
+where \(V_\alpha \) and \(V_\beta \) are the electrical voltage output by the inverter and \(i\alpha\) and \(i\beta\) is the clarke transformed current measured by the ADC.
+Thusly, we generate two estimated back EMF voltages which we can integrate to get two flux linkages with a 90 degree phase shift.</p>
+<p>\[ \phi_\alpha = \int V_{BEMF\alpha} dt \]
+\[ \phi_\beta = \int V_{BEMF\beta} dt \]</p>
+<p>We have to deal with teh +C term in the integral, and also with integration drift which would result in arctangent not working. MESC simply clamps the flux integral at hard limits which can either be fixed or calculated in realtime by the flux linkage observer. 
+Since they are shifted by 90 degrees and already filtered by integration, we need only find the arctangent of the two to calculate an estimated angle.
+\[ \theta = arctan(\frac{\phi_\beta}{\phi_\alpha}) + \pi\]</p>
+<h4 id="alternatives-mesc-chose-not-to-do"><a class="header" href="#alternatives-mesc-chose-not-to-do">Alternatives MESC chose not to do</a></h4>
+<p>Alternative to treating the inductance as a piecewise integral, the Lia term can be lumped. This would remove the need to store previous state information to calculate \( \frac{di}{dt}\) and is the method commonly used in literature. 
+However, this allows the Lia term to get large compared to the back EMF, and the bounding/elimination of integrational drift is done while the inductance term is still within the BEMF, with probable impact on the result (note the result becomes clearly unstable when \(Lia&gt;phi\))
+Noteably the Ortega observer as used originally in VESC contains this construction, and relied on a non linear (quadratic) elimination of integration drift and associated instability at high current.</p>
+<p>Alternative to the clamping of the flux integrals at their max possible limits a proportional (or PI or non linear) correction factor could be introduced based on the magnitude of the current alpha and beta fluxes. This is similar to the Ortega observer. MESC includes a version of this that can be compiled in with a #define USE_NONLINEAR_OBSERVER_CENTERING but it is advised you do not use this; for experiment only.</p>
+<p>Alternatively to the arctangent we could construct a true observer:
+\[ \theta est_{n+1} = \theta est_n + d\theta + k_p*(\theta calc-\theta est)\]
+Where:
+\[ d\theta_{n+1} = d\theta_n + k_i*((\theta est_n + d\theta)-\theta calc_{n+1})\]
+(here we calculate \(\theta calc \) through arctangent as above and forward predict/correct our prediction each cycle)</p>
+<p>Or: 
+\[ \theta est_{n+1} = \theta est_n + d\theta + k_p*\phi_d\]
+where
+\[ d\theta_{n+1} = d\theta_n + k_i*\phi_d\] 
+(here we use the d axis flux linkage, which we derive from a rotation of the alpha beta flux linkage as an estimate of the error to be corrected)</p>
+<p>MESC chooses not to use a true observer, since there is no obvious measurable advantage, there are gains to be &quot;tuned&quot; which can result in instability with a true observer and there are additional calculation steps.
+Noteable users of true observers include ST Micro's FOC library which uses a Leunburger observer and Alex Evers' UNIMOC which uses a Kalman filter.
+Using a true observer of any kind does not deal with the three most fundamental problems facing sensorless observers: </p>
+<ul>
+<li>Initially estimating parameters R and L, </li>
+<li>Changing resistance with temperature and </li>
+<li>Changing inductance with saturation at high current.</li>
+</ul>
+<h4 id="the-mesc-salient-observer"><a class="header" href="#the-mesc-salient-observer">The MESC Salient Observer</a></h4>
+<p>MESC contains an observer for salient motors, which accounts for the differing d and q inductances. This is not usually required, is not well tested and will not work for outrunner motors since they saturate so heavily.
+It relies on the assumption that the salience travels with the dq frame, and can be transformed into the alpha beta frame, then:</p>
+<p>\[ \frac{dLi}{dt} = \frac{Ldi}{dt} + \frac{idL}{dt} \]</p>
+<p>And therefore the above estimates for VBEMF can be modified to account for this changing salience in alpha beta frame.</p>
+<h3 id="the-foc-pi"><a class="header" href="#the-foc-pi">The FOC PI</a></h3>
+<h3 id="the-field-weakening"><a class="header" href="#the-field-weakening">The Field Weakening</a></h3>
+<h3 id="the-circle-limiter"><a class="header" href="#the-circle-limiter">The Circle Limiter</a></h3>
+<h3 id="the-hall-start"><a class="header" href="#the-hall-start">The Hall start</a></h3>
+<h3 id="tracking"><a class="header" href="#tracking">Tracking</a></h3>
+<h2 id="the-hyperloop"><a class="header" href="#the-hyperloop">The Hyperloop</a></h2>
+<h3 id="hfi"><a class="header" href="#hfi">HFI</a></h3>
+<h4 id="hfi-d"><a class="header" href="#hfi-d">HFI D</a></h4>
+<h4 id="hfi45"><a class="header" href="#hfi45">HFI45</a></h4>
+<h3 id="pll-and-speed-estimation"><a class="header" href="#pll-and-speed-estimation">PLL and Speed estimation</a></h3>
+<h3 id="interpolation"><a class="header" href="#interpolation">Interpolation</a></h3>
 <h2 id="slow-control-loop"><a class="header" href="#slow-control-loop">Slow control loop</a></h2>
-<p>Execute every 20ms on PWM input, 50ms on overflow (UART, ADC in...)
-Without RCPWM input, or with RCPWM processed elsewhere, the slowloop can be run faster (recommended &lt;&lt;1kHz) on any timer with priority second to the fastloop timer and ADC interrupt (if used)
-State machine processing (ToDo)</p>
-<p>Update parameters (e.g. volts to PWM, gains...)
-Run MTPA
-Run power and current limitations</p>
-<p>Speed Ramps etc... ToDo</p>
-<h2 id="coms-loop"><a class="header" href="#coms-loop">Coms loop</a></h2>
-<p>ToDo, currently only simple single character arguments. C0d3b453 working on an implementation...
-Runs on UART RX interrupt
-DMA used to transmit strings.</p>
+<h3 id="input-collection"><a class="header" href="#input-collection">Input collection</a></h3>
+<h3 id="duty-cycle-control"><a class="header" href="#duty-cycle-control">Duty cycle control</a></h3>
+<h3 id="the-speed-controller"><a class="header" href="#the-speed-controller">The Speed Controller</a></h3>
+<h3 id="temperature-limiting"><a class="header" href="#temperature-limiting">Temperature limiting</a></h3>
+<h3 id="mtpa"><a class="header" href="#mtpa">MTPA</a></h3>
+<h3 id="field-weakening-q-current-rollback"><a class="header" href="#field-weakening-q-current-rollback">Field weakening q-current rollback</a></h3>
+<h3 id="power-limiting"><a class="header" href="#power-limiting">Power limiting</a></h3>
+<h2 id="simplecoms-loop"><a class="header" href="#simplecoms-loop">SimpleComs loop</a></h2>
+<h2 id="rtos-and-terminal"><a class="header" href="#rtos-and-terminal">RTOS and terminal</a></h2>
 
                     </main>
 
