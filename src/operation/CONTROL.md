@@ -54,8 +54,8 @@ Within MESC, we choose to carry out this integral in alpha beta frame, so we fir
 where \\(V_\alpha \\) and \\(V_\beta \\) are the electrical voltage output by the inverter and \\(i\alpha\\) and \\(i\beta\\) is the clarke transformed current measured by the ADC.
 Thusly, we generate two estimated back EMF voltages which we can integrate to get two flux linkages with a 90 degree phase shift.
 
-\\[ \phi_\alpha = \intV_{BEMF\alpha} \\]
-\\[ \phi_\beta = \intV_{BEMF\beta} \\]
+\\[ \phi_\alpha = \int V_{BEMF\alpha} dt \\]
+\\[ \phi_\beta = \int V_{BEMF\beta} dt \\]
 
 We have to deal with teh +C term in the integral, and also with integration drift which would result in arctangent not working. MESC simply clamps the flux integral at hard limits which can either be fixed or calculated in realtime by the flux linkage observer. 
 Since they are shifted by 90 degrees and already filtered by integration, we need only find the arctangent of the two to calculate an estimated angle.
