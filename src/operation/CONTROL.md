@@ -21,10 +21,11 @@ Where \\( \theta\\) is the electrical angle of the rotor; the mechanical angle d
 \\( sin\theta\\) and \\( cos\theta\\) are calculated from a lookup table 320 elements (=256x1.25) long optionally with interpolation. With interpolation, the maximum error from this is very small; less than the ADC or PWM resolution.
 
 ### The Sensorless Observer
+The MESC sensorless observer is also known as the MXLEMMING observer and is now the default on the VESC project.
 #### What MESC Does
 The sensorless observer is very simple. The implementation is unique to MESC and was developed without recourse to appnotes or papers. It is probably not unique in industry, but so far I have not seen it in any other open source or commercial source project.
 It works (as most successful observers do) on the basis of flux integration, that is the assumption that for a spinning magnet passing a coil, the voltage is given by:
-\\[V = nd \phi \over dt\\] 
+\\[V = n \frac{d \phi}{dt} \\] 
 and we observe from watching the motor on a scope that the voltages are sinusoidal.
 
 Therefore:
@@ -46,6 +47,12 @@ We have to deal with teh +C term in the integral, and also with integration drif
 Since they are shifted by 90 degrees and already filtered by integration, we need only find the arctangent of the two to calculate an estimated angle.
 
 #### Alternatives MESC chose not to do
+Alternative to treating the inductance as a piecewise integral, the Lia term can be lumped. This would remove the need to store previous state information to calculate \\( \frac{di}{dt}\\) and is the method commonly used in literature. 
+However, this allows the Lia term to get large compared to the back EMF, and the bounding/elimination of integrational drift is done while the inductance term is still within the BEMF, with probable impact on the result (note the result becomes clearly unstable when \\(Lia>phi\\))
+Noteably the Ortega observer as used originally in VESC contains this construction, and relied on a non linear (quadratic) elimination of integration drift and associated instability at high current.
+
+Alternative to the clamping of the flux integrals at their max possible limits a proportional (or PI or non linear) correction factor could be introduced based on the magnitude of the current alpha and beta fluxes. This is similar to the Ortega observer. MESC includes a version of this that can be compiled in with a #define USE_NONLINEAR_OBSERVER_CENTERING but it is advised you do not use this; for experiment only.
+
 Alternatively to the arctangent we could construct a true observer:
 \\[ \theta est_{n+1} = \theta est_n + d\theta + k_p*(\theta calc-\theta est)\\]
 Where:
@@ -59,7 +66,7 @@ where
 (here we use the d axis flux linkage, which we derive from a rotation of the alpha beta flux linkage as an estimate of the error to be corrected)
 
 MESC chooses not to use a true observer, since there is no obvious measurable advantage, there are gains to be "tuned" which can result in instability with a true observer and there are additional calculation steps.
-Noteable users of true observers include ST Micro's FOC library who use a Leunburger observer and Alex Evers' UNIMOC which uses a Kalman filter.
+Noteable users of true observers include ST Micro's FOC library which uses a Leunburger observer and Alex Evers' UNIMOC which uses a Kalman filter.
 Using a true observer of any kind does not deal with the three most fundamental problems facing sensorless observers: 
 * Initially estimating parameters R and L, 
 * Changing resistance with temperature and 
@@ -68,7 +75,9 @@ Using a true observer of any kind does not deal with the three most fundamental 
 #### The MESC Salient Observer
 MESC contains an observer for salient motors, which accounts for the differing d and q inductances. This is not usually required, is not well tested and will not work for outrunner motors since they saturate so heavily.
 It relies on the assumption that the salience travels with the dq frame, and can be transformed into the alpha beta frame, then:
-\\[ \frac{dLi}{dt} = Ldi\over dt + idL\over dt\\]
+
+\\[ \frac{dLi}{dt} = \frac{Ldi}{dt} + \frac{idL}{dt} \\]
+
 And therefore the above estimates for VBEMF can be modified to account for this changing salience in alpha beta frame.
 
 ### The FOC PI
