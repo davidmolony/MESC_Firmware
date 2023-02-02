@@ -25,12 +25,13 @@ The MESC sensorless observer is also known as the MXLEMMING observer and is now 
 #### What MESC Does
 The sensorless observer is very simple. The implementation is unique to MESC and was developed without recourse to appnotes or papers. It is probably not unique in industry, but so far I have not seen it in any other open source or commercial source project.
 It works (as most successful observers do) on the basis of flux integration, that is the assumption that for a spinning magnet passing a coil, the voltage is given by:
-\\[V = n \frac{d\phi}{dt} \\] 
+\\[V = turns x \frac{d\phi}{dt} \\] 
 and we observe from watching the motor on a scope that the voltages are sinusoidal.
 
-Therefore:
-\\[\int V dt = n \phi +C \\] 
-We do not need to care for n, and C varies only dependent on where we start the integration for a sin wave.
+Therefore, in general, if we ignore the number of turns and make \\(\theta = \omega t\\):
+\\[ V = \phi\omega sin(\omega t)\\]
+\\[\int V dt = turns x \phi +C -> -\phi\cos\theta +C\\] 
+We do not need to care for turns, and C varies only dependent on where we start the integration for a sin wave.
 The key recognition is that \\( \phi \\) is a constant dependent on the magnets, and therefore the max and min of the resulting integral are symetric and constant.
 Since the voltage is sinusoidal, the flux integral will thus also be sinusoidal, with a phase shift of 90 degrees.
 (remember to insert pics of sin and integral...)
