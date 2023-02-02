@@ -23,11 +23,11 @@ Where \\( \theta\\) is the electrical angle of the rotor; the mechanical angle d
 ### The Sensorless Observer
 The sensorless observer is very simple. The implementation is unique to MESC and was developed without recourse to appnotes or papers. It is probably not unique in industry, but so far I have not seen it in any other open source or commercial source project.
 It works (as most successful observers do) on the basis of flux integration, that is the assumption that for a spinning magnet passing a coil, the voltage is given by:
-\\[V = nd \phi /over dt\\] 
+\\[V = nd \phi \over dt\\] 
 and we observe from watching the motor on a scope that the voltages are sinusoidal.
 
 Therefore:
-\\[int V dt = n \phi +C \\] 
+\\[\int V dt = n \phi +C \\] 
 We do not need to care for n, and C varies only dependent on where we start the integration for a sin wave.
 The key recognition is that \\( \phi \\) is a constant dependent on the magnets, and therefore the max and min of the resulting integral are symetric and constant.
 Since the voltage is sinusoidal, the flux integral will thus also be sinusoidal, with a phase shift of 90 degrees.
@@ -35,17 +35,17 @@ Since the voltage is sinusoidal, the flux integral will thus also be sinusoidal,
 Further, the addition of noise on the incoming voltage signal is effectively filtered out by this integral since \\( \int cosn\theta dt = cosn\theta\n (+C) \\) and so noise and higher harmonics are greatly reduced.
 
 Within MESC, we choose to carry out this integral in alpha beta frame, so we first remove the effects of resistance and inductance, and then integrate the resulting voltage as:
-\\[ V\alpha = VBEMF\alpha + Ri\alpha + Ldi\alpha \over dt\\]
+\\[ V\alpha = VBEMF\alpha + Ri\alpha + \frac{Ldi\alpha}{dt}\\]
 \\[ V\beta = VBEMF\beta + Ri\beta + Ldi\beta \over dt\\]
-where \\[V\alpha \\] is the electrical voltage output by the inverter and \\[i\alpha\\] is the clarke transformed current measured by the ADC.
+where \\(V\alpha \\) is the electrical voltage output by the inverter and \\(i\alpha\\) is the clarke transformed current measured by the ADC.
 Thusly, we generate two estimated back EMF voltages which we can integrate to get two flux linkages with a 90 degree phase shift.
 We have to deal with teh +C term in the integral, and also with integration drift which would result in arctangent not working. MESC simply clamps the flux integral at hard limits which can either be fixed or calculated in realtime by the flux linkage observer. 
 Since they are shifted by 90 degrees and already filtered by integration, we need only find the arctangent of the two to calculate an estimated angle.
 
 Alternatively to the arctangent we could construct a true observer:
-\\[ \theta-est_(n+1) = \theta-est_n + d\theta + k_p*\theta-calc-\theta-est\\]
+\\[ \theta est_{n+1} = \theta est_n + d\theta + k_p*(\theta calc-\theta est)\\]
 where
-\\[ d\theta_(n+1) = d\theta_n + k_i*((\theta-est_n + d\theta)-\theta-calc_(n+1))\\]
+\\[ d\theta_{n+1} = d\theta_n + k_i*((\theta est_n + d\theta)-\theta calc_{n+1})\\]
 (here we calculate theta-calc through arctangent as above and forward predict/correct our prediction each cycle)
 or: 
 \\[ \theta-est_(n+1) = \theta-est_n + d\theta + k_p*\phi_d\\]
