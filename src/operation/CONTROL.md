@@ -11,19 +11,19 @@ The forward transforms take place in the ADCConversion(_motor) function. This co
 Geometric transforms are the Clark and Park, which take the forward form are used to transform currents:
 
 Clarke:
-\\[\begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix} = 2/3 \begin{bmatrix} 1 & -0.5 & -0.5\cr0 & \sqrt{3}/2 & -\sqrt{3}/2 \cr 0.5 & 0.5 & 0.5 \end{bmatrix} \begin{bmatrix}Iu \cr Iv \cr Iw \end{bmatrix}  \\]
-where MESC selects for the lower of the PWM values at high modulation using the substitution \\( Iu + Iv + Iw = 0\\) .
+\\[\begin{bmatrix}I_\alpha \cr I_\beta \cr I_\gamma \end{bmatrix} = 2/3 \begin{bmatrix} 1 & -0.5 & -0.5\cr0 & \sqrt{3}/2 & -\sqrt{3}/2 \cr 0.5 & 0.5 & 0.5 \end{bmatrix} \begin{bmatrix}I_u \cr I_v \cr I_w \end{bmatrix}  \\]
+where MESC selects for the lower of the PWM values at high modulation using the substitution \\( I_u + I_v + I_w = 0\\) .
 
 Park (rotation matrix around \\( \gamma\\)):
-\\[ \begin{bmatrix}Id \cr Iq \cr I0 \end{bmatrix} = \begin{bmatrix}cos\theta & sin\theta & 0 \cr -sin\theta & cos\theta & 0 \cr 0 & 0 & 1\end{bmatrix} \begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix}\\]
+\\[ \begin{bmatrix}I_d \cr I_q \cr I_0 \end{bmatrix} = \begin{bmatrix}cos\theta & sin\theta & 0 \cr -sin\theta & cos\theta & 0 \cr 0 & 0 & 1\end{bmatrix} \begin{bmatrix}I_\alpha \cr I_\beta \cr I_\gamma \end{bmatrix}\\]
 Where \\( \theta\\) is the electrical angle of the rotor; the mechanical angle divided by pole pairs and where the bottom and right rows of the matrix are ignored (we assume \\( \gamma\\) is zero).
 
 The backward, or inverse, form of the transform is used on the voltages to create a 2 phase stator reference and then a 3 phase stator reference voltage from the 2 phase rotor reference. These are performed in the function writePWM(_motor) which is run in the fast AND hyperloop to enable voltage injection for HFI.
 
 Inverse Park:
-\\[ \begin{bmatrix}V\alpha \cr V\beta \cr V\gamma \end{bmatrix} = \begin{bmatrix}cos\theta & -sin\theta & 0 \cr sin\theta & cos\theta & 0 \cr 0 & 0 & 1\end{bmatrix} \begin{bmatrix}Vd \cr Vq \cr V0 \end{bmatrix}\\]
+\\[ \begin{bmatrix}V_\alpha \cr V_\beta \cr V_\gamma \end{bmatrix} = \begin{bmatrix}cos\theta & -sin\theta & 0 \cr sin\theta & cos\theta & 0 \cr 0 & 0 & 1\end{bmatrix} \begin{bmatrix}V_d \cr V_q \cr V_0 \end{bmatrix}\\]
 Inverse Clarke:
-\\[ \begin{bmatrix}Vu \cr Vv \cr Vw \end{bmatrix}=  \begin{bmatrix} 1 & 0 & 1\cr -0.5 & \sqrt{3}/2 & 1\cr 1-.5 & -\sqrt{3}/2 & 1 \end{bmatrix} \begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix}\\]
+\\[ \begin{bmatrix}V_u \cr V_v \cr V_w \end{bmatrix}=  \begin{bmatrix} 1 & 0 & 1\cr -0.5 & \sqrt{3}/2 & 1\cr 1-.5 & -\sqrt{3}/2 & 1 \end{bmatrix} \begin{bmatrix}V_\alpha \cr V_\beta \cr V_\gamma \end{bmatrix}\\]
 MESC uses the full form of the inverse clark where many other implementations skip it and use a SVPWM routine. MESC does this to enable a variety of clamping and over modulation methods, and because it is easier to understand, with no unexplained leaps of faith.
 The end result is identical.
 
@@ -39,13 +39,13 @@ and we observe from watching the motor on a scope that the voltages are sinusoid
 
 Therefore, in general, if we ignore the number of turns and make \\(\theta = \omega t\\):
 \\[ V = \phi\omega sin(\omega t)\\]
-\\[\int V dt = turns x \phi +C -> -\phi\cos\theta +C\\] 
+\\[\int V dt = turns \ast \phi +C -> -\phi\cos\theta +C\\] 
 We do not need to care for turns, and C varies only dependent on where we start the integration for a sin wave.
 The key recognition is that \\( \phi \\) is a constant dependent on the magnets, and therefore the max and min of the resulting integral are symetric and constant.
 Since the voltage is sinusoidal, the flux integral will thus also be sinusoidal, with a phase shift of 90 degrees.
 (remember to insert pics of sin and integral...)
 Further, the addition of noise on the incoming voltage signal is effectively filtered out by this integral since 
-\\[ \int cosn\theta dt = \frac{cosn\theta}{n} (+C) \\] 
+\\[ \int cos(n\theta) dt = \frac{cos(n\theta)}{n} (+C) \\] 
 and so noise and higher harmonics are greatly reduced.
 
 Within MESC, we choose to carry out this integral in alpha beta frame, so we first remove the effects of resistance and inductance, and then integrate the resulting voltage as:
@@ -97,7 +97,50 @@ And therefore the above estimates for VBEMF can be modified to account for this 
 
 ### The FOC PI
 
+The FOC PI is very simple. It is found in MESCfoc.c in the function MESCFOC(_motor).
+
+It takes the current measurements in dq frame (they were previously collected from the current sensors and transformed by the Clarke and Park transform), calculates an error relative to the PI reference input (mtr[n]->FOC.Idq_req) and applies a change to the output voltage through a proportional and integral gain.
+The gains are in units of "Volts/Amp" for the proportional and per second for the integral
+
+The PI is a series PI, that is, the integral gain acts on the output of the proportional gain so:
+
+\\[I_{dq_err} \begin{bmatrix}d \cr q \end{bmatrix} = I_dq_req \begin{bmatrix}I_d \cr I_q \end{bmatrix} - I_dq \begin{bmatrix}I_d \cr I_q \cr I_0 \end{bmatrix} \times I_pgain\\]
+and:
+\\[I_{dq_int_err} \begin{bmatrix}d \cr q \end{bmatrix} = I_{dq_int_err} \begin{bmatrix}d \cr q \end{bmatrix} + I_{dq_err} \begin{bmatrix}d \cr q \end{bmatrix} \times I_igain \times pwm-period\\]
+The output is then calculated as:
+\\[\begin{bmatrix}V_d \cr V_q \cr V_0 \end{bmatrix} = [I_{dq_int_err} \begin{bmatrix}d \cr q \end{bmatrix} + I_{dq_err} \begin{bmatrix}d \cr q \end{bmatrix}\\]
+That's it. Nothing complex about the PI controller.
+
+The trickier thing is how to set the gains, since it is quite possible to create gains that are orders of magnitude wrong, and wrong relative to each other. The target should be that there is response within a few PWM cycles; a few hundred us at most.
+
+The gains can be calculated by setting a desired bandwidth \\( mtr[n]->FOC.Current_bandwidth\\). The proportional gain is simply bandwidth*inductance and the integral gain is the ratio of inductance to resistance.
+
+This is best examined in unit terms; bandwidth is \\(\frac{radians}{second}\\) inductance is \\(\frac{volts\times seconds}{amps}\\) giving pgain in units \\(\frac{volts}{amp}\\).
+
+Igain works out as \\(R = \frac{volts}{amps}\\) times \\(L = frac{volts\times seconds}{amps}\\) so \\(Igain = \frac{R}{L} = frac{1}{seconds}\\).
+
+Making the gains such means that the control loop is critically damped; the fastest reponse possible for a given bandwidth without overshoot.
+
 ### The Field Weakening
+MESC runs two different field weakening methods, V1 is a dumb ramp of -Id between a starting duty and max duty. V2 is a closed loop field weakening system, where Id is added in response to reaching the duty threshold.
+Both methods are run within the MESCfoc() function.
+Both methods account for the total current allowed by reducing the Iq request in the slowloop as \\( I_qmax = \sqrt{I_max^2-I_FW^2}\\)
+Therefore, if you set lots of field weakening, the total motor current is conserved and you will not burn the coils (any more than you would otherwise, and you may still burn the core with greater iron losses)
+#### The dumb ramp
+Not much to say... it just ramps up the d-axis current with increasing duty. This is not always stable, if the ramp is too aggressive, it can cause reduction in duty which then causes field weakening to ramp down the next cycle and... oscillation.
+
+#### The closed loop
+A much smarter system implemented as a closed loop PI controller (proportional gain set to zero). As long as the bandwidth on the control is much lower than the current loop, it will be stable. That's not to say all motors and controllers are stable under field weakening.
+If duty is greater/equal to than max duty:
+\\[ I_FW = I_FW + 0.01 \times I_{FW-max}\\] 
+else:
+\\[ I_FW = I_FW - 0.01 \times I_{FW-max}\\]
+
+Experiments with: 
+\\[I_FW = Kp\times(duty-duty_max) + I_FWint \\] 
+with:
+\\[ I_FWint = I_FWint + Ki*(duty-duty_max)\\]
+showed no improvement to stability or performance, and additional complication with gain tuning. It may be ressurected at a later date.
 
 ### The Circle Limiter
 
