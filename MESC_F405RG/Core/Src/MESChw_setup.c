@@ -36,6 +36,7 @@ extern TIM_HandleTypeDef htim1;
 extern SPI_HandleTypeDef hspi3;
 
 hw_setup_s g_hw_setup;
+motor_s motor;
 
 void hw_init(MESC_motor_typedef *_motor) {
   g_hw_setup.Imax = ABS_MAX_PHASE_CURRENT;  	// Imax is the current at which we are either no longer able to

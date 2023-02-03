@@ -165,55 +165,17 @@ int main(void)
   HAL_SPI_Init(&hspi3);
 #endif
 
-  HAL_UART_Init(&huart3);
-  SimpleComsInit(&huart3, &com1);
   HAL_TIM_Base_Start(&htim7);
   /*
   Starting System Initialisation
   */
-#if defined USE_PROFILE
-  // Initialise UART CLI IO
-  uart_init();
-  // NOTE - CLI messages are available after this point
-  
-  // Attach flash IO to profile
-  flash_register_profile_io();
-  // Load stored profile
-  ProfileStatus const sts = profile_init();
 
   // Initialise components
   bat_init( PROFILE_DEFAULT );
   speed_init( PROFILE_DEFAULT );
   // Initialise user Interface
   //ui_init( PROFILE_DEFAULT );
-#if 0
-// HACK
-  // Example store for debugging
-  UIProfile up;
-  up.type = UI_PROFILE_BUTTON;
-  up.desc.button.address = 1;
-  up.desc.button.identifier = 2;
-  up.desc.button.interface = 3;
-  uint32_t len = sizeof(up);
-  ProfileStatus ret = profile_put_entry( "TEST", UI_PROFILE_SIGNATURE, &up, &len );
-  (void)ret;
-// HACK
-  // If a profile was:
-  // (1) Not loaded
-  // (2) Corrupt
-  // (3) Modified
-  if  (
-		  (sts != PROFILE_STATUS_INIT_SUCCESS_LOADED) // (1)
-	  ||  profile_get_modified() // (3)
-	  )
-  {
-	// (1) Create a new profile
-	// (2) Replace the corrupt profile
-	// (3) Update the existing profile
-    profile_commit();
-  }
-#endif
-#endif
+
   /*
   Finished System Initialisation
   */
@@ -257,6 +219,8 @@ int main(void)
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
+  init_system();
+
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
@@ -284,9 +248,6 @@ int main(void)
 #endif
 
   while (1) {
-	  SimpleComsProcess(&com1);
-	  //detectHFI(&mtr[0]);
-	  HAL_Delay(0);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
