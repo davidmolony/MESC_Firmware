@@ -104,27 +104,32 @@ The gains are in units of "Volts/Amp" for the proportional and per second for th
 
 The PI is a series PI, that is, the integral gain acts on the output of the proportional gain so:
 
-\\[I_{dq_err} \begin{bmatrix}d \cr q \end{bmatrix} = I_dq_req \begin{bmatrix}I_d \cr I_q \end{bmatrix} - I_dq \begin{bmatrix}I_d \cr I_q \cr I_0 \end{bmatrix} \times I_pgain\\]
+\\[I_{err} \begin{bmatrix}d \cr q \end{bmatrix} = (I_{req} \begin{bmatrix}I_d \cr I_q \end{bmatrix} - I \begin{bmatrix}d \cr q \end{bmatrix} \times I_{pgain}\\]
 and:
-\\[I_{dq_int_err} \begin{bmatrix}d \cr q \end{bmatrix} = I_{dq_int_err} \begin{bmatrix}d \cr q \end{bmatrix} + I_{dq_err} \begin{bmatrix}d \cr q \end{bmatrix} \times I_igain \times pwm-period\\]
+\\[I_{int-err} \begin{bmatrix}d \cr q \end{bmatrix} = I_{int-err} \begin{bmatrix}d \cr q \end{bmatrix} + I_{err} \begin{bmatrix}d \cr q \end{bmatrix} \times I_{igain} \times pwmperiod\\]
 The output is then calculated as:
-\\[\begin{bmatrix}V_d \cr V_q \cr V_0 \end{bmatrix} = [I_{dq_int_err} \begin{bmatrix}d \cr q \end{bmatrix} + I_{dq_err} \begin{bmatrix}d \cr q \end{bmatrix}\\]
+\\[\begin{bmatrix}V_d \cr V_q \end{bmatrix} = [I_{int-err} \begin{bmatrix}d \cr q \end{bmatrix} + I_{err} \begin{bmatrix}d \cr q \end{bmatrix}\\]
 That's it. Nothing complex about the PI controller.
 
 The trickier thing is how to set the gains, since it is quite possible to create gains that are orders of magnitude wrong, and wrong relative to each other. The target should be that there is response within a few PWM cycles; a few hundred us at most.
 
-The gains can be calculated by setting a desired bandwidth \\( mtr[n]->FOC.Current_bandwidth\\). The proportional gain is simply bandwidth*inductance and the integral gain is the ratio of inductance to resistance.
+The gains can be calculated by setting a desired bandwidth ( mtr[n]->FOC.Current_bandwidth). The proportional gain is simply bandwidth*inductance and the integral gain is the ratio of inductance to resistance.
 
 This is best examined in unit terms; bandwidth is \\(\frac{radians}{second}\\) inductance is \\(\frac{volts\times seconds}{amps}\\) giving pgain in units \\(\frac{volts}{amp}\\).
 
-Igain works out as \\(R = \frac{volts}{amps}\\) times \\(L = frac{volts\times seconds}{amps}\\) so \\(Igain = \frac{R}{L} = frac{1}{seconds}\\).
+If:
+\\[R = \frac{volts}{amps}\\] 
+\\[L = \frac{volts \times seconds}{amps}\\] 
+Igain works out as: 
+\\[Igain = \frac{R}{L} = \frac{1}{seconds}\\].
 
 Making the gains such means that the control loop is critically damped; the fastest reponse possible for a given bandwidth without overshoot.
 
 ### The Field Weakening
 MESC runs two different field weakening methods, V1 is a dumb ramp of -Id between a starting duty and max duty. V2 is a closed loop field weakening system, where Id is added in response to reaching the duty threshold.
 Both methods are run within the MESCfoc() function.
-Both methods account for the total current allowed by reducing the Iq request in the slowloop as \\( I_qmax = \sqrt{I_max^2-I_FW^2}\\)
+Both methods account for the total current allowed by reducing the Iq request in the slowloop as 
+\\[ I_qmax = \sqrt{I_max^2-I_FW^2}\\]
 Therefore, if you set lots of field weakening, the total motor current is conserved and you will not burn the coils (any more than you would otherwise, and you may still burn the core with greater iron losses)
 #### The dumb ramp
 Not much to say... it just ramps up the d-axis current with increasing duty. This is not always stable, if the ramp is too aggressive, it can cause reduction in duty which then causes field weakening to ramp down the next cycle and... oscillation.
@@ -132,14 +137,14 @@ Not much to say... it just ramps up the d-axis current with increasing duty. Thi
 #### The closed loop
 A much smarter system implemented as a closed loop PI controller (proportional gain set to zero). As long as the bandwidth on the control is much lower than the current loop, it will be stable. That's not to say all motors and controllers are stable under field weakening.
 If duty is greater/equal to than max duty:
-\\[ I_FW = I_FW + 0.01 \times I_{FW-max}\\] 
+\\[ I_{FW} = I_{FW} + 0.01 \times I_{FW-max}\\] 
 else:
-\\[ I_FW = I_FW - 0.01 \times I_{FW-max}\\]
+\\[ I_{FW} = I_{FW} - 0.01 \times I_{FW-max}\\]
 
 Experiments with: 
-\\[I_FW = Kp\times(duty-duty_max) + I_FWint \\] 
+\\[I_{FW} = K_p\times(duty-duty_{max}) + I_{FWint} \\] 
 with:
-\\[ I_FWint = I_FWint + Ki*(duty-duty_max)\\]
+\\[ I_{FWint} = I_{FWint} + K_i*(duty-duty_{max})\\]
 showed no improvement to stability or performance, and additional complication with gain tuning. It may be ressurected at a later date.
 
 ### The Circle Limiter
