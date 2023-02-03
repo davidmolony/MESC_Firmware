@@ -72,6 +72,7 @@ TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart3_tx;
+DMA_HandleTypeDef hdma_usart3_rx;
 
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -114,9 +115,7 @@ static void MX_I2C2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern uint8_t b_read_flash;
-extern uint8_t b_write_flash;
-volatile uint32_t swvcounter;
+
 /* USER CODE END 0 */
 
 /**
@@ -165,55 +164,17 @@ int main(void)
   HAL_SPI_Init(&hspi3);
 #endif
 
-  HAL_UART_Init(&huart3);
-  SimpleComsInit(&huart3, &com1);
   HAL_TIM_Base_Start(&htim7);
   /*
   Starting System Initialisation
   */
-#if defined USE_PROFILE
-  // Initialise UART CLI IO
-  uart_init();
-  // NOTE - CLI messages are available after this point
-  
-  // Attach flash IO to profile
-  flash_register_profile_io();
-  // Load stored profile
-  ProfileStatus const sts = profile_init();
 
   // Initialise components
   bat_init( PROFILE_DEFAULT );
   speed_init( PROFILE_DEFAULT );
   // Initialise user Interface
   //ui_init( PROFILE_DEFAULT );
-#if 0
-// HACK
-  // Example store for debugging
-  UIProfile up;
-  up.type = UI_PROFILE_BUTTON;
-  up.desc.button.address = 1;
-  up.desc.button.identifier = 2;
-  up.desc.button.interface = 3;
-  uint32_t len = sizeof(up);
-  ProfileStatus ret = profile_put_entry( "TEST", UI_PROFILE_SIGNATURE, &up, &len );
-  (void)ret;
-// HACK
-  // If a profile was:
-  // (1) Not loaded
-  // (2) Corrupt
-  // (3) Modified
-  if  (
-		  (sts != PROFILE_STATUS_INIT_SUCCESS_LOADED) // (1)
-	  ||  profile_get_modified() // (3)
-	  )
-  {
-	// (1) Create a new profile
-	// (2) Replace the corrupt profile
-	// (3) Update the existing profile
-    profile_commit();
-  }
-#endif
-#endif
+
   /*
   Finished System Initialisation
   */
@@ -224,9 +185,6 @@ int main(void)
   temp_init( PROFILE_DEFAULT );
   motor_init( PROFILE_DEFAULT );
   MESCInit(&mtr[0]);
-
-  // MESC_Init();
-
 
   /* USER CODE END 2 */
 
@@ -259,6 +217,8 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
+  init_system();
+
   /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
@@ -284,9 +244,6 @@ int main(void)
 #endif
 
   while (1) {
-	  SimpleComsProcess(&com1);
-	  //detectHFI(&mtr[0]);
-	  HAL_Delay(0);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -1017,6 +974,9 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
   /* DMA1_Stream3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
