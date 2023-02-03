@@ -96,7 +96,6 @@ It relies on the assumption that the salience travels with the dq frame, and can
 And therefore the above estimates for VBEMF can be modified to account for this changing salience in alpha beta frame.
 
 ### The FOC PI
-
 The FOC PI is very simple. It is found in MESCfoc.c in the function MESCFOC(_motor).
 
 It takes the current measurements in dq frame (they were previously collected from the current sensors and transformed by the Clarke and Park transform), calculates an error relative to the PI reference input (mtr[n]->FOC.Idq_req) and applies a change to the output voltage through a proportional and integral gain.
@@ -111,17 +110,14 @@ The output is then calculated as:
 \\[\begin{bmatrix}V_d \cr V_q \end{bmatrix} = [I_{int-err} \begin{bmatrix}d \cr q \end{bmatrix} + I_{err} \begin{bmatrix}d \cr q \end{bmatrix}\\]
 That's it. Nothing complex about the PI controller.
 
+#### Gains
 The trickier thing is how to set the gains, since it is quite possible to create gains that are orders of magnitude wrong, and wrong relative to each other. The target should be that there is response within a few PWM cycles; a few hundred us at most.
 
 The gains can be calculated by setting a desired bandwidth ( mtr[n]->FOC.Current_bandwidth). The proportional gain is simply bandwidth*inductance and the integral gain is the ratio of inductance to resistance.
 
 This is best examined in unit terms; bandwidth is \\(\frac{radians}{second}\\) inductance is \\(\frac{volts\times seconds}{amps}\\) giving pgain in units \\(\frac{volts}{amp}\\).
 
-If:
-\\[R = \frac{volts}{amps}\\] 
-\\[L = \frac{volts \times seconds}{amps}\\] 
-Igain works out as: 
-\\[Igain = \frac{R}{L} = \frac{1}{seconds}\\].
+Likewise, if resistance is \\(\frac{volts}{amps}\\) and inductance is \\(\frac{volts \times seconds}{amps}\\) then Igain works out as \\(Igain = \frac{R}{L} = \frac{1}{seconds}\\).
 
 Making the gains such means that the control loop is critically damped; the fastest reponse possible for a given bandwidth without overshoot.
 
@@ -129,7 +125,7 @@ Making the gains such means that the control loop is critically damped; the fast
 MESC runs two different field weakening methods, V1 is a dumb ramp of -Id between a starting duty and max duty. V2 is a closed loop field weakening system, where Id is added in response to reaching the duty threshold.
 Both methods are run within the MESCfoc() function.
 Both methods account for the total current allowed by reducing the Iq request in the slowloop as 
-\\[ I_qmax = \sqrt{I_max^2-I_FW^2}\\]
+\\[ I_{qmax} = \sqrt{I_{max}^2-I_{FW}^2}\\]
 Therefore, if you set lots of field weakening, the total motor current is conserved and you will not burn the coils (any more than you would otherwise, and you may still burn the core with greater iron losses)
 #### The dumb ramp
 Not much to say... it just ramps up the d-axis current with increasing duty. This is not always stable, if the ramp is too aggressive, it can cause reduction in duty which then causes field weakening to ramp down the next cycle and... oscillation.
@@ -144,7 +140,7 @@ else:
 Experiments with: 
 \\[I_{FW} = K_p\times(duty-duty_{max}) + I_{FWint} \\] 
 with:
-\\[ I_{FWint} = I_{FWint} + K_i*(duty-duty_{max})\\]
+\\[ I_{FWint} = I_{FWint} + K_i\times(duty-duty_{max})\\]
 showed no improvement to stability or performance, and additional complication with gain tuning. It may be ressurected at a later date.
 
 ### The Circle Limiter
