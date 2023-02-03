@@ -254,15 +254,11 @@ if(__HAL_ADC_GET_FLAG(&hadc3,ADC_FLAG_AWD)){
 void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, 1);
 	MESC_PWM_IRQ_handler(&mtr[0]);
-
 	directionstat = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
   __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
-
   /* USER CODE END TIM1_UP_TIM10_IRQn 0 */
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 1 */
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, 0);
   /* USER CODE END TIM1_UP_TIM10_IRQn 1 */
 }
 
@@ -272,13 +268,12 @@ void TIM1_UP_TIM10_IRQHandler(void)
 void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
+	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
+
 	MESC_Slow_IRQ_handler(&mtr[0]);
 
   /* USER CODE END TIM2_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim2);
   /* USER CODE BEGIN TIM2_IRQn 1 */
-  __HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
 
   /* USER CODE END TIM2_IRQn 1 */
 }
@@ -289,19 +284,12 @@ void TIM2_IRQHandler(void)
 void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 1);
-//    input_vars.fCC1 = __HAL_TIM_GET_FLAG(&htim4, TIM_FLAG_CC1) &
-//                    __HAL_TIM_GET_IT_SOURCE(&htim4, TIM_IT_CC1);
-//    input_vars.fUPD = __HAL_TIM_GET_FLAG(&htim4, TIM_FLAG_UPDATE) &
-//                    __HAL_TIM_GET_IT_SOURCE(&htim4, TIM_IT_UPDATE);
-
-MESC_Slow_IRQ_handler(&mtr[0]);
+//This should now be for the RCPWM/PWM  input interrupt
 __HAL_TIM_CLEAR_IT(&htim4, TIM_IT_CC1);
 __HAL_TIM_CLEAR_IT(&htim4, TIM_IT_CC2);
 __HAL_TIM_CLEAR_IT(&htim4, TIM_IT_UPDATE);
   /* USER CODE END TIM4_IRQn 0 */
   /* USER CODE BEGIN TIM4_IRQn 1 */
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, 0);
 
   /* USER CODE END TIM4_IRQn 1 */
 }

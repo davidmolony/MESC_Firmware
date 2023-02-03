@@ -1,0 +1,309 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Control loops - Molony Electronic Speed Control (MESC) Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction/INTRODUCTION.html"><strong aria-hidden="true">1.</strong> Introduction to the MESC</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../introduction/FOREWORD.html"><strong aria-hidden="true">1.1.</strong> Foreword</a></li><li class="chapter-item expanded "><a href="../introduction/LICENSE.html"><strong aria-hidden="true">1.2.</strong> License</a></li><li class="chapter-item expanded "><a href="../introduction/FEATURES.html"><strong aria-hidden="true">1.3.</strong> Features</a></li></ol></li><li class="chapter-item expanded "><a href="../operation/INTRODUCTION.html"><strong aria-hidden="true">2.</strong> Theory and Operation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../operation/THEORY.html"><strong aria-hidden="true">2.1.</strong> Theory of operation</a></li><li class="chapter-item expanded "><a href="../operation/CONTROL.html" class="active"><strong aria-hidden="true">2.2.</strong> Control loops</a></li><li class="chapter-item expanded "><a href="../operation/PORTING.html"><strong aria-hidden="true">2.3.</strong> Porting to other microprocessors</a></li></ol></li><li class="chapter-item expanded "><a href="../debugging/DEBUGGING.html"><strong aria-hidden="true">3.</strong> Debugging STM32CubeIDE</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../debugging/FIRMWARE_INTRO.html"><strong aria-hidden="true">3.1.</strong> Getting started</a></li></ol></li><li class="chapter-item expanded "><a href="../MP2/INTRO.html"><strong aria-hidden="true">4.</strong> Reference ESC: the MP2</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Molony Electronic Speed Control (MESC) Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="control-loops"><a class="header" href="#control-loops">Control Loops</a></h1>
+<h2 id="fast-control-loop"><a class="header" href="#fast-control-loop">Fast Control loop</a></h2>
+<p>All the FOC gets done in the fastLoop. This is the only critical part of the MESC, the rest can actually be removed providing the parameters get set and MESC is initialised correctly .
+If you remove the slowloop, you can write directly to mtr[n]-&gt;FOC.Idq_req.q, set the mtr[n]-&gt;MotorState to MOTOR_STATE_RUN and enable the inverter.</p>
+<h3 id="the-geometric-transforms"><a class="header" href="#the-geometric-transforms">The geometric transforms</a></h3>
+<p>The forward transforms take place in the ADCConversion(_motor) function. This converts the read currents firstly from 3 phase to two phase (Clarke) and then rotates them to the estimated/read from encoder rotor reference frame (Park).</p>
+<p>Geometric transforms are the Clark and Park, which take the forward form are used to transform currents:</p>
+<p>Clarke:
+\[\begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix} = 2/3 \begin{bmatrix} 1 &amp; -0.5 &amp; -0.5\cr0 &amp; \sqrt{3}/2 &amp; -\sqrt{3}/2 \cr 0.5 &amp; 0.5 &amp; 0.5 \end{bmatrix} \begin{bmatrix}Iu \cr Iv \cr Iw \end{bmatrix}  \]
+where MESC selects for the lower of the PWM values at high modulation using the substitution \( Iu + Iv + Iw = 0\) .</p>
+<p>Park (rotation matrix around \( \gamma\)):
+\[ \begin{bmatrix}Id \cr Iq \cr I0 \end{bmatrix} = \begin{bmatrix}cos\theta &amp; sin\theta &amp; 0 \cr -sin\theta &amp; cos\theta &amp; 0 \cr 0 &amp; 0 &amp; 1\end{bmatrix} \begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix}\]
+Where \( \theta\) is the electrical angle of the rotor; the mechanical angle divided by pole pairs and where the bottom and right rows of the matrix are ignored (we assume \( \gamma\) is zero).</p>
+<p>The backward, or inverse, form of the transform is used on the voltages to create a 2 phase stator reference and then a 3 phase stator reference voltage from the 2 phase rotor reference. These are performed in the function writePWM(_motor) which is run in the fast AND hyperloop to enable voltage injection for HFI.</p>
+<p>Inverse Park:
+\[ \begin{bmatrix}V\alpha \cr V\beta \cr V\gamma \end{bmatrix} = \begin{bmatrix}cos\theta &amp; -sin\theta &amp; 0 \cr sin\theta &amp; cos\theta &amp; 0 \cr 0 &amp; 0 &amp; 1\end{bmatrix} \begin{bmatrix}Vd \cr Vq \cr V0 \end{bmatrix}\]
+Inverse Clarke:
+\[ \begin{bmatrix}Vu \cr Vv \cr Vw \end{bmatrix}=  \begin{bmatrix} 1 &amp; 0 &amp; 1\cr -0.5 &amp; \sqrt{3}/2 &amp; 1\cr 1-.5 &amp; -\sqrt{3}/2 &amp; 1 \end{bmatrix} \begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix}\]
+MESC uses the full form of the inverse clark where many other implementations skip it and use a SVPWM routine. MESC does this to enable a variety of clamping and over modulation methods, and because it is easier to understand, with no unexplained leaps of faith.
+The end result is identical.</p>
+<p>\( sin\theta\) and \( cos\theta\) are calculated from a lookup table 320 elements (=256x1.25) long optionally with interpolation. With interpolation, the maximum error from this is very small; less than the ADC or PWM resolution.</p>
+<h3 id="the-sensorless-observer"><a class="header" href="#the-sensorless-observer">The Sensorless Observer</a></h3>
+<p>The MESC sensorless observer is also known as the MXLEMMING observer and is now the default on the VESC project.</p>
+<h4 id="what-mesc-does"><a class="header" href="#what-mesc-does">What MESC Does</a></h4>
+<p>The sensorless observer is very simple. The implementation is unique to MESC and was developed without recourse to appnotes or papers. It is probably not unique in industry, but so far I have not seen it in any other open source or commercial source project.
+It works (as most successful observers do) on the basis of flux integration, that is the assumption that for a spinning magnet passing a coil, the voltage is given by:
+\[V = turns x \frac{d\phi}{dt} \] 
+and we observe from watching the motor on a scope that the voltages are sinusoidal.</p>
+<p>Therefore, in general, if we ignore the number of turns and make \(\theta = \omega t\):
+\[ V = \phi\omega sin(\omega t)\]
+\[\int V dt = turns x \phi +C -&gt; -\phi\cos\theta +C\] 
+We do not need to care for turns, and C varies only dependent on where we start the integration for a sin wave.
+The key recognition is that \( \phi \) is a constant dependent on the magnets, and therefore the max and min of the resulting integral are symetric and constant.
+Since the voltage is sinusoidal, the flux integral will thus also be sinusoidal, with a phase shift of 90 degrees.
+(remember to insert pics of sin and integral...)
+Further, the addition of noise on the incoming voltage signal is effectively filtered out by this integral since 
+\[ \int cosn\theta dt = \frac{cosn\theta}{n} (+C) \] 
+and so noise and higher harmonics are greatly reduced.</p>
+<p>Within MESC, we choose to carry out this integral in alpha beta frame, so we first remove the effects of resistance and inductance, and then integrate the resulting voltage as:
+\[ V_\alpha = V_{BEMF\alpha} + Ri_\alpha + \frac{Ldi_\alpha}{dt}\]
+\[ V_\beta = V_{BEMF\beta} + Ri_\beta + \frac{Ldi_\beta}{dt}\]
+where \(V_\alpha \) and \(V_\beta \) are the electrical voltage output by the inverter and \(i\alpha\) and \(i\beta\) is the clarke transformed current measured by the ADC.
+Thusly, we generate two estimated back EMF voltages which we can integrate to get two flux linkages with a 90 degree phase shift.</p>
+<p>\[ \phi_\alpha = \int V_{BEMF\alpha} dt \]
+\[ \phi_\beta = \int V_{BEMF\beta} dt \]</p>
+<p>We have to deal with teh +C term in the integral, and also with integration drift which would result in arctangent not working. MESC simply clamps the flux integral at hard limits which can either be fixed or calculated in realtime by the flux linkage observer. 
+Since they are shifted by 90 degrees and already filtered by integration, we need only find the arctangent of the two to calculate an estimated angle.
+\[ \theta = arctan(\frac{\phi_\beta}{\phi_\alpha}) + \pi\]</p>
+<h4 id="alternatives-mesc-chose-not-to-do"><a class="header" href="#alternatives-mesc-chose-not-to-do">Alternatives MESC chose not to do</a></h4>
+<p>Alternative to treating the inductance as a piecewise integral, the Lia term can be lumped. This would remove the need to store previous state information to calculate \( \frac{di}{dt}\) and is the method commonly used in literature. 
+However, this allows the Lia term to get large compared to the back EMF, and the bounding/elimination of integrational drift is done while the inductance term is still within the BEMF, with probable impact on the result (note the result becomes clearly unstable when \(Lia&gt;phi\))
+Noteably the Ortega observer as used originally in VESC contains this construction, and relied on a non linear (quadratic) elimination of integration drift and associated instability at high current.</p>
+<p>Alternative to the clamping of the flux integrals at their max possible limits a proportional (or PI or non linear) correction factor could be introduced based on the magnitude of the current alpha and beta fluxes. This is similar to the Ortega observer. MESC includes a version of this that can be compiled in with a #define USE_NONLINEAR_OBSERVER_CENTERING but it is advised you do not use this; for experiment only.</p>
+<p>Alternatively to the arctangent we could construct a true observer:
+\[ \theta est_{n+1} = \theta est_n + d\theta + k_p*(\theta calc-\theta est)\]
+Where:
+\[ d\theta_{n+1} = d\theta_n + k_i*((\theta est_n + d\theta)-\theta calc_{n+1})\]
+(here we calculate \(\theta calc \) through arctangent as above and forward predict/correct our prediction each cycle)</p>
+<p>Or: 
+\[ \theta est_{n+1} = \theta est_n + d\theta + k_p*\phi_d\]
+where
+\[ d\theta_{n+1} = d\theta_n + k_i*\phi_d\] 
+(here we use the d axis flux linkage, which we derive from a rotation of the alpha beta flux linkage as an estimate of the error to be corrected)</p>
+<p>MESC chooses not to use a true observer, since there is no obvious measurable advantage, there are gains to be &quot;tuned&quot; which can result in instability with a true observer and there are additional calculation steps.
+Noteable users of true observers include ST Micro's FOC library which uses a Leunburger observer and Alex Evers' UNIMOC which uses a Kalman filter.
+Using a true observer of any kind does not deal with the three most fundamental problems facing sensorless observers: </p>
+<ul>
+<li>Initially estimating parameters R and L, </li>
+<li>Changing resistance with temperature and </li>
+<li>Changing inductance with saturation at high current.</li>
+</ul>
+<h4 id="the-mesc-salient-observer"><a class="header" href="#the-mesc-salient-observer">The MESC Salient Observer</a></h4>
+<p>MESC contains an observer for salient motors, which accounts for the differing d and q inductances. This is not usually required, is not well tested and will not work for outrunner motors since they saturate so heavily.
+It relies on the assumption that the salience travels with the dq frame, and can be transformed into the alpha beta frame, then:</p>
+<p>\[ \frac{dLi}{dt} = \frac{Ldi}{dt} + \frac{idL}{dt} \]</p>
+<p>And therefore the above estimates for VBEMF can be modified to account for this changing salience in alpha beta frame.</p>
+<h3 id="the-foc-pi"><a class="header" href="#the-foc-pi">The FOC PI</a></h3>
+<h3 id="the-field-weakening"><a class="header" href="#the-field-weakening">The Field Weakening</a></h3>
+<h3 id="the-circle-limiter"><a class="header" href="#the-circle-limiter">The Circle Limiter</a></h3>
+<h3 id="the-hall-start"><a class="header" href="#the-hall-start">The Hall start</a></h3>
+<h3 id="tracking"><a class="header" href="#tracking">Tracking</a></h3>
+<h2 id="the-hyperloop"><a class="header" href="#the-hyperloop">The Hyperloop</a></h2>
+<h3 id="hfi"><a class="header" href="#hfi">HFI</a></h3>
+<h4 id="hfi-d"><a class="header" href="#hfi-d">HFI D</a></h4>
+<h4 id="hfi45"><a class="header" href="#hfi45">HFI45</a></h4>
+<h3 id="pll-and-speed-estimation"><a class="header" href="#pll-and-speed-estimation">PLL and Speed estimation</a></h3>
+<h3 id="interpolation"><a class="header" href="#interpolation">Interpolation</a></h3>
+<h2 id="slow-control-loop"><a class="header" href="#slow-control-loop">Slow control loop</a></h2>
+<h3 id="input-collection"><a class="header" href="#input-collection">Input collection</a></h3>
+<h3 id="duty-cycle-control"><a class="header" href="#duty-cycle-control">Duty cycle control</a></h3>
+<h3 id="the-speed-controller"><a class="header" href="#the-speed-controller">The Speed Controller</a></h3>
+<h3 id="temperature-limiting"><a class="header" href="#temperature-limiting">Temperature limiting</a></h3>
+<h3 id="mtpa"><a class="header" href="#mtpa">MTPA</a></h3>
+<h3 id="field-weakening-q-current-rollback"><a class="header" href="#field-weakening-q-current-rollback">Field weakening q-current rollback</a></h3>
+<h3 id="power-limiting"><a class="header" href="#power-limiting">Power limiting</a></h3>
+<h2 id="simplecoms-loop"><a class="header" href="#simplecoms-loop">SimpleComs loop</a></h2>
+<h2 id="rtos-and-terminal"><a class="header" href="#rtos-and-terminal">RTOS and terminal</a></h2>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../operation/THEORY.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="../operation/PORTING.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../operation/THEORY.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="../operation/PORTING.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </body>
+</html>

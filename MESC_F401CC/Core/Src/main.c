@@ -22,7 +22,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "MESCprofile.h"
 #include "MESCmotor.h"
+#include "MESCtemp.h"
+
 
 #include "MESCuart.h"
 #include "Simple_coms.h"
@@ -140,6 +143,7 @@ int main(void)
 
 
 //Initialise MESC
+temp_init(PROFILE_DEFAULT);
 motor_init(NULL);
 MESCInit(&mtr[0]);
 
@@ -150,7 +154,6 @@ MESCInit(&mtr[0]);
   while (1)
   {
 	//SimpleComsProcess(&com1);
-	detectHFI(&mtr[0]);
 	HAL_Delay(0);
     /* USER CODE END WHILE */
 

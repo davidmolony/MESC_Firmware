@@ -1,0 +1,8 @@
+[book]
+authors = ["Owen White; Badgineer; David Molony"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Molony Electronic Speed Control (MESC) Documentation"
+[output.html]
+mathjax-support = true

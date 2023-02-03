@@ -136,11 +136,11 @@ int main(void)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 #endif
-
+    temp_init( PROFILE_DEFAULT );
   //Set motor timer
     mtr[0].mtimer = &htim1;
     mtr[0].stimer = &htim2;
-
+motor_init(NULL);
 	//Initialise MESC
 	MESCInit(&mtr[0]);
 	//motor.Rphase = motor_profile->R;
@@ -154,7 +154,6 @@ int main(void)
 
 	calculateGains(&mtr[0]);
 	calculateVoltageGain(&mtr[0]);
-	MotorControlType = MOTOR_CONTROL_TYPE_FOC;
 
   /* USER CODE END 2 */
 

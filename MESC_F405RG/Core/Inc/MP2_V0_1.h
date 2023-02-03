@@ -10,6 +10,7 @@
 //Pick a motor for default
 #define MCMASTER_70KV_8080//QS165//CA120//
 #define PWM_FREQUENCY 20000
+#define CUSTOM_DEADTIME 800 //ns, MAX 1500ns! implementation in MESCInit().
 
 #define SHUNT_POLARITY -1.0f
 
@@ -22,24 +23,23 @@
 #define R_VBUS_BOTTOM 3300.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 100000.0f
 
-
 #define MAX_ID_REQUEST 2.0f
 #define MAX_IQ_REQUEST 70.0f
 
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
-//#define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
+#define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
 #define DEADTIME_COMP_V 10
 //#define MAX_MODULATION 1.05f //Use this with 5 sector modulation if you want extra speed
 //Inputs
 #define GET_THROTTLE_INPUT _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR4;  // Throttle for MP2 with F405 pill
 
 //#define USE_FIELD_WEAKENING
-#define USE_FIELD_WEAKENINGv2
+#define USE_FIELD_WEAKENINGV2
 
 //#define USE_LR_OBSERVER
 
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
-//#define INTERPOLATE_V7_ANGLE
+#define INTERPOLATE_V7_ANGLE
 #define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_SENSORLESS
 //#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_HALL
 //#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_OPENLOOP
@@ -65,5 +65,12 @@
 #define POLE_ANGLE (65536/POLE_PAIRS)
 
 //#define USE_SALIENT_OBSERVER //If not defined, it assumes that Ld and Lq are equal, which is fine usually.
+
+#define FASTLED GPIOC
+#define FASTLEDIO GPIO_PIN_12
+#define FASTLEDIONO 12
+#define SLOWLED GPIOC
+#define SLOWLEDIO GPIO_PIN_9
+#define SLOWLEDIONO 9
 
 #endif /* INC_MP2_V0_1_H_ */

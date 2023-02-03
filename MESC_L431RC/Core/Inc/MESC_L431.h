@@ -47,8 +47,8 @@
 #endif
 
 /////////////////////Related to CIRCLE LIMITATION////////////////////////////////////////
-#define USE_SQRT_CIRCLE_LIM //Fastest option
-//#define USE_SQRT_CIRCLE_LIM_VD //40 cycle penalty, use for FW
+//#define USE_SQRT_CIRCLE_LIM //Fastest option
+#define USE_SQRT_CIRCLE_LIM_VD //40 cycle penalty, use for FW
 
 //#define USE_MTPA
 

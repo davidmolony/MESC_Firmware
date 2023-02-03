@@ -49,26 +49,24 @@ typedef enum {
   // Load the PID integral values with the current Vd and Vq
 
   MOTOR_STATE_RUN = 7,
-  /*Hall sensors are changing state fast enough for the timer to detect them.
-   From this, a continuous sinusoidal FOC algorithm can be running Always
-   align the current 90degrees to the field(hall sensor) Magnitude of current
-   proportional to throttle demand (+/- can either be +/- current, or invert
-   90degree angle, depending on inverter algorithm
+  /*Run FOC modulation
    */
   MOTOR_STATE_GET_KV = 8,
-  /*
+  /*Determine the flux linkage
    */
   MOTOR_STATE_TEST = 9,
+  /*Variety of tests can be performed
+   */
   MOTOR_STATE_ERROR = 10,
   /*Enter this state when the overcurrent or overvoltage trips, or illegal
-   hall state or sensorless observer fault occurs All PWM signals should be
+   hall state or sensorless observer fault occurs. All PWM signals should be
    disabled, the timer may be in fault mode with all outputs disabled, or it
    may be required to implement the bit writes to turn off the outputs
 
    */
   MOTOR_STATE_RECOVERING = 11,
   /*
-   After a fault state, might want to implement a routine to restart the
+   After a fault state, or when no phase voltage sensors present, might want to implement a routine to restart the
    system on the fly - detect if motor is running, detect speed, phase,
    re-enable PWM
    */
@@ -82,6 +80,10 @@ typedef enum {
   MOTOR_STATE_IDLE = 13,
   /*All PWM should be off state, nothing happening. Motor may be spinning freely
    */
+  MOTOR_STATE_RUN_BLDC = 14,
+  /*We are going to run, but using a BLDC controller, not FOC
+   */
+
 } motor_state_e;
 
 extern motor_state_e MotorState;
@@ -144,8 +146,6 @@ typedef enum {
 	MOTOR_CONTROL_TYPE_FOC,
   MOTOR_CONTROL_TYPE_BLDC
 } motor_control_type_e;
-
-extern motor_control_type_e MotorControlType;
 
 /* Function prototypes -----------------------------------------------*/
 

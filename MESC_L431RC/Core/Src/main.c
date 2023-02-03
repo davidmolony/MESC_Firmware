@@ -121,24 +121,13 @@ int main(void)
 
   HAL_UART_Init(&huart3);
   SimpleComsInit(&huart3, &com1);
-HAL_TIM_Base_Start(&htim7);
+  HAL_TIM_Base_Start(&htim7);
   //Set motor timer
   mtr[0].mtimer = &htim1;
   mtr[0].stimer = &htim2;
-
-  MESCInit(&mtr[0]);
+  temp_init(PROFILE_DEFAULT);
   motor_init(NULL);
-
-
-  motor.Rphase = motor_profile->R;
-  motor.Lphase = motor_profile->L_D;
-  motor.Lqphase = motor_profile->L_Q;
-  motor.motor_flux = motor_profile->flux_linkage;
-  motor.uncertainty = 1;
-
-
-  MotorControlType = MOTOR_CONTROL_TYPE_FOC;
-
+  MESCInit(&mtr[0]);
 
   /* USER CODE END 2 */
 

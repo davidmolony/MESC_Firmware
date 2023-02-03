@@ -190,8 +190,13 @@ void mesc_init_2( MESC_motor_typedef *_motor )
 void mesc_init_3( MESC_motor_typedef *_motor )
 {
     HAL_ADCEx_InjectedStart( &hadc1 );
-    HAL_ADCEx_InjectedStart(    &hadc2 );
-    HAL_ADCEx_InjectedStart(    &hadc3 );
+    HAL_ADCEx_InjectedStart( &hadc2 );
+    HAL_ADCEx_InjectedStart( &hadc3 );
+//For inverting the ADC trigger polarity, intended for BLDC, not sure it works...
+//    hadc1.Instance->CR2|=ADC_CR2_JEXTEN;
+//    hadc2.Instance->CR2|=ADC_CR2_JEXTEN;
+//    hadc3.Instance->CR2|=ADC_CR2_JEXTEN;
+
 
     HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_4 );
 

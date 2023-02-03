@@ -43,6 +43,7 @@
 #include "stm32fxxx_hal.h"
 #include "MESCmotor_state.h"
 #include "MESCmotor.h"
+#include "MESC_BLDC.h"
 
 
 #define FOC_PERIODS                (1)
@@ -55,6 +56,9 @@
 #ifndef SLOW_LOOP_FREQUENCY
 #define SLOW_LOOP_FREQUENCY 100 //Frequency of the slow loop (MIN: 16Hz!)
 #endif
+#ifndef SLOWTIM_SCALER
+#define SLOWTIM_SCALER 1 //There is an annoying /2 on the htim2 and other random timers that is present in the F405 but not the F401 and some others. Unclear where to get this from HAL library.
+#endif
 
 #ifndef DEADTIME_COMP_V
 #define DEADTIME_COMP_V 0 	//Arbitrary value for starting, needs determining through TEST_TYP_DEAD_TIME_IDENT.
@@ -64,7 +68,7 @@
 							//Not defining this uses 5 sector and overmodulation compensation
 							//5 sector is harder on the low side FETs (for now)but offers equal performance at low speed, better at high speed.
 #ifndef OVERMOD_DT_COMP_THRESHOLD
-#define OVERMOD_DT_COMP_THRESHOLD 80	//Prototype concept that allows 100% (possibly greater) modulation by
+#define OVERMOD_DT_COMP_THRESHOLD 100	//Prototype concept that allows 100% (possibly greater) modulation by
 										//skipping turn off when the modulation is close to VBus, then compensating next cycle.
 										//Only works with 5 sector (bottom clamp) - comment out #define SEVEN_SECTOR
 #endif
@@ -89,6 +93,10 @@
 #define ERPM_MEASURE 3000.0f//Speed to do the flux linkage measurement at
 #endif
 
+#ifndef MIN_IQ_REQUEST
+#define MIN_IQ_REQUEST -0.1f
+#endif
+
 #ifndef DEADSHORT_CURRENT
 #define DEADSHORT_CURRENT 30.0f
 #endif
@@ -105,17 +113,22 @@
 #define HFI_THRESHOLD 3.0f
 #endif
 
-#ifdef USE_HFI
-#define CURRENT_BANDWIDTH 10000.0f
-#else
 #ifndef CURRENT_BANDWIDTH
-#define CURRENT_BANDWIDTH 1000.0f
+#define CURRENT_BANDWIDTH 0.25f*PWM_FREQUENCY //Note, current bandwidth in rads-1, PWMfrequency in Hz, so the default is about fPWM = 25xcurrent bandwidth.
 #endif
+
+#ifndef DEFAULT_SPEED_KP
+#define DEFAULT_SPEED_KP 0.5f //Amps per eHz
+#endif
+#ifndef DEFAULT_SPEED_KI
+#define DEFAULT_SPEED_KI 0.1f //Amps per eHz per slowloop period... ToDo make it per second. At 100Hz slowloop, 0.1f corresponds to a 10Hz integral.
 #endif
 
 #ifndef ADC_OFFSET_DEFAULT
 #define ADC_OFFSET_DEFAULT 2048.0f
 #endif
+
+
 
 typedef struct {
 	int Iu;
@@ -205,10 +218,17 @@ typedef struct {
 
   float inverterVoltage[3];
   MESCiq_s Idq_req;							//The input to the PI controller. Load this with the values you want.
+  MESCiq_s Idq_prereq; 						//Before we set the input to the current PI controller, we want to run a series of calcs (collect variables,
+										  	  //calculate MTPA... that needs to be done without it putting jitter onto the PI input.
+  float T_rollback;							//Scale the input parameters by this amount when thermal throttling
   MESCiq_s currentPower;					//Power being consumed by the motor; this does not include steady state losses and losses to switching
   float currentPowerab;
   float Ibus;
   float reqPower;
+  float speed_req;
+  float speed_kp;
+  float speed_ki;
+  float speed_error_int;
 
   //Observer parameters
   float Ia_last;
@@ -232,6 +252,7 @@ typedef struct {
   float Iq_igain;
   float Vdqres_to_Vdq;
   float Vab_to_PWM;
+  float Duty_scaler;
   float Vmag_max;
   float Vmag_max2;
   float Vd_max;
@@ -332,6 +353,39 @@ typedef struct {
 	int hall_error;
 } MESChall_s;
 
+typedef struct{
+	uint16_t OL_periods;
+	uint16_t OL_countdown;
+	int  closed_loop;
+	int sector;
+	int direction;
+	float PWM_period;
+
+	float I_set;
+	float I_meas;
+	float V_meas;
+	float V_meas_sect[6];
+	float rising_int;
+	float falling_int;
+	float rising_int_st;
+	float falling_int_st;
+	float last_p_error;
+
+	float I_error;
+	float int_I_error;
+	float I_pgain;
+	float I_igain;
+
+	float com_flux;
+	float flux_integral;
+	float last_flux_integral;
+
+	float V_bldc;
+	float V_bldc_to_PWM;
+	uint16_t BLDC_PWM;
+
+}MESCBLDC_s;
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////Main typedef for starting a motor instance////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -341,12 +395,13 @@ typedef struct{
 	motor_state_e MotorState;
 	motor_sensor_mode_e MotorSensorMode;
 	motor_control_mode_e ControlMode;
+	motor_control_type_e MotorControlType;
 	HFI_type_e HFIType;
 	MESC_raw_typedef Raw;
 	MESC_Converted_typedef Conv;
 	MESC_offset_typedef offset;
 	MESCfoc_s FOC;
-	//MESCBLDC_s BLDC;
+	MESCBLDC_s BLDC;
 	MOTORProfile m;
 	MESCmeas_s meas;
 	MESChall_s hall;
@@ -425,10 +480,10 @@ typedef struct {
 	float ADC1_polarity;
 	float ADC2_polarity;
 
-	MESCiq_s Idq_req_UART;
-	MESCiq_s Idq_req_RCPWM;
-	MESCiq_s Idq_req_ADC1;
-	MESCiq_s Idq_req_ADC2;
+	float UART_req;
+	float RCPWM_req;
+	float ADC1_req;
+	float ADC2_req;
 
 	uint32_t input_options; //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
@@ -543,5 +598,11 @@ void RunHFI(MESC_motor_typedef *_motor);
 void ToggleHFI(MESC_motor_typedef *_motor);
 void collectInputs(MESC_motor_typedef *_motor);
 void RunMTPA(MESC_motor_typedef *_motor);
+void RunSpeedControl(MESC_motor_typedef *_motor);
+
+////BLDC
+void BLDCCommute(MESC_motor_typedef *_motor);
+void CalculateBLDCGains(MESC_motor_typedef *_motor);
+
 
 #endif

@@ -1,0 +1,573 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Molony Electronic Speed Control (MESC) Documentation</title>
+        <meta name="robots" content="noindex" />
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction/INTRODUCTION.html"><strong aria-hidden="true">1.</strong> Introduction to the MESC</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introduction/FOREWORD.html"><strong aria-hidden="true">1.1.</strong> Foreword</a></li><li class="chapter-item expanded "><a href="introduction/LICENSE.html"><strong aria-hidden="true">1.2.</strong> License</a></li><li class="chapter-item expanded "><a href="introduction/FEATURES.html"><strong aria-hidden="true">1.3.</strong> Features</a></li></ol></li><li class="chapter-item expanded "><a href="operation/INTRODUCTION.html"><strong aria-hidden="true">2.</strong> Theory and Operation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="operation/THEORY.html"><strong aria-hidden="true">2.1.</strong> Theory of operation</a></li><li class="chapter-item expanded "><a href="operation/CONTROL.html"><strong aria-hidden="true">2.2.</strong> Control loops</a></li><li class="chapter-item expanded "><a href="operation/PORTING.html"><strong aria-hidden="true">2.3.</strong> Porting to other microprocessors</a></li></ol></li><li class="chapter-item expanded "><a href="debugging/DEBUGGING.html"><strong aria-hidden="true">3.</strong> Debugging STM32CubeIDE</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="debugging/FIRMWARE_INTRO.html"><strong aria-hidden="true">3.1.</strong> Getting started</a></li></ol></li><li class="chapter-item expanded "><a href="MP2/INTRO.html"><strong aria-hidden="true">4.</strong> Reference ESC: the MP2</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Molony Electronic Speed Control (MESC) Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="documentation-for-mesc_firmware"><a class="header" href="#documentation-for-mesc_firmware">Documentation for MESC_Firmware</a></h1>
+<p>Custom FOC, speed control firmware originally for use with the MESC_FOC_ESC hardware project. </p>
+<p>Now ported to work on typical F405 based hardware (e.g. VESC, FSESC, custom boards...)
+Also ported to work on L431RC and F401CC (Blackpill). 
+Other STM32 ports are easy to do, and perhaps other MCU vendors.</p>
+<h2 id="topics"><a class="header" href="#topics">Topics</a></h2>
+<ul>
+<li>Topic 1 listed here</li>
+<li>Topic 2 listed here</li>
+<li>Topic 3 listed here</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="mesc_firmware"><a class="header" href="#mesc_firmware">MESC_Firmware</a></h1>
+<h2 id="foreword"><a class="header" href="#foreword">Foreword:</a></h2>
+<p>This project is new as of 28/06/2020, and is the work of David Molony, experienced mechanical and electrical engineer, and software learner.<br />
+Contributions from others welcome, but </p>
+<ol>
+<li>The project is not intended to be an all inclusive do everything like VESC. This project is intended to be FOC that &quot;just works&quot; and is trivial to understand, port and build applications with.</li>
+<li>The project will remain in its entirety BSD 3 clause, MIT or other equivalent entirely permissively licenced.</li>
+<li>As the project matures, while the code style remains nothing special, there are increasing numbers of originally developed and both effective and easy to implement techniques that are offered permissively. Borrowing sections of code for other projects is allowed, but without exception, if you borrow the code, even if you rename variables or break it up/relocate into various subroutines, you MUST credit the origin, and maintain the permissive BSD licencing inline if necessary. Failure to do so means you grant a perpetual permissive licence to your project and lose your rights to using this code permissively. This statement is in response to a pernicious yet ubiquitous habit of open source projects ripping out permissive licencing or taking public domain code and re-issuing under copyleft terms. The origin of this ire was searching for python source and finding the entire cpython project online (since removed) with all trace of the BSD/PSF licence removed and replaced with GPL.</li>
+</ol>
+<p><strong>Thanks to contributors, especially:</strong></p>
+<ul>
+<li>c0d3b453 for large amounts of helpwith C and teaching, motor, speed temp and other profiles</li>
+<li>Salavat for initial STM32 setup and teaching</li>
+<li>Elwin (offline) for testing, motor control idea bouncing and assistance with current controllers</li>
+<li>Jens (Netzpfuscher) for RTOS, Terminal and variable save v2, tidying up and contributions to SinLUT</li>
+<li>OWhite for creating the Github Pages</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="mesc_firmware-1"><a class="header" href="#mesc_firmware-1">MESC_Firmware</a></h1>
+<h2 id="licence"><a class="header" href="#licence">Licence</a></h2>
+<p>This project will initially (and perhaps perpetually) contain a lot of firmware licenced under the STM Cube licence, BSD 3 clause https://opensource.org/licenses/BSD-3-Clause. The rest of the custom code is intended to be contained primarily in the MESC files, also BSD 3 Clause. It is requested that if you borrow, port, refactor parts into your own code... etc this firmware, you may let the project owner know, But you are not compelled to.  It would also be nice if concise and focused improvements were contributed back, but again, you are not compelled to.</p>
+<p>You must retain credit for the code origin in your source, even on small segments borrowed or reimplemented. This is compelled. If this code is borrowed in part or whole for use and published in GPLV2 V3... projects, you must grant a perpetual licence for your projects GPL code to be used permissively in this project reciprocally. Otherwise, for commercial and permissively licenced projects, the code can be used as BSD-3-Clause. The intention of this project is to be useful to whoever wants to use, learn, build, sell... with the freedom to lock down the code and make it safe.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="mesc_firmware-2"><a class="header" href="#mesc_firmware-2">MESC_Firmware</a></h1>
+<h2 id="noteable-features"><a class="header" href="#noteable-features">Noteable features</a></h2>
+<ul>
+<li>Simple and robust sensorless observer </li>
+<li>PWM-Synchronous Encoder readings</li>
+<li>HFI using d-q coupled current or 45 degree injection</li>
+<li>Dead time compensation and characterisation</li>
+<li>100% modulation techniques</li>
+<li>Field weakening and MTPA</li>
+<li>Fast fault shutdown from three possible sources - BRK input (&lt;1clock cycle MCU propogation), ADC Watchdog (optional, runs at PWM frequency by default and guards Out of range) and software comparison.</li>
+<li>Parameter (Rs, Ld, Lq, flux linkage detection, HFI thresholds)</li>
+<li>Operation up to 100kHz+ when running V0 only (HFI, encoder, logging disabled)</li>
+<li>Operation up to ~70kHz PWM (140kHz V0V7 frequency) with F405 MCU, and some options disabled (e.g. SPI encoder). Operation to about 40kHz with F401 MCU and about 35kHz with F303. Stable to &lt;2.5kHz PWM frequency, though this is definitely not advised for most applications.</li>
+<li>Most hardware cannot cope with current measurements above about 60kHz, noise becomes prohibitive.</li>
+<li>Easy porting to any STM32 with a floating point unit and timer1</li>
+<li>Probably easily portable to any other MCU with FPU, 3 phase timer and a 1MHz+ ADC</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="theory-and-operation"><a class="header" href="#theory-and-operation">Theory and Operation</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="theory-and-operation-1"><a class="header" href="#theory-and-operation-1">Theory and Operation</a></h1>
+<h2 id="hardware"><a class="header" href="#hardware">Hardware:</a></h2>
+<p>Any STM32 based 3 phase system using Timer1 for PWM High and Low and 3 phase current plus bus voltage measurement. Canonical hardware is F303, but better results can be made with external amplification so the F303 is no longer preferred.
+Preferable to have phase voltage sensors for restart while spinning and tracking without modulation (gives reduced drag and better efficiency)
+Specifically intended for the MESC_FOC_ESC and MP2 hardware, but also running on F405, F401, L431 and F411 targets.</p>
+<h2 id="forenote"><a class="header" href="#forenote">Forenote:</a></h2>
+<p>After the explanation in the PWM section, it will be assumed that timer1 refers to any timer used for the PWM generation, which is propogated as mtr[n]-&gt;mtimer after being introduced as a handle in the PWM ISR. 
+Multi motor is a new concept originating December 2022.
+PWM frequency and V0V7 frequency are distinct, and there is latent confusion since some codebases and manufacturers like to cite ambiguously &quot;switching frequency&quot; since it gives the impression the system is capable of double the frequency it really is.
+When choosing a PWM frequency when coming from another motor control system, be aware the convention used. VESC, ASI some BLDC controllers and probably others cite switching frequency. MESC uses PWM frequency so you may need to choose a value half what you used before, e.g. VESC 30kHz is equivalent to MESC 15kHz.</p>
+<h3 id="center-aligned-pwm"><a class="header" href="#center-aligned-pwm">Center Aligned PWM</a></h3>
+<p>//ToDo, add pictures and exlpanation of PWM center aligned generation for 3 phase currents. Anyone already reading this... There are quite a few resources that can explain this on the web already.</p>
+<h3 id="pwm"><a class="header" href="#pwm">PWM</a></h3>
+<p>Timer1 (or Timer 8 if using dual motor) set up to generate complimentary centre aligned PWM with dead time, with frequency configurable using #define PWM_FREQUENCY 25000 in your hardware apecific header.</p>
+<p>These timers are assigned an alias specific to the motor instance such that mtr[0]-&gt;mtimer = htim1 and mtr[1]-&gt;mtimer = htim8. It is also possible to use htim20 on large STM devices.</p>
+<p>The center aligned PWM counts (mtimer-&gt;Instance-&gt;CNT) up from 0 to ARR (Auto Reload), where the direction is changed and it starts to count down. When the count is below the CCR (Compare Register) the timer outputs HIGH to the high side MOS and LOW to the low side MOS, and the phase is connected to VBat. When it is above the CCR, the two outputs swap, and the phase is connected to ground.
+This means that a higher CCR gives a larger pulse of bus voltage to the motor.</p>
+<p>Space vector modulation variant &quot;mid point clamp&quot; primarily used; bottom clamp implementation exists, and is used for overmodulation, but results in less good FET currnt sharing.
+Centring at 50% duty cycle has a few advantages - it allows recirculation through the high side FETs as well as the low side, which evens out the load on them, and cancels most offsets. 
+The SVM is implemented as the true inverse clarke transform (2 phase to 3 phase) followed by selection of the highest and lowest voltage phases to generate a mid point. This mid point is then fixed to mtimer-&gt;ARR/2, effectively allowing the unipolar DC link to generate AC voltages.</p>
+<p>For higher modulation indices (typically &gt;95%), bottom clamp implementation can be used for FOC control. It is a bit noisier, less FET sharing, but allows for longer current sampling periods, and therefore higher modulation. 
+SVPWM mid point clamp assumes the circle limiter clips the Vd and Vq such that the inverse transform is limited to what will fit within the bus voltage.</p>
+<p>There is no hard limit on ERPM (= 60 x eHz), but eventually it trips. Has worked to over 300kerpm on F405 targets with a GaN power stage. This is uselessly high in practice.
+Most motors cannot cope with this speed due to stator eddie and hysteresis losses. Typical 0.2mm laminations become very inefficient at around 1kHz.
+The limit of proper commutation is roughly 20PWM periods per eHz, so at 20kHz PWM, it is possible to run to 1000eHz with good performance. This can be increased slightly by enabling interpolation (#define INTERPOLATE_V7_ANGLE)</p>
+<h4 id="pwm-isr-interrupt-service-routine-aka-irq-generation"><a class="header" href="#pwm-isr-interrupt-service-routine-aka-irq-generation">PWM ISR (Interrupt Service Routine, aka IRQ) generation</a></h4>
+<p>The mtimer generates the interrupts for the FOC, with interrupts enabled at over and underflow of the timer (when CNT = 0 and ARR). The configured ISR this enters through is TIM1_UP_TIM10 at vector address 0x0000 00A4 on STM32F405. ST remap this to the &quot;stm32f4xx_it.c&quot; where it enters the function: 
+void TIM1_UP_TIM10_IRQHandler(void)
+Within this ST calllback, MESC calls 
+MESC_PWM_IRQ_handler(&amp;mtr[n]) where n would typically be 0 for the timer1 callback, 1 for timer8 callback and 2 for timer20 if used. This function is implemented in MESC_Common in MESCfoc.c</p>
+<p>From here on, the code is largely generic to MESC (exception being the getRawADC(_motor) function which has to return the specific ADC readings mapping the ADC to the MESC RAW data.</p>
+<p>Owing to the number of clock cycles per PWM period for the MCU to complete math (e.g. for STM32F303 72MHzcore/25KHzpwm/2 = 1440 clock cycles) math occurring in the interrupt must be fast.
+Firmware will be targetting &lt;1000 clock cycles per Fastloop and &lt;&lt;1000 cycles per hyperloop to enable high frequency operation. Therefore, many functions and precalculations are pushed into the slowloop.</p>
+<p>The MESC_PWM_IRQ_handler calls fastLoop(_motor) when the timer is counting down, and hyperloop(_motor) when the timer is counting up (note that _motor represents mtr[0], mtr[1], mtr[2]... depending on what handle was passed in the PWM ISR function!)
+fastLoop contains the FOC control, the feedback between current measurement and voltage output and the sensorless observer.
+hyperLoop contains the HFI injection function, angle interpolation and when used, synchronous encoder readings. 
+Both contain a call to the SVPWM function writePWM(_motor) so that the PWM can be updated 2x per PWM period.</p>
+<h3 id="adc"><a class="header" href="#adc">ADC</a></h3>
+<p>ADC conversions are triggered (preferably, where available) by mtimer CCR4 on TRGO. ADCs 1,2,3 are used to get fully synchronous current readings on F303 and F405, but on other targets, or with multiple motors, they sometimes must be sequential. This does not in practice result in a noticeable loss of performance. Vbus is read immediately after current reading as the next most critical parameter.</p>
+<p>Within the fastLoop, which occurs at mtimer top shortly after the ADC conversion has been initiated, a call is made to ADCConversion(_motor) which calls getRawADC(_motor) which is a function specific to the hardware target, and must be implemented in the user's MESChw_setup.c file if different to existing targets. Once the raw values are attained, the fastLoop procedes with no hardware specific call.</p>
+<p>ADC interrupt is now reserved for overcurrent protection events with the analog watchdog and it is recommended to set the threshold to a range the current sensors can reliably reach; typically 10-50 counts for opamp and perhaps up to 400 counts for inductive sensors. These thresholds can be set in CUBEMX for new hardware or can be written directly to the hadc1.Instance-&gt;HTR and LTR.</p>
+<h3 id="interrupt-priority"><a class="header" href="#interrupt-priority">Interrupt priority</a></h3>
+<p>Interrupt priority is critical and must be taken into account when setting up the system. The order should go:
+-1 Reset, NMI
+0 Physical fault handlers (busfault etc...) and the hardfault handler. These should be populated with a generateBreakAll() function to immediately disable all motors if they are reached.
+1 (optional) Timer1/8 BRK interrupt - This will already have turned off the PWM through hardware link.
+1 (optional) ADC watchdog interrupt (should only ever be reached in an out of range event, and should be populated with a handleError(&amp;mtr[n], ERROR_ADC_OUT_OF_RANGE_IA) or generateBreakAll().
+2 Timer1/8 Update - This calls the fast and hyperloops and is the main control loop.
+3 Slowloop timer
+...
+5-onwards USB, UART, DMAs, SPI, systick... in any order of your choosing.</p>
+<h3 id="hall"><a class="header" href="#hall">Hall</a></h3>
+<p>Hall sensors only commutation is supported, but only in forward mode (swap a pair of motor phase wires if it runs backwards) but full support will be gradually deprecated since sensorless works much better. 
+Hall startup option relies on a different mechanism and work in either direction by preloading the observer with flux linkages derived during Tracking.
+Timer XOR hall input is not currently used, instead the fastloop just samples and counts PWM cycles since the last hall state change, which is fed into a filter. This reduces accuracy, but improves reliability, noise rejection and portability.</p>
+<h3 id="encoder"><a class="header" href="#encoder">Encoder</a></h3>
+<p>TLE5012B crudely supported in SSC (SPI) mode. The SPI reads are called synchronously from the hyperLoop and therefore PWM frequency is limited to about 20kHz to allow time for the data transfer.
+ABI not currently supported. </p>
+<h3 id="pwm-input"><a class="header" href="#pwm-input">PWM Input</a></h3>
+<p>Timer2,3 or 4 can be set up in reset mode, with prescaler sunch that one count = 1us (e.g. for F303 at 72MHz we would use a prescaler of 71. We use a 65535 period, with trigger/reset mapped to TI1FP1, and channel one capturing on rising edge, direct mode, channel 2 capturing on falling edge indirect mode - remapped to TI2FP2. This gives two CC register values, CC1 timing the period of the pulses, and CC2 timing the on time.<br />
+Interrupt: update interrupt used. We expect a value very close to 20000us from an RC sender (50Hz). Check CC1 is 20000+/-~10000. If outside this bounds, set input capture flag low. CC2 is the pulse time.</p>
+<h3 id="over-current-comparators"><a class="header" href="#over-current-comparators">Over Current Comparators</a></h3>
+<h4 id="on-f303-based-hardware"><a class="header" href="#on-f303-based-hardware">On F303 based hardware</a></h4>
+<p>Comparators set up to trigger Tim1 break2 state in the event of overcurrent event, which should turn off all outputs to high impedance on F303 hardware. 
+0.5mOhm shunts (2x1mohm) or 1mOhm (2x2mOhm original hardware) at 100amps gives 50mV, with a pullup to 100mV. Vrefint is 1.23V, so 1/4Vref used for comparator-ve - 310mV. This triggers the comparator at 400A nominal (a LOT of current, but the intended FETs are rated for that for 100us, which is ~2 PWM periods... If alternate FETs used, should check this, or just hope for the best, or modify the shunt resistors to have higher value.<br />
+Timer1 should have a BRK filter set to avoid switching noise</p>
+<h4 id="on-most-other-hardware"><a class="header" href="#on-most-other-hardware">On most other hardware</a></h4>
+<p>On F4, L4 and other targets, the expectation is that there is a fault input on the PB12 pin for timer1,which is setup to capture and stop PWM generation on this input. Timer8 is mapped to PA6, annoyingly removing an ADC channel.
+Hardware without overcurrent comparators is OK, the overcurrent and over voltage is also taken care of in the fastloop, or by the analog watchdog if set up.</p>
+<h2 id="coms"><a class="header" href="#coms">Coms</a></h2>
+<p>Primarily, initially, serial used. 
+USB CDC (serial) implemented for F303, F401 and F405 targets</p>
+<h3 id="serial"><a class="header" href="#serial">Serial</a></h3>
+<p>TBC.</p>
+<h2 id="watchdog-timer"><a class="header" href="#watchdog-timer">Watchdog timer</a></h2>
+<p>Not currently implemented. Lack of it has not presented any issue so far. ToDo...
+If implementing specifically for your hardware,set it running in the hardwareInit() function. The watchdog timer should be kicked by the fast control loop after the VIcheck is completed to ensure a response to overvoltage and current events is possible.
+Period of ~1ms 
+On overflow, generate a break state on the motor and reset MCU - control loop no longer running, motor could be stopped, freewheeling, generally making a mess of currents and generating high voltages.</p>
+<h2 id="general-workflow"><a class="header" href="#general-workflow">General workflow</a></h2>
+<h3 id="fast-control-loop"><a class="header" href="#fast-control-loop">Fast Control loop</a></h3>
+<p>Fast control loop must:<br />
+Retrieve current and Vbus values from ADC 
+Carry out the conversion to floating point SI units
+Check for over limit events if not handled in hardware
+Retrieve phase voltage values if not modulating
+Process the state machine (Idle, running, tracking, error... and sensor mode)<br />
+Manipulate currents and voltages to Vab (Clarke transform) and Vdq(Park transform)(FOC)<br />
+Calculate current position and speed (get Hallsensor values, sensorless observer)<br />
+Run FOC PI controller
+Run Field weakening and circle limiter
+Run SVPWM (include inverse clark/park)
+Update inverter PWM values based on phase and voltage</p>
+<h3 id="hyper-control-loop"><a class="header" href="#hyper-control-loop">Hyper Control loop</a></h3>
+<p>Hyper control loop has more optional things, which can include:
+Process HFI
+Read encoder
+Interpolate the angle
+IF logging: write currents and voltage to logging buffer, increment/wrap logging buffer index </p>
+<h3 id="slow-control-loop"><a class="header" href="#slow-control-loop">Slow control loop</a></h3>
+<p>Execute every 10ms. Originally this ran on the RCPWM input, but not it runs independently. 
+The slowloop can be run at any speed from about 20Hz to 1kHz on any timer with interrupt priority lower than the fastloop timer and ADC interrupt (if used)
+State machine processing (ToDo)</p>
+<p>Update parameters (e.g. volts to PWM, gains...)
+Run MTPA
+Run power and current limitations</p>
+<p>Speed Ramps etc... ToDo</p>
+<h3 id="coms-loop"><a class="header" href="#coms-loop">Coms loop</a></h3>
+<p>ToDo, currently only simple single character arguments. C0d3b453 working on an implementation...
+Runs on UART RX interrupt
+DMA used to transmit strings.</p>
+<h2 id="speeds-angles-input-params"><a class="header" href="#speeds-angles-input-params">Speeds, angles, input params...</a></h2>
+<h3 id="motor-params-demanded-will-be"><a class="header" href="#motor-params-demanded-will-be">Motor params demanded will be:</a></h3>
+<p>PP - Pole pairs
+Finds kV as mWb on detection
+Rph - Phase resistance (=1/2 phase:phase resistance) detected by measurement protocol
+Ld - Phase inductance in Ld detected by measurement protocol as Lx = Vdinjected/(di/dt)
+Lq - As Ld but found by Vq injection
+Max motor current
+Max power
+Switching frequency</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="control-loops"><a class="header" href="#control-loops">Control Loops</a></h1>
+<h2 id="fast-control-loop-1"><a class="header" href="#fast-control-loop-1">Fast Control loop</a></h2>
+<p>All the FOC gets done in the fastLoop. This is the only critical part of the MESC, the rest can actually be removed providing the parameters get set and MESC is initialised correctly .
+If you remove the slowloop, you can write directly to mtr[n]-&gt;FOC.Idq_req.q, set the mtr[n]-&gt;MotorState to MOTOR_STATE_RUN and enable the inverter.</p>
+<h3 id="the-geometric-transforms"><a class="header" href="#the-geometric-transforms">The geometric transforms</a></h3>
+<p>The forward transforms take place in the ADCConversion(_motor) function. This converts the read currents firstly from 3 phase to two phase (Clarke) and then rotates them to the estimated/read from encoder rotor reference frame (Park).</p>
+<p>Geometric transforms are the Clark and Park, which take the forward form are used to transform currents:</p>
+<p>Clarke:
+\[\begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix} = 2/3 \begin{bmatrix} 1 &amp; -0.5 &amp; -0.5\cr0 &amp; \sqrt{3}/2 &amp; -\sqrt{3}/2 \cr 0.5 &amp; 0.5 &amp; 0.5 \end{bmatrix} \begin{bmatrix}Iu \cr Iv \cr Iw \end{bmatrix}  \]
+where MESC selects for the lower of the PWM values at high modulation using the substitution \( Iu + Iv + Iw = 0\) .</p>
+<p>Park (rotation matrix around \( \gamma\)):
+\[ \begin{bmatrix}Id \cr Iq \cr I0 \end{bmatrix} = \begin{bmatrix}cos\theta &amp; sin\theta &amp; 0 \cr -sin\theta &amp; cos\theta &amp; 0 \cr 0 &amp; 0 &amp; 1\end{bmatrix} \begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix}\]
+Where \( \theta\) is the electrical angle of the rotor; the mechanical angle divided by pole pairs and where the bottom and right rows of the matrix are ignored (we assume \( \gamma\) is zero).</p>
+<p>The backward, or inverse, form of the transform is used on the voltages to create a 2 phase stator reference and then a 3 phase stator reference voltage from the 2 phase rotor reference. These are performed in the function writePWM(_motor) which is run in the fast AND hyperloop to enable voltage injection for HFI.</p>
+<p>Inverse Park:
+\[ \begin{bmatrix}V\alpha \cr V\beta \cr V\gamma \end{bmatrix} = \begin{bmatrix}cos\theta &amp; -sin\theta &amp; 0 \cr sin\theta &amp; cos\theta &amp; 0 \cr 0 &amp; 0 &amp; 1\end{bmatrix} \begin{bmatrix}Vd \cr Vq \cr V0 \end{bmatrix}\]
+Inverse Clarke:
+\[ \begin{bmatrix}Vu \cr Vv \cr Vw \end{bmatrix}=  \begin{bmatrix} 1 &amp; 0 &amp; 1\cr -0.5 &amp; \sqrt{3}/2 &amp; 1\cr 1-.5 &amp; -\sqrt{3}/2 &amp; 1 \end{bmatrix} \begin{bmatrix}I\alpha \cr I\beta \cr I\gamma \end{bmatrix}\]
+MESC uses the full form of the inverse clark where many other implementations skip it and use a SVPWM routine. MESC does this to enable a variety of clamping and over modulation methods, and because it is easier to understand, with no unexplained leaps of faith.
+The end result is identical.</p>
+<p>\( sin\theta\) and \( cos\theta\) are calculated from a lookup table 320 elements (=256x1.25) long optionally with interpolation. With interpolation, the maximum error from this is very small; less than the ADC or PWM resolution.</p>
+<h3 id="the-sensorless-observer"><a class="header" href="#the-sensorless-observer">The Sensorless Observer</a></h3>
+<p>The MESC sensorless observer is also known as the MXLEMMING observer and is now the default on the VESC project.</p>
+<h4 id="what-mesc-does"><a class="header" href="#what-mesc-does">What MESC Does</a></h4>
+<p>The sensorless observer is very simple. The implementation is unique to MESC and was developed without recourse to appnotes or papers. It is probably not unique in industry, but so far I have not seen it in any other open source or commercial source project.
+It works (as most successful observers do) on the basis of flux integration, that is the assumption that for a spinning magnet passing a coil, the voltage is given by:
+\[V = turns x \frac{d\phi}{dt} \] 
+and we observe from watching the motor on a scope that the voltages are sinusoidal.</p>
+<p>Therefore, in general, if we ignore the number of turns and make \(\theta = \omega t\):
+\[ V = \phi\omega sin(\omega t)\]
+\[\int V dt = turns x \phi +C -&gt; -\phi\cos\theta +C\] 
+We do not need to care for turns, and C varies only dependent on where we start the integration for a sin wave.
+The key recognition is that \( \phi \) is a constant dependent on the magnets, and therefore the max and min of the resulting integral are symetric and constant.
+Since the voltage is sinusoidal, the flux integral will thus also be sinusoidal, with a phase shift of 90 degrees.
+(remember to insert pics of sin and integral...)
+Further, the addition of noise on the incoming voltage signal is effectively filtered out by this integral since 
+\[ \int cosn\theta dt = \frac{cosn\theta}{n} (+C) \] 
+and so noise and higher harmonics are greatly reduced.</p>
+<p>Within MESC, we choose to carry out this integral in alpha beta frame, so we first remove the effects of resistance and inductance, and then integrate the resulting voltage as:
+\[ V_\alpha = V_{BEMF\alpha} + Ri_\alpha + \frac{Ldi_\alpha}{dt}\]
+\[ V_\beta = V_{BEMF\beta} + Ri_\beta + \frac{Ldi_\beta}{dt}\]
+where \(V_\alpha \) and \(V_\beta \) are the electrical voltage output by the inverter and \(i\alpha\) and \(i\beta\) is the clarke transformed current measured by the ADC.
+Thusly, we generate two estimated back EMF voltages which we can integrate to get two flux linkages with a 90 degree phase shift.</p>
+<p>\[ \phi_\alpha = \int V_{BEMF\alpha} dt \]
+\[ \phi_\beta = \int V_{BEMF\beta} dt \]</p>
+<p>We have to deal with teh +C term in the integral, and also with integration drift which would result in arctangent not working. MESC simply clamps the flux integral at hard limits which can either be fixed or calculated in realtime by the flux linkage observer. 
+Since they are shifted by 90 degrees and already filtered by integration, we need only find the arctangent of the two to calculate an estimated angle.
+\[ \theta = arctan(\frac{\phi_\beta}{\phi_\alpha}) + \pi\]</p>
+<h4 id="alternatives-mesc-chose-not-to-do"><a class="header" href="#alternatives-mesc-chose-not-to-do">Alternatives MESC chose not to do</a></h4>
+<p>Alternative to treating the inductance as a piecewise integral, the Lia term can be lumped. This would remove the need to store previous state information to calculate \( \frac{di}{dt}\) and is the method commonly used in literature. 
+However, this allows the Lia term to get large compared to the back EMF, and the bounding/elimination of integrational drift is done while the inductance term is still within the BEMF, with probable impact on the result (note the result becomes clearly unstable when \(Lia&gt;phi\))
+Noteably the Ortega observer as used originally in VESC contains this construction, and relied on a non linear (quadratic) elimination of integration drift and associated instability at high current.</p>
+<p>Alternative to the clamping of the flux integrals at their max possible limits a proportional (or PI or non linear) correction factor could be introduced based on the magnitude of the current alpha and beta fluxes. This is similar to the Ortega observer. MESC includes a version of this that can be compiled in with a #define USE_NONLINEAR_OBSERVER_CENTERING but it is advised you do not use this; for experiment only.</p>
+<p>Alternatively to the arctangent we could construct a true observer:
+\[ \theta est_{n+1} = \theta est_n + d\theta + k_p*(\theta calc-\theta est)\]
+Where:
+\[ d\theta_{n+1} = d\theta_n + k_i*((\theta est_n + d\theta)-\theta calc_{n+1})\]
+(here we calculate \(\theta calc \) through arctangent as above and forward predict/correct our prediction each cycle)</p>
+<p>Or: 
+\[ \theta est_{n+1} = \theta est_n + d\theta + k_p*\phi_d\]
+where
+\[ d\theta_{n+1} = d\theta_n + k_i*\phi_d\] 
+(here we use the d axis flux linkage, which we derive from a rotation of the alpha beta flux linkage as an estimate of the error to be corrected)</p>
+<p>MESC chooses not to use a true observer, since there is no obvious measurable advantage, there are gains to be &quot;tuned&quot; which can result in instability with a true observer and there are additional calculation steps.
+Noteable users of true observers include ST Micro's FOC library which uses a Leunburger observer and Alex Evers' UNIMOC which uses a Kalman filter.
+Using a true observer of any kind does not deal with the three most fundamental problems facing sensorless observers: </p>
+<ul>
+<li>Initially estimating parameters R and L, </li>
+<li>Changing resistance with temperature and </li>
+<li>Changing inductance with saturation at high current.</li>
+</ul>
+<h4 id="the-mesc-salient-observer"><a class="header" href="#the-mesc-salient-observer">The MESC Salient Observer</a></h4>
+<p>MESC contains an observer for salient motors, which accounts for the differing d and q inductances. This is not usually required, is not well tested and will not work for outrunner motors since they saturate so heavily.
+It relies on the assumption that the salience travels with the dq frame, and can be transformed into the alpha beta frame, then:</p>
+<p>\[ \frac{dLi}{dt} = \frac{Ldi}{dt} + \frac{idL}{dt} \]</p>
+<p>And therefore the above estimates for VBEMF can be modified to account for this changing salience in alpha beta frame.</p>
+<h3 id="the-foc-pi"><a class="header" href="#the-foc-pi">The FOC PI</a></h3>
+<h3 id="the-field-weakening"><a class="header" href="#the-field-weakening">The Field Weakening</a></h3>
+<h3 id="the-circle-limiter"><a class="header" href="#the-circle-limiter">The Circle Limiter</a></h3>
+<h3 id="the-hall-start"><a class="header" href="#the-hall-start">The Hall start</a></h3>
+<h3 id="tracking"><a class="header" href="#tracking">Tracking</a></h3>
+<h2 id="the-hyperloop"><a class="header" href="#the-hyperloop">The Hyperloop</a></h2>
+<h3 id="hfi"><a class="header" href="#hfi">HFI</a></h3>
+<h4 id="hfi-d"><a class="header" href="#hfi-d">HFI D</a></h4>
+<h4 id="hfi45"><a class="header" href="#hfi45">HFI45</a></h4>
+<h3 id="pll-and-speed-estimation"><a class="header" href="#pll-and-speed-estimation">PLL and Speed estimation</a></h3>
+<h3 id="interpolation"><a class="header" href="#interpolation">Interpolation</a></h3>
+<h2 id="slow-control-loop-1"><a class="header" href="#slow-control-loop-1">Slow control loop</a></h2>
+<h3 id="input-collection"><a class="header" href="#input-collection">Input collection</a></h3>
+<h3 id="duty-cycle-control"><a class="header" href="#duty-cycle-control">Duty cycle control</a></h3>
+<h3 id="the-speed-controller"><a class="header" href="#the-speed-controller">The Speed Controller</a></h3>
+<h3 id="temperature-limiting"><a class="header" href="#temperature-limiting">Temperature limiting</a></h3>
+<h3 id="mtpa"><a class="header" href="#mtpa">MTPA</a></h3>
+<h3 id="field-weakening-q-current-rollback"><a class="header" href="#field-weakening-q-current-rollback">Field weakening q-current rollback</a></h3>
+<h3 id="power-limiting"><a class="header" href="#power-limiting">Power limiting</a></h3>
+<h2 id="simplecoms-loop"><a class="header" href="#simplecoms-loop">SimpleComs loop</a></h2>
+<h2 id="rtos-and-terminal"><a class="header" href="#rtos-and-terminal">RTOS and terminal</a></h2>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="porting-to-other-mcus"><a class="header" href="#porting-to-other-mcus">Porting to other MCUs</a></h1>
+<p>Intention is that minimal things have to be done to port:</p>
+<ol>
+<li>a) 3 phase (complimentary if required)PWM out required. Timer1 typically used, Timer8 can be used but main loop currently would need manually changing.
+b) set up CUBE with minimum 4x ADC readings (3x phase current and voltage compulsory, phase voltage sensors optional but strongly recommended and input for throttle if required)
+c) The ADC readings must be triggered at top center of the PWM, which can either be triggered through CCR4 or the update event.
+d) The readings can either be made by the Injected or regular conversion manager. Recommended that the injected is used for JDR1 = Iu, JDR2 = Iv, JDR3 = Iw, JDR4 = Vbus.
+e) The ADC can be set up to include an out of range watchdog which can make a rapid overcurrent protection. This is hardware specific, set AWD interrupt and thresholds in CUBE, and populate the ADC interrupt handler with handleError(ERROR_ADC_OUT_OF_RANGE_IA)
+f) The mapping between the ADC readings and the FOC inputs are made in the getRawADC() function, which is implemented per project. Replicate appropriately, using example from F405 project.</li>
+<li>populate the timer1 update interrupt with 	MESC_PWM_IRQ_handler() and __HAL_TIM_CLEAR_IT(&amp;htim1,TIM_IT_UPDATE);</li>
+<li>populate timer 3 or 4 interrupt with MESC_Slow_IRQ_handler(&amp;htimx) and 	__HAL_TIM_CLEAR_IT(&amp;htimx,TIM_IT_UPDATE);</li>
+<li>Run MESCInit() in the main</li>
+<li>Create your own hardware conf file which includes the methods and settings and defaults for your hardware. </li>
+<li>Map your throttle and thermistor values in the getRawADC() function in your MESC_hw_setup.c file (replicate this from a similar chip is easiest)</li>
+<li>Either hard code your motor parameters in your hardware header file, or implement the autodetection every time, or implement a variant of the flash reader/writer (this is the hard bit for new MCUs)</li>
+<li>Resolve the includes - your project must point to ../MESC_Common/Inc in Properties -&gt;C/C++ General-&gt;Paths and symbols</li>
+<li>Populate the fault handlers with handleError(ERROR_HARDFAULT) and other appropriate fault names</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="debugging-mesc-and-setting-up-hardware"><a class="header" href="#debugging-mesc-and-setting-up-hardware">Debugging MESC and setting up hardware</a></h1>
+<p>MP2 used as example</p>
+<h2 id="topics-1"><a class="header" href="#topics-1">Topics</a></h2>
+<ul>
+<li>MESC Firmware on the MP2 -- getting started with STM32CubeIDE [<a href="debugging/FIRMWARE_INTRO.html">LINK</a>]</li>
+<li>Gathering motor parameters [<a href="debugging/MOTOR_PARAM.html">LINK</a>]</li>
+<li>Pin mappings between MP2 and the F405 pill [<a href="debugging/MP2_F405PILL_PINOUTS.html">LINK</a>]</li>
+<li>MP2 assembly, testing and firmware [<a href="debugging/PCB_ASSEMBLY_TESTING.html">LINK</a>]</li>
+<li>MP2 bus bar methods [<a href="debugging/HIGHER_AMP_ASSEMBLY.html">LINK</a>]</li>
+<li>Some (bad) examples of connecting the MP2 to a motor [<a href="debugging/QS165_MP2_WIRING.html">LINK</a>]</li>
+<li>Gallery of enclosures [<a href="debugging/ENCLOSURE_GALLERY.html">LINK</a>]</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="getting-started-install-and-debug-mesc-firmware"><a class="header" href="#getting-started-install-and-debug-mesc-firmware">GETTING STARTED: Install and Debug MESC Firmware</a></h1>
+<h2 id="debugging-in-cubeide"><a class="header" href="#debugging-in-cubeide">Debugging in CubeIDE</a></h2>
+<p>Almost all variables of interest can be found in the struct mtr[]
+mtr[] is an array of structs containing the FOC, the raw and converted ADC values, the states, the motor parameter...
+mtr[] can contain n motors. Adding this to the live expressions allows you to view everything about the setup.
+mtr[n]-&gt;mtimer points to the instance of the ST timer.
+mtr[n]-&gt;stimer points to the timer used for the slow loop.
+Mutliple motors can be accomodated, but need patching to the correct ADC readings, which need triggering byt the associated timer.
+Some variables are assumed to be the same for multiple motors e.g. current limits, voltage limits... 
+These can be found in struct g_hw_setup</p>
+<h2 id="getting-started"><a class="header" href="#getting-started">Getting started</a></h2>
+<p>Install STM32CubeIDE from https://www.st.com/en/development-tools/stm32cubeide.html</p>
+<p>On the command line clone the github repository using:</p>
+<pre><code>% git clone https://github.com/davidmolony/MESC_Firmware.git
+</code></pre>
+<p>Start up the STM32CubeIDE. A workspace area is used by STM32CubeIDE to store all of your projects. The first time you start STM32CubeIDE it will want to create a workspace, if you dont have one. </p>
+<img src="debugging/pics/IDE_1_create_workspace.png" title="Creating a workspace">
+<p>Create a name if needed, select &quot;Launch&quot; </p>
+<p>When the IDE comes up for the first time, it may show an information center.</p>
+<img src="debugging/pics/IDE_2_splashscreen.png" title="The IDE splash screen">
+<p>Close on this feature.</p>
+<p>The IDE may show a project explorer tab on the left, if you do not see the project explorer:</p>
+<p>Window--&gt;Show View--&gt;Project explorer</p>
+<p>The project explorer may show &quot;Import projects...&quot; select that, or if you do not see that function, try:</p>
+<p>File--&gt;Import...</p>
+<p>An import selector should come up:</p>
+<img src="debugging/pics/IDE_3_import_selector.png" title="Import selection tool">
+<p>Set up General--&gt;Existing Projects into Workspace, select Next</p>
+<p>Browse for the top-level github folder you created, hit open the import function will show this:</p>
+<img src="debugging/pics/IDE_4_import_projects.png" title="Importing projects">
+<p>Select finish. This should load a set of MESC projects into the Project Explorer, expand the top-level folder and you should see:</p>
+<p>At this point if you select</p>
+<p>Project--&gt;Build All (or the icons on top of the IDE also help with builds)</p>
+<p>you should see the IDE compile the MESC_firmware in all the sub directories. </p>
+<img src="debugging/pics/IDE_5_firmware_build.png" title="Compiling firmware">
+<p>When you select the .ioc file in the file browser this tool pops up. By working with the pull down menus on each pin, you can view or set the functions on that pin. This tool also allows you to change many other functions like the timers, UARTS, and ADCs. </p>
+<img src="debugging/pics/IDE_6_IOC_review1.png" title="View pin functions">
+<h2 id="debugging----getting-started"><a class="header" href="#debugging----getting-started">Debugging -- getting started</a></h2>
+<p>To connect up your pill, you will use the abundantly available ST-LINK V2 debugger, and get connected like this:</p>
+<img src="debugging/pics/IDE_7_stlink.png" title="ST-LINK pin connections">
+<p>There are a couple of settings to watch out for in the configuration of the debugger. Make sure these parameters are set up:
+<img src="debugging/pics/IDE_8_settings1.png" title="Configure the debugger"></p>
+<p>There are a couple of settings to watch out for in the configuration of the debugger. Make sure these parameters are set up:
+<img src="debugging/pics/IDE_9_settings2.png" title="Configure the debugger"></p>
+<p>Once your st-link is connected and the debugger is configured you can get started by hitting this button. Sometimes you have to use that button's pulldown menu to select the debugging style that you want: 
+<img src="debugging/pics/IDE_10_debug.png" title="ST-LINK pin connections"></p>
+<h2 id="debugging----what-to-do-next"><a class="header" href="#debugging----what-to-do-next">Debugging -- what to do next</a></h2>
+<p>There are approximately 10<sup>5</sup> google results for <a href="https://www.google.com/search?q=stm32cubeide+debugging">STM32cubeIDE debugging</a>. Do your best. </p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="mesc-reference-esc-the-multi-platform-modular-powerful-mp2-speed-control"><a class="header" href="#mesc-reference-esc-the-multi-platform-modular-powerful-mp2-speed-control">MESC Reference ESC: The Multi-Platform, Modular, Powerful (MP2) Speed Control</a></h1>
+<p>The MP2 Features</p>
+<ul>
+<li>Relatively compact design, fitting for ebikes / medium-large electric scooters.</li>
+<li>Inexpensive, optimized for low cost assembly by JLCPCB</li>
+<li>100-300A operation with 18 FET, bus bars, and cooling</li>
+<li>Modular, with easily replaceable modules </li>
+<li>Compatible with several open source projects including VESC, EBICS, SmartESC, STM32 Motor Control Workbench and MESC</li>
+</ul>
+<p>Documentation for <a href="https://github.com/badgineer/MP2-ESC">MP2 project</a>:</p>
+<ul>
+<li>Gathering motor parameters [<a href="https://github.com/badgineer/MP2-ESC/docs/MOTOR_PARAM.md">LINK</a>]</li>
+<li>Pin mappings between MP2 and the F405 pill [<a href="https://github.com/badgineer/MP2-ESC/docs/MP2_F405PILL_PINOUTS.md">LINK</a>]</li>
+<li>MP2 assembly, testing and firmware [<a href="https://github.com/badgineer/MP2-ESC/docs/PCB_ASSEMBLY_TESTING.md">LINK</a>]</li>
+<li>MP2 bus bar methods [<a href="https://github.com/badgineer/MP2-ESC/docs/HIGHER_AMP_ASSEMBLY.md">LINK</a>]</li>
+<li>Some (bad) examples of connecting the MP2 to a motor [<a href="https://github.com/badgineer/MP2-ESC/docs/QS165_MP2_WIRING.md">LINK</a>]</li>
+<li>Gallery of enclosures [<a href="https://github.com/badgineer/MP2-ESC/docs/ENCLOSURE_GALLERY.md">LINK</a>]</li>
+<li>MESC Firmware on the MP2 -- getting started with STM32CubeIDE [<a href="https://github.com/badgineer/MP2-ESC/docs/FIRMWARE_INTRO.md">LINK</a>]</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            MathJax.Hub.Register.StartupHook('End', function() {
+                window.setTimeout(window.print, 100);
+            });
+        });
+        </script>
+
+    </body>
+</html>

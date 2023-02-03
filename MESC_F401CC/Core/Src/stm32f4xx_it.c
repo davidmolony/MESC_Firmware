@@ -240,7 +240,6 @@ int counterhtim1;
 void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
-	counterhtim1++;
   /* USER CODE END TIM1_UP_TIM10_IRQn 0 */
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 1 */
 	MESC_PWM_IRQ_handler(&mtr[0]);
@@ -257,7 +256,6 @@ int counterhtim2;
 void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
-	counterhtim2++;
 	MESC_Slow_IRQ_handler(&mtr[0]);
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_CC1);
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_CC2);

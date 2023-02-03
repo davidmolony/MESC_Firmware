@@ -88,11 +88,13 @@ struct TEMPProfile
     struct
     {
     float       Tmin;
+    float       Thot;
     float       Tmax;
     }           limit;
 };
 
 typedef struct TEMPProfile TEMPProfile;
+extern TEMPProfile const * temp_profile;
 
 void temp_init( TEMPProfile const * const profile );
 
@@ -100,6 +102,17 @@ float temp_read( uint32_t const adc_raw );
 
 uint32_t temp_get_adc( float const T );
 
-bool temp_check( uint32_t const adc_raw );
+enum TEMPState
+{
+	TEMP_STATE_OK,
+    TEMP_STATE_ROLLBACK,
+	TEMP_STATE_OVERHEATED,
+};
+
+typedef enum TEMPState TEMPState;
+
+TEMPState temp_check( float const T, float * const dT );
+
+TEMPState temp_check_raw( uint32_t const adc_raw, float * const dT );
 
 #endif
