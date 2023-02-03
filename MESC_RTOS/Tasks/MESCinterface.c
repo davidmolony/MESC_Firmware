@@ -1,4 +1,33 @@
-
+/*
+ **
+ ******************************************************************************
+ * @file           : MESCinterface.c
+ * @brief          : Initializing RTOS system and parameters
+ ******************************************************************************
+ * @attention
+ *
+ * <h2><center>&copy; Copyright (c) 2022 Jens Kerrinnes.
+ * All rights reserved.</center></h2>
+ *
+ * This software component is licensed under BSD 3-Clause license,
+ * the "License"; You may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at:
+ *                        opensource.org/licenses/BSD-3-Clause
+ ******************************************************************************
+ *In addition to the usual 3 BSD clauses, it is explicitly noted that you
+ *do NOT have the right to take sections of this code for other projects
+ *without attribution and credit to the source. Specifically, if you copy into
+ *copyleft licenced code without attribution and retention of the permissive BSD
+ *3 clause licence, you grant a perpetual licence to do the same regarding turning sections of your code
+ *permissive, and lose any rights to use of this code previously granted or assumed.
+ *
+ *This code is intended to remain permissively licensed wherever it goes,
+ *maintaining the freedom to distribute compiled binaries WITHOUT a requirement to supply source.
+ *
+ *This is to ensure this code can at any point be used commercially, on products that may require
+ *such restriction to meet regulatory requirements, or to avoid damage to hardware, or to ensure
+ *warranties can reasonably be honoured.
+ ******************************************************************************/
 
 #include "main.h"
 #include "TTerm/Core/include/TTerm.h"
@@ -8,11 +37,12 @@
 #include "MESCmotor.h"
 #include "MESCflash.h"
 #include "MESCinterface.h"
-//#include "MESCcli.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+extern uint16_t deadtime_comp;
 
 uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
@@ -25,6 +55,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	bool measure_res = false;
 	bool measure_kv  = false;
 	bool measure_hfi = false;
+	bool measure_dt = false;
 
 	if(argCount==0){
 		measure_res =true;
@@ -39,13 +70,16 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 			measure_hfi =true;
 		}
 		if(strcmp(args[i], "-r")==0){
-			measure_res =true;
+			measure_res = true;
 		}
 		if(strcmp(args[i], "-h")==0){
-			measure_hfi =true;
+			measure_hfi = true;
 		}
 		if(strcmp(args[i], "-f")==0){
-			measure_kv =true;
+			measure_kv = true;
+		}
+		if(strcmp(args[i], "-d")==0){
+			measure_dt = true;
 		}
 		if(strcmp(args[i], "-?")==0){
 			ttprintf("Usage: measure [flags]\r\n");
@@ -53,6 +87,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 			ttprintf("\t -r\t Measure resistance and inductance\r\n");
 			ttprintf("\t -f\t Measure flux linkage\r\n");
 			ttprintf("\t -h\t Measure HFI threshold\r\n");
+			ttprintf("\t -d\t Measure deadtime compensation\r\n");
 			ttprintf("\t -c\t Specify openloop current\r\n");
 			ttprintf("\t -v\t Specify HFI voltage\r\n");
 			return TERM_CMD_EXIT_SUCCESS;
@@ -126,10 +161,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
 		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
 
-		//motor_profile->flux_linkage = motor.motor_flux;
-
 		ttprintf("Flux linkage = %f mWb\r\n\r\n", motor_curr->m.flux_linkage * 1000.0);
-
 		vTaskDelay(2000);
 	}
 
@@ -139,32 +171,26 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		float HFI_Threshold = detectHFI(motor_curr);
 
 		ttprintf("HFI threshold: %f\r\n", (double)HFI_Threshold);
+
+		vTaskDelay(500);
 	}
 
+	if(measure_dt){
+		ttprintf("Measuring deadtime compensation\r\nWaiting for result");
 
-    return TERM_CMD_EXIT_SUCCESS;
-}
+		while(motor_curr->MotorState == MOTOR_STATE_TEST){
+			xSemaphoreGive(port->term_block);
+			vTaskDelay(200);
+			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			ttprintf(".");
+		}
 
+		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
+		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
 
-extern uint16_t deadtime_comp;
-uint8_t CMD_detect(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
-
-	MESC_motor_typedef * motor_curr = &mtr[0];
-
-	TestMode = TEST_TYPE_DEAD_TIME_IDENT;
-	MESCmotor_state_set(MOTOR_STATE_TEST);
-
-	ttprintf("Waiting for result");
-
-	port_str * port = handle->port;
-	while(motor_curr->MotorState == MOTOR_STATE_TEST){
-		xSemaphoreGive(port->term_block);
-		vTaskDelay(200);
-		xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
-		ttprintf(".");
+		ttprintf("Deadtime register: %d\r\n", deadtime_comp);
+		vTaskDelay(500);
 	}
-
-	ttprintf("Deadtime register: %d\r\n", deadtime_comp);
 
 
     return TERM_CMD_EXIT_SUCCESS;
@@ -173,32 +199,6 @@ uint8_t CMD_detect(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 extern TIM_HandleTypeDef htim1;
 
-uint8_t CMD_flash(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
-
-	if(argCount){
-		if(strcmp(args[0], "w")==0){
-			uint32_t len = sizeof(MOTORProfile);
-
-			ProfileStatus ret = profile_put_entry( "MTR", MOTOR_PROFILE_SIGNATURE, motor_profile, &len );
-			profile_commit();
-			ttprintf("Writing to flash %s\r\n", ret==PROFILE_STATUS_SUCCESS? "successfully" : "failed");
-		}
-		if(strcmp(args[0], "d")==0){
-			HAL_FLASH_Unlock();
-			vTaskDelay(100);
-			uint32_t      const addr = getFlashBaseAddress();
-			ProfileStatus const ret  = eraseFlash( addr, PROFILE_MAX_SIZE );
-			ttprintf("Flash erase %s\r\n", ret==PROFILE_STATUS_SUCCESS? "successful" : "failed");
-			vTaskDelay(100);
-			HAL_FLASH_Lock();
-			profile_init();
-		}
-
-	}
-
-
-    return TERM_CMD_EXIT_SUCCESS;
-}
 
 void callback(TermVariableDescriptor * var){
 	calculateFlux(&mtr[0]);
@@ -265,9 +265,7 @@ void MESCinterface_init(void){
 	mtr[0].m.flux_linkage_gain = motor_profile->flux_linkage_gain;
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
-	TERM_addCommand(CMD_detect, "deadtime", "Detect deadtime compensation", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
-	TERM_addCommand(CMD_flash, "flash", "Flash write", 0, &TERM_defaultList);
 
 	REGISTER_apps(&TERM_defaultList);
 

@@ -228,12 +228,15 @@ void TIM1_UP_TIM10_IRQHandler(void)
 void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
+
+	HAL_GPIO_WritePin(debug_GPIO_Port, debug_Pin, 1);
 	for(int i=0;i<NUM_MOTORS;i++){
 		MESC_Slow_IRQ_handler(&mtr[i]);
 	}
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_CC1);
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_CC2);
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
+	HAL_GPIO_WritePin(debug_GPIO_Port, debug_Pin, 0);
 
   /* USER CODE END TIM2_IRQn 0 */
   HAL_TIM_IRQHandler(&htim2);

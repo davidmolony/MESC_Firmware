@@ -2274,8 +2274,8 @@ void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma){
 #endif
 }
 
-volatile float cnt1=0.0f;
-volatile float accu=0.0f;
+volatile float min1=1000.0f;
+volatile float max1=0.0f;
 
 void RunHFI(MESC_motor_typedef *_motor){
 	int Idqreq_dir=0;
@@ -2373,7 +2373,7 @@ void SlowHFI(MESC_motor_typedef *_motor){
 				if(_motor->FOC.inject==1){
 					//static int no_q;
 					if(_motor->FOC.was_last_tracking==1){
-						if(_motor->FOC.HFI_countdown>0){
+						if(_motor->FOC.HFI_countdown>1){
 							_motor->FOC.HFI45_mod_didq = _motor->FOC.HFI_accu / _motor->FOC.HFI_count;
 							_motor->FOC.HFI_Gain = 5000.0f/_motor->FOC.HFI45_mod_didq;
 							_motor->FOC.was_last_tracking = 0;
