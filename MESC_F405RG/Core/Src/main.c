@@ -72,6 +72,7 @@ TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart3_tx;
+DMA_HandleTypeDef hdma_usart3_rx;
 
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -114,9 +115,7 @@ static void MX_I2C2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern uint8_t b_read_flash;
-extern uint8_t b_write_flash;
-volatile uint32_t swvcounter;
+
 /* USER CODE END 0 */
 
 /**
@@ -187,9 +186,6 @@ int main(void)
   motor_init( PROFILE_DEFAULT );
   MESCInit(&mtr[0]);
 
-  // MESC_Init();
-
-
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -219,10 +215,10 @@ int main(void)
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
-  init_system();
-
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
+  init_system();
+
   /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
@@ -978,6 +974,9 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
   /* DMA1_Stream3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
