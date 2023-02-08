@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -36,6 +37,9 @@
 #include "MESC_Comms.h"
 #include "MPU6050.h"
 #include "Simple_coms.h"
+
+#include "Tasks/init.h"
+
 
 /* USER CODE END Includes */
 
@@ -68,7 +72,15 @@ TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart3_tx;
+DMA_HandleTypeDef hdma_usart3_rx;
 
+/* Definitions for defaultTask */
+osThreadId_t defaultTaskHandle;
+const osThreadAttr_t defaultTask_attributes = {
+  .name = "defaultTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* USER CODE BEGIN PV */
 I2C_HandleTypeDef hi2c2;
 uint16_t MPU_present, MPU_present2;
@@ -93,6 +105,8 @@ static void MX_TIM7_Init(void);
 static void MX_SPI3_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
+void StartDefaultTask(void *argument);
+
 /* USER CODE BEGIN PFP */
 static void MX_I2C2_Init(void);
 
@@ -101,9 +115,7 @@ static void MX_I2C2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern uint8_t b_read_flash;
-extern uint8_t b_write_flash;
-volatile uint32_t swvcounter;
+
 /* USER CODE END 0 */
 
 /**
@@ -143,7 +155,6 @@ int main(void)
   MX_USART3_UART_Init();
   MX_TIM7_Init();
   MX_SPI3_Init();
-  MX_USB_DEVICE_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
@@ -153,55 +164,17 @@ int main(void)
   HAL_SPI_Init(&hspi3);
 #endif
 
-  HAL_UART_Init(&huart3);
-  SimpleComsInit(&huart3, &com1);
   HAL_TIM_Base_Start(&htim7);
   /*
   Starting System Initialisation
   */
-#if defined USE_PROFILE
-  // Initialise UART CLI IO
-  uart_init();
-  // NOTE - CLI messages are available after this point
-  
-  // Attach flash IO to profile
-  flash_register_profile_io();
-  // Load stored profile
-  ProfileStatus const sts = profile_init();
 
   // Initialise components
   bat_init( PROFILE_DEFAULT );
   speed_init( PROFILE_DEFAULT );
   // Initialise user Interface
   //ui_init( PROFILE_DEFAULT );
-#if 0
-// HACK
-  // Example store for debugging
-  UIProfile up;
-  up.type = UI_PROFILE_BUTTON;
-  up.desc.button.address = 1;
-  up.desc.button.identifier = 2;
-  up.desc.button.interface = 3;
-  uint32_t len = sizeof(up);
-  ProfileStatus ret = profile_put_entry( "TEST", UI_PROFILE_SIGNATURE, &up, &len );
-  (void)ret;
-// HACK
-  // If a profile was:
-  // (1) Not loaded
-  // (2) Corrupt
-  // (3) Modified
-  if  (
-		  (sts != PROFILE_STATUS_INIT_SUCCESS_LOADED) // (1)
-	  ||  profile_get_modified() // (3)
-	  )
-  {
-	// (1) Create a new profile
-	// (2) Replace the corrupt profile
-	// (3) Update the existing profile
-    profile_commit();
-  }
-#endif
-#endif
+
   /*
   Finished System Initialisation
   */
@@ -213,11 +186,45 @@ int main(void)
   motor_init( PROFILE_DEFAULT );
   MESCInit(&mtr[0]);
 
-  // MESC_Init();
-
-
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of defaultTask */
+  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  init_system();
+
+  /* USER CODE END RTOS_EVENTS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
@@ -237,9 +244,6 @@ int main(void)
 #endif
 
   while (1) {
-	  SimpleComsProcess(&com1);
-	  //detectHFI(&mtr[0]);
-	  HAL_Delay(0);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -970,8 +974,11 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
   /* DMA1_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 1, 0);
+  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
 
 }
@@ -1056,6 +1063,47 @@ static void MX_I2C2_Init(void)
 
 }
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void *argument)
+{
+  /* init code for USB_DEVICE */
+  MX_USB_DEVICE_Init();
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END 5 */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM6 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM6) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.

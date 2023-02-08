@@ -150,7 +150,7 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
 	 mesc_init_1(_motor);
 
-	HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle,
+	//HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle,
 					// controller, PWM source...)
 
 	mesc_init_2(_motor);
