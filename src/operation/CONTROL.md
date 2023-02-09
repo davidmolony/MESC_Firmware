@@ -151,7 +151,7 @@ It must limit both the overall signal AND limit the PI integral, and do so in th
 First, we must calculate the maximum length of the voltage vector, this is given by equating the hypotenuse of a 120 degree triangle to the bus voltage, then Vmagmax is the length of one of the shorter sides.
 
 [insert picture of SV triangle]
-\\[ V_{magmax} = \frac{1}{\sqrt{3}}V_{bus}*MAX_MODULATION\\] 
+\\[ V_{magmax} = \frac{1}{\sqrt{3}}V_{bus}*MAXMODULATION\\] 
 Max modulation is a limit made to ensure there is always some PWM low time to ensure the bootstrap capacitors can recharge. If using isolated supplied, or overmodulation, this may not be required and you can set 1.0 or even 1.1 (beyond that it becomes quite unstable).
 
 Typically, MAX_MODULATION is set to 0.95.
@@ -160,16 +160,16 @@ The identity:
 \\[\sqrt(V_d^2+V_q^2)<=V_{magmax}\\]
 should always be true.
 
-To do this, MESC has two options:
+To achieve this, MESC has two options:
 #### Simple linear circle limiter
 if: 
-\\(\sqrt(V_d^2+V_q^2)>V_{magmax}\\) 
+\\[\sqrt(V_d^2+V_q^2)>V_{magmax}\\] 
 We can simply divide Vd and Vq by this value, and return them linearly to within the range of the circle.
 
 Of course, we also need to ensure that the integral is not winding up in the background, and so we apply the rule:
 if:
-\\[|int_{Vderr}|>Vd\\]
-\\[int_{Vderr}=Vd\\]
+\\[|int_{Vderr}|>|V_d|\\]
+\\[int_{Vderr}=V_d\\]
 And similarly for Vq.
 This is the default mode for ST Motor control library; it is the most obvious and easiest to implement solution.
 
@@ -183,20 +183,22 @@ This results in collapse of the q axis current and its ability to control itself
 
 Presently MESC uses 60degrees as the threshold, i.e. 
 \\[V_{dmax} = V_{magmax}*sin(60)\\] 
-and therfore implicitly (not calculated!)
+and therefore implicitly (not calculated!)
 \\[V_{qmax} = V_{magmax}*cos(60)\\]
 Hard coded as 0.866 (and implicitly 0.5). 
 
 We firstly reduce the d axis voltage as:
-\\[if(V_d > V_{magmax}*0.866) \]
-\\[V_d = V_{magmax}*0.866 \]
+\\[ if(V_d > V_{magmax}*0.866) \\]
+\\[V_d = V_{magmax}*0.866 \\]
 and then apply the circle limiting rule:
 \\[V_{qmax} = \sqrt{V_{magmax}^2-V_d^2}\\]
 And apply the q limit:
-\\[if(V_q > V_{qmax}) \]
-\\[V_q = V_{qmax}\]
+\\[if(V_q > V_{qmax}) \\]
+\\[V_q = V_{qmax}\\]
 And thusly we have an overall voltage magnitude that does not exceed the max voltage circle.
+
 We apply the same rule to the integral terms as in the linear case to avoid windup.
+
 ST make a variant of this for their motor control library as a selectable option. It does not include the limitation on the Vd proportion, but is otherwise very similar.
 
 #### Things MESC does NOT do
@@ -222,10 +224,13 @@ The PWM is re-disabled every time the tracking loop is run to ensure that enteri
 
 ### The Hall start
 
-Hall startup can be set using 
+Hall startup can be set using:
+
 define USE_HALL_START
+
 define HALL_VOLTAGE_THRESHOLD x.y
-define HALL_IIRN 0.0x
+
+efine HALL_IIRN 0.0x
 
 The hall start preloads the observer flux integrals with fluxes as monitored during the TRACKING state using a low pass infinite impulse response filter. In the tracking state, there is no current flow and therefore the estimate of the fluxes is unaffected by resistance and inductance; they are, broadly correct.
 
