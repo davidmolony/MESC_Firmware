@@ -128,7 +128,11 @@
 #define ADC_OFFSET_DEFAULT 2048.0f
 #endif
 
+#ifndef HALL_IIR
+#define HALL_IIR 0.01f
+#endif
 
+#define HALL_IIRN (1.0-HALL_IIR)
 
 typedef struct {
 	int Iu;
