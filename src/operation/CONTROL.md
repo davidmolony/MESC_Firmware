@@ -236,7 +236,7 @@ The hall start preloads the observer flux integrals with fluxes as monitored dur
 
 When the observer is subsequently called, the fluxes are biased towards the average value during that hall state, and thus the angle is strongly biased towards this. The flux integration continues to be carried out during this state, and so when the hall start is switched (at a defined voltage level) the sensorless observer is already running and accurately tracking.
 
-The only parameter to be set is the IIR filter constant, which is by default 0.01 or 100PWM cycles, roughly 30eHz at 20kHz PWM. A faster motor will need a larger value (fewer PWM cycles). Less accurately set resistance or less accurate current measurements might require that you reduce the HALL_IIRN value.
+The only parameter to be set is the IIR filter constant, which is by default 0.02 or 50PWM cycles, roughly 60eHz at 20kHz PWM. A faster motor will need a larger value (fewer PWM cycles). Less accurately set resistance or less accurate current measurements might require that you reduce the HALL_IIRN value.
 
 ## The Hyperloop
 
