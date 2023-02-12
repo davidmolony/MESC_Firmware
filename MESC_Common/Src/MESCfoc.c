@@ -103,6 +103,14 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	SLOWLED->MODER |= 0x1<<(SLOWLEDIONO*2);
 	SLOWLED->MODER &= ~(0x2<<(SLOWLEDIONO*2));
 #endif
+#ifdef INV_ENABLE_M1
+	INV_ENABLE_M1->MODER |= 0x1<<(INV_ENABLE_M1_IONO*2);
+	INV_ENABLE_M1->MODER &= ~(0x2<<(INV_ENABLE_M1_IONO*2));
+#endif
+#ifdef INV_ENABLE_M2
+	INV_ENABLE_M2->MODER |= 0x1<<(INV_ENABLE_M2_IONO*2);
+	INV_ENABLE_M2->MODER &= ~(0x2<<(INV_ENABLE_M2_IONO*2));
+#endif
 
 	_motor->MotorState = MOTOR_STATE_IDLE;
 
@@ -147,6 +155,9 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	_motor->FOC.speed_ki = DEFAULT_SPEED_KI; //Trickier to set since we want this to be proportional to the ramp speed? Not intuitive? Try 0.1; ramp in 1/10 of a second @100Hz.
 	//Init the Duty controller
 	_motor->FOC.Duty_scaler = 1.0f; //We want this to be 1.0f for everything except duty control mode.
+
+	_motor->FOC.PLL_kp = PLL_KP;
+	_motor->FOC.PLL_ki = PLL_KI;
 
 	 mesc_init_1(_motor);
 
@@ -503,10 +514,8 @@ static MESCiq_s Idq[2] = {{.d = 0.0f, .q = 0.0f}, {.d = 0.0f, .q = 0.0f}};
 static volatile MESCiq_s dIdq = {.d = 0.0f, .q = 0.0f};
 //static float IIR[2] = {0.0f, 0.0f};
 static MESCiq_s intdidq;
-static volatile float nrm, magnitude45, mag45avg;
+static volatile float magnitude45;
 
-static volatile float nrm_avg;
-static uint16_t last_angle;
 
 void hyperLoop(MESC_motor_typedef *_motor) {
   if ((_motor->FOC.inject)&&(_motor->MotorState != MOTOR_STATE_TRACKING)) {
@@ -522,16 +531,22 @@ void hyperLoop(MESC_motor_typedef *_motor) {
 #ifdef USE_ENCODER
 tle5012(_motor);
 #endif
+
 //RunPLL for all angle options
-_motor->FOC.angle_error = _motor->FOC.angle_error-0.02f*(int16_t)((_motor->FOC.angle_error+(int)(last_angle - _motor->FOC.FOCAngle)));
-_motor->FOC.eHz = _motor->FOC.angle_error * _motor->FOC.pwm_frequency/65536.0f;
-last_angle = _motor->FOC.FOCAngle;
+_motor->FOC.PLL_angle = _motor->FOC.PLL_angle + (int16_t)_motor->FOC.PLL_int + (int16_t)_motor->FOC.PLL_error;
+_motor->FOC.PLL_error = _motor->FOC.PLL_kp * (int16_t)(_motor->FOC.FOCAngle - (_motor->FOC.PLL_angle & 0xFFFF));
+_motor->FOC.PLL_int = _motor->FOC.PLL_int + _motor->FOC.PLL_ki * _motor->FOC.PLL_error;
+//if(_motor->FOC.PLL_int >10000.0f){_motor->FOC.PLL_int =10000.0f;}//Dealt with in slowloop housekeeping
+//if(_motor->FOC.PLL_int <-10000.0f){_motor->FOC.PLL_int =-10000.0f;}//Dealt with in slowloop housekeeping
+_motor->FOC.eHz = _motor->FOC.PLL_int * _motor->FOC.pwm_frequency/65536.0f;
+
 #ifdef INTERPOLATE_V7_ANGLE
 if(fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency){
 	//Only run it when there is likely to be good speed measurement stability and
 	//actual utility in doing it. At low speed, there is minimal benefit, and
 	//unstable speed estimation could make it worse.
-_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + 0.5f*_motor->FOC.angle_error;
+	//Presently, this causes issues with openloop iteration, and effectively doubles the speed. TBC
+	_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + 0.5f*_motor->FOC.PLL_int;
 }
 
 #endif
@@ -1223,17 +1238,29 @@ static int carryU, carryV, carryW;
   // This function needs implementing and testing before any high current or
   // voltage is applied, otherwise... DeadFETs
   void generateBreak(MESC_motor_typedef *_motor) {
+#ifdef INV_ENABLE_M1
+	  INV_ENABLE_M1->BSRR = INV_ENABLE_M1_IO<<16U; //Write the inverter enable pin low
+#endif
     phU_Break(_motor);
     phV_Break(_motor );
     phW_Break(_motor );
   }
   void generateEnable(MESC_motor_typedef *_motor) {
+#ifdef INV_ENABLE_M1
+	  INV_ENABLE_M1->BSRR = INV_ENABLE_M1_IO;//Write the inverter enable pin high
+#endif
     phU_Enable(_motor);
     phV_Enable(_motor);
     phW_Enable(_motor);
   }
 
   void generateBreakAll() {
+#ifdef INV_ENABLE_M1
+	  INV_ENABLE_M1->BSRR = INV_ENABLE_M1_IO<<16U; //Write the inverter enable pin low
+#endif
+#ifdef INV_ENABLE_M2
+	  INV_ENABLE_M2->BSRR = INV_ENABLE_M2_IO<<16U; //Write the inverter enable pin low
+#endif
     for(int i=0;i<NUM_MOTORS;i++){
     	generateBreak(&mtr[i]);
     }
@@ -2573,7 +2600,7 @@ void ToggleHFI(MESC_motor_typedef *_motor){
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
 	} else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < (_motor->FOC.HFI_toggle_voltage-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > -(_motor->FOC.HFI_toggle_voltage-1.0f)) &&(_motor->HFIType !=HFI_TYPE_NONE)){
 
-		_motor->FOC.HFI_int_err = _motor->FOC.angle_error;
+		_motor->FOC.HFI_int_err = _motor->FOC.PLL_int;
 		_motor->FOC.inject = 1;
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH*0.1f;
 	}
@@ -2755,10 +2782,10 @@ void houseKeeping(MESC_motor_typedef *_motor){
 	}
 
 	//Speed tracker
-	if(abs(_motor->FOC.angle_error)>10000){
+	if(abs(_motor->FOC.PLL_int)>10000.0f){
 		//The PLL has run away locking on to aliases; 10000 implies 6.5 pwm periods per sin wave, which is ~3000eHz, 180kerpm at 20kHz PWM frequency.
 		//While it IS possible to run faster than this, it is not a sensible use case and will not be supported.
-		_motor->FOC.angle_error = 0;
+		_motor->FOC.PLL_int = 0;
 	}
 	//Translate the eHz to eRPM
 	if(_motor->m.pole_pairs>0){//avoid divide by zero

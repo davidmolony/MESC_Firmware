@@ -134,6 +134,14 @@
 
 #define HALL_IIRN (1.0-HALL_IIR)
 
+//Position and speed estimator defaults
+#ifndef PLL_KP
+#define PLL_KP 0.5
+#endif
+#ifndef PLL_KI
+#define PLL_KI 0.02
+#endif
+
 typedef struct {
 	int Iu;
 	int Iv;
@@ -296,7 +304,11 @@ typedef struct {
   uint32_t HFI_test_increment;
   int was_last_tracking;
   uint32_t FLrun, VFLrun;
-  float angle_error;
+  float PLL_error;
+  float PLL_int;
+  float PLL_kp;
+  float PLL_ki;
+  uint32_t PLL_angle;
   float eHz;
   float mechRPM;
   float Ldq_now[2];
