@@ -73,4 +73,7 @@
 #define SLOWLEDIO GPIO_PIN_9
 #define SLOWLEDIONO 9
 
+
+#define LOGGING
+
 #endif /* INC_MP2_V0_1_H_ */
