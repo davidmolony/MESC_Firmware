@@ -26,5 +26,6 @@ uint8_t REGISTER_apps(TermCommandDescriptor * desc){
     REGISTER_top(desc);
     REGISTER_calibrate(desc);
     REGISTER_hfi(desc);
+    REGISTER_app_template(desc);
     return pdTRUE;
 }
