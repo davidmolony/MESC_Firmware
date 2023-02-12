@@ -29,16 +29,16 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
+#include "init.h"
 #include "task_cli.h"
 #include "main.h"
 #include "usbd_def.h"
 #include "stdarg.h"
-#include "TTerm/Core/include/TTerm.h"
 
-extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef HW_UART;
 extern USBD_HandleTypeDef hUsbDeviceFS;
 
-port_str main_uart = {	.hw = &huart1,
+port_str main_uart = {	.hw = &HW_UART,
 						.hw_type = HW_TYPE_UART,
 					    .rx_buffer_size = 512,
 						.half_duplex = false,

@@ -144,11 +144,99 @@ with:
 showed no improvement to stability or performance, and additional complication with gain tuning. It may be ressurected at a later date.
 
 ### The Circle Limiter
+The circle limiter is a not so understood but absolutely critical part of the FOC controller. It's purpose is to ensure that the voltages sent to the inverter do not exceed what the inverter can actually produce, while keeping the PI controller happy. 
+
+It must limit both the overall signal AND limit the PI integral, and do so in the 2D dq frame.
+
+First, we must calculate the maximum length of the voltage vector, this is given by equating the hypotenuse of a 120 degree triangle to the bus voltage, then Vmagmax is the length of one of the shorter sides.
+
+[insert picture of SV triangle]
+\\[ V_{magmax} = \frac{1}{\sqrt{3}}V_{bus}*MAXMODULATION\\] 
+Max modulation is a limit made to ensure there is always some PWM low time to ensure the bootstrap capacitors can recharge. If using isolated supplied, or overmodulation, this may not be required and you can set 1.0 or even 1.1 (beyond that it becomes quite unstable).
+
+Typically, MAX_MODULATION is set to 0.95.
+
+The identity:
+\\[\sqrt(V_d^2+V_q^2)<=V_{magmax}\\]
+should always be true.
+
+To achieve this, MESC has two options:
+#### Simple linear circle limiter
+if: 
+\\[\sqrt(V_d^2+V_q^2)>V_{magmax}\\] 
+We can simply divide Vd and Vq by this value, and return them linearly to within the range of the circle.
+
+Of course, we also need to ensure that the integral is not winding up in the background, and so we apply the rule:
+if:
+\\[|int_{Vderr}|>|V_d|\\]
+\\[int_{Vderr}=V_d\\]
+And similarly for Vq.
+This is the default mode for ST Motor control library; it is the most obvious and easiest to implement solution.
+
+#### Vd preferencing circle limiter
+
+There may be reasons to prefer Vd to Vq. One such reason is that when we apply the field weakening, we need to ensure there is sufficient voltage available to generate the d axis current. Since the field weakening current is typically set lower than the torque current, a linear implementation of the circle limiter will result in reduced d axis current with increasing throttle.
+
+To fix this, we give preference to the d-axis, but only up to a point, since with a fixed amount of available voltage, we find that forever favouring Vd results in a rapid drop in Vq as we pass Vd=Vq.
+
+This results in collapse of the q axis current and its ability to control itself.
+
+Presently MESC uses 60degrees as the threshold, i.e. 
+\\[V_{dmax} = V_{magmax}*sin(60)\\] 
+and therefore implicitly (not calculated!)
+\\[V_{qmax} = V_{magmax}*cos(60)\\]
+Hard coded as 0.866 (and implicitly 0.5). 
+
+We firstly reduce the d axis voltage as:
+\\[ if(V_d > V_{magmax}*0.866) \\]
+\\[V_d = V_{magmax}*0.866 \\]
+and then apply the circle limiting rule:
+\\[V_{qmax} = \sqrt{V_{magmax}^2-V_d^2}\\]
+And apply the q limit:
+\\[if(V_q > V_{qmax}) \\]
+\\[V_q = V_{qmax}\\]
+And thusly we have an overall voltage magnitude that does not exceed the max voltage circle.
+
+We apply the same rule to the integral terms as in the linear case to avoid windup.
+
+ST make a variant of this for their motor control library as a selectable option. It does not include the limitation on the Vd proportion, but is otherwise very similar.
+
+#### Things MESC does NOT do
+There are blog posts from TI showing improved limiters that avoid current overshoot. They rely on reducing the integral term by the proportional term, with no regard for the ki. This is able to cause large jumps in the integral term with a gain of kp*input noise.
+
+VESC implements the circle limiter this way, and it works, but it is possible to induce fluctations at high modulation. I think TI might have missed out the ki term from the integral limit feedback in their blog.
+
+It is possible to implement this as a PID controller which provides a softer cutoff as the circle limit is approached. So far, I have not seen any reason to attempt this.
+
+It is also possible to set the limits hard by precalculating the required Vd and Vq given the inductance and expected max velocity. This was the original MESC concept and worked well, but always resulted in not quite reaching max modulation, and therefore a few % drop in speed.
+
+There are various non linear possibilities where exceeding the circle limit might have a quadratic rollback, or the the Vd and Vq might be bounded by a higher order flat bottomed polynomial. One day, if the present implementation is found limiting, MESC might adopt some other technique... until then, the method is conservative truncation.
+
+
+### Tracking
+Tracking is simple and relies on phase voltage meaurement.
+
+The phase voltages are measured when PWM is disabled, and these measurements are Clarke transformed to get ab frame voltages, then Park transformed to get dq frame voltages.
+
+The ab frame voltages are used in the flux observer to track the angle and the dq frame voltages are used to preload the integral component of the current controller PI so that when it restarts PWM there is no discontinuity.
+
+The PWM is re-disabled every time the tracking loop is run to ensure that entering tracking from any state is safe (except in the case of heavy field weakenning when the slow loop does not move to tracking until the field weakenning current has dropped). Nothing more to it.
 
 ### The Hall start
 
-### Tracking
+Hall startup can be set using:
 
+define USE_HALL_START
+
+define HALL_VOLTAGE_THRESHOLD x.y
+
+efine HALL_IIRN 0.0x
+
+The hall start preloads the observer flux integrals with fluxes as monitored during the TRACKING state using a low pass infinite impulse response filter. In the tracking state, there is no current flow and therefore the estimate of the fluxes is unaffected by resistance and inductance; they are, broadly correct.
+
+When the observer is subsequently called, the fluxes are biased towards the average value during that hall state, and thus the angle is strongly biased towards this. The flux integration continues to be carried out during this state, and so when the hall start is switched (at a defined voltage level) the sensorless observer is already running and accurately tracking.
+
+The only parameter to be set is the IIR filter constant, which is by default 0.02 or 50PWM cycles, roughly 60eHz at 20kHz PWM. A faster motor will need a larger value (fewer PWM cycles). Less accurately set resistance or less accurate current measurements might require that you reduce the HALL_IIRN value.
 
 ## The Hyperloop
 

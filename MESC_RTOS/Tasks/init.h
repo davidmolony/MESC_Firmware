@@ -33,6 +33,7 @@
 #define INC_INIT_H_
 
 #include "task_cli.h"
+#include "TTerm/Core/include/TTerm.h"
 
 void init_system(void);
 void init_system_running(void);

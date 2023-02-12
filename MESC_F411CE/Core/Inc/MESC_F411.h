@@ -88,7 +88,7 @@
 
 /////////////////////Related to COMMs INTERFACE//////////////////////////////
 #define MESC_UART_USB 		MESC_USB
-#define HW_UART huart3
+#define HW_UART huart1
 
 /////////////////////Prototype stuff that does not really work nicely//////////////////////////////
 

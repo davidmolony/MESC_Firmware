@@ -150,7 +150,7 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
 	 mesc_init_1(_motor);
 
-	HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle,
+	//HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle,
 					// controller, PWM source...)
 
 	mesc_init_2(_motor);
@@ -332,14 +332,14 @@ void fastLoop(MESC_motor_typedef *_motor) {
       } else if (_motor->MotorSensorMode == MOTOR_SENSOR_MODE_SENSORLESS) {
 #ifdef USE_HALL_START
 		  static int hall_start_now;
-		if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.hall_initialised)&&(current_hall_state>0)&&(current_hall_state<7)){
+		if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.hall_initialised)&&(_motor->hall.current_hall_state>0)&&(_motor->hall.current_hall_state<7)){
 				hall_start_now = 1;
 		}else if(fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f){
 			hall_start_now = 0;
 		}
 		if(hall_start_now){
-			_motor->FOC.flux_a = 0.01f*_motor->FOC.flux_a + 0.99f*_motor->m.hall_flux[current_hall_state-1][0];
-			_motor->FOC.flux_b = 0.01f*_motor->FOC.flux_b + 0.99f*_motor->m.hall_flux[current_hall_state-1][1];
+			_motor->FOC.flux_a = HALL_IIRN*_motor->FOC.flux_a + HALL_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][0];
+			_motor->FOC.flux_b = HALL_IIRN*_motor->FOC.flux_b + HALL_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][1];
 			_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_b, _motor->FOC.flux_a)) - 32768;
 		}else{
 			flux_observer(_motor);
