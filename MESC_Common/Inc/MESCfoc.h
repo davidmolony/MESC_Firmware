@@ -249,10 +249,9 @@ typedef struct {
   float Lb_last;
 
 
-
+//Hall start
   int hall_initialised;
-  int hall_forwards_adjust;
-  int hall_backwards_adjust;
+  int hall_start_now;
 
   float pwm_period;
   float pwm_frequency;
@@ -274,9 +273,9 @@ typedef struct {
   float PWMmid;
   uint32_t ADC_duty_threshold;
   // Field weakenning
-  float field_weakening_curr_max;
-  float field_weakening_threshold;
-  float field_weakening_multiplier;
+  float FW_curr_max;
+  float FW_threshold;
+  float FW_multiplier;
   float FW_current;
 
   float flux_a;
