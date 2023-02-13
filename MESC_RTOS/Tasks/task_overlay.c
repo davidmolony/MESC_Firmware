@@ -65,6 +65,11 @@
 /* `#START USER_TASK_LOCAL_CODE` */
 
 
+#define OVERLAY_OUTPUT_NONE			0
+#define OVERLAY_OUTPUT_VT100 		1
+#define OVERLAY_OUTPUT_CSV 			2
+
+
 void show_overlay(TERMINAL_HANDLE * handle){
 
 	MESC_motor_typedef * motor_curr = &mtr[0];
@@ -141,6 +146,22 @@ void show_overlay(TERMINAL_HANDLE * handle){
 
 }
 
+void show_overlay_csv(TERMINAL_HANDLE * handle){
+
+	uint32_t currPos = 0;
+	TermVariableDescriptor * head = handle->varHandle->varListHead;
+	TermVariableDescriptor * currVar = handle->varHandle->varListHead->nextVar;
+    for(;currPos < head->nameLength; currPos++){
+
+    	if(currVar->flags & FLAG_TELEMETRY_ON){
+    		print_var_helperfunc(handle, currVar, 2);
+    	}
+    	currVar = currVar->nextVar;
+    }
+
+
+}
+
 /* `#END` */
 /* ------------------------------------------------------------------------ */
 /*
@@ -173,7 +194,15 @@ void task_overlay_TaskProc(void *pvParameters) {
     for (;;) {
 		/* `#START TASK_LOOP_CODE` */
         xSemaphoreTake(port->term_block, portMAX_DELAY);
-        show_overlay(handle);
+
+        switch(port->overlay_handle.output_type){
+			case OVERLAY_OUTPUT_VT100:
+				show_overlay(handle);
+				break;
+			case OVERLAY_OUTPUT_CSV:
+				show_overlay_csv(handle);
+				break;
+        }
 
         xSemaphoreGive(port->term_block);
 
@@ -189,9 +218,9 @@ void start_overlay_task(TERMINAL_HANDLE * handle){
 
 	port_str * port = handle->port;
 
-    if (port->overlay_handle == NULL) {
+    if (port->overlay_handle.task_handle == NULL) {
 
-        xTaskCreate(task_overlay_TaskProc, "Overlay", 512, handle, osPriorityNormal, &port->overlay_handle);
+        xTaskCreate(task_overlay_TaskProc, "Overlay", 512, handle, osPriorityNormal, &port->overlay_handle.task_handle);
 
     }
 }
@@ -202,9 +231,9 @@ void start_overlay_task(TERMINAL_HANDLE * handle){
 ******************************************************************************/
 void stop_overlay_task(TERMINAL_HANDLE * handle){
 	port_str * port = handle->port;
-    if (port->overlay_handle != NULL) {
-        vTaskDelete(port->overlay_handle);
-    	port->overlay_handle = NULL;
+    if (port->overlay_handle.task_handle != NULL) {
+        vTaskDelete(port->overlay_handle.task_handle);
+    	port->overlay_handle.task_handle = NULL;
     }
 }
 
@@ -217,14 +246,123 @@ uint8_t CMD_status(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
         ttprintf("Usage: status [start|stop]\r\n");
         return TERM_CMD_EXIT_SUCCESS;
     }
+
+    port_str * port = handle->port;
+
 	if(strcmp(args[0], "start") == 0){
+		port->overlay_handle.output_type = OVERLAY_OUTPUT_VT100;
 		start_overlay_task(handle);
         return TERM_CMD_EXIT_SUCCESS;
 	}
+	if(strcmp(args[0], "csv") == 0){
+		port->overlay_handle.output_type = OVERLAY_OUTPUT_CSV;
+		start_overlay_task(handle);
+		return TERM_CMD_EXIT_SUCCESS;
+	}
 	if(strcmp(args[0], "stop") == 0){
+		port->overlay_handle.output_type = OVERLAY_OUTPUT_NONE;
 		stop_overlay_task(handle);
         return TERM_CMD_EXIT_SUCCESS;
 	}
     return TERM_CMD_EXIT_SUCCESS;
 }
+
+
+void log_mod(TERMINAL_HANDLE * handle, char * name, bool delete){
+	uint32_t currPos = 0;
+	TermVariableDescriptor * head = handle->varHandle->varListHead;
+	TermVariableDescriptor * currVar = handle->varHandle->varListHead->nextVar;
+
+	for(;currPos < head->nameLength; currPos++){
+
+		if(strcmp(name, currVar->name)==0){
+			if(delete){
+				ttprintf("Removed [%s] from log list\r\n", name);
+				TERM_clearFlag(currVar, FLAG_TELEMETRY_ON);
+			}else{
+				ttprintf("Added [%s] to log list\r\n", name);
+				TERM_setFlag(currVar, FLAG_TELEMETRY_ON);
+			}
+		}
+		currVar = currVar->nextVar;
+	}
+}
+
+
+
+/*****************************************************************************
+*
+******************************************************************************/
+uint8_t CMD_log(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+    if(argCount==0 || strcmp(args[0], "-?") == 0){
+        ttprintf("Usage: log\r\n");
+        return TERM_CMD_EXIT_SUCCESS;
+    }
+
+    bool flag_list = false;
+    bool flag_reset = false;
+
+	for(int i=0;i<argCount;i++){
+		if(strcmp(args[i], "-l")==0){
+			flag_list = true;
+		}
+		if(strcmp(args[i], "-r")==0){
+			flag_reset = true;
+		}
+		if(strcmp(args[i], "-a")==0){
+			if(i+1 < argCount){
+				log_mod(handle, args[i+1], false);
+			}
+		}
+		if(strcmp(args[i], "-d")==0){
+			if(i+1 < argCount){
+				log_mod(handle, args[i+1], true);
+			}
+		}
+		if(strcmp(args[i], "-?")==0){
+			ttprintf("Usage: log [flags]\r\n");
+			return TERM_CMD_EXIT_SUCCESS;
+		}
+	}
+
+	if(flag_list){
+		uint32_t currPos = 0;
+		uint32_t count=0;
+		TermVariableDescriptor * head = handle->varHandle->varListHead;
+		TermVariableDescriptor * currVar = handle->varHandle->varListHead->nextVar;
+
+
+		ttprintf("Datasources selected for log output:\r\n");
+
+	    for(;currPos < head->nameLength; currPos++){
+
+	    	if(currVar->flags & FLAG_TELEMETRY_ON){
+	    		ttprintf("\t%u: %s\r\n", count, currVar->name);
+	    		count++;
+	    	}
+	    	currVar = currVar->nextVar;
+	    }
+	    ttprintf("EOL\r\n");
+	}
+
+	if(flag_reset){
+		uint32_t currPos = 0;
+		TermVariableDescriptor * head = handle->varHandle->varListHead;
+		TermVariableDescriptor * currVar = handle->varHandle->varListHead->nextVar;
+
+		for(;currPos < head->nameLength; currPos++){
+
+			if(currVar->flags & FLAG_TELEMETRY_ON){
+				TERM_clearFlag(currVar, FLAG_TELEMETRY_ON);
+			}
+			currVar = currVar->nextVar;
+		}
+		ttprintf("Log list reset...\r\n");
+	}
+
+
+    return TERM_CMD_EXIT_SUCCESS;
+}
+
+
 

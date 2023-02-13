@@ -235,6 +235,14 @@ void populate_vars(){
 	TERM_addVar(input_vars.min_request_Idq.q		, -300.0f	, 0.0f		, "curr_min"	, "Min motor current"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.pwm_frequency			, 0.0f		, 50000.0f	, "pwm_freq"	, "PWM frequency"						, VAR_ACCESS_RW	, callback	, &TERM_varList);
 
+
+	TermVariableDescriptor * desc;
+	desc = TERM_addVar(mtr[0].Conv.Vbus					, 0.0f		, HUGE_VAL  , "vbus"		, "Read input voltage"					, VAR_ACCESS_TR  , NULL		, &TERM_varList);
+	TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+	desc = TERM_addVar(mtr[0].FOC.eHz					    , -HUGE_VAL , HUGE_VAL  , "ehz"			, "Motor electrical hz"					, VAR_ACCESS_TR  , NULL		, &TERM_varList);
+	TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
 }
 
 
@@ -266,6 +274,9 @@ void MESCinterface_init(void){
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
+
+	TermCommandDescriptor * varAC = TERM_addCommand(CMD_log, "log", "Configure logging", 0, &TERM_defaultList);
+	TERM_addCommandAC(varAC, TERM_varCompleter, null_handle.varHandle->varListHead);
 
 	REGISTER_apps(&TERM_defaultList);
 

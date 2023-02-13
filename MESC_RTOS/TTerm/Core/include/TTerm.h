@@ -100,6 +100,10 @@ typedef enum {
 	TERM_VARIABLE_BOOL,
 } TermVariableType;
 
+typedef enum {
+    FLAG_TELEMETRY_ON = 0x01,
+} TermFlagType;
+
 #define TERM_addVar(var, min, max, name, description, rw, cb, listHandle) _Generic((var), \
     uint8_t:    TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
     uint16_t:   TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
@@ -143,6 +147,7 @@ struct __TermVariableDescriptor__{
    		float max_float;
     };
     uint8_t rw;
+    uint32_t flags;
     term_var_cb cb;
     TermVariableDescriptor * nextVar;
 };
@@ -176,10 +181,12 @@ enum TTermVarAccess
 
     VAR_ACCESS_R    = 0x1,
     VAR_ACCESS_W    = 0x2,
+	VAR_ACCESS_T 	= 0x4,
 
     VAR_ACCESS_RO   = VAR_ACCESS_R,
     VAR_ACCESS_WO   = VAR_ACCESS_W,
     VAR_ACCESS_RW   = (VAR_ACCESS_R | VAR_ACCESS_W),
+	VAR_ACCESS_TR   = (VAR_ACCESS_R | VAR_ACCESS_T),
 };
 
 #endif
