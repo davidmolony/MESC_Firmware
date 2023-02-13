@@ -36,6 +36,7 @@
 #include "task_overlay.h"
 #include "task_cli.h"
 #include "cmsis_os.h"
+#include <stdio.h>
 
 
 /* RTOS includes. */
@@ -68,6 +69,7 @@
 #define OVERLAY_OUTPUT_NONE			0
 #define OVERLAY_OUTPUT_VT100 		1
 #define OVERLAY_OUTPUT_CSV 			2
+#define OVERLAY_OUTPUT_JSON			3
 
 
 void show_overlay(TERMINAL_HANDLE * handle){
@@ -146,7 +148,45 @@ void show_overlay(TERMINAL_HANDLE * handle){
 
 }
 
-void show_overlay_csv(TERMINAL_HANDLE * handle){
+uint32_t format_json(TERMINAL_HANDLE * handle, TermVariableDescriptor * desc, char * buffer, int32_t len){
+	uint32_t written=0;
+	uint32_t bytes_written=0;
+	if(desc->type == TERM_VARIABLE_CHAR || desc->type == TERM_VARIABLE_STRING){
+		written = snprintf(buffer, len, "\"%s\":\"", desc->name);
+	}else{
+		written = snprintf(buffer, len, "\"%s\":", desc->name);
+	}
+	buffer += written;
+	len -= written;
+	bytes_written += written;
+	written = TERM_var2str(handle, desc, buffer, len);
+	buffer += written;
+	len -= written;
+	bytes_written += written;
+	if(desc->type == TERM_VARIABLE_CHAR || desc->type == TERM_VARIABLE_STRING){
+		written = snprintf(buffer, len, "\",");
+	}else{
+		written = snprintf(buffer, len, ",");
+	}
+	len -= written;
+	bytes_written += written;
+	//}
+
+	return bytes_written;
+}
+
+void show_overlay_json(TERMINAL_HANDLE * handle){
+
+	char buffer[512];
+	char * ptr = buffer;
+	uint32_t bytes_left = sizeof(buffer);
+	int32_t written;
+
+	bool found = false;
+
+	*ptr = '{';
+	ptr++;
+	bytes_left--;
 
 	uint32_t currPos = 0;
 	TermVariableDescriptor * head = handle->varHandle->varListHead;
@@ -154,11 +194,19 @@ void show_overlay_csv(TERMINAL_HANDLE * handle){
     for(;currPos < head->nameLength; currPos++){
 
     	if(currVar->flags & FLAG_TELEMETRY_ON){
-    		print_var_helperfunc(handle, currVar, 2);
+    		written = format_json(handle, currVar, ptr, bytes_left);
+    		bytes_left -= written;
+    		ptr += written;
+    		found = true;
+
     	}
     	currVar = currVar->nextVar;
     }
-
+    if(found) ptr--; //remove comma
+    *ptr = '}';
+    ptr++;
+    *ptr = 0;
+    ttprintf("%s\r\n", buffer);
 
 }
 
@@ -199,8 +247,8 @@ void task_overlay_TaskProc(void *pvParameters) {
 			case OVERLAY_OUTPUT_VT100:
 				show_overlay(handle);
 				break;
-			case OVERLAY_OUTPUT_CSV:
-				show_overlay_csv(handle);
+			case OVERLAY_OUTPUT_JSON:
+				show_overlay_json(handle);
 				break;
         }
 
@@ -254,8 +302,8 @@ uint8_t CMD_status(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		start_overlay_task(handle);
         return TERM_CMD_EXIT_SUCCESS;
 	}
-	if(strcmp(args[0], "csv") == 0){
-		port->overlay_handle.output_type = OVERLAY_OUTPUT_CSV;
+	if(strcmp(args[0], "json") == 0){
+		port->overlay_handle.output_type = OVERLAY_OUTPUT_JSON;
 		start_overlay_task(handle);
 		return TERM_CMD_EXIT_SUCCESS;
 	}

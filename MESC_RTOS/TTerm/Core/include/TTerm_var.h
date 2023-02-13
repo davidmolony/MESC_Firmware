@@ -50,6 +50,7 @@ TermVariableDescriptor * TERM_addVarBool(void* variable, const char * name, cons
 TermVariableDescriptor * TERM_addVarArrayFloat(void* variable, uint32_t size,  float min, float max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
 
 void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescriptor * var, HelperFlagType flag );
+uint32_t TERM_var2str(TERMINAL_HANDLE * handle, TermVariableDescriptor * var, char * buffer, int32_t len );
 
 void TERM_setFlag(TermVariableDescriptor * desc, TermFlagType flag);
 void TERM_clearFlag(TermVariableDescriptor * desc, TermFlagType flag);

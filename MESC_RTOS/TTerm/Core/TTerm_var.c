@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 
 #define HEADER_START 	0xDEADBEEF
@@ -381,6 +382,87 @@ static void print_var_header_update(TERMINAL_HANDLE * handle){
 	TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_E);
 	ttprintf("| Changes\r\n");
 }
+
+
+uint32_t TERM_var2str(TERMINAL_HANDLE * handle, TermVariableDescriptor * var, char * buffer, int32_t len ){
+
+    uint32_t u_temp_buffer=0;
+    int32_t i_temp_buffer=0;
+    float f_buffer;
+    uint32_t ret;
+
+	switch (var->type){
+	case TERM_VARIABLE_UINT:
+		switch (var->typeSize){
+		case 1:
+			u_temp_buffer = *(uint8_t*)var->variable;
+			break;
+		case 2:
+			u_temp_buffer = *(uint16_t*)var->variable;
+			break;
+		case 4:
+			u_temp_buffer = *(uint32_t*)var->variable;
+			break;
+		}
+
+		ret = snprintf(buffer, len, "%lu", u_temp_buffer);
+		break;
+	case TERM_VARIABLE_INT:
+		switch (var->typeSize){
+		case 1:
+			i_temp_buffer = *(int8_t*)var->variable;
+			break;
+		case 2:
+			i_temp_buffer = *(int16_t*)var->variable;
+			break;
+		case 4:
+			i_temp_buffer = *(int32_t*)var->variable;
+			break;
+		}
+
+		ret = snprintf(buffer, len, "%li", i_temp_buffer);
+
+		break;
+	case TERM_VARIABLE_FLOAT:
+
+		ret = snprintf(buffer, len, "%f", *(float*)var->variable);
+
+		break;
+//	case TERM_VARIABLE_FLOAT_ARRAY:
+//		if(flag == HELPER_FLAG_DETAIL){
+//			for(uint32_t cnt=0;cnt<(var->typeSize / sizeof(float));cnt++){
+//				f_buffer = ((float*)var->variable)[cnt];
+//				TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_B);
+//				ttprintf("\033[37m| [%u] \033[32m%f", cnt , f_buffer);
+//				if(cnt<(var->typeSize / sizeof(float)-1)){
+//					ttprintf("\r\n");
+//				}
+//			}
+//		}else{
+//			TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_B);
+//			ttprintf("\033[37m| \033[32mArray[%u]", (var->typeSize / sizeof(float)));
+//		}
+//
+//		break;
+	case TERM_VARIABLE_CHAR:
+
+		ret = snprintf(buffer, len, "%c", *(char*)var->variable);
+
+		break;
+	case TERM_VARIABLE_STRING:
+
+		ret = snprintf(buffer, len, "%s", (char*)var->variable);
+
+		break;
+	case TERM_VARIABLE_BOOL:
+
+		ret = snprintf(buffer, len, "%s", *(bool*)var->variable ? "true" : "false");
+
+		break;
+	}
+	return ret;
+}
+
 
 void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescriptor * var, HelperFlagType flag ){
 
