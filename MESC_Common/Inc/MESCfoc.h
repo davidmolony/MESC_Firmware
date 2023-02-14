@@ -44,6 +44,7 @@
 #include "MESCmotor_state.h"
 #include "MESCmotor.h"
 #include "MESC_BLDC.h"
+//#include "MESCposition.h"
 
 
 #define FOC_PERIODS                (1)
@@ -140,6 +141,21 @@
 #endif
 #ifndef PLL_KI
 #define PLL_KI 0.02
+#endif
+
+#ifndef POS_KP
+#define POS_KP 0.0002
+#endif
+#ifndef POS_KI
+#define POS_KI 0.1
+#endif
+#ifndef POS_KD
+#define POS_KD 0.002
+#endif
+
+
+#ifndef DEFAULT_CONTROL_MODE
+#define DEFAULT_CONTROL_MODE MOTOR_CONTROL_MODE_TORQUE
 #endif
 
 typedef struct {
@@ -401,6 +417,23 @@ typedef struct{
 
 }MESCBLDC_s;
 
+
+/////////////Position controller data
+typedef struct{
+	float Kp;
+	float Ki;
+	float Kd;
+	float error;
+	uint32_t last_pll_pos;
+	float d_pos;
+	float p_error;
+	float d_error;
+	float int_error;
+	uint32_t set_position;
+	int32_t deadzone;
+}MESCPos_s;
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////Main typedef for starting a motor instance////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -416,6 +449,7 @@ typedef struct{
 	MESC_Converted_typedef Conv;
 	MESC_offset_typedef offset;
 	MESCfoc_s FOC;
+	MESCPos_s pos;
 	MESCBLDC_s BLDC;
 	MOTORProfile m;
 	MESCmeas_s meas;

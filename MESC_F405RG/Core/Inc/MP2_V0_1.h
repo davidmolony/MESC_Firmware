@@ -24,7 +24,9 @@
 #define R_VBUS_TOP 100000.0f
 
 #define MAX_ID_REQUEST 2.0f
-#define MAX_IQ_REQUEST 70.0f
+#define MAX_IQ_REQUEST 10.0f
+#define MIN_IQ_REQUEST -10
+#define DEFAULT_CONTROL_MODE MOTOR_CONTROL_MODE_POSITION
 
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
 #define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
@@ -34,7 +36,7 @@
 #define GET_THROTTLE_INPUT _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR4;  // Throttle for MP2 with F405 pill
 
 //#define USE_FIELD_WEAKENING
-#define USE_FIELD_WEAKENINGV2
+//#define USE_FIELD_WEAKENINGV2
 
 //#define USE_LR_OBSERVER
 
