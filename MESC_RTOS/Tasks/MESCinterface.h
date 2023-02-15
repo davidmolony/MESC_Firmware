@@ -35,7 +35,7 @@
 
 #include "task_cli.h"
 
-void MESCinterface_init(void);
+void MESCinterface_init(TERMINAL_HANDLE * handle);
 
 uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 

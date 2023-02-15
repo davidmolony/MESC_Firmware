@@ -39,6 +39,7 @@
 typedef struct{
 	TaskHandle_t task_handle;
 	uint8_t output_type;
+	uint16_t delay;
 }overlay_handle;
 
 /*

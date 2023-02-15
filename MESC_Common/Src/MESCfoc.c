@@ -70,7 +70,7 @@ MESCtest_s test_vals;
 input_vars_t input_vars;
 sampled_vars_t sampled_vars;
 
-int print_samples_now, lognow;
+volatile int print_samples_now, lognow;
 
 //Debug
 #define DEMCR_TRCENA    0x01000000

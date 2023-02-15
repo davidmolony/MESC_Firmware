@@ -134,6 +134,11 @@ memory and so a suitable offset should be used
     return getFlashSectorAddress( 11 );
 }
 
+uint32_t getFlashBaseSize( void )
+{
+    return getFlashSectorAddress( FLASH_STORAGE_PAGE + 1) - getFlashSectorAddress( FLASH_STORAGE_PAGE );
+}
+
 ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
 {
     // Disallow zero length (could ignore)

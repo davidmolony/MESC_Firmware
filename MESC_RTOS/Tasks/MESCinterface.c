@@ -42,6 +42,8 @@
 #include <string.h>
 #include <math.h>
 
+
+
 extern uint16_t deadtime_comp;
 
 uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
@@ -247,9 +249,10 @@ void populate_vars(){
 
 
 
-void MESCinterface_init(void){
+void MESCinterface_init(TERMINAL_HANDLE * handle){
 	static bool is_init=false;
 	if(is_init) return;
+
 
 	populate_vars();
 

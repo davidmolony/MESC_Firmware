@@ -53,7 +53,7 @@
  */
 /* `#START USER_INCLUDE SECTION` */
 #include "TTerm/Core/include/TTerm.h"
-
+#include "MESCfoc.h"
 #include "MESCmotor_state.h"
 
 /* `#END` */
@@ -203,10 +203,11 @@ void show_overlay_json(TERMINAL_HANDLE * handle){
     	currVar = currVar->nextVar;
     }
     if(found) ptr--; //remove comma
-    *ptr = '}';
-    ptr++;
-    *ptr = 0;
-    ttprintf("%s\r\n", buffer);
+
+    written = snprintf(ptr,bytes_left,"}\r\n");
+    bytes_left -= written;
+
+    ttprintf(NULL, buffer, sizeof(buffer)-bytes_left);
 
 }
 
@@ -254,7 +255,7 @@ void task_overlay_TaskProc(void *pvParameters) {
 
         xSemaphoreGive(port->term_block);
 
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        vTaskDelay(pdMS_TO_TICKS(port->overlay_handle.delay));
 
 	}
 }
@@ -298,11 +299,13 @@ uint8_t CMD_status(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     port_str * port = handle->port;
 
 	if(strcmp(args[0], "start") == 0){
+		port->overlay_handle.delay = 500;  //ms
 		port->overlay_handle.output_type = OVERLAY_OUTPUT_VT100;
 		start_overlay_task(handle);
         return TERM_CMD_EXIT_SUCCESS;
 	}
 	if(strcmp(args[0], "json") == 0){
+		port->overlay_handle.delay = 100;  //ms
 		port->overlay_handle.output_type = OVERLAY_OUTPUT_JSON;
 		start_overlay_task(handle);
 		return TERM_CMD_EXIT_SUCCESS;
@@ -336,19 +339,168 @@ void log_mod(TERMINAL_HANDLE * handle, char * name, bool delete){
 	}
 }
 
+void print_array(TERMINAL_HANDLE * handle, char * name, void * array, uint32_t count, uint32_t start_pos, uint32_t type_size ,TermVariableType type){
+
+	char buffer[512];
+	char * ptr = buffer;
+	uint32_t bytes_left = sizeof(buffer);
+	int32_t written;
+
+	uint32_t u_var = 0;
+	int32_t i_var = 0;
+
+
+	uint32_t currPos = start_pos;
+
+	written = snprintf(ptr, bytes_left, "\"%s\":[", name);
+	ptr += written;
+	bytes_left -= written;
+
+
+
+	for(uint32_t i=0;i<count;i++){
+
+		switch(type){
+		case TERM_VARIABLE_FLOAT_ARRAY:
+				written = snprintf(ptr, bytes_left, "%.2f,", (double)((float*)array)[currPos]);
+			break;
+		case TERM_VARIABLE_UINT_ARRAY:
+				switch(type_size){
+					case 1:
+						u_var = ((uint8_t*)array)[currPos];
+						break;
+					case 2:
+						u_var = ((uint16_t*)array)[currPos];
+						break;
+					case 4:
+						u_var = ((uint32_t*)array)[currPos];
+						break;
+				}
+
+				written = snprintf(ptr, bytes_left, "%u,", u_var);
+			break;
+			case TERM_VARIABLE_INT_ARRAY:
+					switch(type_size){
+						case 1:
+							i_var = ((uint8_t*)array)[currPos];
+							break;
+						case 2:
+							i_var = ((uint16_t*)array)[currPos];
+							break;
+						case 4:
+							i_var = ((uint32_t*)array)[currPos];
+							break;
+					}
+
+					written = snprintf(ptr, bytes_left, "%i,", i_var);
+				break;
+
+		}
+
+		currPos++;
+		if(currPos == count){
+			currPos=0;
+		}
+
+		ptr += written;
+		bytes_left -= written;
+		if(i == count-1){
+			*(ptr-1) = ']';	//remove trailing comma
+		}
+
+		if(bytes_left < 16 || i == count-1){
+
+			ttprintf(NULL, buffer, sizeof(buffer)-bytes_left);
+			ptr = buffer;
+			bytes_left = sizeof(buffer);
+		}
+
+	}
+
+}
+
+void print_index(TERMINAL_HANDLE * handle, char * name, uint32_t count, float increment){
+
+	char buffer[512];
+	char * ptr = buffer;
+	uint32_t bytes_left = sizeof(buffer);
+	int32_t written;
+
+	float index=0.0f;
+
+	written = snprintf(ptr, bytes_left, "\"%s\":[", name);
+	ptr += written;
+	bytes_left -= written;
+
+	for(uint32_t i=0;i<count;i++){
+
+		written = snprintf(ptr, bytes_left, "%f,", index);
+		index += increment;
+
+		ptr += written;
+		bytes_left -= written;
+		if(i == count-1){
+			*(ptr-1) = ']';	//remove trailing comma
+		}
+
+		if(bytes_left < 16 || i == count-1){
+
+			ttprintf(NULL, buffer, sizeof(buffer)-bytes_left);
+			ptr = buffer;
+			bytes_left = sizeof(buffer);
+		}
+
+	}
+
+}
+
+void log_fastloop(TERMINAL_HANDLE * handle){
+
+	lognow = 1;
+	vTaskDelay(100);
+
+
+	print_samples_now = 0;
+	lognow = 0;
+	vTaskDelay(10);
+
+	int current_sample_pos = sampled_vars.current_sample;
+
+	ttprintf("\r\n{");
+	print_index(handle, "index", LOGLENGTH, mtr[0].FOC.pwm_period);
+	ttprintf(",");
+	print_array(handle, "Vbus", sampled_vars.Vbus, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	ttprintf(",");
+	print_array(handle, "Iu", sampled_vars.Iu, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	ttprintf(",");
+	print_array(handle, "Iv", sampled_vars.Iv, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	ttprintf(",");
+	print_array(handle, "Iw", sampled_vars.Iw, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	ttprintf(",");
+	print_array(handle, "Vd", sampled_vars.Vd, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	ttprintf(",");
+	print_array(handle, "Vq", sampled_vars.Vq, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	ttprintf(",");
+	print_array(handle, "angle", sampled_vars.angle, LOGLENGTH, current_sample_pos, sizeof(uint16_t), TERM_VARIABLE_UINT_ARRAY);
+	ttprintf("}\r\n");
+
+
+	lognow = 1;
+
+}
+
 
 
 /*****************************************************************************
 *
 ******************************************************************************/
 uint8_t CMD_log(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
-    if(argCount==0 || strcmp(args[0], "-?") == 0){
-        ttprintf("Usage: log\r\n");
-        return TERM_CMD_EXIT_SUCCESS;
-    }
 
     bool flag_list = false;
     bool flag_reset = false;
+    bool flag_fastloop = false;
+
+    port_str * port = handle->port;
 
 	for(int i=0;i<argCount;i++){
 		if(strcmp(args[i], "-l")==0){
@@ -367,9 +519,22 @@ uint8_t CMD_log(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 				log_mod(handle, args[i+1], true);
 			}
 		}
+		if(strcmp(args[i], "-s")==0){
+			if(i+1 < argCount){
+				port->overlay_handle.delay = strtoul(args[i+1], NULL, 10);
+			}
+		}
 		if(strcmp(args[i], "-?")==0){
 			ttprintf("Usage: log [flags]\r\n");
+			ttprintf("\t -a\t Add var to log\r\n");
+			ttprintf("\t -d\t Delete var from log\r\n");
+			ttprintf("\t -r\t Delete all vars from log\r\n");
+			ttprintf("\t -l\t List vars\r\n");
+			ttprintf("\t -s\t Log speed [ms]\r\n");
 			return TERM_CMD_EXIT_SUCCESS;
+		}
+		if(strcmp(args[i], "-fl")==0){
+			flag_fastloop = true;
 		}
 	}
 
@@ -406,6 +571,14 @@ uint8_t CMD_log(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 			currVar = currVar->nextVar;
 		}
 		ttprintf("Log list reset...\r\n");
+	}
+
+	if(flag_fastloop){
+	#ifdef LOGGING
+		log_fastloop(handle);
+	#else
+		ttprintf("Fastloop logging not enabled in firmware\r\n");
+	#endif
 	}
 
 

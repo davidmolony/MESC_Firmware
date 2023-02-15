@@ -92,7 +92,9 @@ typedef struct __TermCommandDescriptor__ TermCommandDescriptor;
 
 typedef enum {
     TERM_VARIABLE_INT,
+	TERM_VARIABLE_INT_ARRAY,
     TERM_VARIABLE_UINT,
+	TERM_VARIABLE_UINT_ARRAY,
 	TERM_VARIABLE_FLOAT,
 	TERM_VARIABLE_FLOAT_ARRAY,
 	TERM_VARIABLE_CHAR,

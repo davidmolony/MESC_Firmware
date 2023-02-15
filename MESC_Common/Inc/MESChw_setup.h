@@ -26,7 +26,7 @@
 #include "MESCfoc.h"
 
 
-
+#define FLASH_STORAGE_PAGE 	7
 
 
 
@@ -118,6 +118,10 @@ void hw_init(MESC_motor_typedef *_motor);  // Fills the parameters of the hardwa
 void setAWDVals();
 void getRawADC(MESC_motor_typedef *_motor);
 void getRawADCVph(MESC_motor_typedef *_motor);
+uint32_t getFlashBaseAddress( void );
+uint32_t getFlashBaseSize( void );
+
+
 
 /*
 #define getHallState(...)
