@@ -24,15 +24,18 @@
 #define R_VBUS_TOP 100000.0f
 
 #define MAX_ID_REQUEST 2.0f
-#define MAX_IQ_REQUEST 70.0f
+#define MAX_IQ_REQUEST 10.0f
+#define MIN_IQ_REQUEST -10
+#define DEFAULT_CONTROL_MODE MOTOR_CONTROL_MODE_TORQUE
 
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
 #define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
 #define DEADTIME_COMP_V 10
 //#define MAX_MODULATION 1.05f //Use this with 5 sector modulation if you want extra speed
 //Inputs
-#define GET_THROTTLE_INPUT _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR4;  // Throttle for MP2 with F405 pill
-
+#define GET_THROTTLE_INPUT _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR3;  // Throttle for MP2 with F405 pill
+#define GET_FETU_T _motor->Raw.MOSu_T = ADC2_buffer[3] //Temperature on PB1
+#define GET_MOTOR_T _motor->Raw.Motor_T = ADC1_buffer[4]
 //#define USE_FIELD_WEAKENING
 #define USE_FIELD_WEAKENINGV2
 
@@ -56,7 +59,7 @@
 //#define DEFAULT_HFI_TYPE HFI_TYPE_D
 //#define DEFAULT_HFI_TYPE HFI_TYPE_SPECIAL
 
-//#define USE_HALL_START
+#define USE_HALL_START
 #define HALL_VOLTAGE_THRESHOLD 1.5f
 
 //#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...

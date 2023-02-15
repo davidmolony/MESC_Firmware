@@ -40,7 +40,10 @@
 
 
 #define GET_THROTTLE_INPUT   _motor->Raw.ADC_in_ext1 = ADC_buffer[4];  // Throttle input to L431
-
+#define GET_FETU_T   _motor->Raw.MOSu_T = ADC_buffer[3]; //Temperature on PA3
+#define GET_FETV_T   _motor->Raw.MOSv_T = ADC_buffer[8];
+#define GET_FETW_T   _motor->Raw.MOSw_T = ADC_buffer[9];
+#define GET_MOTOR_T  _motor->Raw.Motor_T = ADC_buffer[6];
 
 //#define USE_LR_OBSERVER
 
