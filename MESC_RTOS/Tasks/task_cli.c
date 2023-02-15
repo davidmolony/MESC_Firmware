@@ -41,11 +41,6 @@
 
 #include "usbd_cdc_if.h"
 
-#define FLASH_SIZE 		130048
-
-//uint8_t memo[2048];
-
-
 
 uint32_t flash_clear(void * address, uint32_t len){
 	FLASH_WaitForLastOperation(500);
@@ -104,6 +99,7 @@ uint32_t flash_end_write(void * address, void * data, uint32_t len){
 	FLASH_WaitForLastOperation(500);
 	return written;
 }
+
 
 
 void putbuffer_uart(unsigned char *buf, unsigned int len, port_str * port){
@@ -171,14 +167,24 @@ static uint32_t uart_get_write_pos(port_str * port){
 void ext_printf(port_str * port, const char* format, ...) {
 	va_list arg;
 	va_start (arg, format);
-	int len;
-	char send_buffer[128];
-	len = vsnprintf(send_buffer, 128, format, arg);
+
+	if(format != NULL){
+		int len;
+		char send_buffer[128];
+		len = vsnprintf(send_buffer, 128, format, arg);
+
+		if(len > 0) {
+			putbuffer((unsigned char*)send_buffer, len, port);
+		}
+	}else{
+		char *s = va_arg(arg, char*);
+		int len = va_arg(arg, int);
+		putbuffer((unsigned char*)s, len, port);
+	}
+
 	va_end (arg);
 
-	if(len > 0) {
-		putbuffer((unsigned char*)send_buffer, len, port);
-	}
+
 }
 
 StreamBufferHandle_t rx_stream;
@@ -210,7 +216,7 @@ void task_cli(void * argument)
 	port->term_block = xSemaphoreCreateBinary();
 	xSemaphoreGive(port->term_block);
 
-	TERMINAL_HANDLE * term_cli;
+	TERMINAL_HANDLE * term_cli = NULL;
 
 	switch(port->hw_type){
 		case HW_TYPE_UART:
@@ -221,9 +227,11 @@ void task_cli(void * argument)
 			break;
 	}
 
-	null_handle.varHandle = TERM_VAR_init(term_cli, (uint8_t*)getFlashBaseAddress(), FLASH_SIZE, flash_clear, flash_start_write, flash_write, flash_end_write);
+	if(term_cli != NULL){
+		null_handle.varHandle = TERM_VAR_init(term_cli, (uint8_t*)getFlashBaseAddress(), getFlashBaseSize(), flash_clear, flash_start_write, flash_write, flash_end_write);
+	}
 
-	MESCinterface_init();
+	MESCinterface_init(term_cli);
 
 	//tcp_serv_init();
 

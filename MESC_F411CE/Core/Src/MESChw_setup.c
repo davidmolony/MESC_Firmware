@@ -127,7 +127,12 @@ uint32_t getFlashBaseAddress( void )
 The base address is FLASH_BASE = 0x08000000 but this is shared with program
 memory and so a suitable offset should be used
 */
-    return getFlashSectorAddress( 7 );
+    return getFlashSectorAddress( FLASH_STORAGE_PAGE );
+}
+
+uint32_t getFlashBaseSize( void )
+{
+    return getFlashSectorAddress( FLASH_STORAGE_PAGE + 1) - getFlashSectorAddress( FLASH_STORAGE_PAGE );
 }
 
 ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )

@@ -237,13 +237,22 @@ void populate_vars(){
 	TERM_addVar(input_vars.UART_req					, -1000.0f	, 1000.0f	, "UART_req"	, "Uart input"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.FW_curr_max				, 0.0f		, 200.0f	, "FW_curr"		, "Field Weakening Current"				, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(input_vars.input_options			, 0			, 16		, "input_opt"	, "Inputs [1=ADC1 2=ADC2 4=PPM 8=UART]"	, VAR_ACCESS_RW	, callback	, &TERM_varList);
+
+	TermVariableDescriptor * desc;
+	desc = TERM_addVar(mtr[0].Conv.Vbus					, 0.0f		, HUGE_VAL  , "vbus"		, "Read input voltage"					, VAR_ACCESS_TR  , NULL		, &TERM_varList);
+	TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+	desc = TERM_addVar(mtr[0].FOC.eHz					    , -HUGE_VAL , HUGE_VAL  , "ehz"			, "Motor electrical hz"					, VAR_ACCESS_TR  , NULL		, &TERM_varList);
+	TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
 }
 
 
 
-void MESCinterface_init(void){
+void MESCinterface_init(TERMINAL_HANDLE * handle){
 	static bool is_init=false;
 	if(is_init) return;
+
 
 	populate_vars();
 
@@ -268,6 +277,9 @@ void MESCinterface_init(void){
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
+
+	TermCommandDescriptor * varAC = TERM_addCommand(CMD_log, "log", "Configure logging", 0, &TERM_defaultList);
+	TERM_addCommandAC(varAC, TERM_varCompleter, null_handle.varHandle->varListHead);
 
 	REGISTER_apps(&TERM_defaultList);
 

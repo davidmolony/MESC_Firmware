@@ -44,8 +44,9 @@
 #include "MESCmotor_state.h"
 #include "MESCmotor.h"
 #include "MESC_BLDC.h"
-//#include "MESCposition.h"
 
+//#include "MESCposition.h"
+#define LOGGING
 
 #define FOC_PERIODS                (1)
 
@@ -559,7 +560,7 @@ typedef struct {
 	uint32_t current_sample;
 } sampled_vars_t;
 
-extern int print_samples_now;
+extern volatile int print_samples_now, lognow;
 
 extern sampled_vars_t sampled_vars;
 

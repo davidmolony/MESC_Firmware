@@ -28,6 +28,12 @@
 #include <stdint.h>
 #include "TTerm.h"
 
+typedef enum {
+    HELPER_FLAG_FLASH,
+	HELPER_FLAG_DETAIL,
+	HELPER_FLAG_DEFAULT,
+} HelperFlagType;
+
 
 //TermVariableDescriptor * TERM_addVar(void* variable, TermVariableType type, uint16_t typeSize , const char * name, const char * description, uint8_t rw, TermVariableDescriptor * head);
 uint8_t CMD_varList(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
@@ -42,6 +48,13 @@ TermVariableDescriptor * TERM_addVarString(void* variable, uint16_t typeSize, co
 TermVariableDescriptor * TERM_addVarChar(void* variable, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
 TermVariableDescriptor * TERM_addVarBool(void* variable, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
 TermVariableDescriptor * TERM_addVarArrayFloat(void* variable, uint32_t size,  float min, float max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
+
+void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescriptor * var, HelperFlagType flag );
+uint32_t TERM_var2str(TERMINAL_HANDLE * handle, TermVariableDescriptor * var, char * buffer, int32_t len );
+
+void TERM_setFlag(TermVariableDescriptor * desc, TermFlagType flag);
+void TERM_clearFlag(TermVariableDescriptor * desc, TermFlagType flag);
+
 
 TermVariableHandle * TERM_VAR_init(TERMINAL_HANDLE * handle, void * nvm_address, uint32_t nvm_size, nvm_clear, nvm_start_write, nvm_write, nvm_end_write);
 

@@ -35,6 +35,13 @@
 
 #include "TTerm/Core/include/TTerm.h"
 
+
+typedef struct{
+	TaskHandle_t task_handle;
+	uint8_t output_type;
+	uint16_t delay;
+}overlay_handle;
+
 /*
  * Add user task definitions, types, includes and other things in the below
  * merge region to customize the task.
@@ -49,6 +56,7 @@ void start_overlay_task(TERMINAL_HANDLE * handle);
 void stop_overlay_task(TERMINAL_HANDLE * handle);
 
 uint8_t CMD_status(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+uint8_t CMD_log(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 
 
 /*
