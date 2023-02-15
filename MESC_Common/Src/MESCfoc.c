@@ -127,7 +127,7 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
 	//At this stage, we initialise the options
 	_motor->MotorControlType = MOTOR_CONTROL_TYPE_FOC;
-	//_motor->MotorControlType = MOTOR_CONTROL_TYPE_BLDC;
+	_motor->ControlMode = DEFAULT_CONTROL_MODE;
 
 	_motor->MotorSensorMode = DEFAULT_SENSOR_MODE;
 	_motor->HFIType = DEFAULT_HFI_TYPE;
@@ -158,6 +158,10 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	//Init the PLL values
 	_motor->FOC.PLL_kp = PLL_KP;
 	_motor->FOC.PLL_ki = PLL_KI;
+	//	//Init the POS values
+	_motor->pos.Kp = POS_KP;
+	_motor->pos.Ki = POS_KI;
+	_motor->pos.Kd = POS_KD;
 
 	//Init the FW
     _motor->FOC.FW_curr_max = FIELD_WEAKENING_CURRENT;  // test number, to be stored in user settings
@@ -1879,8 +1883,8 @@ float  Square(float x){ return((x)*(x));}
 
 			  break;
 		  case MOTOR_CONTROL_MODE_POSITION:
-			  //TBC, needs some kind of velocity generation curve to nest into the speed loop
-			  //fallthrough, once the position controller has generated a speed it probably wants to go straight to the speed controller
+			  RunPosControl(_motor);
+			  break;
 		  case MOTOR_CONTROL_MODE_SPEED:
 			  //TBC PID loop to convert eHz feedback to an iq request
 			  RunSpeedControl(_motor);
@@ -1927,7 +1931,11 @@ float  Square(float x){ return((x)*(x));}
 						//Remain in tracking
 					break;
 					}
-			} else if(_motor->ControlMode == MOTOR_CONTROL_MODE_SPEED){
+			} else if(_motor->ControlMode == MOTOR_CONTROL_MODE_POSITION){
+				if(_motor->MotorState!=MOTOR_STATE_ERROR){
+					_motor->MotorState = MOTOR_STATE_RUN;
+				}
+			}else if(_motor->ControlMode == MOTOR_CONTROL_MODE_SPEED){
 					if(_motor->FOC.speed_req > 10.0f){
 						_motor->MotorState = MOTOR_STATE_RUN;
 						//fallthrough to RUN, no break!
@@ -1982,7 +1990,9 @@ float  Square(float x){ return((x)*(x));}
 						_motor->MotorState = MOTOR_STATE_TRACKING;
 						generateBreak(_motor);
 					}
-
+					break;
+				case MOTOR_CONTROL_MODE_POSITION:
+					__NOP();
 			}//end of ControlMode switch
 
 			SlowHFI(_motor);

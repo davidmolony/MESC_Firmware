@@ -78,9 +78,19 @@ void getRawADC(MESC_motor_typedef *_motor) {
 
 
 //Temperature
-  _motor->Raw.MOSu_T = ADC_buffer[3]; //Temperature on PA3
-  _motor->Raw.MOSv_T = ADC_buffer[8];
-  _motor->Raw.MOSw_T = ADC_buffer[9];
+
+#ifdef GET_FETU_T
+  GET_FETU_T;
+#endif
+#ifdef GET_FETV_T
+  GET_FETV_T;
+#endif
+#ifdef GET_FETW_T
+  GET_FETW_T;
+#endif
+#ifdef GET_MOTOR_T
+  GET_MOTOR_T;
+#endif
 
 }
 

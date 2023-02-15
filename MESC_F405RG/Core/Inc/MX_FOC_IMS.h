@@ -33,8 +33,11 @@
 
 //#define USE_FIELD_WEAKENINGV2
 
-#define GET_THROTTLE_INPUT  _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR3;  // Throttle for IMS board
-
+#define GET_THROTTLE_INPUT  _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR4;  // Throttle for IMS board
+#define GET_FETU_T _motor->Raw.MOSu_T = ADC1_buffer[0] //Temperature on PA3
+#define GET_FETV_T _motor->Raw.MOSv_T = ADC2_buffer[2] //Temperature on PB0
+#define GET_FETW_T _motor->Raw.MOSw_T = ADC2_buffer[3] //Temperature on PB1
+#define GET_MOTOR_T _motor->Raw.Motor_T = ADC2_buffer[0]
 //#define USE_LR_OBSERVER
 
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
