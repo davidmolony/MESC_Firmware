@@ -37,6 +37,10 @@ extern SPI_HandleTypeDef hspi3;
 
 hw_setup_s g_hw_setup;
 motor_s motor;
+uint32_t ADC1_buffer[5];
+uint32_t ADC2_buffer[4];
+
+
 
 void hw_init(MESC_motor_typedef *_motor) {
   g_hw_setup.Imax = ABS_MAX_PHASE_CURRENT;  	// Imax is the current at which we are either no longer able to
@@ -70,20 +74,29 @@ void getRawADC(MESC_motor_typedef *_motor) {
   _motor->Raw.Iu = hadc1.Instance->JDR1;  // U Current
   _motor->Raw.Iv = hadc2.Instance->JDR1;  // V Current
   _motor->Raw.Iw = hadc3.Instance->JDR1;  // W Current
-  _motor->Raw.Vbus = hadc3.Instance->JDR2;  // DC Link Voltage
+  _motor->Raw.Vbus = hadc3.Instance->JDR3;  // DC Link Voltage
 
   GET_THROTTLE_INPUT; //Define a similar macro in the header file for your board that maps the throttle
 
-
-
-  _motor->Raw.MOSu_T = hadc2.Instance->JDR4; //Temperature on PB1
+#ifdef GET_FETU_T
+  GET_FETU_T;
+#endif
+#ifdef GET_FETV_T
+  GET_FETV_T;
+#endif
+#ifdef GET_FETW_T
+  GET_FETW_T;
+#endif
+#ifdef GET_MOTOR_T
+  GET_MOTOR_T;
+#endif
 }
 
 void getRawADCVph(MESC_motor_typedef *_motor){
 	//Voltage sense
 	  _motor->Raw.Vu = hadc1.Instance->JDR2; //PhaseU Voltage
-	  _motor->Raw.Vv = hadc2.Instance->JDR3; //PhaseV Voltage
-	  _motor->Raw.Vw = hadc3.Instance->JDR3; //PhaseW Voltage
+	  _motor->Raw.Vv = hadc2.Instance->JDR2; //PhaseV Voltage
+	  _motor->Raw.Vw = hadc3.Instance->JDR2; //PhaseW Voltage
 }
 
 static uint32_t const flash_sector_map[] = {
@@ -190,6 +203,9 @@ void mesc_init_2( MESC_motor_typedef *_motor )
 
 void mesc_init_3( MESC_motor_typedef *_motor )
 {
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&ADC1_buffer, 5);
+	HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&ADC2_buffer, 4);
+
     HAL_ADCEx_InjectedStart( &hadc1 );
     HAL_ADCEx_InjectedStart( &hadc2 );
     HAL_ADCEx_InjectedStart( &hadc3 );
