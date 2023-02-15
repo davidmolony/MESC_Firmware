@@ -37,7 +37,7 @@
 #define GET_FETU_T _motor->Raw.MOSu_T = ADC2_buffer[3] //Temperature on PB1
 #define GET_MOTOR_T _motor->Raw.Motor_T = ADC1_buffer[4]
 //#define USE_FIELD_WEAKENING
-//#define USE_FIELD_WEAKENINGV2
+#define USE_FIELD_WEAKENINGV2
 
 //#define USE_LR_OBSERVER
 
