@@ -37,6 +37,7 @@
 
 extern UART_HandleTypeDef HW_UART;
 extern USBD_HandleTypeDef hUsbDeviceFS;
+extern CAN_HandleTypeDef hcan1;
 
 port_str main_uart = {	.hw = &HW_UART,
 						.hw_type = HW_TYPE_UART,
@@ -47,6 +48,13 @@ port_str main_uart = {	.hw = &HW_UART,
 
 port_str main_usb = {	.hw = &hUsbDeviceFS,
 						.hw_type = HW_TYPE_USB,
+					    .rx_buffer_size = 512,
+						.half_duplex = false,
+						.task_handle = NULL
+};
+
+port_str main_can = {	.hw = &hcan1,
+						.hw_type = HW_TYPE_CAN,
 					    .rx_buffer_size = 512,
 						.half_duplex = false,
 						.task_handle = NULL
@@ -80,4 +88,5 @@ void init_system(void){
 
 	task_cli_init(&main_usb);
 	task_cli_init(&main_uart);
+	task_cli_init(&main_can);
 }

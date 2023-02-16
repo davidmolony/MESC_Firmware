@@ -133,6 +133,34 @@ void putbuffer_usb(unsigned char *buf, unsigned int len, port_str * port){
 	xSemaphoreGive(port->tx_semaphore);
 }
 
+
+void putbuffer_can(unsigned char *buf, unsigned int len, port_str * port){
+	xSemaphoreTake(port->tx_semaphore, portMAX_DELAY);
+	while(len){
+		uint32_t TxMailbox;
+		if(HAL_CAN_GetTxMailboxesFreeLevel(port->hw)){
+			uint32_t transmit_bytes = len>8 ? 8 : len;
+
+			CAN_TxHeaderTypeDef TxHeader;
+			TxHeader.StdId = CAN_ID_1;
+			TxHeader.ExtId = 0x01;
+			TxHeader.RTR = CAN_RTR_DATA;
+			TxHeader.IDE = CAN_ID_STD;
+			TxHeader.DLC = transmit_bytes;
+			TxHeader.TransmitGlobalTime = DISABLE;
+
+			HAL_StatusTypeDef ret = HAL_CAN_AddTxMessage(port->hw, &TxHeader, buf, &TxMailbox);  //function to add message for transmition
+			if(ret== HAL_OK){
+				len -= transmit_bytes;
+				buf += transmit_bytes;
+			}
+		}
+
+		vTaskDelay(1);
+	}
+	xSemaphoreGive(port->tx_semaphore);
+}
+
 void putbuffer(unsigned char *buf, unsigned int len, port_str * port){
 
 	switch(port->hw_type){
@@ -141,6 +169,9 @@ void putbuffer(unsigned char *buf, unsigned int len, port_str * port){
 		break;
 	case HW_TYPE_USB:
 		putbuffer_usb(buf, len, port);
+		break;
+	case HW_TYPE_CAN:
+		putbuffer_can(buf, len, port);
 		break;
 
 	}
@@ -194,6 +225,32 @@ void USB_CDC_Callback(uint8_t *buffer, uint32_t len){
 }
 
 
+void CLI_init_can(port_str * port){
+
+	CAN_FilterTypeDef sFilterConfig; //declare CAN filter structure
+
+	sFilterConfig.FilterBank = 0;
+	sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+	sFilterConfig.FilterIdHigh = 0x0000;
+	sFilterConfig.FilterIdLow = 0x0000;
+	sFilterConfig.FilterMaskIdHigh = 0x0000;
+	sFilterConfig.FilterMaskIdLow = 0x0000;
+	sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+	sFilterConfig.FilterActivation = ENABLE;
+	sFilterConfig.SlaveStartFilterBank = 14;
+	if (HAL_CAN_ConfigFilter(port->hw, &sFilterConfig) != HAL_OK)
+	{
+	/* Filter configuration Error */
+	Error_Handler();
+	}
+
+
+	HAL_CAN_Start(port->hw); //start CAN
+
+}
+
+
 void task_cli(void * argument)
 {
 	uint32_t rd_ptr=0;
@@ -207,6 +264,9 @@ void task_cli(void * argument)
 			break;
 		case HW_TYPE_USB:
 			rx_stream = xStreamBufferCreate(port->rx_buffer_size, 1);
+			break;
+		case HW_TYPE_CAN:
+			CLI_init_can(port);
 			break;
 	}
 
@@ -224,6 +284,9 @@ void task_cli(void * argument)
 			break;
 		case HW_TYPE_USB:
 			term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "usb");
+			break;
+		case HW_TYPE_CAN:
+			term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "CAN");
 			break;
 	}
 
@@ -256,7 +319,19 @@ void task_cli(void * argument)
 					TERM_processBuffer(&c,1,term_cli);
 					xSemaphoreGive(port->term_block);
 				}
+			case HW_TYPE_CAN:
+				xSemaphoreTake(port->term_block, portMAX_DELAY);
+				while(HAL_CAN_GetRxFifoFillLevel(port->hw, CAN_RX_FIFO0)){
+					CAN_RxHeaderTypeDef pheader;
+					uint8_t buffer[8];
+					HAL_CAN_GetRxMessage(port->hw, CAN_RX_FIFO0, &pheader, buffer);
+					if(pheader.StdId == CAN_ID_1){
+						TERM_processBuffer(buffer,pheader.DLC,term_cli);
+					}
 
+				}
+				xSemaphoreGive(port->term_block);
+				break;
 			break;
 		}
 

@@ -1,8 +1,8 @@
 /*
  **
  ******************************************************************************
- * @file           : task_cli.h
- * @brief          : IO-Task for TTerm
+ * @file           : hfi.h
+ * @brief          : HFI debug task
  ******************************************************************************
  * @attention
  *
@@ -29,45 +29,11 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
-#ifndef TASK_CLI_H_
-#define TASK_CLI_H_
+#if !defined(app_can_H)
+#define app_can_H
 
-#include "FreeRTOS.h"
-#include "stream_buffer.h"
-#include "main.h"
-#include "task.h"
-#include "stdbool.h"
-#include "semphr.h"
+#include "TTerm/Core/include/TTerm.h"
 
-#include "task_overlay.h"
+uint8_t REGISTER_can(TermCommandDescriptor * desc);
 
-
-void cli_start_console();
-
-#define HW_TYPE_NULL 	0
-#define HW_TYPE_UART 	1
-#define HW_TYPE_USB 	2
-#define HW_TYPE_CAN 	3
-
-
-
-typedef struct{
-	void * hw;
-	uint8_t hw_type;
-	uint8_t * rx_buffer;
-	uint16_t rx_buffer_size;  //power of 2
-	bool half_duplex;
-	TaskHandle_t task_handle;
-	overlay_handle overlay_handle;
-	SemaphoreHandle_t term_block;
-	SemaphoreHandle_t tx_semaphore;
-} port_str;
-
-
-void task_cli_init(port_str * port);
-void task_cli_kill(port_str * port);
-
-void putbuffer_can(unsigned char *buf, unsigned int len, port_str * port);
-
-#endif /* TASK_LED_H_ */
-
+#endif
