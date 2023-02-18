@@ -56,12 +56,10 @@ extern ADC_HandleTypeDef hadc1, hadc2, hadc3, hadc4;
 float one_on_sqrt6 = 0.408248f;
 float one_on_sqrt3 = 0.577350f;
 float one_on_sqrt2 = 0.707107f;
-float sqrt_two_on_3 = 0.816497f;
-float sqrt3_2 = 1.22474f;
 float sqrt2 = 1.41421f;
 float sqrt1_2 = 0.707107f;
 float sqrt3_on_2 = 0.866025f;
-float two_on_sqrt3 = 1.73205f;
+float two_on_sqrt3 = 1.15470f;
 int adc_conv_end;
 
 MESC_motor_typedef mtr[NUM_MOTORS];
@@ -648,32 +646,35 @@ uint16_t phasebalance;
     // Power Variant Clark transform
     // Here we select the phases that have the lowest duty cycle to us, since
     // they should have the best current measurements
-    if (htim1.Instance->CCR1 > _motor->FOC.ADC_duty_threshold) {
-      // Clark using phase V and W
-      _motor->FOC.Iab.a = -_motor->Conv.Iv -
-    		  _motor->Conv.Iw;
-      _motor->FOC.Iab.b =
-          one_on_sqrt3 * _motor->Conv.Iv -
-          one_on_sqrt3 * _motor->Conv.Iw;
-    } else if (htim1.Instance->CCR2 > _motor->FOC.ADC_duty_threshold) {
-      // Clark using phase U and W
-      _motor->FOC.Iab.a = _motor->Conv.Iu;
-      _motor->FOC.Iab.b =
-          -one_on_sqrt3 * _motor->Conv.Iu -
-          two_on_sqrt3 * _motor->Conv.Iw;
-    } else if (htim1.Instance->CCR3 > _motor->FOC.ADC_duty_threshold) {
-      // Clark using phase U and V
-      _motor->FOC.Iab.a = _motor->Conv.Iu;
-      _motor->FOC.Iab.b =
-          two_on_sqrt3 * _motor->Conv.Iv +
-          one_on_sqrt3 * two_on_sqrt3 *
-		  _motor->Conv.Iu;
-    } else {
+    switch(_motor->HighPhase){
+    case U:
+        // Clark using phase V and W
+        _motor->FOC.Iab.a = -_motor->Conv.Iv -
+      		  _motor->Conv.Iw;
+        _motor->FOC.Iab.b =
+            one_on_sqrt3 * _motor->Conv.Iv -
+            one_on_sqrt3 * _motor->Conv.Iw;
+	break;
+    case V:
+        // Clark using phase U and W
+        _motor->FOC.Iab.a = _motor->Conv.Iu;
+        _motor->FOC.Iab.b =
+            -one_on_sqrt3 * _motor->Conv.Iu -
+            two_on_sqrt3 * _motor->Conv.Iw;
+	break;
+    case W:
+        // Clark using phase U and V
+        _motor->FOC.Iab.a = _motor->Conv.Iu;
+        _motor->FOC.Iab.b =
+            two_on_sqrt3 * _motor->Conv.Iv +
+            one_on_sqrt3 * _motor->Conv.Iu;
+	break;
+    case N:
 #ifdef USE_HIGHHOPES_PHASE_BALANCING
 		_motor->FOC.Iab.b = _motor->Conv.Iu + _motor->Conv.Iv + _motor->Conv.Iw;
-if(phasebalance){
-	_motor->Conv.Iu = _motor->Conv.Iu + _motor->FOC.Iab.b;
-	_motor->Conv.Iv = _motor->Conv.Iu + _motor->FOC.Iab.b;
+		if(phasebalance){
+			_motor->Conv.Iu = _motor->Conv.Iu + _motor->FOC.Iab.b;
+			_motor->Conv.Iv = _motor->Conv.Iu + _motor->FOC.Iab.b;
 		m_motor->Conv.Iw = _motor->Conv.Iu + _motor->FOC.Iab.b;
 		}
 		if(fabs(_motor->FOC.Iab.b)>fabs(maxIgamma)){
@@ -691,7 +692,8 @@ if(phasebalance){
 	      _motor->FOC.Iab.b =
 	          one_on_sqrt3 * _motor->Conv.Iv -
 	          one_on_sqrt3 * _motor->Conv.Iw;
-    }
+	break;
+    }//End of phase selection switch
 
     // Park
     _motor->FOC.Idq.d = _motor->FOC.sincosangle.cos * _motor->FOC.Iab.a +
@@ -995,9 +997,10 @@ if(phasebalance){
 #if defined(USE_SQRT_CIRCLE_LIM)
       float Vmagnow2 = _motor->FOC.Vdq.d*_motor->FOC.Vdq.d+_motor->FOC.Vdq.q*_motor->FOC.Vdq.q;
       //Check if the vector length is greater than the available voltage
-      if(Vmagnow2>_motor->FOC.Vmag_max2){
-		  float Vmagnow = sqrtf(Vmagnow2);
-		  float one_on_Vmagnow = 1.0f/Vmagnow;
+      _motor->FOC.Voltage = sqrtf(Vmagnow2);
+      if(_motor->FOC.Voltage > _motor->FOC.Vmag_max){
+		  //float Vmagnow = sqrtf(Vmagnow2);
+		  float one_on_Vmagnow = 1.0f/_motor->FOC.Voltage;
 		  float one_on_VmagnowxVmagmax = _motor->FOC.Vmag_max*one_on_Vmagnow;
 		  _motor->FOC.Vdq.d = _motor->FOC.Vdq.d*one_on_VmagnowxVmagmax;
 		  _motor->FOC.Vdq.q = _motor->FOC.Vdq.q*one_on_VmagnowxVmagmax;
@@ -1040,7 +1043,9 @@ if(phasebalance){
 
       //Now we take care of the overall length of the voltage vector
       float Vmagnow2 = _motor->FOC.Vdq.d*_motor->FOC.Vdq.d+_motor->FOC.Vdq.q*_motor->FOC.Vdq.q;
-      if(Vmagnow2>_motor->FOC.Vmag_max2){
+      _motor->FOC.Voltage = sqrtf(Vmagnow2);
+      if(_motor->FOC.Voltage > _motor->FOC.Vmag_max){
+    	  _motor->FOC.Voltage = _motor->FOC.Vmag_max;
     	  if(_motor->FOC.Vdq.q>0.0f){ //Positive Vq
     		  _motor->FOC.Vdq.q = sqrtf(_motor->FOC.Vmag_max2-_motor->FOC.Vdq.d*_motor->FOC.Vdq.d);
     		  if(_motor->FOC.Idq_int_err.q>_motor->FOC.Vdq.q){
@@ -1144,18 +1149,24 @@ float Vd, Vq;
     // lowest, we find the highest and lowest and subtract the middle
     top_value = _motor->FOC.inverterVoltage[0];
     bottom_value = top_value;
+    _motor->HighPhase = U;
 
     if (_motor->FOC.inverterVoltage[1] > top_value) {
       top_value = _motor->FOC.inverterVoltage[1];
+      _motor->HighPhase = V;
     }
     if (_motor->FOC.inverterVoltage[2] > top_value) {
       top_value = _motor->FOC.inverterVoltage[2];
+      _motor->HighPhase = W;
     }
     if (_motor->FOC.inverterVoltage[1] < bottom_value) {
       bottom_value = _motor->FOC.inverterVoltage[1];
     }
     if (_motor->FOC.inverterVoltage[2] < bottom_value) {
       bottom_value = _motor->FOC.inverterVoltage[2];
+    }
+    if(_motor->FOC.Voltage < _motor->FOC.V_3Q_mag_max){
+        _motor->HighPhase = N; //Trigger the full clark transform
     }
 #ifdef SEVEN_SECTOR
     mid_value = _motor->FOC.PWMmid -
@@ -1752,6 +1763,7 @@ __NOP();
     if(_motor->ControlMode != MOTOR_CONTROL_MODE_DUTY){_motor->FOC.Duty_scaler = 1.0f;}
     _motor->FOC.Vmag_max = 0.5f * _motor->Conv.Vbus *
             MAX_MODULATION * SVPWM_MULTIPLIER * _motor->FOC.Duty_scaler;
+    _motor->FOC.V_3Q_mag_max =  _motor->FOC.Vmag_max * 0.75f;
 
     _motor->FOC.Vmag_max2 = _motor->FOC.Vmag_max*_motor->FOC.Vmag_max;
     _motor->FOC.Vd_max = 0.5f * _motor->Conv.Vbus *

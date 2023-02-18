@@ -281,7 +281,9 @@ typedef struct {
   float Vdqres_to_Vdq;
   float Vab_to_PWM;
   float Duty_scaler;
+  float Voltage;
   float Vmag_max;
+  float V_3Q_mag_max;
   float Vmag_max2;
   float Vd_max;
   float Vq_max;
@@ -445,6 +447,7 @@ typedef struct{
 	motor_sensor_mode_e MotorSensorMode;
 	motor_control_mode_e ControlMode;
 	motor_control_type_e MotorControlType;
+	HighPhase_e HighPhase;
 	HFI_type_e HFIType;
 	MESC_raw_typedef Raw;
 	MESC_Converted_typedef Conv;
