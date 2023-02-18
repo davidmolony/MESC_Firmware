@@ -37,6 +37,9 @@
 
 extern UART_HandleTypeDef HW_UART;
 extern USBD_HandleTypeDef hUsbDeviceFS;
+#ifdef HAL_CAN_MODULE_ENABLED
+extern CAN_HandleTypeDef hcan1;
+#endif
 
 port_str main_uart = {	.hw = &HW_UART,
 						.hw_type = HW_TYPE_UART,
@@ -52,6 +55,14 @@ port_str main_usb = {	.hw = &hUsbDeviceFS,
 						.task_handle = NULL
 };
 
+#ifdef HAL_CAN_MODULE_ENABLED
+port_str main_can = {	.hw = &hcan1,
+						.hw_type = HW_TYPE_CAN,
+					    .rx_buffer_size = 512,
+						.half_duplex = false,
+						.task_handle = NULL
+};
+#endif
 
 
 #if EXTENDED_PRINTF == 1
@@ -80,4 +91,7 @@ void init_system(void){
 
 	task_cli_init(&main_usb);
 	task_cli_init(&main_uart);
+#ifdef HAL_CAN_MODULE_ENABLED
+	task_cli_init(&main_can);
+#endif
 }

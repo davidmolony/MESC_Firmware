@@ -48,7 +48,7 @@
 #endif
 
 #define TERM_HISTORYSIZE 16
-#define TERM_INPUTBUFFER_SIZE 128
+#define TERM_INPUTBUFFER_SIZE 80
 
                        
 #define TERM_ARGS_ERROR_STRING_LITERAL 0xffff
@@ -224,6 +224,8 @@ struct __TermCommandDescriptor__{
     TermCommandDescriptor * nextCmd;
 };
 
+#define TTERM_ESC_SEQ_BUFFER_SIZE 16
+
 struct __TERMINAL_HANDLE__{
     char * inputBuffer;
     #if EXTENDED_PRINTF == 1
@@ -242,7 +244,7 @@ struct __TERMINAL_HANDLE__{
     uint32_t currHistoryWritePosition;
     uint32_t currHistoryReadPosition;
     uint8_t currEscSeqPos;
-    uint8_t escSeqBuff[16];
+    uint8_t escSeqBuff[TTERM_ESC_SEQ_BUFFER_SIZE];
     unsigned echoEnabled;
     TermCommandDescriptor * cmdListHead;
 #if TERM_SUPPORT_VARIABLES

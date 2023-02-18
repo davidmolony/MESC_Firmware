@@ -41,6 +41,10 @@ void init_system_running(void);
 extern port_str main_uart;
 extern port_str main_usb;
 
+#define CAN_ID_1 11
+#define CAN_ID_2 11
+#define CAN_ID_3 12
+
 extern TERMINAL_HANDLE null_handle;
 
 #endif /* INC_INIT_H_ */
