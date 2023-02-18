@@ -48,7 +48,7 @@
 #endif
 
 #define TERM_HISTORYSIZE 16
-#define TERM_INPUTBUFFER_SIZE 80
+#define TERM_INPUTBUFFER_SIZE 128
 
                        
 #define TERM_ARGS_ERROR_STRING_LITERAL 0xffff
