@@ -401,7 +401,7 @@ uint8_t TERM_handleInput(uint16_t c, TERMINAL_HANDLE * handle){
 
             if(handle->inputBuffer[handle->currBufferPosition] != 0){      //check if we are at the end of our command
                 //we are somewhere in the middle -> move back existing characters
-                strsft(handle->inputBuffer, handle->currBufferPosition - 1, -1);    
+                strsft(handle->inputBuffer, handle->currBufferPosition - 1, -1);
                 ttprintfEcho("\x08");   
                 TERM_sendVT100Code(handle, _VT100_ERASE_LINE_END, 0);
                 ttprintfEcho("%s", &handle->inputBuffer[handle->currBufferPosition - 1]);
@@ -551,15 +551,27 @@ uint8_t TERM_handleInput(uint16_t c, TERMINAL_HANDLE * handle){
            
         case 32 ... 126:
             TERM_checkForCopy(handle, TERM_CHECK_COMP_AND_HIST);
-            
-            //TODO check for string length overflow
 
-            
-                
-			//we are at the end -> just delete the current character
-			handle->inputBuffer[handle->currBufferPosition++] = c;
-			handle->inputBuffer[handle->currBufferPosition] = 0;
-			handle->currBufferLength ++;
+			//TODO check for string length overflow
+
+			if(handle->inputBuffer[handle->currBufferPosition] != 0 && handle->currBufferLength < TERM_INPUTBUFFER_SIZE -2){      //check if we are at the end of our command
+				strsft(handle->inputBuffer, handle->currBufferPosition, 1);
+				handle->inputBuffer[handle->currBufferPosition] = c;
+				TERM_sendVT100Code(handle, _VT100_ERASE_LINE_END, 0);
+				ttprintfEcho("%s", &handle->inputBuffer[handle->currBufferPosition]);
+				TERM_sendVT100Code(handle, _VT100_CURSOR_BACK_BY, handle->currBufferLength - handle->currBufferPosition);
+				handle->currBufferLength ++;
+				handle->currBufferPosition ++;
+			}else{
+
+				//we are at the end -> just delete the current one
+				handle->inputBuffer[handle->currBufferPosition++] = c;
+				handle->inputBuffer[handle->currBufferPosition] = 0;
+				handle->currBufferLength ++;
+				if(handle->currBufferPosition < TERM_INPUTBUFFER_SIZE -1){
+					ttprintfEcho("%c", c);
+				}
+			}
 
 
 			if(handle->currBufferPosition > TERM_INPUTBUFFER_SIZE -2){
@@ -567,8 +579,6 @@ uint8_t TERM_handleInput(uint16_t c, TERMINAL_HANDLE * handle){
 			}
 			if(handle->currBufferLength > TERM_INPUTBUFFER_SIZE -2){
 				handle->currBufferLength = TERM_INPUTBUFFER_SIZE -2;
-			}else{
-				ttprintfEcho("%c", c);
 			}
 
             break;
