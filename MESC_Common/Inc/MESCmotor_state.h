@@ -110,6 +110,12 @@ typedef enum {
   HFI_TYPE_D,
   HFI_TYPE_SPECIAL,
 }HFI_type_e;
+typedef enum {
+	U,
+	V,
+	W,
+	N,
+}HighPhase_e;
 
 extern motor_sensor_mode_e MotorSensorMode;
 
