@@ -56,12 +56,10 @@ extern ADC_HandleTypeDef hadc1, hadc2, hadc3, hadc4;
 float one_on_sqrt6 = 0.408248f;
 float one_on_sqrt3 = 0.577350f;
 float one_on_sqrt2 = 0.707107f;
-float sqrt_two_on_3 = 0.816497f;
-float sqrt3_2 = 1.22474f;
 float sqrt2 = 1.41421f;
 float sqrt1_2 = 0.707107f;
 float sqrt3_on_2 = 0.866025f;
-float two_on_sqrt3 = 1.73205f;
+float two_on_sqrt3 = 1.15470f;
 int adc_conv_end;
 
 MESC_motor_typedef mtr[NUM_MOTORS];
@@ -669,8 +667,7 @@ uint16_t phasebalance;
         _motor->FOC.Iab.a = _motor->Conv.Iu;
         _motor->FOC.Iab.b =
             two_on_sqrt3 * _motor->Conv.Iv +
-            one_on_sqrt3 * two_on_sqrt3 *
-  		  _motor->Conv.Iu;
+            one_on_sqrt3 * _motor->Conv.Iu;
 	break;
     case N:
 #ifdef USE_HIGHHOPES_PHASE_BALANCING
