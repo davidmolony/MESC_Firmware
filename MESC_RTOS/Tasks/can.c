@@ -77,6 +77,7 @@ static uint8_t CMD_main(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args
 
 
 void putbuffer_can_db(unsigned char *buf, unsigned int len, port_str * port, uint32_t id){
+#ifdef HAL_CAN_MODULE_ENABLED
 	xSemaphoreTake(port->tx_semaphore, portMAX_DELAY);
 	while(len){
 		uint32_t TxMailbox;
@@ -101,6 +102,7 @@ void putbuffer_can_db(unsigned char *buf, unsigned int len, port_str * port, uin
 		vTaskDelay(1);
 	}
 	xSemaphoreGive(port->tx_semaphore);
+#endif
 }
 
 
@@ -111,6 +113,7 @@ static void TASK_main(void *pvParameters){
 
     TERMINAL_HANDLE * handle = (TERMINAL_HANDLE*)pvParameters;
     port_str * port = handle->port;
+#ifdef HAL_CAN_MODULE_ENABLED
 
     xSemaphoreTake(main_can.term_block, portMAX_DELAY);
     uint16_t c=0;
@@ -148,6 +151,7 @@ static void TASK_main(void *pvParameters){
         xStreamBufferReceive(handle->currProgram->inputStream,&c,sizeof(c),pdMS_TO_TICKS(1));
     }while(c!=CTRL_C);
     xSemaphoreGive(main_can.term_block);
+#endif
     TERM_sendVT100Code(handle,_VT100_CURSOR_ENABLE, 0);
     TERM_killProgramm(handle);
 }

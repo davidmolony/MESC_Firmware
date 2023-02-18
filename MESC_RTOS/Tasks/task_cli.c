@@ -135,6 +135,7 @@ void putbuffer_usb(unsigned char *buf, unsigned int len, port_str * port){
 
 
 void putbuffer_can(unsigned char *buf, unsigned int len, port_str * port){
+#ifdef HAL_CAN_MODULE_ENABLED
 	xSemaphoreTake(port->tx_semaphore, portMAX_DELAY);
 	while(len){
 		uint32_t TxMailbox;
@@ -159,6 +160,7 @@ void putbuffer_can(unsigned char *buf, unsigned int len, port_str * port){
 		vTaskDelay(1);
 	}
 	xSemaphoreGive(port->tx_semaphore);
+#endif
 }
 
 void putbuffer(unsigned char *buf, unsigned int len, port_str * port){
@@ -228,8 +230,9 @@ void USB_CDC_Callback(uint8_t *buffer, uint32_t len){
 }
 
 
-void CLI_init_can(port_str * port){
 
+void CLI_init_can(port_str * port){
+#ifdef HAL_CAN_MODULE_ENABLED
 	CAN_FilterTypeDef sFilterConfig; //declare CAN filter structure
 
 	sFilterConfig.FilterBank = 0;
@@ -250,8 +253,9 @@ void CLI_init_can(port_str * port){
 
 
 	HAL_CAN_Start(port->hw); //start CAN
-
+#endif
 }
+
 
 volatile TERMINAL_HANDLE * debug;
 
@@ -329,6 +333,7 @@ void task_cli(void * argument)
 					xSemaphoreGive(port->term_block);
 				}
 			case HW_TYPE_CAN:
+#ifdef HAL_CAN_MODULE_ENABLED
 				xSemaphoreTake(port->term_block, portMAX_DELAY);
 				while(HAL_CAN_GetRxFifoFillLevel(port->hw, CAN_RX_FIFO0)){
 					CAN_RxHeaderTypeDef pheader;
@@ -340,6 +345,7 @@ void task_cli(void * argument)
 
 				}
 				xSemaphoreGive(port->term_block);
+#endif
 				break;
 			break;
 		}
