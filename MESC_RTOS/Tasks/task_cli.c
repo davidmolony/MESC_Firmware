@@ -203,6 +203,9 @@ void ext_printf(port_str * port, const char* format, ...) {
 		int len;
 		char send_buffer[128];
 		len = vsnprintf(send_buffer, 128, format, arg);
+		if(len > sizeof(send_buffer)){
+			len = sizeof(send_buffer);
+		}
 
 		if(len > 0) {
 			putbuffer((unsigned char*)send_buffer, len, port);
@@ -250,6 +253,7 @@ void CLI_init_can(port_str * port){
 
 }
 
+volatile TERMINAL_HANDLE * debug;
 
 void task_cli(void * argument)
 {
@@ -284,6 +288,7 @@ void task_cli(void * argument)
 			break;
 		case HW_TYPE_USB:
 			term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "usb");
+			debug = term_cli;
 			break;
 		case HW_TYPE_CAN:
 			term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "CAN");
@@ -295,6 +300,10 @@ void task_cli(void * argument)
 	}
 
 	MESCinterface_init(term_cli);
+
+	if(port->hw_type == HW_TYPE_UART){
+		rd_ptr = uart_get_write_pos(port); //Clear input buffer.
+	}
 
 	//tcp_serv_init();
 

@@ -197,7 +197,10 @@ uint8_t TERM_processBuffer(uint8_t * data, uint16_t length, TERMINAL_HANDLE * ha
         if(handle->currEscSeqPos != 0xff){
             if(handle->currEscSeqPos == 0){
                 if(data[currPos] == '['){
-                    handle->escSeqBuff[handle->currEscSeqPos++] = data[currPos];
+                	if(handle->currEscSeqPos < TTERM_ESC_SEQ_BUFFER_SIZE){
+                		handle->escSeqBuff[handle->currEscSeqPos] = data[currPos];
+                		handle->currEscSeqPos++;
+                	}
                 }else{
                     switch(data[currPos]){
                         case 'c':
@@ -326,7 +329,8 @@ uint8_t TERM_defaultErrorPrinter(TERMINAL_HANDLE * handle, uint32_t retCode){
             break;
 
         case TERM_CMD_EXIT_NOT_FOUND:
-            ttprintfEcho("\"%s\" is not a valid command. Type \"help\" to see a list of available ones\r\n%s@%s>", handle->inputBuffer, handle->currUserName, TERM_DEVICE_NAME);
+        	ttprintfEcho("\"%s\"", handle->inputBuffer);
+            ttprintfEcho(" is not a valid command. Type \"help\" to see a list of available ones\r\n%s@%s>", handle->currUserName, TERM_DEVICE_NAME);
             break;
     }
     return 0;
@@ -549,23 +553,24 @@ uint8_t TERM_handleInput(uint16_t c, TERMINAL_HANDLE * handle){
             TERM_checkForCopy(handle, TERM_CHECK_COMP_AND_HIST);
             
             //TODO check for string length overflow
+
             
-            if(handle->inputBuffer[handle->currBufferPosition] != 0){      //check if we are at the end of our command
-                strsft(handle->inputBuffer, handle->currBufferPosition, 1);   
-                handle->inputBuffer[handle->currBufferPosition] = c; 
-                TERM_sendVT100Code(handle, _VT100_ERASE_LINE_END, 0);
-                ttprintfEcho("%s", &handle->inputBuffer[handle->currBufferPosition]);
-                TERM_sendVT100Code(handle, _VT100_CURSOR_BACK_BY, handle->currBufferLength - handle->currBufferPosition);
-                handle->currBufferLength ++;
-                handle->currBufferPosition ++;
-            }else{
                 
-                //we are at the end -> just delete the current character
-                handle->inputBuffer[handle->currBufferPosition++] = c;
-                handle->inputBuffer[handle->currBufferPosition] = 0;
-                handle->currBufferLength ++;
-                ttprintfEcho("%c", c);
-            }
+			//we are at the end -> just delete the current character
+			handle->inputBuffer[handle->currBufferPosition++] = c;
+			handle->inputBuffer[handle->currBufferPosition] = 0;
+			handle->currBufferLength ++;
+
+
+			if(handle->currBufferPosition > TERM_INPUTBUFFER_SIZE -2){
+				handle->currBufferPosition = TERM_INPUTBUFFER_SIZE -2;
+			}
+			if(handle->currBufferLength > TERM_INPUTBUFFER_SIZE -2){
+				handle->currBufferLength = TERM_INPUTBUFFER_SIZE -2;
+			}else{
+				ttprintfEcho("%c", c);
+			}
+
             break;
             
         default:
