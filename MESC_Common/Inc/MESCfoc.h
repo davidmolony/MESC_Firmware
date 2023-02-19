@@ -443,6 +443,7 @@ typedef struct{
 typedef struct{
 	TIM_HandleTypeDef *mtimer; //3 phase PWM timer
 	TIM_HandleTypeDef *stimer; //Timer that services the slowloop
+//problematic if there is no SPI allocated//	SPI_HandleTypeDef *encspi; //The SPI we have configured to talk to the encoder for this motor instance
 	motor_state_e MotorState;
 	motor_sensor_mode_e MotorSensorMode;
 	motor_control_mode_e ControlMode;

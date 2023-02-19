@@ -367,7 +367,6 @@ void fastLoop(MESC_motor_typedef *_motor) {
 		  MESCFOC(_motor);
 		  writePWM(_motor);
       } else if(_motor->MotorSensorMode == MOTOR_SENSOR_MODE_OPENLOOP){
-		  _motor->FOC.openloop_step = 60;
 		  OLGenerateAngle(_motor);
 		  MESCFOC(_motor);
 		  writePWM(_motor);
@@ -728,7 +727,7 @@ uint16_t phasebalance;
     // With thanks to C0d3b453 for generally keeping this compiling and Elwin
     // for producing data comparing the output to a 16bit encoder.
 
-#ifdef USE_FLUX_LINKAGE_OBSERVER
+#ifndef DONT_USE_FLUX_LINKAGE_OBSERVER
 	  //Variant of the flux linkage observer created by/with Benjamin Vedder to
 	  //eliminate the need to accurately know the flux linked motor parameter.
 	  //This may be useful when approaching saturation; currently unclear but
@@ -1579,7 +1578,7 @@ __NOP();
     	_motor->m.flux_linkage_max = 0.1f;
     	_motor->m.flux_linkage_min = 0.00001f;//Set really wide limits
     	_motor->FOC.openloop_step = 0;
-    	_motor->FOC.flux_observed = _motor->m.flux_linkage_max;
+    	_motor->FOC.flux_observed = _motor->m.flux_linkage_min;
     	old_HFI_type = _motor->HFIType;
     	_motor->HFIType = HFI_TYPE_NONE;
         phU_Enable(_motor);

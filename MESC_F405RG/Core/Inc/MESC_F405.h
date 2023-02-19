@@ -68,7 +68,7 @@
 #endif
 
 /////////////////////Related to OBSERVER//////////////////////////////
-#define USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time,
+//#define DONT_USE_FLUX_LINKAGE_OBSERVER //This tracks the flux linkage in real time, and the detection algorithm relies on it.
 #define MAX_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*2.0f //Sets the limits for tracking.
 #define MIN_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE*0.7f//Faster convergence with closer start points
 #define FLUX_LINKAGE_GAIN 10.0f * sqrtf(DEFAULT_FLUX_LINKAGE)//*(DEFAULT_FLUX_LINKAGE*DEFAULT_FLUX_LINKAGE)*PWM_FREQUENCY

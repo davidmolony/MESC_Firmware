@@ -52,24 +52,29 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	motor.measure_current = I_MEASURE;
 	motor.measure_voltage = V_MEASURE;
 
+	bool measure_RL = false;
 	bool measure_res = false;
 	bool measure_kv  = false;
+	bool measure_linkage = false;
 	bool measure_hfi = false;
 	bool measure_dt = false;
 
 	if(argCount==0){
-		measure_res =true;
-		measure_kv  =true;
-		measure_hfi =true;
+		measure_RL =true;
+		measure_linkage  =true;
+		//measure_hfi =true;
 	}
 
 	for(int i=0;i<argCount;i++){
 		if(strcmp(args[i], "-a")==0){
-			measure_res =true;
-			measure_kv  =true;
-			measure_hfi =true;
+			measure_RL =true;
+			measure_linkage =true;
+			//measure_hfi =true;
 		}
 		if(strcmp(args[i], "-r")==0){
+			measure_RL = true;
+		}
+		if(strcmp(args[i], "-s")==0){
 			measure_res = true;
 		}
 		if(strcmp(args[i], "-h")==0){
@@ -77,6 +82,9 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		}
 		if(strcmp(args[i], "-f")==0){
 			measure_kv = true;
+		}
+		if(strcmp(args[i], "-g")==0){
+			measure_linkage = true;
 		}
 		if(strcmp(args[i], "-d")==0){
 			measure_dt = true;
@@ -86,6 +94,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 			ttprintf("\t -a\t Measure all\r\n");
 			ttprintf("\t -r\t Measure resistance and inductance\r\n");
 			ttprintf("\t -f\t Measure flux linkage\r\n");
+			ttprintf("\t -g\t Measure flux linkage threshold v2\r\n");
 			ttprintf("\t -h\t Measure HFI threshold\r\n");
 			ttprintf("\t -d\t Measure deadtime compensation\r\n");
 			ttprintf("\t -c\t Specify openloop current\r\n");
@@ -104,7 +113,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		}
 	}
 
-	if(measure_res){
+	if(measure_RL){
 		//Measure resistance and inductance
 		motor_curr->MotorState = MOTOR_STATE_MEASURING;
 		ttprintf("Measuring resistance and inductance\r\nWaiting for result");
@@ -141,7 +150,71 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 
 		ttprintf("R = %f %s\r\nLd = %f %s\r\nLq = %f %s\r\n\r\n", R, Runit, Ld, Lunit, Lq, Lunit);
+calculateGains(motor_curr);
+		vTaskDelay(1000);
+	}
 
+	if(measure_res){
+		//Measure resistance and inductance
+		motor_curr->m.R = 0.0001f;//0.1mohm, really low
+		motor_curr->m.L_D = 0.000001f;//1uH, really low
+		calculateGains(motor_curr);
+		calculateVoltageGain(motor_curr);
+
+		motor_curr->MotorState = MOTOR_STATE_RUN;
+		motor_curr->MotorSensorMode = MOTOR_SENSOR_MODE_OPENLOOP;
+
+		motor_curr->FOC.openloop_step = 0;
+
+		ttprintf("Measuring resistance \r\nWaiting for result");
+		int a=200;
+		float Itop, Ibot, Vtop, Vbot;
+		input_vars.UART_req = 5.0f;
+
+		while(a){
+			xSemaphoreGive(port->term_block);
+			vTaskDelay(5);
+			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			ttprintf(".");
+			Ibot = Ibot+motor_curr->FOC.Idq.q;
+			Vbot = Vbot+motor_curr->FOC.Vdq.q;
+			a--;
+		}
+		a=200;
+		input_vars.UART_req = 10.0f;
+		while(a){
+			xSemaphoreGive(port->term_block);
+			vTaskDelay(5);
+			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			ttprintf(".");
+			Itop = Itop+motor_curr->FOC.Idq.q;
+			Vtop = Vtop+motor_curr->FOC.Vdq.q;
+			a--;
+		}
+
+		motor_curr->m.R = (Vtop-Vbot)/((Itop-Ibot)); //Calculate the resistance
+
+		input_vars.UART_req = 0.0f;
+		motor_curr->MotorState = MOTOR_STATE_TRACKING;
+		motor_curr->MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
+
+		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
+		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
+
+		float R;
+		char* Runit;
+		char* Lunit;
+		if(motor_curr->m.R > 0){
+			R = motor_curr->m.R;
+			Runit = "Ohm";
+		}else{
+			R = motor_curr->m.R*1000.0f;
+			Runit = "mOhm";
+		}
+
+
+		ttprintf("R = %f %s\r\n\r\n", R, Runit);
+		calculateGains(motor_curr);
 		vTaskDelay(1000);
 	}
 
@@ -165,6 +238,52 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		vTaskDelay(2000);
 	}
 
+	if(measure_linkage){
+		//Measure kV
+		motor_curr->MotorState = MOTOR_STATE_RUN;
+		ttprintf("Measuring flux linkage\r\nWaiting for result");
+		motor_curr->m.flux_linkage_max = 0.1001f;//Start it low
+		motor_curr->m.flux_linkage_min = 0.00005f;//Start it low
+
+		motor_curr->HFIType = HFI_TYPE_NONE;
+		motor_curr->FOC.FW_curr_max = 0.1f;
+		input_vars.UART_req = 10.0f; //Parametise later, closedloop current
+
+		while((motor_curr->m.flux_linkage_max > 0.0001f) && (motor_curr->FOC.eHz<100)){
+			xSemaphoreGive(port->term_block);
+			vTaskDelay(10);
+			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			ttprintf(".");
+			motor_curr->m.flux_linkage_max = motor_curr->m.flux_linkage_max*0.997f;// + 0.0001f;
+			motor_curr->FOC.flux_a = motor_curr->FOC.flux_a	+ 0.01*motor_curr->FOC.flux_b;
+			motor_curr->FOC.flux_b = motor_curr->FOC.flux_b	- 0.01*motor_curr->FOC.flux_a;//Since the two fluxes are derivatives of each other, this kicks them around and avoids stalls
+			if(motor_curr->MotorState == MOTOR_STATE_ERROR){
+				break;
+			}
+		}
+		int a=200;
+		motor_curr->m.flux_linkage_max = motor_curr->m.flux_linkage_max*1.5f;
+		while(a){
+			xSemaphoreGive(port->term_block);
+			vTaskDelay(10);
+			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			ttprintf(".");
+			a--;
+		}
+		motor_curr->m.flux_linkage_max = motor_curr->FOC.flux_observed*1.5f;
+		motor_curr->m.flux_linkage_min = motor_curr->FOC.flux_observed*0.5f;
+
+		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
+		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
+
+		ttprintf("Flux linkage = %f mWb\r\n\r\n", motor_curr->FOC.flux_observed * 1000.0);
+		ttprintf("Did the motor spin for >2seconds?");
+
+		vTaskDelay(200);
+
+		input_vars.UART_req = 0.0f;
+		motor_curr->MotorState = MOTOR_STATE_TRACKING;
+	}
 
 	if(measure_hfi){
 		ttprintf("Measuring HFI threshold\r\n");

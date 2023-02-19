@@ -11,8 +11,8 @@
 
 void RunPosControl(MESC_motor_typedef *_motor){
 	_motor->pos.set_position += 1;
-	if(_motor->pos.set_position>200000){_motor->pos.set_position = 100000;}
-	if(_motor->pos.set_position<200000){_motor->pos.set_position = _motor->pos.set_position+1500;}
+//	if(_motor->pos.set_position>200000){_motor->pos.set_position = 100000;}
+//	if(_motor->pos.set_position<200000){_motor->pos.set_position = _motor->pos.set_position+1500;}
 _motor->FOC.Idq_prereq.d = 2.0f;
 
 	_motor->pos.error = (float)(int)(_motor->pos.set_position - _motor->FOC.PLL_angle);
