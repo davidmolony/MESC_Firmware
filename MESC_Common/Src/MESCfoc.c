@@ -1777,7 +1777,8 @@ __NOP();
     _motor->FOC.FW_multiplier = 1.0f/(_motor->FOC.Vmag_max*(1.0f-FIELD_WEAKENING_THRESHOLD));
 
     switch(_motor->HFIType){//When running HFI we want the bandwidth low, so we calculate it with each slow loop depending on whether we are HFIing or not
-
+    case HFI_TYPE_NONE:
+    	__NOP();
     case HFI_TYPE_45:
     	//fallthrough
     case HFI_TYPE_D:
@@ -1798,9 +1799,6 @@ __NOP();
 		_motor->FOC.HFI_toggle_voltage = HFI_THRESHOLD;
 		}
 		break;
-    case HFI_TYPE_NONE:
-    	__NOP();
-    	break;
     }
   }
 
@@ -1975,6 +1973,7 @@ float  Square(float x){ return((x)*(x));}
 			//Assign the Idqreq to the PI input
 			_motor->FOC.Idq_req.q = _motor->FOC.Idq_prereq.q;
 			_motor->FOC.Idq_req.d = _motor->FOC.Idq_prereq.d;
+			if(input_vars.UART_dreq){_motor->FOC.Idq_req.d = input_vars.UART_dreq;}//Override the calcs if a specific d is requested
 			generateEnable(_motor);
 			switch(_motor->ControlMode){
 				case MOTOR_CONTROL_MODE_TORQUE:
@@ -2482,8 +2481,8 @@ void RunHFI(MESC_motor_typedef *_motor){
 		  Idq[1].d = _motor->FOC.Idq.d;
 		  Idq[1].q = _motor->FOC.Idq.q;
 	  }
-	dIdq.d = (Idq[0].d - Idq[1].d); //Calculate the changing current levels
-	dIdq.q = (Idq[0].q - Idq[1].q);
+	_motor->FOC.didq.d = (Idq[0].d - Idq[1].d); //Calculate the changing current levels
+	_motor->FOC.didq.q = (Idq[0].q - Idq[1].q);
 
 	switch(_motor->HFIType){
 		case HFI_TYPE_NONE:
@@ -2509,7 +2508,7 @@ void RunHFI(MESC_motor_typedef *_motor){
 				}
 			}
 			//Run the PLL
-			magnitude45 = sqrtf(dIdq.d*dIdq.d+dIdq.q*dIdq.q);
+			magnitude45 = sqrtf(_motor->FOC.didq.d*_motor->FOC.didq.d+_motor->FOC.didq.q*_motor->FOC.didq.q);
 
 			if(_motor->FOC.was_last_tracking==0){
 
@@ -2539,9 +2538,9 @@ void RunHFI(MESC_motor_typedef *_motor){
 			}else{
 			  _motor->FOC.Vd_injectionV = -_motor->meas.hfi_voltage;
 			}
-			if(dIdq.q>1.0f){dIdq.q = 1.0f;}
-			if(dIdq.q<-1.0f){dIdq.q = -1.0f;}
-			intdidq.q = (intdidq.q + 0.1f*dIdq.q);
+			if(_motor->FOC.didq.q>1.0f){_motor->FOC.didq.q = 1.0f;}
+			if(_motor->FOC.didq.q<-1.0f){_motor->FOC.didq.q = -1.0f;}
+			intdidq.q = (intdidq.q + 0.1f*_motor->FOC.didq.q);
 			if(intdidq.q>10){intdidq.q=10;}
 			if(intdidq.q<-10){intdidq.q=-10;}
 			_motor->FOC.FOCAngle += (int)(250.0f*_motor->FOC.IIR[1] + 10.50f*intdidq.q)*_motor->FOC.d_polarity;
@@ -2611,6 +2610,7 @@ void SlowHFI(MESC_motor_typedef *_motor){
 				_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
 			break;
 			case HFI_TYPE_SPECIAL:
+				ToggleHFI(_motor);
 			break;
 		}
 }
@@ -2648,7 +2648,7 @@ float detectHFI(MESC_motor_typedef *_motor){
 	while(a<1000){
 		a++;
 		_motor->HFIType = HFI_TYPE_D;
-		dinductance = dinductance + dIdq.d;
+		dinductance = dinductance + _motor->FOC.didq.d;
 		HAL_Delay(0);
 		//input_vars.input_options = 0b
 	}
@@ -2660,7 +2660,7 @@ float detectHFI(MESC_motor_typedef *_motor){
 	while(a<1000){
 		a++;
 		_motor->HFIType = HFI_TYPE_D;
-		qinductance = qinductance + dIdq.d;
+		qinductance = qinductance + _motor->FOC.didq.d;
 		HAL_Delay(0);
 		//input_vars.input_options = 0b
 	}

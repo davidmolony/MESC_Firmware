@@ -317,6 +317,7 @@ typedef struct {
   float HFI_Gain;
   float HFI_int_err;
   float HFI_accu;
+  MESCiq_s didq;
   int32_t HFI_countdown;
   uint32_t HFI_count;
   uint32_t HFI_test_increment;
@@ -535,6 +536,7 @@ typedef struct {
 	float ADC2_polarity;
 
 	float UART_req;
+	float UART_dreq;
 	float RCPWM_req;
 	float ADC1_req;
 	float ADC2_req;
