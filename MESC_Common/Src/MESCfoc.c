@@ -353,8 +353,12 @@ void fastLoop(MESC_motor_typedef *_motor) {
 		if(_motor->FOC.hall_start_now){
 			_motor->FOC.flux_a = HALL_IIRN*_motor->FOC.flux_a + HALL_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][0];
 			_motor->FOC.flux_b = HALL_IIRN*_motor->FOC.flux_b + HALL_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][1];
-			_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_b, _motor->FOC.flux_a)) - 32768;
-//			flux_observer(_motor); //For some reason, this does nto seem to work well; it results in vibrations at standstill, although it smooths the transition.
+			if(fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD){
+				flux_observer(_motor); //For some reason, this does not seem to work well at stationary;
+				//it results in vibrations at standstill, although it smooths the transition. Therefore, start it a bit later.
+			}else{
+				_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_b, _motor->FOC.flux_a)) - 32768;
+			}
 		}else{flux_observer(_motor);}
 
 #else
