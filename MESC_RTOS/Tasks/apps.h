@@ -30,6 +30,7 @@
 #include "calibrate.h"
 #include "hfi.h"
 #include "app_template.h"
+#include "can.h"
 
 uint8_t REGISTER_apps(TermCommandDescriptor * desc);
 

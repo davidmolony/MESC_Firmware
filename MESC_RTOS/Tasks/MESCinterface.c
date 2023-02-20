@@ -30,6 +30,7 @@
  ******************************************************************************/
 
 #include "main.h"
+#include "init.h"
 #include "TTerm/Core/include/TTerm.h"
 #include "task_cli.h"
 #include "task_overlay.h"
@@ -237,6 +238,7 @@ void populate_vars(){
 	TERM_addVar(input_vars.UART_req					, -1000.0f	, 1000.0f	, "UART_req"	, "Uart input"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.FW_curr_max				, 0.0f		, 200.0f	, "FW_curr"		, "Field Weakening Current"				, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(input_vars.input_options			, 0			, 16		, "input_opt"	, "Inputs [1=ADC1 2=ADC2 4=PPM 8=UART]"	, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(can1.node_id						, 0			, 65536		, "node_id"	    , "Node ID"							, VAR_ACCESS_RW	, callback	, &TERM_varList);
 
 	TermVariableDescriptor * desc;
 	desc = TERM_addVar(mtr[0].Conv.Vbus					, 0.0f		, HUGE_VAL  , "vbus"		, "Read input voltage"					, VAR_ACCESS_TR  , NULL		, &TERM_varList);
@@ -277,6 +279,8 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
+
+	TERM_addCommand(CMD_nodes, "nodes", "Node info", 0, &TERM_defaultList);
 
 	TermCommandDescriptor * varAC = TERM_addCommand(CMD_log, "log", "Configure logging", 0, &TERM_defaultList);
 	TERM_addCommandAC(varAC, TERM_varCompleter, null_handle.varHandle->varListHead);

@@ -1,8 +1,8 @@
 /*
  **
  ******************************************************************************
- * @file           : task_cli.h
- * @brief          : IO-Task for TTerm
+ * @file           : task_can.c
+ * @brief          : CAN-BUS-Task for MESC and TTERM
  ******************************************************************************
  * @attention
  *
@@ -29,8 +29,8 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
-#ifndef TASK_CLI_H_
-#define TASK_CLI_H_
+#ifndef TASK_CAN_H_
+#define TASK_CAN_H_
 
 #include "FreeRTOS.h"
 #include "stream_buffer.h"
@@ -39,37 +39,39 @@
 #include "stdbool.h"
 #include "semphr.h"
 
-#include "task_overlay.h"
+#include "task_cli.h"
 
-
-void cli_start_console();
-
-#define HW_TYPE_NULL 	0
-#define HW_TYPE_UART 	1
-#define HW_TYPE_USB 	2
-#define HW_TYPE_CAN 	3
-
-
-
-typedef struct{
-	void * hw;
-	uint8_t hw_type;
-	uint8_t * rx_buffer;
-	uint16_t rx_buffer_size;  //power of 2
-	bool half_duplex;
+#ifdef HAL_CAN_MODULE_ENABLED
+typedef struct {
 	TaskHandle_t task_handle;
-	overlay_handle overlay_handle;
-	SemaphoreHandle_t term_block;
-	SemaphoreHandle_t tx_semaphore;
-	StreamBufferHandle_t rx_stream;
-	StreamBufferHandle_t tx_stream;
-} port_str;
+	CAN_HandleTypeDef * hw;
+	uint16_t node_id;
+	uint16_t remote_node_id;
+	uint32_t stream_dropped;
+	char short_name[9];
+}TASK_CAN_handle;
 
 
-void task_cli_init(port_str * port);
-void task_cli_kill(port_str * port);
+typedef struct _CAN_NODES_{
+	uint32_t id;
+	char short_name[9];
+	uint32_t last_seen;
+}TASK_CAN_nodes;
 
-void putbuffer_can(unsigned char *buf, unsigned int len, port_str * port);
+#define TASK_CAN_TYPE_MESC 1
 
-#endif /* TASK_LED_H_ */
 
+#define NUM_NODES 8
+
+extern TASK_CAN_nodes nodes[NUM_NODES];
+
+void TASK_CAN_init(port_str * port, char * short_name);
+void TASK_CAN_set_stream(TASK_CAN_handle * handle, uint32_t id);
+uint8_t CMD_nodes(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+uint32_t TASK_CAN_connect(TASK_CAN_handle * handle, uint16_t remote, uint8_t connect);
+
+
+
+
+#endif
+#endif

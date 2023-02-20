@@ -34,12 +34,14 @@
 
 #include "task_cli.h"
 #include "TTerm/Core/include/TTerm.h"
+#include "task_can.h"
 
 void init_system(void);
 void init_system_running(void);
 
 extern port_str main_uart;
 extern port_str main_usb;
+extern TASK_CAN_handle can1;
 
 #define CAN_ID_1 11
 #define CAN_ID_2 11

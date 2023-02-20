@@ -76,37 +76,8 @@ static uint8_t CMD_main(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args
 
 
 
-void putbuffer_can_db(unsigned char *buf, unsigned int len, port_str * port, uint32_t id){
-#ifdef HAL_CAN_MODULE_ENABLED
-	xSemaphoreTake(port->tx_semaphore, portMAX_DELAY);
-	while(len){
-		uint32_t TxMailbox;
-		if(HAL_CAN_GetTxMailboxesFreeLevel(port->hw)){
-			uint32_t transmit_bytes = len>8 ? 8 : len;
-
-			CAN_TxHeaderTypeDef TxHeader;
-			TxHeader.StdId = id;
-			TxHeader.ExtId = 0x01;
-			TxHeader.RTR = CAN_RTR_DATA;
-			TxHeader.IDE = CAN_ID_STD;
-			TxHeader.DLC = transmit_bytes;
-			TxHeader.TransmitGlobalTime = DISABLE;
-
-			HAL_StatusTypeDef ret = HAL_CAN_AddTxMessage(port->hw, &TxHeader, buf, &TxMailbox);  //function to add message for transmition
-			if(ret== HAL_OK){
-				len -= transmit_bytes;
-				buf += transmit_bytes;
-			}
-		}
-
-		vTaskDelay(1);
-	}
-	xSemaphoreGive(port->tx_semaphore);
-#endif
-}
-
-
 extern port_str main_can;
+
 
 static void TASK_main(void *pvParameters){
 
@@ -121,35 +92,58 @@ static void TASK_main(void *pvParameters){
     uint32_t id=0;
     uint8_t * ptr = "\r\n";
 
+
+
     if(handle->currProgram->argCount>1){
     	id = strtoul(handle->currProgram->args[1], NULL, 10);
     }
 
-    putbuffer_can_db(ptr, 2, &main_can, id);
 
+    while(TASK_CAN_connect(&can1,id, 1)==0){
+    	vTaskDelay(1);
+    }
+
+
+    xSemaphoreTake(main_can.tx_semaphore, portMAX_DELAY);
+
+    xStreamBufferSend(main_can.tx_stream, ptr, 2, 100);
+
+    uint32_t last_ping = xTaskGetTickCount();
 
     do{
 
+    	if(xTaskGetTickCount() >  last_ping + 500){
+    		TASK_CAN_connect(&can1,id, 1);
+			last_ping = xTaskGetTickCount();
+		}
+
     	if(c!=CTRL_C && c!=0){
     		s_c = c;
-    		putbuffer_can_db(&s_c, 1, &main_can, id);
+    		xStreamBufferSend(main_can.tx_stream, &s_c, 1, 100);
 
     	}
 
-    	if(HAL_CAN_GetRxFifoFillLevel(main_can.hw, CAN_RX_FIFO0)){
+    	uint8_t buffer[64];
+    	uint32_t len= xStreamBufferReceive(main_can.rx_stream, buffer, sizeof(buffer), 1);
+    	if(len){
 			xSemaphoreTake(port->term_block, portMAX_DELAY);
-			CAN_RxHeaderTypeDef pheader;
-			uint8_t buffer[8];
-			HAL_CAN_GetRxMessage(main_can.hw, CAN_RX_FIFO0, &pheader, buffer);
-			if(pheader.StdId == id){
-				ttprintf(NULL, buffer, pheader.DLC);
-			}
+
+			ttprintf(NULL, buffer, len);
+
 			xSemaphoreGive(port->term_block);
 		}
 
+
+
         c=0;
-        xStreamBufferReceive(handle->currProgram->inputStream,&c,sizeof(c),pdMS_TO_TICKS(1));
+        xStreamBufferReceive(handle->currProgram->inputStream,&c,sizeof(c),pdMS_TO_TICKS(0));
     }while(c!=CTRL_C);
+
+    while(TASK_CAN_connect(&can1,id, 0)==0){
+		vTaskDelay(1);
+	}
+
+    xSemaphoreGive(main_can.tx_semaphore);
     xSemaphoreGive(main_can.term_block);
 #endif
     TERM_sendVT100Code(handle,_VT100_CURSOR_ENABLE, 0);

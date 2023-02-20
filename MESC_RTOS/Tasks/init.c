@@ -35,6 +35,8 @@
 #include "usbd_def.h"
 #include "stdarg.h"
 
+
+
 extern UART_HandleTypeDef HW_UART;
 extern USBD_HandleTypeDef hUsbDeviceFS;
 #ifdef HAL_CAN_MODULE_ENABLED
@@ -56,9 +58,13 @@ port_str main_usb = {	.hw = &hUsbDeviceFS,
 };
 
 #ifdef HAL_CAN_MODULE_ENABLED
-port_str main_can = {	.hw = &hcan1,
+TASK_CAN_handle can1 = { 	.hw = &hcan1,
+							.stream_dropped  = 0
+
+};
+port_str main_can = {	.hw = &can1,
 						.hw_type = HW_TYPE_CAN,
-					    .rx_buffer_size = 512,
+					    .rx_buffer_size = 128,
 						.half_duplex = false,
 						.task_handle = NULL
 };
