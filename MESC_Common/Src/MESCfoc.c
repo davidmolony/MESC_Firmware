@@ -354,7 +354,7 @@ void fastLoop(MESC_motor_typedef *_motor) {
 			_motor->FOC.flux_a = HALL_IIRN*_motor->FOC.flux_a + HALL_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][0];
 			_motor->FOC.flux_b = HALL_IIRN*_motor->FOC.flux_b + HALL_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][1];
 			_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_b, _motor->FOC.flux_a)) - 32768;
-			flux_observer(_motor);
+//			flux_observer(_motor); //For some reason, this does nto seem to work well; it results in vibrations at standstill, although it smooths the transition.
 		}else{flux_observer(_motor);}
 
 #else
@@ -2805,8 +2805,10 @@ void houseKeeping(MESC_motor_typedef *_motor){
 	// This only happens at stationary when it is useless anyway.
 	if ((_motor->FOC.flux_a * _motor->FOC.flux_a + _motor->FOC.flux_b * _motor->FOC.flux_b) <
 		0.25f * _motor->FOC.flux_observed * _motor->FOC.flux_observed) {
-		_motor->FOC.flux_a = 0.5f * _motor->FOC.flux_observed;
-		_motor->FOC.flux_b = 0.5f * _motor->FOC.flux_observed;
+		_motor->FOC.flux_a = 2.5f * _motor->FOC.flux_a;//_motor->FOC.flux_observed;
+		_motor->FOC.flux_b = 2.5f * _motor->FOC.flux_b;//_motor->FOC.flux_observed;
+		//This was altered because otherwise basing the flux on the observed flux
+		//causes issues a step change in direction, so at low speed - e.g. during hall sensor startup - it causes instability.
 	}
 
 	//Speed tracker
@@ -2820,19 +2822,19 @@ void houseKeeping(MESC_motor_typedef *_motor){
 	_motor->FOC.mechRPM = _motor->FOC.eHz*60.0f/(float)(_motor->m.pole_pairs);
 	}
 	//Shut down if we are burning the hall sensors //Legacy code, can probably be removed...
-	if(getHallState()==0){//This happens when the hall sensors overheat it seems.
-	  	  if (MotorError == MOTOR_ERROR_NONE) {
-	  		    speed_motor_limiter();
-	  	  }
-	  	  MotorError = MOTOR_ERROR_HALL0;
-	    }else /*if(getHallState()==7){
-	  	  MotorError = MOTOR_ERROR_HALL7;
-	    } else */{
-	  	  if (MotorError != MOTOR_ERROR_NONE) {
-	  		  // TODO speed_road();
-	  	  }
-	  	  MotorError = MOTOR_ERROR_NONE;
-	    }
+//	if(getHallState()==0){//This happens when the hall sensors overheat it seems.
+//	  	  if (MotorError == MOTOR_ERROR_NONE) {
+//	  		    speed_motor_limiter();
+//	  	  }
+//	  	  MotorError = MOTOR_ERROR_HALL0;
+//	    }else /*if(getHallState()==7){
+//	  	  MotorError = MOTOR_ERROR_HALL7;
+//	    } else */{
+//	  	  if (MotorError != MOTOR_ERROR_NONE) {
+//	  		  // TODO speed_road();
+//	  	  }
+//	  	  MotorError = MOTOR_ERROR_NONE;
+//	    }
 }
 void FWRampDown(MESC_motor_typedef *_motor){
 	//Ramp down the field weakening current

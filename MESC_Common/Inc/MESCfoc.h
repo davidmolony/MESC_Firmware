@@ -131,7 +131,7 @@
 #endif
 
 #ifndef HALL_IIR
-#define HALL_IIR 0.02f
+#define HALL_IIR 0.05f
 #endif
 
 #define HALL_IIRN (1.0-HALL_IIR)
