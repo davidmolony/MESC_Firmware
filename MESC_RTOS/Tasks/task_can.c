@@ -37,6 +37,8 @@
 #include "cmsis_os.h"
 #include "string.h"
 
+#include "init.h"
+
 #ifdef HAL_CAN_MODULE_ENABLED
 
 void TASK_CAN_init_can(TASK_CAN_handle * handle){
@@ -50,7 +52,7 @@ void TASK_CAN_init_can(TASK_CAN_handle * handle){
 	sFilterConfig.FilterIdLow = 0x0000;
 	sFilterConfig.FilterMaskIdHigh = 0x0000;
 	sFilterConfig.FilterMaskIdLow = 0x0000;
-	sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO1;
+	sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
 	sFilterConfig.FilterActivation = ENABLE;
 	sFilterConfig.SlaveStartFilterBank = 14;
 	if (HAL_CAN_ConfigFilter(handle->hw, &sFilterConfig) != HAL_OK)
@@ -60,11 +62,67 @@ void TASK_CAN_init_can(TASK_CAN_handle * handle){
 	}
 
 	HAL_CAN_Start(handle->hw); //start CAN
+	HAL_CAN_ActivateNotification(handle->hw, CAN_IT_RX_FIFO0_MSG_PENDING);
 
 }
 
+void buffer_uint32(uint8_t* buffer, uint32_t number) {
+	*buffer = number >> 24;
+	buffer++;
+	*buffer = number >> 16;
+	buffer++;
+	*buffer = number >> 8;
+	buffer++;
+	*buffer = number;
+}
+
+void buffer_8b_char(uint8_t* buffer, char * short_name) {
+	memcpy(buffer, short_name, 8);
+}
+
+uint32_t generate_id(uint32_t id, uint16_t node_id){
+	uint32_t ret=0;
+	ret |= (node_id & 0x1FF); //Limit to 11bit node ID (2047)
+	ret |= ((id & 0x3FFFF)<<11); //Message ID 18bit
+	return ret;
+}
+
+uint32_t extract_id(uint32_t ext_id, uint16_t * node_id){
+	*node_id = ext_id & 0x1FF;
+	return ext_id >> 11;
+}
+
+
 
 TASK_CAN_nodes nodes[NUM_NODES];
+
+typedef struct {
+	uint32_t message_id;
+	uint16_t sender;
+	uint8_t len;
+	uint8_t buffer[8];
+}TASK_CAN_packet;
+
+
+
+
+void CAN1_RX0_IRQHandler(void)
+{
+	TASK_CAN_packet packet;
+
+	CAN_RxHeaderTypeDef pheader;
+
+	HAL_CAN_GetRxMessage(can1.hw, CAN_RX_FIFO0, &pheader, packet.buffer);
+
+	packet.len = pheader.DLC;
+	packet.message_id = extract_id(pheader.ExtId, &packet.sender);
+
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+	xQueueSendFromISR(can1.rx_queue, &packet, &xHigherPriorityTaskWoken);
+
+	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+
+}
 
 void TASK_CAN_packet_received(TASK_CAN_handle * handle, uint32_t id, uint16_t sender ,uint8_t* data, uint32_t len){
 	switch(id){
@@ -104,31 +162,7 @@ void TASK_CAN_packet_received(TASK_CAN_handle * handle, uint32_t id, uint16_t se
 
 #define ALLOWED_BLOCK_TIME 10
 
-void buffer_uint32(uint8_t* buffer, uint32_t number) {
-	*buffer = number >> 24;
-	buffer++;
-	*buffer = number >> 16;
-	buffer++;
-	*buffer = number >> 8;
-	buffer++;
-	*buffer = number;
-}
 
-void buffer_8b_char(uint8_t* buffer, char * short_name) {
-	memcpy(buffer, short_name, 8);
-}
-
-uint32_t generate_id(uint32_t id, uint16_t node_id){
-	uint32_t ret=0;
-	ret |= (node_id & 0x1FF); //Limit to 11bit node ID (2047)
-	ret |= ((id & 0x3FFFF)<<11); //Message ID 18bit
-	return ret;
-}
-
-uint32_t extract_id(uint32_t ext_id, uint16_t * node_id){
-	*node_id = ext_id & 0x1FF;
-	return ext_id >> 11;
-}
 
 
 void task_rx_can(void * argument){
@@ -137,27 +171,43 @@ void task_rx_can(void * argument){
 
 	TASK_CAN_init_can(handle);
 
+	TASK_CAN_packet packet;
+
+//	while(1){
+//		while(HAL_CAN_GetRxFifoFillLevel(handle->hw, CAN_RX_FIFO0)){
+//			CAN_RxHeaderTypeDef pheader;
+//			uint8_t buffer[8];
+//			HAL_CAN_GetRxMessage(handle->hw, CAN_RX_FIFO0, &pheader, buffer);
+//
+//			uint16_t sender;
+//			uint32_t message_id = extract_id(pheader.ExtId, &sender);
+//
+//
+//			if(message_id == CAN_ID_TERMINAL && sender == handle->remote_node_id){
+//				handle->remote_node_id = sender;
+//				if(xStreamBufferSend(port->rx_stream, buffer, pheader.DLC, ALLOWED_BLOCK_TIME) != pheader.DLC){
+//					handle->stream_dropped++;  //Streambuffer was not consumed fast enough from other tasks
+//				}
+//			}else{
+//				TASK_CAN_packet_received(handle, message_id, sender, buffer, pheader.DLC);
+//			}
+//		}
+//
+//		vTaskDelay(5);
+//	}
+
 	while(1){
-		while(HAL_CAN_GetRxFifoFillLevel(handle->hw, CAN_RX_FIFO1)){
-			CAN_RxHeaderTypeDef pheader;
-			uint8_t buffer[8];
-			HAL_CAN_GetRxMessage(handle->hw, CAN_RX_FIFO1, &pheader, buffer);
+		xQueueReceive(handle->rx_queue, &packet, portMAX_DELAY);
 
-			uint16_t sender;
-			uint32_t message_id = extract_id(pheader.ExtId, &sender);
-
-
-			if(message_id == CAN_ID_TERMINAL && sender == handle->remote_node_id){
-				handle->remote_node_id = sender;
-				if(xStreamBufferSend(port->rx_stream, buffer, pheader.DLC, ALLOWED_BLOCK_TIME) != pheader.DLC){
-					handle->stream_dropped++;  //Streambuffer was not consumed fast enough from other tasks
-				}
-			}else{
-				TASK_CAN_packet_received(handle, message_id, sender, buffer, pheader.DLC);
+		if(packet.message_id == CAN_ID_TERMINAL && packet.sender == handle->remote_node_id){
+			handle->remote_node_id = packet.sender;
+			if(xStreamBufferSend(port->rx_stream, packet.buffer, packet.len, ALLOWED_BLOCK_TIME) != packet.len){
+				handle->stream_dropped++;  //Streambuffer was not consumed fast enough from other tasks
 			}
+		}else{
+			TASK_CAN_packet_received(handle, packet.message_id, packet.sender, packet.buffer, packet.len);
 		}
 
-		vTaskDelay(5);
 	}
 
 }
@@ -236,7 +286,7 @@ void task_tx_can(void * argument){
 	uint32_t last_ping = xTaskGetTickCount();
 
 	while(1){
-		if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)){
+		if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)>1){
 
 			uint8_t buffer[8];
 
@@ -261,7 +311,7 @@ void task_tx_can(void * argument){
 		if(xStreamBufferIsEmpty(port->tx_stream)){
 			vTaskDelay(10);
 		}else{
-			vTaskDelay(2);
+			//getvTaskDelay(2);
 		}
 	}
 
@@ -273,8 +323,11 @@ void TASK_CAN_init(port_str * port, char * short_name){
 	TASK_CAN_handle * handle = port->hw;
 	memset(handle->short_name,0,9);
 	strncpy(handle->short_name, short_name, 8);
-	xTaskCreate(task_rx_can, "task_rx_can", 256, (void*)port, osPriorityNormal, &handle->task_handle);
-	xTaskCreate(task_tx_can, "task_tx_can", 256, (void*)port, osPriorityNormal, &handle->task_handle);
+
+	handle->rx_queue = xQueueCreate(32, sizeof(TASK_CAN_packet));
+
+	xTaskCreate(task_rx_can, "task_rx_can", 256, (void*)port, osPriorityNormal, &handle->rx_task_handle);
+	xTaskCreate(task_tx_can, "task_tx_can", 256, (void*)port, osPriorityNormal, &handle->tx_task_handle);
 }
 
 

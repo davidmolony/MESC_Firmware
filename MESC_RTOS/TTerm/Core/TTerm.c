@@ -193,103 +193,108 @@ void TERM_printDebug(TERMINAL_HANDLE * handle, char * format, ...){
 uint8_t TERM_processBuffer(uint8_t * data, uint16_t length, TERMINAL_HANDLE * handle){
     uint16_t currPos = 0;
     for(;currPos < length; currPos++){
-        //ttprintfEcho("checking 0x%02x\r\n", data[currPos]);
-        if(handle->currEscSeqPos != 0xff){
-            if(handle->currEscSeqPos == 0){
-                if(data[currPos] == '['){
-                	if(handle->currEscSeqPos < TTERM_ESC_SEQ_BUFFER_SIZE){
-                		handle->escSeqBuff[handle->currEscSeqPos] = data[currPos];
-                		handle->currEscSeqPos++;
-                	}
-                }else{
-                    switch(data[currPos]){
-                        case 'c':
-                            handle->currEscSeqPos = 0xff;
-                            TERM_handleInput(_VT100_RESET, handle);
-                            break;
-                        case 0x1b:
-                            handle->currEscSeqPos = 0;
-                            break;
-                        default:
-                            handle->currEscSeqPos = 0xff;
-                            TERM_handleInput(0x1b, handle);
-                            TERM_handleInput(data[currPos], handle);
-                            break;
-                    }
-                }
-            }else{
-                if(isACIILetter(data[currPos])){
-                    if(data[currPos] == 'n'){
-                        if(handle->currEscSeqPos == 2){
-                            if(handle->escSeqBuff[0] == '5'){        //Query device status
-                            }else if(handle->escSeqBuff[0] == '6'){  //Query cursor position
-                            }
-                        }
-                    }else if(data[currPos] == 'c'){
-                        if(handle->currEscSeqPos == 1){              //Query device code
-                        }
-                    }else if(data[currPos] == 'F'){
-                        if(handle->currEscSeqPos == 1){              //end
-                            TERM_handleInput(_VT100_KEY_END, handle);
-                        }
-                    }else if(data[currPos] == 'H'){
-                        if(handle->currEscSeqPos == 1){              //pos1
-                            TERM_handleInput(_VT100_KEY_POS1, handle);
-                        }
-                    }else if(data[currPos] == 'C'){                      //cursor forward
-                        if(handle->currEscSeqPos > 1){              
-                            handle->escSeqBuff[handle->currEscSeqPos] = 0;
-                        }else{
-                            TERM_handleInput(_VT100_CURSOR_FORWARD, handle);
-                        }
-                    }else if(data[currPos] == 'D'){                      //cursor backward
-                        if(handle->currEscSeqPos > 1){                 
-                            handle->escSeqBuff[handle->currEscSeqPos] = 0;
-                        }else{
-                            TERM_handleInput(_VT100_CURSOR_BACK, handle);
-                        }
-                    }else if(data[currPos] == 'A'){                      //cursor up
-                        if(handle->currEscSeqPos > 1){                 
-                            handle->escSeqBuff[handle->currEscSeqPos] = 0;
-                        }else{
-                            TERM_handleInput(_VT100_CURSOR_UP, handle);
-                        }
-                    }else if(data[currPos] == 'B'){                      //cursor down
-                        if(handle->currEscSeqPos > 1){                 
-                            handle->escSeqBuff[handle->currEscSeqPos] = 0;
-                        }else{
-                            TERM_handleInput(_VT100_CURSOR_DOWN, handle);
-                        }
-                    }else if(data[currPos] == 'Z'){                      //shift tab or ident request(at least from exp.; didn't find any official spec containing this)
-                        TERM_handleInput(_VT100_BACKWARDS_TAB, handle);
-                        
-                    }else if(data[currPos] == '~'){                      //Tilde the end of a special key command (Esc[{keyID}~)
-                        if(handle->escSeqBuff[1] == 0x32){            //insert       
-                            TERM_handleInput(_VT100_KEY_INS, handle);
-                        }else if(handle->escSeqBuff[1] == 0x33){      //delete     
-                            TERM_handleInput(_VT100_KEY_DEL, handle);
-                        }else if(handle->escSeqBuff[1] == 0x35){      //page up      
-                            TERM_handleInput(_VT100_KEY_PAGE_UP, handle);
-                        }else if(handle->escSeqBuff[1] == 0x36){      //page down 
-                            TERM_handleInput(_VT100_KEY_PAGE_DOWN, handle);
-                        }else{
-                            TERM_handleInput(_VT100_INVALID, handle);
-                        }
-                    }else{                      //others
-                        handle->escSeqBuff[handle->currEscSeqPos+1] = 0;
-                    }
-                    handle->currEscSeqPos = 0xff;
-                }else{
-                    handle->escSeqBuff[handle->currEscSeqPos++] = data[currPos];
-                }
-            }
-        }else{
-            if(data[currPos] == 0x1B){     //ESC for V100 control sequences
-                handle->currEscSeqPos = 0;
-            }else{
-                TERM_handleInput(data[currPos], handle);
-            }
-        }
+
+    	if(handle->currProgram != NULL && handle->currProgram->raw_input == 1){
+    		TERM_handleInput(data[currPos], handle);
+    	}else{
+    	//ttprintfEcho("checking 0x%02x\r\n", data[currPos]);
+			if(handle->currEscSeqPos != 0xff){
+				if(handle->currEscSeqPos == 0){
+					if(data[currPos] == '['){
+						if(handle->currEscSeqPos < TTERM_ESC_SEQ_BUFFER_SIZE){
+							handle->escSeqBuff[handle->currEscSeqPos] = data[currPos];
+							handle->currEscSeqPos++;
+						}
+					}else{
+						switch(data[currPos]){
+							case 'c':
+								handle->currEscSeqPos = 0xff;
+								TERM_handleInput(_VT100_RESET, handle);
+								break;
+							case 0x1b:
+								handle->currEscSeqPos = 0;
+								break;
+							default:
+								handle->currEscSeqPos = 0xff;
+								TERM_handleInput(0x1b, handle);
+								TERM_handleInput(data[currPos], handle);
+								break;
+						}
+					}
+				}else{
+					if(isACIILetter(data[currPos])){
+						if(data[currPos] == 'n'){
+							if(handle->currEscSeqPos == 2){
+								if(handle->escSeqBuff[0] == '5'){        //Query device status
+								}else if(handle->escSeqBuff[0] == '6'){  //Query cursor position
+								}
+							}
+						}else if(data[currPos] == 'c'){
+							if(handle->currEscSeqPos == 1){              //Query device code
+							}
+						}else if(data[currPos] == 'F'){
+							if(handle->currEscSeqPos == 1){              //end
+								TERM_handleInput(_VT100_KEY_END, handle);
+							}
+						}else if(data[currPos] == 'H'){
+							if(handle->currEscSeqPos == 1){              //pos1
+								TERM_handleInput(_VT100_KEY_POS1, handle);
+							}
+						}else if(data[currPos] == 'C'){                      //cursor forward
+							if(handle->currEscSeqPos > 1){
+								handle->escSeqBuff[handle->currEscSeqPos] = 0;
+							}else{
+								TERM_handleInput(_VT100_CURSOR_FORWARD, handle);
+							}
+						}else if(data[currPos] == 'D'){                      //cursor backward
+							if(handle->currEscSeqPos > 1){
+								handle->escSeqBuff[handle->currEscSeqPos] = 0;
+							}else{
+								TERM_handleInput(_VT100_CURSOR_BACK, handle);
+							}
+						}else if(data[currPos] == 'A'){                      //cursor up
+							if(handle->currEscSeqPos > 1){
+								handle->escSeqBuff[handle->currEscSeqPos] = 0;
+							}else{
+								TERM_handleInput(_VT100_CURSOR_UP, handle);
+							}
+						}else if(data[currPos] == 'B'){                      //cursor down
+							if(handle->currEscSeqPos > 1){
+								handle->escSeqBuff[handle->currEscSeqPos] = 0;
+							}else{
+								TERM_handleInput(_VT100_CURSOR_DOWN, handle);
+							}
+						}else if(data[currPos] == 'Z'){                      //shift tab or ident request(at least from exp.; didn't find any official spec containing this)
+							TERM_handleInput(_VT100_BACKWARDS_TAB, handle);
+
+						}else if(data[currPos] == '~'){                      //Tilde the end of a special key command (Esc[{keyID}~)
+							if(handle->escSeqBuff[1] == 0x32){            //insert
+								TERM_handleInput(_VT100_KEY_INS, handle);
+							}else if(handle->escSeqBuff[1] == 0x33){      //delete
+								TERM_handleInput(_VT100_KEY_DEL, handle);
+							}else if(handle->escSeqBuff[1] == 0x35){      //page up
+								TERM_handleInput(_VT100_KEY_PAGE_UP, handle);
+							}else if(handle->escSeqBuff[1] == 0x36){      //page down
+								TERM_handleInput(_VT100_KEY_PAGE_DOWN, handle);
+							}else{
+								TERM_handleInput(_VT100_INVALID, handle);
+							}
+						}else{                      //others
+							handle->escSeqBuff[handle->currEscSeqPos+1] = 0;
+						}
+						handle->currEscSeqPos = 0xff;
+					}else{
+						handle->escSeqBuff[handle->currEscSeqPos++] = data[currPos];
+					}
+				}
+			}else{
+				if(data[currPos] == 0x1B){     //ESC for V100 control sequences
+					handle->currEscSeqPos = 0;
+				}else{
+					TERM_handleInput(data[currPos], handle);
+				}
+			}
+    	}
     }
 }
 

@@ -207,6 +207,7 @@ typedef uint8_t (* TermAutoCompHandler)(TERMINAL_HANDLE * handle, void * params)
 typedef struct{
     TaskHandle_t task;
     TermCommandInputHandler inputHandler;
+    uint8_t raw_input;
     StreamBufferHandle_t inputStream;
     char ** args;
     uint8_t argCount;

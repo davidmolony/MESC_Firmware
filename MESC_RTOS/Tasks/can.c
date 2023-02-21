@@ -37,6 +37,7 @@
 #define APP_NAME "can"
 #define APP_DESCRIPTION "CAN test"
 #define APP_STACK 512
+#define RAW_INPUT 1
 
 static uint8_t CMD_main(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 static void TASK_main(void *pvParameters);
@@ -68,6 +69,7 @@ static uint8_t CMD_main(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args
     prog->inputHandler = INPUT_handler;
     prog->args = cpy_args;
     prog->argCount = argCount;
+    prog->raw_input = 1;
     TERM_sendVT100Code(handle, _VT100_RESET, 0); TERM_sendVT100Code(handle, _VT100_CURSOR_POS1, 0);
     returnCode = xTaskCreate(TASK_main, APP_NAME, APP_STACK, handle, tskIDLE_PRIORITY + 1, &prog->task) ? TERM_CMD_EXIT_PROC_STARTED : TERM_CMD_EXIT_ERROR;
     if(returnCode == TERM_CMD_EXIT_PROC_STARTED) TERM_attachProgramm(handle, prog);
@@ -87,10 +89,10 @@ static void TASK_main(void *pvParameters){
 #ifdef HAL_CAN_MODULE_ENABLED
 
     xSemaphoreTake(main_can.term_block, portMAX_DELAY);
-    uint16_t c=0;
+    uint8_t c=0;
     uint8_t s_c;
     uint32_t id=0;
-    uint8_t * ptr = "\r\n";
+    char * ptr = "\r\n";
 
 
 
@@ -118,9 +120,7 @@ static void TASK_main(void *pvParameters){
 		}
 
     	if(c!=CTRL_C && c!=0){
-    		s_c = c;
-    		xStreamBufferSend(main_can.tx_stream, &s_c, 1, 100);
-
+			xStreamBufferSend(main_can.tx_stream, &c, 1, 100);
     	}
 
     	uint8_t buffer[64];
@@ -152,6 +152,11 @@ static void TASK_main(void *pvParameters){
 
 static uint8_t INPUT_handler(TERMINAL_HANDLE * handle, uint16_t c){
     if(handle->currProgram->inputStream==NULL) return TERM_CMD_EXIT_SUCCESS;
+#if RAW_INPUT==1
+    uint8_t s_c = c;
+    xStreamBufferSend(handle->currProgram->inputStream,&s_c,1,20);
+#else
   	xStreamBufferSend(handle->currProgram->inputStream,&c,2,20);
+#endif
   	return TERM_CMD_CONTINUE;
 }

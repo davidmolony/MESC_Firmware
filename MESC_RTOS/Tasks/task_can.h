@@ -43,12 +43,14 @@
 
 #ifdef HAL_CAN_MODULE_ENABLED
 typedef struct {
-	TaskHandle_t task_handle;
+	TaskHandle_t rx_task_handle;
+	TaskHandle_t tx_task_handle;
 	CAN_HandleTypeDef * hw;
 	uint16_t node_id;
 	uint16_t remote_node_id;
 	uint32_t stream_dropped;
 	char short_name[9];
+	QueueHandle_t rx_queue;
 }TASK_CAN_handle;
 
 
