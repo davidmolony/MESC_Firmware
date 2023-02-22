@@ -349,9 +349,6 @@ uint8_t TERM_handleInput(uint16_t c, TERMINAL_HANDLE * handle){
         
         (*handle->errorPrinter)(handle, currRetCode);
         
-        if(c == 0x03){
-            ttprintfEcho("^C");
-        }
         return 1;
     }
     
@@ -386,8 +383,11 @@ uint8_t TERM_handleInput(uint16_t c, TERMINAL_HANDLE * handle){
             break;
             
         case 0x03:      //CTRL+c
-            //TODO reset current buffer
-            ttprintfEcho("^C");
+        	handle->currBufferPosition=0;
+        	handle->currBufferLength=0;
+        	handle->inputBuffer[0]=0;
+        	TERM_sendVT100Code(handle, _VT100_ERASE_LINE, 0);
+        	ttprintfEcho("\r%s@%s>", handle->currUserName, TERM_DEVICE_NAME);
             break;
         case 0x0a: 		//LF
         case 0x08:      //backspace (used by xTerm)

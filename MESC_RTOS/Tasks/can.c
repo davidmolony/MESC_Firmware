@@ -80,6 +80,8 @@ static uint8_t CMD_main(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args
 
 extern port_str main_can;
 
+const char reset[] = "\r\ncls\r\n";
+const char ctrl_text[] = "Press CTRL+C again to exit";
 
 static void TASK_main(void *pvParameters){
 
@@ -90,11 +92,9 @@ static void TASK_main(void *pvParameters){
 
     xSemaphoreTake(main_can.term_block, portMAX_DELAY);
     uint8_t c=0;
-    uint8_t s_c;
     uint32_t id=0;
-    char * ptr = "\r\n";
 
-
+    ttprintf("Press 2x CTRL+C to exit.\r\n");
 
     if(handle->currProgram->argCount>1){
     	id = strtoul(handle->currProgram->args[1], NULL, 10);
@@ -104,11 +104,12 @@ static void TASK_main(void *pvParameters){
     while(TASK_CAN_connect(&can1,id, 1)==0){
     	vTaskDelay(1);
     }
+    int8_t ctrl_cnt = 2;
 
 
     xSemaphoreTake(main_can.tx_semaphore, portMAX_DELAY);
 
-    xStreamBufferSend(main_can.tx_stream, ptr, 2, 100);
+    xStreamBufferSend(main_can.tx_stream, &reset, sizeof(reset)-1, 100);
 
     uint32_t last_ping = xTaskGetTickCount();
 
@@ -119,7 +120,10 @@ static void TASK_main(void *pvParameters){
 			last_ping = xTaskGetTickCount();
 		}
 
-    	if(c!=CTRL_C && c!=0){
+    	if(c!=0){
+    		if(c!=CTRL_C){
+    			ctrl_cnt = 2;
+    		}
 			xStreamBufferSend(main_can.tx_stream, &c, 1, 100);
     	}
 
@@ -137,7 +141,17 @@ static void TASK_main(void *pvParameters){
 
         c=0;
         xStreamBufferReceive(handle->currProgram->inputStream,&c,sizeof(c),pdMS_TO_TICKS(0));
-    }while(c!=CTRL_C);
+        if(c==CTRL_C) {
+        	ctrl_cnt--;
+        	if(ctrl_cnt==1){
+        		ttprintf(ctrl_text);
+        		vTaskDelay(500);
+        		TERM_sendVT100Code(handle, _VT100_CURSOR_BACK_BY, sizeof(ctrl_text)-1);
+        	}
+
+        }
+
+    }while(ctrl_cnt);
 
     while(TASK_CAN_connect(&can1,id, 0)==0){
 		vTaskDelay(1);

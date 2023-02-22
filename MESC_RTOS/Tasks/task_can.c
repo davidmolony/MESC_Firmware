@@ -41,6 +41,8 @@
 
 #ifdef HAL_CAN_MODULE_ENABLED
 
+#define TASK_CAN_BROADCAST 0
+
 void TASK_CAN_init_can(TASK_CAN_handle * handle){
 
 	CAN_FilterTypeDef sFilterConfig; //declare CAN filter structure
@@ -80,16 +82,17 @@ void buffer_8b_char(uint8_t* buffer, char * short_name) {
 	memcpy(buffer, short_name, 8);
 }
 
-uint32_t generate_id(uint32_t id, uint16_t node_id){
-	uint32_t ret=0;
-	ret |= (node_id & 0x1FF); //Limit to 11bit node ID (2047)
-	ret |= ((id & 0x3FFFF)<<11); //Message ID 18bit
+uint32_t generate_id(uint16_t id, uint8_t sender, uint8_t receiver){
+	uint32_t ret = (uint32_t)id << 16;
+	ret |= sender;
+	ret |= (uint32_t)receiver << 8;
 	return ret;
 }
 
-uint32_t extract_id(uint32_t ext_id, uint16_t * node_id){
-	*node_id = ext_id & 0x1FF;
-	return ext_id >> 11;
+uint16_t extract_id(uint32_t ext_id, uint8_t * sender, uint8_t * receiver){
+	*sender = ext_id & 0xFF;
+	*receiver = (ext_id >> 8) & 0xFF;
+	return (ext_id >> 16);
 }
 
 
@@ -97,8 +100,9 @@ uint32_t extract_id(uint32_t ext_id, uint16_t * node_id){
 TASK_CAN_nodes nodes[NUM_NODES];
 
 typedef struct {
-	uint32_t message_id;
-	uint16_t sender;
+	uint16_t message_id;
+	uint8_t sender;
+	uint8_t receiver;
 	uint8_t len;
 	uint8_t buffer[8];
 }TASK_CAN_packet;
@@ -115,16 +119,19 @@ void CAN1_RX0_IRQHandler(void)
 	HAL_CAN_GetRxMessage(can1.hw, CAN_RX_FIFO0, &pheader, packet.buffer);
 
 	packet.len = pheader.DLC;
-	packet.message_id = extract_id(pheader.ExtId, &packet.sender);
+	packet.message_id = extract_id(pheader.ExtId, &packet.sender, &packet.receiver);
 
-	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-	xQueueSendFromISR(can1.rx_queue, &packet, &xHigherPriorityTaskWoken);
+	if(packet.receiver == 0 || packet.receiver == can1.node_id){
 
-	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+		xQueueSendFromISR(can1.rx_queue, &packet, &xHigherPriorityTaskWoken);
+
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}
 
 }
 
-void TASK_CAN_packet_received(TASK_CAN_handle * handle, uint32_t id, uint16_t sender ,uint8_t* data, uint32_t len){
+void TASK_CAN_packet_received(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
 	switch(id){
 		case CAN_ID_PING:{
 			bool found=false;
@@ -173,41 +180,18 @@ void task_rx_can(void * argument){
 
 	TASK_CAN_packet packet;
 
-//	while(1){
-//		while(HAL_CAN_GetRxFifoFillLevel(handle->hw, CAN_RX_FIFO0)){
-//			CAN_RxHeaderTypeDef pheader;
-//			uint8_t buffer[8];
-//			HAL_CAN_GetRxMessage(handle->hw, CAN_RX_FIFO0, &pheader, buffer);
-//
-//			uint16_t sender;
-//			uint32_t message_id = extract_id(pheader.ExtId, &sender);
-//
-//
-//			if(message_id == CAN_ID_TERMINAL && sender == handle->remote_node_id){
-//				handle->remote_node_id = sender;
-//				if(xStreamBufferSend(port->rx_stream, buffer, pheader.DLC, ALLOWED_BLOCK_TIME) != pheader.DLC){
-//					handle->stream_dropped++;  //Streambuffer was not consumed fast enough from other tasks
-//				}
-//			}else{
-//				TASK_CAN_packet_received(handle, message_id, sender, buffer, pheader.DLC);
-//			}
-//		}
-//
-//		vTaskDelay(5);
-//	}
 
 	while(1){
 		xQueueReceive(handle->rx_queue, &packet, portMAX_DELAY);
 
-		if(packet.message_id == CAN_ID_TERMINAL && packet.sender == handle->remote_node_id){
+		if(packet.message_id == CAN_ID_TERMINAL && packet.receiver == handle->node_id){
 			handle->remote_node_id = packet.sender;
 			if(xStreamBufferSend(port->rx_stream, packet.buffer, packet.len, ALLOWED_BLOCK_TIME) != packet.len){
 				handle->stream_dropped++;  //Streambuffer was not consumed fast enough from other tasks
 			}
 		}else{
-			TASK_CAN_packet_received(handle, packet.message_id, packet.sender, packet.buffer, packet.len);
+			TASK_CAN_packet_received(handle, packet.message_id, packet.sender, packet.receiver, packet.buffer, packet.len);
 		}
-
 	}
 
 }
@@ -221,7 +205,7 @@ void TASK_CAN_ping(TASK_CAN_handle * handle){
 		buffer_8b_char(buffer, handle->short_name);
 
 		CAN_TxHeaderTypeDef TxHeader;
-		TxHeader.ExtId = generate_id(CAN_ID_PING, handle->node_id);
+		TxHeader.ExtId = generate_id(CAN_ID_PING, handle->node_id, TASK_CAN_BROADCAST);
 		TxHeader.RTR = CAN_RTR_DATA;
 		TxHeader.IDE = CAN_ID_EXT;
 		TxHeader.DLC = 8;
@@ -254,7 +238,7 @@ uint32_t TASK_CAN_connect(TASK_CAN_handle * handle, uint16_t remote, uint8_t con
 		buffer[0] = connect;
 
 		CAN_TxHeaderTypeDef TxHeader;
-		TxHeader.ExtId = generate_id(CAN_ID_CONNECT, handle->node_id);
+		TxHeader.ExtId = generate_id(CAN_ID_CONNECT, handle->node_id, remote);
 		TxHeader.RTR = CAN_RTR_DATA;
 		TxHeader.IDE = CAN_ID_EXT;
 		TxHeader.DLC = 1;
@@ -267,6 +251,8 @@ uint32_t TASK_CAN_connect(TASK_CAN_handle * handle, uint16_t remote, uint8_t con
 	}
 
 }
+
+
 
 void task_tx_can(void * argument){
 
@@ -285,8 +271,10 @@ void task_tx_can(void * argument){
 
 	uint32_t last_ping = xTaskGetTickCount();
 
+
+
 	while(1){
-		if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)>1){
+		if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)>2){
 
 			uint8_t buffer[8];
 
@@ -294,7 +282,7 @@ void task_tx_can(void * argument){
 
 			if(len){
 
-				TxHeader.ExtId = generate_id(CAN_ID_TERMINAL, handle->node_id);
+				TxHeader.ExtId = generate_id(CAN_ID_TERMINAL, handle->node_id, handle->remote_node_id);
 				TxHeader.DLC = len;
 
 				HAL_CAN_AddTxMessage(handle->hw, &TxHeader, buffer, &TxMailbox);  //function to add message for transmition
@@ -313,6 +301,7 @@ void task_tx_can(void * argument){
 		}else{
 			//getvTaskDelay(2);
 		}
+
 	}
 
 }
