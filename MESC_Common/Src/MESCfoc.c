@@ -2920,6 +2920,40 @@ void RunSpeedControl(MESC_motor_typedef *_motor){
 	  }
 }
 
+void MESC_IC_Init(TIM_HandleTypeDef _IC_TIMER){
+#ifdef IC_TIMER
+	_IC_TIMER.Instance-> SMCR = 84;
+	  _IC_TIMER.Instance-> DIER = 5;
+	  _IC_TIMER.Instance-> SR = 0;
+	  _IC_TIMER.Instance-> CCMR1 = 513;
+	  _IC_TIMER.Instance-> CCER = 49;
+	  _IC_TIMER.Instance-> ARR = 65000;
+	  _IC_TIMER.Instance-> DMAR = 1;
+	#ifdef IC_TIMER_RCPWM
+	  _IC_TIMER.Instance->PSC = (HAL_RCC_GetHCLKFreq()/(1000000*SLOWTIM_SCALER))-1;
+	#endif
+	  IC_TIM_GPIO->MODER |= MODE_AF<<(2*IC_TIM_IONO);
+	  IC_TIM_GPIO->AFR[0] |=0x2<<(IC_TIM_IONO*4);
+	  //__HAL_TIM_ENABLE_IT(_IC_TIMER,TIM_IT_UPDATE);
+	  _IC_TIMER.Instance-> CR1 = 5;
+#endif
+}
+uint32_t SRtemp2, SRtemp3;
+void MESC_IC_IRQ_Handler(uint32_t SR, uint32_t CCR1, uint32_t CCR2){
+#ifdef IC_TIMER_RCPWM
+	if((SR & 0x4)&&!(SR&0x1)){
+		SRtemp2 = SR;
+		input_vars.pulse_recieved = 1;
+		input_vars.IC_duration = CCR1;
+		input_vars.IC_pulse = CCR2;
+	}if(SR & 0x1){
+		SRtemp3 = SR;
+		input_vars.pulse_recieved = 0;
+	}
+#else //This will be for the encoder I guess...
+
+#endif
+}
 
 
 void BLDCCommute(MESC_motor_typedef *_motor){

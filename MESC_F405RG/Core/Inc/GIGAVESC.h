@@ -26,7 +26,7 @@
 #define R_VBUS_BOTTOM 1500.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 82000.0f
 
-
+#define DEFAULT_INPUT 0b0100
 
 #define MAX_ID_REQUEST 2.0f
 #define MAX_IQ_REQUEST 20.0f
@@ -79,4 +79,13 @@
 #define SLOWLEDIO GPIO_PIN_7
 #define SLOWLEDIONO 7
 
+//GPIO for IC timer //These actually have to be timer compatible pins and
+//you must have done something (anything) with the timer in CUBEMX to make it generate the config files
+#define IC_TIM_GPIO GPIOB
+#define IC_TIM_PIN GPIO_PIN_6
+#define IC_TIM_IONO 6
+#define IC_TIMER htim4 //This must be TIM2-TIM5. Untested with other timers
+//Assign a use for the input capture timer
+#define IC_TIMER_RCPWM
+//#define IC_TIMER_ENCODER
 #endif /* INC_MX_FOC_IMS_H_ */
