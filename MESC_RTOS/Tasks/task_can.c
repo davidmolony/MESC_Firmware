@@ -39,6 +39,8 @@
 
 #include "init.h"
 
+#include <stdlib.h>
+
 #ifdef HAL_CAN_MODULE_ENABLED
 
 #define TASK_CAN_BROADCAST 0
@@ -78,6 +80,12 @@ void buffer_uint32(uint8_t* buffer, uint32_t number) {
 	*buffer = number;
 }
 
+float buffer_to_float(uint8_t* buffer) {
+	float ret;
+	memcpy(&ret,buffer, sizeof(float));
+	return ret;
+}
+
 void buffer_8b_char(uint8_t* buffer, char * short_name) {
 	memcpy(buffer, short_name, 8);
 }
@@ -108,6 +116,28 @@ typedef struct {
 }TASK_CAN_packet;
 
 
+bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, float number, uint32_t timeout){
+	TASK_CAN_packet packet;
+
+	packet.message_id = message_id;
+	packet.receiver = receiver;
+	packet.sender = handle->node_id;
+	packet.len = sizeof(float);
+	memcpy(&packet.buffer, &number, sizeof(float));
+	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
+}
+
+bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint32_t number, uint32_t timeout){
+	TASK_CAN_packet packet;
+
+	packet.message_id = message_id;
+	packet.receiver = receiver;
+	packet.sender = handle->node_id;
+	packet.len = sizeof(uint32_t);
+	buffer_uint32(packet.buffer, number);
+	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
+}
+
 
 
 void CAN1_RX0_IRQHandler(void)
@@ -129,6 +159,15 @@ void CAN1_RX0_IRQHandler(void)
 		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 	}
 
+}
+
+__weak void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
+  UNUSED(handle);
+  UNUSED(id);
+  UNUSED(sender);
+  UNUSED(receiver);
+  UNUSED(data);
+  UNUSED(len);
 }
 
 void TASK_CAN_packet_received(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
@@ -163,11 +202,15 @@ void TASK_CAN_packet_received(TASK_CAN_handle * handle, uint32_t id, uint8_t sen
 			}
 			break;
 		}
+		default:
+			TASK_CAN_packet_cb(handle, id, sender, receiver, data, len);
+			break;
 	}
 
 }
 
 #define ALLOWED_BLOCK_TIME 10
+
 
 
 
@@ -184,6 +227,7 @@ void task_rx_can(void * argument){
 	while(1){
 		xQueueReceive(handle->rx_queue, &packet, portMAX_DELAY);
 
+		HAL_GPIO_TogglePin(LED_RED_GPIO_Port, LED_RED_Pin);
 		if(packet.message_id == CAN_ID_TERMINAL && packet.receiver == handle->node_id){
 			handle->remote_node_id = packet.sender;
 			if(xStreamBufferSend(port->rx_stream, packet.buffer, packet.len, ALLOWED_BLOCK_TIME) != packet.len){
@@ -271,6 +315,8 @@ void task_tx_can(void * argument){
 
 	uint32_t last_ping = xTaskGetTickCount();
 
+	TASK_CAN_packet packet;
+
 
 
 	while(1){
@@ -278,7 +324,7 @@ void task_tx_can(void * argument){
 
 			uint8_t buffer[8];
 
-			uint8_t len = xStreamBufferReceive(port->tx_stream, buffer, sizeof(buffer), 2);
+			uint8_t len = xStreamBufferReceive(port->tx_stream, buffer, sizeof(buffer), 0);
 
 			if(len){
 
@@ -291,12 +337,27 @@ void task_tx_can(void * argument){
 
 		}
 
+		if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)){
+			if(xQueueReceive(handle->tx_queue, &packet, 0)){
+
+				CAN_TxHeaderTypeDef TxHeader;
+				TxHeader.ExtId = generate_id(packet.message_id , packet.sender, packet.receiver);
+				TxHeader.RTR = CAN_RTR_DATA;
+				TxHeader.IDE = CAN_ID_EXT;
+				TxHeader.DLC = packet.len;
+				TxHeader.TransmitGlobalTime = DISABLE;
+
+				HAL_CAN_AddTxMessage(handle->hw, &TxHeader, packet.buffer, &TxMailbox);  //function to add message for transmition
+
+			}
+		}
+
 		if(xTaskGetTickCount() >  last_ping + 1000){
 			TASK_CAN_ping(handle);
 			last_ping = xTaskGetTickCount();
 		}
 
-		if(xStreamBufferIsEmpty(port->tx_stream)){
+		if(xStreamBufferIsEmpty(port->tx_stream) && uxQueueMessagesWaiting(handle->tx_queue) == 0){
 			vTaskDelay(10);
 		}else{
 			//getvTaskDelay(2);
@@ -314,6 +375,7 @@ void TASK_CAN_init(port_str * port, char * short_name){
 	strncpy(handle->short_name, short_name, 8);
 
 	handle->rx_queue = xQueueCreate(32, sizeof(TASK_CAN_packet));
+	handle->tx_queue = xQueueCreate(64, sizeof(TASK_CAN_packet));
 
 	xTaskCreate(task_rx_can, "task_rx_can", 256, (void*)port, osPriorityNormal, &handle->rx_task_handle);
 	xTaskCreate(task_tx_can, "task_tx_can", 256, (void*)port, osPriorityNormal, &handle->tx_task_handle);
@@ -335,6 +397,40 @@ uint8_t CMD_nodes(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	return TERM_CMD_EXIT_SUCCESS;
 
 }
+
+uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+	uint32_t id;
+	uint8_t receiver = CAN_BROADCAST;
+	float f_number;
+	bool b_float = false;
+
+
+	for(int i=0;i<argCount;i++){
+		if(strcmp(args[i], "-id")==0){
+			if(i+1 < argCount){
+				id = strtoul(args[i+1], NULL, 0);
+			}
+		}
+		if(strcmp(args[i], "-f")==0){
+			if(i+1 < argCount){
+				b_float = true;
+				f_number = strtof(args[i+1], NULL);
+			}
+		}
+		if(strcmp(args[i], "-r")==0){
+			if(i+1 < argCount){
+				receiver = strtoul(args[i+1], NULL, 0);
+			}
+		}
+	}
+
+	if(b_float){
+		TASK_CAN_add_float(&can1, id, receiver, f_number, 100);
+	}
+
+	return TERM_CMD_EXIT_SUCCESS;
+
+	}
 
 
 #endif

@@ -40,6 +40,7 @@
 #include "semphr.h"
 
 #include "task_cli.h"
+#include "can_ids.h"
 
 #ifdef HAL_CAN_MODULE_ENABLED
 typedef struct {
@@ -51,6 +52,7 @@ typedef struct {
 	uint32_t stream_dropped;
 	char short_name[9];
 	QueueHandle_t rx_queue;
+	QueueHandle_t tx_queue;
 }TASK_CAN_handle;
 
 
@@ -70,9 +72,13 @@ extern TASK_CAN_nodes nodes[NUM_NODES];
 void TASK_CAN_init(port_str * port, char * short_name);
 void TASK_CAN_set_stream(TASK_CAN_handle * handle, uint32_t id);
 uint8_t CMD_nodes(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 uint32_t TASK_CAN_connect(TASK_CAN_handle * handle, uint16_t remote, uint8_t connect);
 
+bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, float number, uint32_t timeout);
+bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint32_t number, uint32_t timeout);
 
+float buffer_to_float(uint8_t* buffer);
 
 
 #endif

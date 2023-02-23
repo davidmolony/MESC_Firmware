@@ -250,6 +250,27 @@ void populate_vars(){
 }
 
 
+void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
+	switch(id){
+		case CAN_ID_IQREQ:{
+			float req = buffer_to_float(data);
+			if(req > 0){
+				input_vars.UART_req = req * input_vars.max_request_Idq.q;
+			}else{
+				input_vars.UART_req = req * input_vars.min_request_Idq.q * -1.0;
+			}
+			break;
+		}
+		case CAN_ID_CONNECT:{
+
+			break;
+		}
+		default:
+			break;
+	}
+}
+
+
 
 void MESCinterface_init(TERMINAL_HANDLE * handle){
 	static bool is_init=false;
@@ -281,6 +302,7 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
 
 	TERM_addCommand(CMD_nodes, "nodes", "Node info", 0, &TERM_defaultList);
+	TERM_addCommand(CMD_can_send, "can_send", "Send CAN message", 0, &TERM_defaultList);
 
 	TermCommandDescriptor * varAC = TERM_addCommand(CMD_log, "log", "Configure logging", 0, &TERM_defaultList);
 	TERM_addCommandAC(varAC, TERM_varCompleter, null_handle.varHandle->varListHead);
