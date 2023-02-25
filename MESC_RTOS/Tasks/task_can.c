@@ -226,8 +226,9 @@ void task_rx_can(void * argument){
 
 	while(1){
 		xQueueReceive(handle->rx_queue, &packet, portMAX_DELAY);
-
+#ifdef LED_RED_Pin
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port, LED_RED_Pin);
+#endif
 		if(packet.message_id == CAN_ID_TERMINAL && packet.receiver == handle->node_id){
 			handle->remote_node_id = packet.sender;
 			if(xStreamBufferSend(port->rx_stream, packet.buffer, packet.len, ALLOWED_BLOCK_TIME) != packet.len){
@@ -374,17 +375,18 @@ void TASK_CAN_init(port_str * port, char * short_name){
 	memset(handle->short_name,0,9);
 	strncpy(handle->short_name, short_name, 8);
 
-	handle->rx_queue = xQueueCreate(32, sizeof(TASK_CAN_packet));
-	handle->tx_queue = xQueueCreate(64, sizeof(TASK_CAN_packet));
+	handle->rx_queue = xQueueCreate(128, sizeof(TASK_CAN_packet));
+	handle->tx_queue = xQueueCreate(128, sizeof(TASK_CAN_packet));
 
-	xTaskCreate(task_rx_can, "task_rx_can", 256, (void*)port, osPriorityNormal, &handle->rx_task_handle);
-	xTaskCreate(task_tx_can, "task_tx_can", 256, (void*)port, osPriorityNormal, &handle->tx_task_handle);
+	xTaskCreate(task_rx_can, "task_rx_can", 256, (void*)port, osPriorityAboveNormal, &handle->rx_task_handle);
+	xTaskCreate(task_tx_can, "task_tx_can", 256, (void*)port, osPriorityAboveNormal, &handle->tx_task_handle);
 }
 
 
 uint8_t CMD_nodes(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	ttprintf("Active nodes:\r\n");
 	bool found = false;
+	ttprintf("ID: %u\tType: %s\tThis node\r\n", can1.node_id, can1.short_name);
 	for(uint32_t i=0;i<NUM_NODES;i++){
 		if(nodes[i].id){
 			ttprintf("ID: %u\tType: %s\tLast seen: %u\r\n", nodes[i].id, nodes[i].short_name, nodes[i].last_seen);

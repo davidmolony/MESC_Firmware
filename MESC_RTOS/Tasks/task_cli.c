@@ -37,8 +37,11 @@
 #include <stdio.h>
 #include "stdarg.h"
 #include "init.h"
+#ifndef DASH
 #include "MESCinterface.h"
-
+#else
+#include "DASHinterface.h"
+#endif
 #include "usbd_cdc_if.h"
 
 #include "task_can.h"
@@ -255,7 +258,7 @@ void task_cli(void * argument)
 		case HW_TYPE_CAN:
 			port->rx_stream = xStreamBufferCreate(port->rx_buffer_size, 1);
 			port->tx_stream = xStreamBufferCreate(port->rx_buffer_size, 1);
-			TASK_CAN_init(port, "ESC1_MP2");
+			TASK_CAN_init(port, "DASHF407");
 			break;
 	}
 
@@ -283,14 +286,16 @@ void task_cli(void * argument)
 	if(term_cli != NULL){
 		null_handle.varHandle = TERM_VAR_init(term_cli, (uint8_t*)getFlashBaseAddress(), getFlashBaseSize(), flash_clear, flash_start_write, flash_write, flash_end_write);
 	}
-
+#ifndef DASH
 	MESCinterface_init(term_cli);
+#else
+	DASHinterface_init(term_cli);
+#endif
 
 	if(port->hw_type == HW_TYPE_UART){
 		rd_ptr = uart_get_write_pos(port); //Clear input buffer.
 	}
 
-	//tcp_serv_init();
 
   /* Infinite loop */
 	for(;;)

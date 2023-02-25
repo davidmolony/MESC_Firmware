@@ -149,6 +149,7 @@ void TERM_destroyHandle(TERMINAL_HANDLE * handle){
     if(handle->currProgram != NULL){
         //try to gracefully shutdown the running program
         (*handle->currProgram->inputHandler)(handle, 0x03);
+        vTaskDelay(10);
     }
     
     vPortFree(handle->inputBuffer);

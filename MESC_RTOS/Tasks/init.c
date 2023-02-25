@@ -35,6 +35,10 @@
 #include "usbd_def.h"
 #include "stdarg.h"
 
+#ifdef DASH
+#include "MESChw_setup.h"
+#include "fatfs.h"
+#endif
 
 
 extern UART_HandleTypeDef HW_UART;
@@ -94,6 +98,7 @@ TERMINAL_HANDLE null_handle = {
 
 
 void init_system(void){
+	f_mount(&SDFatFS, (TCHAR const*)SDPath, 1);
 
 	task_cli_init(&main_usb);
 	task_cli_init(&main_uart);

@@ -299,6 +299,7 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 	mtr[0].m.flux_linkage_gain = motor_profile->flux_linkage_gain;
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
+
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
 
 	TERM_addCommand(CMD_nodes, "nodes", "Node info", 0, &TERM_defaultList);
