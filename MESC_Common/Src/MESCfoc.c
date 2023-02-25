@@ -674,14 +674,14 @@ uint16_t phasebalance;
 	break;
     case N:
 #ifdef USE_HIGHHOPES_PHASE_BALANCING
-		_motor->FOC.Iab.b = _motor->Conv.Iu + _motor->Conv.Iv + _motor->Conv.Iw;
-		if(phasebalance){
-			_motor->Conv.Iu = _motor->Conv.Iu + _motor->FOC.Iab.b;
-			_motor->Conv.Iv = _motor->Conv.Iu + _motor->FOC.Iab.b;
-		m_motor->Conv.Iw = _motor->Conv.Iu + _motor->FOC.Iab.b;
-		}
-		if(fabs(_motor->FOC.Iab.b)>fabs(maxIgamma)){
-			maxIgamma = _motor->FOC.Iab.b;
+		_motor->FOC.Iab.g = 0.33f * (_motor->Conv.Iu + _motor->Conv.Iv + _motor->Conv.Iw);
+//		if(phasebalance){
+			_motor->Conv.Iu = _motor->Conv.Iu - _motor->FOC.Iab.g;
+			_motor->Conv.Iv = _motor->Conv.Iv - _motor->FOC.Iab.g;
+		_motor->Conv.Iw = _motor->Conv.Iw - _motor->FOC.Iab.g;
+//		}
+		if(fabs(_motor->FOC.Iab.g)>fabs(maxIgamma)){
+			maxIgamma = _motor->FOC.Iab.g;
 		}
 		if(_motor->FOC.Vdq.q<2.0f){ //Reset it to reject accumulated random noise and enable multiple goes
 			maxIgamma = 0.0f;
@@ -2079,6 +2079,8 @@ float  Square(float x){ return((x)*(x));}
     _motor->FOC.Vdq.q = _motor->FOC.sincosangle.cos * _motor->FOC.Vab.b -
                       _motor->FOC.sincosangle.sin * _motor->FOC.Vab.a;
     _motor->FOC.Idq_int_err.q = _motor->FOC.Vdq.q;
+    _motor->FOC.Idq_int_err.d = _motor->FOC.Vdq.d;
+
   }
 
 
@@ -2920,7 +2922,11 @@ void RunSpeedControl(MESC_motor_typedef *_motor){
 	  }
 }
 
-void MESC_IC_Init(TIM_HandleTypeDef _IC_TIMER){
+void MESC_IC_Init(
+#ifdef IC_TIMER
+TIM_HandleTypeDef _IC_TIMER
+#endif
+){
 #ifdef IC_TIMER
 	_IC_TIMER.Instance-> SMCR = 84;
 	  _IC_TIMER.Instance-> DIER = 5;
@@ -2938,6 +2944,7 @@ void MESC_IC_Init(TIM_HandleTypeDef _IC_TIMER){
 	  _IC_TIMER.Instance-> CR1 = 5;
 #endif
 }
+
 uint32_t SRtemp2, SRtemp3;
 void MESC_IC_IRQ_Handler(uint32_t SR, uint32_t CCR1, uint32_t CCR2){
 #ifdef IC_TIMER_RCPWM

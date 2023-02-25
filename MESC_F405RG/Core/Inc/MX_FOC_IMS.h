@@ -25,13 +25,15 @@
 
 
 #define MAX_ID_REQUEST 2.0f
-#define MAX_IQ_REQUEST 200.0f
+#define MAX_IQ_REQUEST 50.0f
 
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
 #define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
 #define DEADTIME_COMP_V 10
+//#define MAX_MODULATION 1.02f
 
-//#define USE_FIELD_WEAKENINGV2
+#define USE_FIELD_WEAKENINGV2
+#define USE_HIGHHOPES_PHASE_BALANCING
 
 #define GET_THROTTLE_INPUT  _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR4;  // Throttle for IMS board
 #define GET_FETU_T _motor->Raw.MOSu_T = ADC1_buffer[0] //Temperature on PA3
@@ -75,5 +77,16 @@
 #define SLOWLED GPIOB
 #define SLOWLEDIO GPIO_PIN_7
 #define SLOWLEDIONO 7
+
+
+//GPIO for IC timer //These actually have to be timer compatible pins and
+//you must have done something (anything) with the timer in CUBEMX to make it generate the config files
+#define IC_TIM_GPIO GPIOB
+#define IC_TIM_PIN GPIO_PIN_6
+#define IC_TIM_IONO 6
+#define IC_TIMER htim4 //This must be TIM2-TIM5. Untested with other timers
+//Assign a use for the input capture timer
+#define IC_TIMER_RCPWM
+//#define IC_TIMER_ENCODER
 
 #endif /* INC_MX_FOC_IMS_H_ */

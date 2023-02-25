@@ -656,7 +656,11 @@ void collectInputs(MESC_motor_typedef *_motor);
 void RunMTPA(MESC_motor_typedef *_motor);
 void RunSpeedControl(MESC_motor_typedef *_motor);
 
-void MESC_IC_Init(TIM_HandleTypeDef _IC_TIMER);
+void MESC_IC_Init(
+#ifdef IC_TIMER
+TIM_HandleTypeDef _IC_TIMER
+#endif
+);
 void MESC_IC_IRQ_Handler(uint32_t SR, uint32_t CCR1, uint32_t CCR2);
 
 
