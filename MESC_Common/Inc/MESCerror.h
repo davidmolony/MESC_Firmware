@@ -35,7 +35,7 @@
 #include "MESCfoc.h"
 
 //Variables
-
+extern  uint32_t MESC_errors;
 struct MESC_log_vars
 {
 	float current_A;
