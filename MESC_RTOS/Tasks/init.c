@@ -98,7 +98,7 @@ TERMINAL_HANDLE null_handle = {
 
 
 void init_system(void){
-	f_mount(&SDFatFS, (TCHAR const*)SDPath, 1);
+
 
 	task_cli_init(&main_usb);
 	task_cli_init(&main_uart);

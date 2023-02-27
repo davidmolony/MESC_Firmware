@@ -285,6 +285,7 @@ uint8_t CMD_echo(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
             ttprintf("Error creating file\r\n");
             return TERM_CMD_EXIT_SUCCESS;
         }
+        //vTaskDelay(10);
         if(argCount==3){  
             conv_esc(args[0]);
             ttprintf(args[0]);
