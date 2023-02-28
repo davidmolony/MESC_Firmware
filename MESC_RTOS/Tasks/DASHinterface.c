@@ -116,7 +116,15 @@ const unsigned char logo [] = {
 };
 
 
-float test;
+float speed;
+float t_mot;
+float t_mos_u;
+float t_mos_v;
+float t_mos_w;
+float bus_voltage;
+float bus_current;
+float status;
+
 void populate_vars(){
 	can1.node_id = 255;
 
@@ -131,11 +139,29 @@ float req = 0.0;
 
 void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
 	switch(id){
-		case CAN_ID_IQREQ:{
+		case CAN_ID_IQREQ:
 			req = buffer_to_float(data);
-
 			break;
-		}
+		case CAN_ID_SPEED:
+			speed = buffer_to_float(data);
+			break;
+		case CAN_ID_BUS_VOLTAGE:
+			bus_voltage = buffer_to_float(data);
+			break;
+		case CAN_ID_BUS_CURRENT:
+			bus_current = buffer_to_float(data);
+			break;
+		case CAN_ID_TEMP_MOT_MOS1:
+			t_mot = buffer_to_float(data);
+			t_mos_u = buffer_to_float(data+4);
+			break;
+		case CAN_ID_TEMP_MOS2_MOS3:
+			t_mos_v = buffer_to_float(data);
+			t_mos_w = buffer_to_float(data+4);
+			break;
+		case CAN_ID_STATUS:
+			req = buffer_to_uint32(data);
+			break;
 		default:
 			break;
 	}
@@ -157,12 +183,20 @@ void task_ssd(void * argument){
 	    ssd1306_Fill(Black);
 
 	    ssd1306_SetCursor(2, y);
-	    snprintf(buffer,sizeof(buffer),"IQreq:");
-	    ssd1306_WriteString(buffer, Font_16x26, White);
-	    y += 28;
+	    snprintf(buffer,sizeof(buffer),"Speed: %2.2f", speed);
+	    ssd1306_WriteString(buffer, Font_11x18, White);
+	    y += 19;
+
 	    ssd1306_SetCursor(2, y);
-	    snprintf(buffer,sizeof(buffer),"%2.2f", req);
-	    ssd1306_WriteString(buffer, Font_16x26, White);
+	    snprintf(buffer,sizeof(buffer),"Curr : %2.2f", bus_current);
+	    ssd1306_WriteString(buffer, Font_11x18, White);
+	    y += 19;
+
+	    ssd1306_SetCursor(2, y);
+	    snprintf(buffer,sizeof(buffer),"Volt : %2.2f", bus_voltage);
+		ssd1306_WriteString(buffer, Font_11x18, White);
+		y += 19;
+
 
 	    ssd1306_UpdateScreen();
 	    vTaskDelay(50);

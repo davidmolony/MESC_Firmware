@@ -141,7 +141,16 @@ void putbuffer_usb(unsigned char *buf, unsigned int len, port_str * port){
 
 void putbuffer_stream(unsigned char *buf, unsigned int len, port_str * port){
 	xSemaphoreTake(port->tx_semaphore, portMAX_DELAY);
-	xStreamBufferSend(port->tx_stream, buf, len, 100);
+	uint32_t write_len = len;
+	while(len){
+		if(len > port->rx_buffer_size){
+			write_len = port->rx_buffer_size;
+		}else{
+			write_len = len;
+		}
+		len -= xStreamBufferSend(port->tx_stream, buf, write_len, portMAX_DELAY);
+		buf += write_len;
+	}
 	xSemaphoreGive(port->tx_semaphore);
 }
 

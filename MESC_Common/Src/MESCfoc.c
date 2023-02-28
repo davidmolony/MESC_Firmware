@@ -2860,7 +2860,7 @@ void ThrottleTemperature(MESC_motor_typedef *_motor){
 	handleThrottleTemperature( _motor, _motor->Conv.MOSu_T , &dTmax, ERROR_OVERTEMPU );
 	handleThrottleTemperature( _motor, _motor->Conv.MOSv_T , &dTmax, ERROR_OVERTEMPV );
 	handleThrottleTemperature( _motor, _motor->Conv.MOSw_T , &dTmax, ERROR_OVERTEMPW );
-	handleThrottleTemperature( _motor, _motor->Conv.Motor_T, &dTmax, ERROR_OVERTEMP_MOTOR );
+	//handleThrottleTemperature( _motor, _motor->Conv.Motor_T, &dTmax, ERROR_OVERTEMP_MOTOR );
 
 	_motor->FOC.T_rollback = (1.0f-dTmax/(temp_profile->limit.Tmax-temp_profile->limit.Thot));
 	if(_motor->FOC.T_rollback<=0.0f){

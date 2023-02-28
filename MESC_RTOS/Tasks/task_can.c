@@ -80,6 +80,15 @@ void buffer_uint32(uint8_t* buffer, uint32_t number) {
 	*buffer = number;
 }
 
+uint32_t buffer_to_uint32(uint8_t* buffer) {
+	uint32_t number;
+	number = (uint32_t)buffer << 24;
+	number |= (uint32_t)buffer << 16;
+	number |= (uint32_t)buffer << 8;
+	number |= (uint32_t)buffer;
+	return number;
+}
+
 float buffer_to_float(uint8_t* buffer) {
 	float ret;
 	memcpy(&ret,buffer, sizeof(float));
@@ -116,25 +125,27 @@ typedef struct {
 }TASK_CAN_packet;
 
 
-bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, float number, uint32_t timeout){
+bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, float n1, float n2, uint32_t timeout){
 	TASK_CAN_packet packet;
 
 	packet.message_id = message_id;
 	packet.receiver = receiver;
 	packet.sender = handle->node_id;
 	packet.len = sizeof(float);
-	memcpy(&packet.buffer, &number, sizeof(float));
+	memcpy(&packet.buffer[0], &n1, sizeof(float));
+	memcpy(&packet.buffer[4], &n2, sizeof(float));
 	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
 }
 
-bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint32_t number, uint32_t timeout){
+bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint32_t n1, uint32_t n2, uint32_t timeout){
 	TASK_CAN_packet packet;
 
 	packet.message_id = message_id;
 	packet.receiver = receiver;
 	packet.sender = handle->node_id;
 	packet.len = sizeof(uint32_t);
-	buffer_uint32(packet.buffer, number);
+	buffer_uint32(&packet.buffer[0], n1);
+	buffer_uint32(&packet.buffer[4], n2);
 	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
 }
 
@@ -315,14 +326,15 @@ void task_tx_can(void * argument){
 
 
 	uint32_t last_ping = xTaskGetTickCount();
+	uint32_t last_stream = xTaskGetTickCount();
 
 	TASK_CAN_packet packet;
 
 
 
 	while(1){
-		if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)>2){
-
+		if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)>2 && xTaskGetTickCount() > last_stream + 1){
+			last_stream = xTaskGetTickCount();
 			uint8_t buffer[8];
 
 			uint8_t len = xStreamBufferReceive(port->tx_stream, buffer, sizeof(buffer), 0);
@@ -403,7 +415,7 @@ uint8_t CMD_nodes(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	uint32_t id;
 	uint8_t receiver = CAN_BROADCAST;
-	float f_number;
+	float f_number[2];
 	bool b_float = false;
 
 
@@ -416,7 +428,15 @@ uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		if(strcmp(args[i], "-f")==0){
 			if(i+1 < argCount){
 				b_float = true;
-				f_number = strtof(args[i+1], NULL);
+				f_number[0] = strtof(args[i+1], NULL);
+				f_number[1] = 0;
+			}
+		}
+		if(strcmp(args[i], "-f2")==0){
+			if(i+2 < argCount){
+				b_float = true;
+				f_number[0] = strtof(args[i+1], NULL);
+				f_number[1] = strtof(args[i+2], NULL);
 			}
 		}
 		if(strcmp(args[i], "-r")==0){
@@ -427,7 +447,7 @@ uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	}
 
 	if(b_float){
-		TASK_CAN_add_float(&can1, id, receiver, f_number, 100);
+		TASK_CAN_add_float(&can1, id, receiver, f_number[0], f_number[1], 100);
 	}
 
 	return TERM_CMD_EXIT_SUCCESS;

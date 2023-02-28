@@ -29,7 +29,7 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
-#include "can.h"
+#include "cana.h"
 #include "string.h"
 #include "task_cli.h"
 #include "init.h"
