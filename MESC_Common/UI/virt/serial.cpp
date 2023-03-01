@@ -27,58 +27,18 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MESC_UI_WIFI_HTTPPROTOCOL_HPP
-#define MESC_UI_WIFI_HTTPPROTOCOL_HPP
+#include "serial.hpp"
 
-#include <deque>
-#include <string>
+VirtSerial Serial;
 
-namespace HTTP
+#include <iostream>
+
+void VirtSerial::print( char const * s )
 {
-    enum class Status
-    {
-        OK         = 200,
-        NO_CONTENT = 204,
-
-        NOT_FOUND  = 404,
-
-        INTERNAL_SERVER_ERROR = 500,
-    };
-
-    enum class ContentType
-    {
-        APPLICATION_JSON, // application/json
-
-        APPLICATION_OCTETSTREAM, // application/octet-stream
-
-        IMAGE_PNG,
-        IMAGE_SVGXML, // image/svg+xml
-
-        TEXT_CSS,
-        TEXT_CSV,
-        TEXT_HTML,
-        TEXT_JAVASCRIPT,
-        
-        TEXT_PLAIN,
-        TEXT_XML,
-    };
-
-    class ResponseHeader
-    {
-    private:
-        Status      m_status;
-        ContentType m_content_type;
-        uint32_t    m_content_length;
-    public:
-        ResponseHeader();
-        void setStatus( Status const s );
-        void setContentType( ContentType const ct );
-        void setContentLength( size_t const l );
-        void generate_response( std::deque< std::string > & buf );
-    };
+    std::cout << s;
 }
 
-std::string to_string( HTTP::Status const s );
-std::string to_string( HTTP::ContentType const ct );
-
-#endif
+void VirtSerial::println( char const * s )
+{
+    std::cout << s << "\n";
+}

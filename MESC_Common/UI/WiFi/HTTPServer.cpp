@@ -30,7 +30,9 @@
 #include "HTTPServer.hpp"
 
 #include "HTTPProtocol.hpp"
-
+#ifdef VIRT
+#include "../virt/serial.hpp"
+#endif
 namespace MESC
 {
     namespace UI
@@ -40,6 +42,12 @@ namespace MESC
             uint16_t  HTTPServer::getPort() const
             {
                 return UINT16_C(8080);
+            }
+
+            std::pair< bool, std::string > HTTPServer::lookup( std::string const url ) const
+            {
+                return std::make_pair<>( false, std::string() );
+            (void)url;
             }
 
             void HTTPServer::process_request( char const c )
@@ -56,15 +64,41 @@ namespace MESC
 
                     if (reqbuf.size() == 0)
                     {
-                        Serial.println( "INFO: Processing HTTP request" );
-                        // Peek reqbuf for 'GET ...'
-                        // Peek request path '... /file.name ...'
-                        // path_entry = lookup( req_path )
-                        // if path_entry not found, process dynamic request e.g. update?var=val&...
                         HTTP::ResponseHeader header;
 
-                    // TODO populate resp_pay with path or abort
-                    //  resp_pay.push_back( path_entry );
+                        Serial.println( "INFO: Processing HTTP request" );
+                        
+                        std::string s = req.front();
+                        req.pop_front();
+
+                        if (s.compare(0,5,"GET /") == 0)
+                        {
+                            size_t const end = s.find( ' ', 4 );
+                            std::string const url = s.substr(4,end-4);
+                            Serial.println( ("INFO: URL '" + url + "'").c_str() );
+                            std::pair< bool, std::string > const pay = lookup( url );
+                            if (pay.first == false)
+                            {
+                                header.setStatus( HTTP::Status::NOT_FOUND );
+                            }
+                            else
+                            {
+                                size_t const len = pay.second.length();
+                                if (len == 0)
+                                {
+                                    header.setStatus( HTTP::Status::NO_CONTENT );
+                                }
+                                else
+                                {
+                                    header.setContentLength( len );
+                                    resp_pay.push_back( pay.second );
+                                }
+                            }
+                        }/*
+                        else
+                        {
+                            // error
+                        }*/
 
                         header.generate_response( resp_hdr );
                     }

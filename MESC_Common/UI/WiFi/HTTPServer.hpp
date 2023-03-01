@@ -32,6 +32,7 @@
 
 #include <deque>
 #include <string>
+#include <utility>
 
 namespace MESC
 {
@@ -45,6 +46,7 @@ namespace MESC
                 virtual uint16_t getPort() const;
                 virtual bool     startHTTP() = 0;
                 virtual void     runHTTP() = 0;
+                virtual std::pair< bool, std::string > lookup( std::string const url ) const;
             protected:
                 void        process_request( char const c );
                 bool        response_available() const;

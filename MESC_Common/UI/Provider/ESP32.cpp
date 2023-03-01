@@ -31,8 +31,15 @@
 
 #include <WiFi.h>
 
+#include <map>
+
 static WiFiServer * g_esp32_wifi_server = NULL;
 static IPAddress    g_esp32_ip;
+
+static std::map< std::string, std::string > const url_content
+{
+    { "/", "<!-- -->" },
+};
 
 // MESC::UI::WiFi::AccessPoint
 bool MESC_ESP32::startAP()
@@ -100,8 +107,8 @@ void MESC_ESP32::runHTTP()
             {
                 std::string s = "HTTP RESP>";
                 s.append( get_response_line() );
-                Serial.println( s.c_str());
-                client.println( s.c_str() );
+                Serial.print( s.c_str());
+                client.print( s.c_str() );
             }
         }
     }
@@ -109,4 +116,18 @@ void MESC_ESP32::runHTTP()
     Serial.println( "INFO: Finished HTTP client session" );
     
     client.stop();
+}
+
+std::pair< bool, std::string > MESC_ESP32::lookup( std::string const url ) const
+{
+    std::map< std::string, std::string >::const_iterator it = url_content.find( url );
+
+    if (it == url_content.cend())
+    {
+        return std::make_pair<>( false, std::string() );
+    }
+    else
+    {
+        return std::make_pair<>( true, it->second );
+    }
 }

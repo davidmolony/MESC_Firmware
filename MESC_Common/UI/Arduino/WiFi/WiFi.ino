@@ -66,6 +66,7 @@ void setup()
     }
 
     Serial.println("INFO: Started HTTP Server");
+    Serial.println(wp->getPort());
 
     Serial.println("INFO: Finished MESC WiFi Initialisation");
 }

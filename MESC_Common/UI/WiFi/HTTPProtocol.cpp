@@ -50,6 +50,11 @@ namespace HTTP
         m_content_type = ct;
     }
 
+    void ResponseHeader::setContentLength( size_t const l )
+    {
+        m_content_length = l;
+    }
+
     void ResponseHeader::generate_response( std::deque< std::string > & buf )
     {
         std::string line;
@@ -58,8 +63,21 @@ namespace HTTP
         line.append( to_string( m_status ) );
         buf.push_back( line );
 
+        line.assign( "Server: MESCUI ");
+        buf.push_back( line );
+
+        if (m_content_length > 0)
+        {
+            line.assign( "Content-Length: ");
+            line.append( std::to_string( m_content_length ) );
+            buf.push_back( line );
+        }
+
         line.assign( "Content-Type: ");
         line.append( to_string( m_content_type ) );
+        buf.push_back( line );
+
+        line.assign( "Connection: close");
         buf.push_back( line );
 
         // End of Header
@@ -78,6 +96,7 @@ std::string to_string( HTTP::Status const s )
     {
         { HTTP::Status::OK                   , "OK"                    },
         { HTTP::Status::NO_CONTENT           , "No Content"            },
+        { HTTP::Status::NOT_FOUND            , "Not Found"             },
         { HTTP::Status::INTERNAL_SERVER_ERROR, "Internal Server Error" },
     };
     
@@ -105,5 +124,5 @@ std::string to_string( HTTP::ContentType const ct )// TODO charset
         return std::string( "500 Internal Server Error" );
     }
 
-    return std::to_string( UNBOX( it->first ) ) + " " + it->second; // TODO charset
+    return it->second; // TODO charset
 }

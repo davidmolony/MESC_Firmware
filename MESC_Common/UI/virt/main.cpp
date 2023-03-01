@@ -27,58 +27,67 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MESC_UI_WIFI_HTTPPROTOCOL_HPP
-#define MESC_UI_WIFI_HTTPPROTOCOL_HPP
-
-#include <deque>
+#include <iostream>
 #include <string>
 
-namespace HTTP
+#include <cstdlib>
+#include <cstring>
+
+#include "serial.hpp"
+
+#include "../Provider/ESP32.hpp"
+
+class Virt : public MESC::UI::WiFi::HTTPServer
 {
-    enum class Status
+public:
+    virtual bool     startHTTP() override
     {
-        OK         = 200,
-        NO_CONTENT = 204,
-
-        NOT_FOUND  = 404,
-
-        INTERNAL_SERVER_ERROR = 500,
+        return true;
     };
 
-    enum class ContentType
+    virtual void     runHTTP() override
     {
-        APPLICATION_JSON, // application/json
+        static char const req[]
+        {
+            "GET / HTTP/1.1\r\n"
+            "Host: 192.168.4.1\r\n"
+            "Accept: test/html\r\n"
+            "\r\n"
+        };
 
-        APPLICATION_OCTETSTREAM, // application/octet-stream
+        for ( size_t n { strlen(req) }, i {}; i < n; ++i )
+        {
+            char const c { req[i] };
+            std::cout << c;
+            process_request( c );
 
-        IMAGE_PNG,
-        IMAGE_SVGXML, // image/svg+xml
+            while (response_available())
+            {
+                std::string s = "HTTP RESP>";
+                s.append( get_response_line() );
+                std::cout << s;
+            }
+        }
+    }
 
-        TEXT_CSS,
-        TEXT_CSV,
-        TEXT_HTML,
-        TEXT_JAVASCRIPT,
+    virtual std::pair< bool, std::string > lookup( std::string const url ) const
+    {
+        if (url == "/")
+        {
+            return std::make_pair<>( true, std::string("Hello world!") );
+        }
         
-        TEXT_PLAIN,
-        TEXT_XML,
-    };
+        return std::make_pair<>( false, std::string() );
+    }
+};
 
-    class ResponseHeader
-    {
-    private:
-        Status      m_status;
-        ContentType m_content_type;
-        uint32_t    m_content_length;
-    public:
-        ResponseHeader();
-        void setStatus( Status const s );
-        void setContentType( ContentType const ct );
-        void setContentLength( size_t const l );
-        void generate_response( std::deque< std::string > & buf );
-    };
+int main( int argc, char ** argv )
+{
+    Virt http_server {};
+
+    http_server.runHTTP();
+
+    return EXIT_SUCCESS;
+(void)argc;
+(void)argv;
 }
-
-std::string to_string( HTTP::Status const s );
-std::string to_string( HTTP::ContentType const ct );
-
-#endif
