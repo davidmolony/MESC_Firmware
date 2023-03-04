@@ -545,6 +545,9 @@ typedef struct {
 	float ADC1_req;
 	float ADC2_req;
 
+	uint16_t nKillswitch;
+	uint16_t invert_killswitch;
+
 	uint32_t input_options; //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
 	MESCiq_s max_request_Idq;

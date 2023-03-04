@@ -274,12 +274,9 @@ void InputInit(){
 	input_vars.RCPWM_req = 0.0f;
 	input_vars.ADC1_req = 0.0f;
 	input_vars.ADC2_req = 0.0f;
-
-	//Set up the input capture for throttle
-	//	HAL_TIM_IC_Start(_motor->stimer? RCTimer?, TIM_CHANNEL_1);//Need to plumb in the RCPWM again
-	//	HAL_TIM_IC_Start(_motor->stimer, TIM_CHANNEL_2);//Need to plumb in the RCPWM again
-
 }
+
+
 void initialiseInverter(MESC_motor_typedef *_motor){
 static int Iuoff, Ivoff, Iwoff;
       Iuoff += _motor->Raw.Iu;
@@ -1943,6 +1940,12 @@ float  Square(float x){ return((x)*(x));}
 			  __NOP();
 			  break;
 	  }
+	  /////////////////Handle the killswitch
+	  if(input_vars.nKillswitch == 0){
+		  _motor->FOC.Idq_prereq.q = 0.0f;
+		  _motor->FOC.Idq_prereq.d = 0.0f;
+
+	  }
 		///////////////////////Run the state machine//////////////////////////////////
 	switch(_motor->MotorState){
 		case MOTOR_STATE_TRACKING:
@@ -2763,6 +2766,18 @@ void collectInputs(MESC_motor_typedef *_motor){
 		  else{
 			  input_vars.ADC1_req = 0.0f;
 		  }
+	  }
+	  if(input_vars.input_options & 0b10000){//Killswitch
+		if(KILLSWITCH_GPIO->IDR & (0x01<<KILLSWITCH_IONO)){
+			input_vars.nKillswitch = 1;
+		}else{
+			input_vars.nKillswitch = 0;
+		}
+		if(input_vars.invert_killswitch){
+			input_vars.nKillswitch = !input_vars.nKillswitch;
+		}
+	  }else{//If we are not using the killswitch, then it should be "on"
+			input_vars.nKillswitch = 1;
 	  }
 }
 

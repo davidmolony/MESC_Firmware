@@ -91,4 +91,8 @@
 #define IC_TIMER_RCPWM
 //#define IC_TIMER_ENCODER
 
+#define KILLSWITCH_GPIO GPIOB
+#define KILLSWITCH_PIN GPIO_PIN_3
+#define KILLSWITCH_IONO 3
+
 #endif /* INC_MP2_V0_1_H_ */

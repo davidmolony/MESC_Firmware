@@ -90,4 +90,8 @@
 #define IC_TIMER_RCPWM
 //#define IC_TIMER_ENCODER
 
+#define KILLSWITCH_GPIO GPIOD
+#define KILLSWITCH_PIN GPIO_PIN_2
+#define KILLSWITCH_IONO 2
+
 #endif /* INC_MX_FOC_IMS_H_ */
