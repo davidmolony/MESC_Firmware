@@ -14,8 +14,8 @@
 
 #define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 120.0f
-#define ABS_MAX_BUS_VOLTAGE 45.0f
+#define ABS_MAX_PHASE_CURRENT 400.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.
+#define ABS_MAX_BUS_VOLTAGE 90.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
 #define R_SHUNT 0.00033f
 #define OPGAIN 10.5f
@@ -33,8 +33,10 @@
 #define DEADTIME_COMP_V 10
 //#define MAX_MODULATION 1.05f //Use this with 5 sector modulation if you want extra speed
 //Inputs
-#define GET_THROTTLE_INPUT _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR3;  // Throttle for MP2 with F405 pill
-#define GET_FETU_T _motor->Raw.MOSu_T = ADC2_buffer[3] //Temperature on PB1
+#define GET_THROTTLE_INPUT 	_motor->Raw.ADC_in_ext1 = 0.99f*_motor->Raw.ADC_in_ext1 + 0.01f*hadc1.Instance->JDR3;  // Throttle for MP2 with F405 pill
+//#define GET_THROTTLE_INPUT2 	_motor->Raw.ADC_in_ext2 = 0.99f*_motor->Raw.ADC_in_ext2 + 0.01f*hadc1.Instance->JDR3;  // Throttle for MP2 with F405 pill
+
+#define GET_FETU_T 			_motor->Raw.MOSu_T = 	0.99f * _motor->Raw.MOSu_T + 0.01f*ADC2_buffer[3] //Temperature on PB1
 #define GET_MOTOR_T _motor->Raw.Motor_T = ADC1_buffer[4]
 //#define USE_FIELD_WEAKENING
 #define USE_FIELD_WEAKENINGV2
@@ -78,5 +80,15 @@
 
 
 #define LOGGING
+
+//GPIO for IC timer //These actually have to be timer compatible pins and
+//you must have done something (anything) with the timer in CUBEMX to make it generate the config files
+#define IC_TIM_GPIO GPIOB
+#define IC_TIM_PIN GPIO_PIN_6
+#define IC_TIM_IONO 6
+//#define IC_TIMER htim4 //This must be TIM2-TIM5. Untested with other timers
+//Assign a use for the input capture timer
+#define IC_TIMER_RCPWM
+//#define IC_TIMER_ENCODER
 
 #endif /* INC_MP2_V0_1_H_ */

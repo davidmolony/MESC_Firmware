@@ -166,7 +166,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   //MX_I2C2_Init();
 
+#ifdef IC_TIMER
   MESC_IC_Init(IC_TIMER);
+#endif
 
 #ifdef USE_ENCODER
   HAL_SPI_Init(&hspi3);

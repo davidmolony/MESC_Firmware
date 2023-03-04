@@ -134,29 +134,33 @@
 #define HALL_IIR 0.05f
 #endif
 
-#define HALL_IIRN (1.0-HALL_IIR)
+#define HALL_IIRN (1.0f-HALL_IIR)
 
 //Position and speed estimator defaults
 #ifndef PLL_KP
-#define PLL_KP 0.5
+#define PLL_KP 0.5f
 #endif
 #ifndef PLL_KI
-#define PLL_KI 0.02
+#define PLL_KI 0.02f
 #endif
 
 #ifndef POS_KP
-#define POS_KP 0.0002
+#define POS_KP 0.0002f
 #endif
 #ifndef POS_KI
-#define POS_KI 0.1
+#define POS_KI 0.1f
 #endif
 #ifndef POS_KD
-#define POS_KD 0.002
+#define POS_KD 0.002f
 #endif
 
 
 #ifndef DEFAULT_CONTROL_MODE
 #define DEFAULT_CONTROL_MODE MOTOR_CONTROL_MODE_TORQUE
+#endif
+
+#ifndef ABS_MIN_BUS_VOLTAGE
+#define ABS_MIN_BUS_VOLTAGE 12.0f //We do not run below the typical gate driver safe working voltage.
 #endif
 
 typedef struct {

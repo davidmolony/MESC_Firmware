@@ -195,7 +195,10 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	// triggering the ADC, which in turn triggers the ISR routine and wrecks the
 	// startup
 	mesc_init_3(_motor);
-
+while(_motor->MotorState == MOTOR_STATE_INITIALISING){
+	//At this point, the ADCs have started and we want nothing to happen until initialisation complete
+	generateBreakAll();
+}
 	calculateGains(_motor);
 	calculateVoltageGain(_motor);
 
@@ -629,6 +632,8 @@ uint16_t phasebalance;
   	  handleError(_motor,ERROR_OVERCURRENT_PHC);}
     if (_motor->Conv.Vbus > g_hw_setup.Vmax){
   	  handleError(_motor, ERROR_OVERVOLTAGE);}
+    if (_motor->Conv.Vbus < g_hw_setup.Vmin){
+  	  handleError(_motor, ERROR_UNDERVOLTAGE);}
 
 //Deal with terrible hardware choice of only having two current sensors
 //Based on Iu+Iv+Iw = 0
@@ -1753,6 +1758,7 @@ __NOP();
 	  }
 	_motor->m.L_QD = _motor->m.L_Q-_motor->m.L_D;
 	_motor->FOC.d_polarity = 1;
+
   }
 
   void calculateVoltageGain(MESC_motor_typedef *_motor) {
@@ -1804,6 +1810,24 @@ __NOP();
 		}
 		break;
     }
+    //////Set the fault limits
+	//Set the overcurrent limit according to the requested current.
+	//This is important since using the board ABS_MAX may mean the motor DC resistance is high enough that a fault never trips it.
+	g_hw_setup.Imax = input_vars.max_request_Idq.q * 1.5f;
+	if((g_hw_setup.Imax * 0.5f)<(0.1f * ABS_MAX_PHASE_CURRENT)){
+		g_hw_setup.Imax = input_vars.max_request_Idq.q + 0.1f*ABS_MAX_PHASE_CURRENT;
+	}
+	if(g_hw_setup.Imax>ABS_MAX_PHASE_CURRENT){//Clamp the current limit to the board max
+		g_hw_setup.Imax = ABS_MAX_PHASE_CURRENT;
+	}
+	//Set the over voltage limit dynamically, so that rapid spikes above the bus voltage are trapped.
+	//This should be more convenient for working with PSUs and batteries interchangeably
+	if(fabsf(_motor->FOC.Idq_req.q)<1.0f){
+	g_hw_setup.Vmax = 	0.995f * g_hw_setup.Vmax + 0.005f * (_motor->Conv.Vbus + 0.15f * ABS_MAX_BUS_VOLTAGE);
+	}
+	if(g_hw_setup.Vmax>ABS_MAX_BUS_VOLTAGE)	{
+		g_hw_setup.Vmax=ABS_MAX_BUS_VOLTAGE;
+	}
   }
 
 
