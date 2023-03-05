@@ -172,6 +172,9 @@
 #define ADC2OOR 4095
 #endif
 
+#ifndef SAFE_START_DEFAULT
+#define SAFE_START_DEFAULT 100
+#endif
 
 
 typedef struct {
@@ -476,6 +479,7 @@ typedef struct{
 	MESCmeas_s meas;
 	MESChall_s hall;
 	bool conf_is_valid;
+	int32_t safe_start[2];
 }MESC_motor_typedef;
 
 extern MESC_motor_typedef mtr[NUM_MOTORS];
@@ -675,6 +679,8 @@ void RunHFI(MESC_motor_typedef *_motor);
 void ToggleHFI(MESC_motor_typedef *_motor);
 void collectInputs(MESC_motor_typedef *_motor);
 void RunMTPA(MESC_motor_typedef *_motor);
+void safeStart(MESC_motor_typedef *_motor);
+
 void RunSpeedControl(MESC_motor_typedef *_motor);
 
 void MESC_IC_Init(

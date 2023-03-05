@@ -188,7 +188,7 @@ int main(void)
   /*
   Finished System Initialisation
   */
-HAL_Delay(3000);
+HAL_Delay(1);
   //Set motor timer
   mtr[0].mtimer = &htim1;
   mtr[0].stimer = &htim2;

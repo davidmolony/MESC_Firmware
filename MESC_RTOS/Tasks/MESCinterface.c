@@ -174,7 +174,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		ttprintf("Measuring resistance \r\nWaiting for result");
 		int a=200;
 		float Itop, Ibot, Vtop, Vbot;
-		input_vars.UART_req = 5.0f;
+		input_vars.UART_req = 0.45f*motor_curr->m.Imax;
 
 		while(a){
 			xSemaphoreGive(port->term_block);
@@ -184,9 +184,10 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 			Ibot = Ibot+motor_curr->FOC.Idq.q;
 			Vbot = Vbot+motor_curr->FOC.Vdq.q;
 			a--;
+			motor_curr->FOC.FOCAngle +=300;
 		}
 		a=200;
-		input_vars.UART_req = 10.0f;
+		input_vars.UART_req = 0.55f*motor_curr->m.Imax;
 		while(a){
 			xSemaphoreGive(port->term_block);
 			vTaskDelay(5);
@@ -195,6 +196,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 			Itop = Itop+motor_curr->FOC.Idq.q;
 			Vtop = Vtop+motor_curr->FOC.Vdq.q;
 			a--;
+			motor_curr->FOC.FOCAngle +=300;
 		}
 
 		motor_curr->m.R = (Vtop-Vbot)/((Itop-Ibot)); //Calculate the resistance
@@ -268,7 +270,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		for(b=0;b<3; b++){
 			Loffset[b] = 0.0f;
 			a=200;
-			input_vars.UART_dreq = -10.0f * (float)b;
+			input_vars.UART_dreq = -motor_curr->m.Imax * 0.25f * (float)b;
 			while(a){
 				Loffset[b] = Loffset[b] + motor_curr->FOC.didq.d;
 				xSemaphoreGive(port->term_block);
@@ -462,9 +464,10 @@ void populate_vars(){
 	TERM_addVar(input_vars.min_request_Idq.q		, -300.0f	, 0.0f		, "curr_min"	, "Min motor current"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.pwm_frequency			, 0.0f		, 50000.0f	, "pwm_freq"	, "PWM frequency"						, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(input_vars.UART_req					, -1000.0f	, 1000.0f	, "UART_req"	, "Uart input"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].FOC.FW_curr_max				, 0.0f		, 200.0f	, "FW_curr"		, "Field Weakening Current"				, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.FW_curr_max				, 0.0f		, 200.0f	, "FW_curr"		, "Field Weakening Current"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.input_options			, 0			, 16		, "input_opt"	, "Inputs [1=ADC1 2=ADC2 4=PPM 8=UART]"	, VAR_ACCESS_RW	, callback	, &TERM_varList);
-	TERM_addVar(input_vars.input_options			, 0			, 16		, "input_opt"	, "Inputs [1=ADC1 2=ADC2 4=PPM 8=UART]"	, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].safe_start[0]				, 0			, 1000		, "safe_start"	, "Countdown before allowing throttle"	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].safe_start[1]				, 0			, 1000		, "safe_count"	, "Live count before allowing throttle"	, VAR_ACCESS_R	, NULL		, &TERM_varList);
 
 
 	TermVariableDescriptor * desc;

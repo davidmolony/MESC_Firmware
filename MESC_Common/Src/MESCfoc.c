@@ -105,6 +105,8 @@ void MESCInit(MESC_motor_typedef *_motor) {
 #ifdef KILLSWITCH_GPIO
 	KILLSWITCH_GPIO->MODER &= ~(0b11<<(2*KILLSWITCH_IONO));
 #endif
+
+
 #ifdef INV_ENABLE_M1
 	INV_ENABLE_M1->MODER |= 0x1<<(INV_ENABLE_M1_IONO*2);
 	INV_ENABLE_M1->MODER &= ~(0x2<<(INV_ENABLE_M1_IONO*2));
@@ -113,6 +115,8 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	INV_ENABLE_M2->MODER |= 0x1<<(INV_ENABLE_M2_IONO*2);
 	INV_ENABLE_M2->MODER &= ~(0x2<<(INV_ENABLE_M2_IONO*2));
 #endif
+	_motor->safe_start[0] = SAFE_START_DEFAULT;
+
 
 	_motor->MotorState = MOTOR_STATE_IDLE;
 
@@ -1622,20 +1626,20 @@ __NOP();
         }
         MESCFOC(_motor);
     }
-    else if (cycles < 61000) {
-    	generateBreak(_motor);
-    	ADCPhaseConversion(_motor);
-    	MESCTrack(_motor);
-    }
-    else if (cycles < 70001) {
-    	generateEnable(_motor);
-        _motor->FOC.Idq_int_err.d = 0.0f;
-        MESCFOC(_motor);
-
-      count++;
-      _motor->FOC.Idq_req.d = 0.0f;
-      _motor->FOC.Idq_req.q = IMEASURE_CLOSEDLOOP;
-    }
+//    else if (cycles < 61000) {
+//    	generateBreak(_motor);
+//    	ADCPhaseConversion(_motor);
+//    	MESCTrack(_motor);
+//    }
+//    else if (cycles < 70001) {
+//    	generateEnable(_motor);
+//        _motor->FOC.Idq_int_err.d = 0.0f;
+//        MESCFOC(_motor);
+//
+//      count++;
+//      _motor->FOC.Idq_req.d = 0.0f;
+//      _motor->FOC.Idq_req.q = IMEASURE_CLOSEDLOOP;
+//    }
     else if (cycles < 128000) {
       count++;
       _motor->FOC.Idq_req.d = 0.0f;
@@ -1946,13 +1950,13 @@ float  Square(float x){ return((x)*(x));}
 			  __NOP();
 			  break;
 	  }
+	  /////////////////Handle the safe startup
+	  safeStart(_motor);
 	  /////////////////Handle the killswitch
-#ifdef KILLSWITCH_GPIO
-	  if(input_vars.nKillswitch == 0){
+	  if((input_vars.nKillswitch == 0) ||(!(_motor->safe_start[1] == _motor->safe_start[0]))){
 		  _motor->FOC.Idq_prereq.q = 0.0f;
 		  _motor->FOC.Idq_prereq.d = 0.0f;
 	  }
-#endif
 		///////////////////////Run the state machine//////////////////////////////////
 	switch(_motor->MotorState){
 		case MOTOR_STATE_TRACKING:
@@ -2801,6 +2805,8 @@ void collectInputs(MESC_motor_typedef *_motor){
 	  }else{//If we are not using the killswitch, then it should be "on"
 			input_vars.nKillswitch = 1;
 	  }
+#else
+	  input_vars.nKillswitch = 1;
 #endif
 }
 
@@ -2953,6 +2959,19 @@ void ThrottleTemperature(MESC_motor_typedef *_motor){
 	if(_motor->FOC.Idq_prereq.q>(_motor->FOC.T_rollback * input_vars.max_request_Idq.q)){_motor->FOC.Idq_prereq.q = _motor->FOC.T_rollback * input_vars.max_request_Idq.q;}
 	if(_motor->FOC.Idq_prereq.q<(_motor->FOC.T_rollback * input_vars.min_request_Idq.q)){_motor->FOC.Idq_prereq.q = _motor->FOC.T_rollback * input_vars.min_request_Idq.q;}
 }
+
+void safeStart(MESC_motor_typedef *_motor){
+	if((_motor->FOC.Idq_req.q == 0.0f)&&(_motor->FOC.Idq_prereq.q == 0.0f)){
+		_motor->safe_start[1]++;
+	}else if(_motor->safe_start[1]<_motor->safe_start[0] && _motor->safe_start[1]>1){
+		_motor->safe_start[1]--;
+	}
+	if(_motor->safe_start[1] >_motor->safe_start[0]){
+		_motor->safe_start[1] = _motor->safe_start[0];
+	}
+}
+
+
 
 //Speed controller
 void RunSpeedControl(MESC_motor_typedef *_motor){
