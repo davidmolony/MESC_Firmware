@@ -77,6 +77,7 @@ struct MESC_log_vars
 #define ERROR_HALL0 24
 #define ERROR_HALL7 25
 #define ERROR_MATH 26
+#define ERROR_INPUT_OOR 27
 
 
 void handleError(MESC_motor_typedef *_motor, uint32_t error_code);

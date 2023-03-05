@@ -101,6 +101,10 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	SLOWLED->MODER |= 0x1<<(SLOWLEDIONO*2);
 	SLOWLED->MODER &= ~(0x2<<(SLOWLEDIONO*2));
 #endif
+
+#ifdef KILLSWITCH_GPIO
+	KILLSWITCH_GPIO->MODER &= ~(0b11<<(2*KILLSWITCH_IONO));
+#endif
 #ifdef INV_ENABLE_M1
 	INV_ENABLE_M1->MODER |= 0x1<<(INV_ENABLE_M1_IONO*2);
 	INV_ENABLE_M1->MODER &= ~(0x2<<(INV_ENABLE_M1_IONO*2));
@@ -248,11 +252,13 @@ void InputInit(){
 	if(!input_vars.adc1_MAX){
 	input_vars.adc1_MAX = ADC1MAX;
 	input_vars.adc1_MIN = ADC1MIN;
+	input_vars.adc1_OOR = ADC1OOR;
 	input_vars.ADC1_polarity = ADC1_POLARITY;
 	}
 	if(!input_vars.adc2_MAX){
 	input_vars.adc2_MAX = ADC2MAX;
 	input_vars.adc2_MIN = ADC2MIN;
+	input_vars.adc2_OOR = ADC2OOR;
 	input_vars.ADC2_polarity = ADC2_POLARITY;
 	}
 
@@ -2723,11 +2729,17 @@ void collectInputs(MESC_motor_typedef *_motor){
 			  if((input_vars.IC_duration > input_vars.IC_duration_MIN) && (input_vars.IC_duration < input_vars.IC_duration_MAX)){
 				  if(input_vars.IC_pulse>(input_vars.IC_pulse_MID + input_vars.IC_pulse_DEADZONE)){
 					  input_vars.RCPWM_req = (float)(input_vars.IC_pulse - (input_vars.IC_pulse_MID + input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
+					  if(fabsf(input_vars.RCPWM_req>1.1f)){
+						  handleError(_motor, ERROR_INPUT_OOR);
+					  }
 					  if(input_vars.RCPWM_req>1.0f){input_vars.RCPWM_req=1.0f;}
 					  if(input_vars.RCPWM_req<-1.0f){input_vars.RCPWM_req=-1.0f;}
 				  }
 				  else if(input_vars.IC_pulse<(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE)){
 					  input_vars.RCPWM_req = ((float)input_vars.IC_pulse - (float)(input_vars.IC_pulse_MID - input_vars.IC_pulse_DEADZONE))*input_vars.RCPWM_gain[0][1];
+					  if(fabsf(input_vars.RCPWM_req>1.1f)){
+						  handleError(_motor, ERROR_INPUT_OOR);
+					  }
 					  if(input_vars.RCPWM_req>1.0f){input_vars.RCPWM_req=1.0f;}
 					  if(input_vars.RCPWM_req<-1.0f){input_vars.RCPWM_req=-1.0f;}
 				  }
@@ -2749,6 +2761,10 @@ void collectInputs(MESC_motor_typedef *_motor){
 		  //ADC2 input
 		  if(_motor->Raw.ADC_in_ext2>input_vars.adc2_MIN){
 			  input_vars.ADC2_req = ((float)_motor->Raw.ADC_in_ext2-(float)input_vars.adc2_MIN)*input_vars.adc1_gain[1]*input_vars.ADC2_polarity;
+			  if(_motor->Raw.ADC_in_ext2>input_vars.adc2_OOR){
+				  //input_vars.ADC2_req = 0.0f;
+				  handleError(_motor, ERROR_INPUT_OOR);
+			  }
 			  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
 			  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
 		  }
@@ -2760,6 +2776,10 @@ void collectInputs(MESC_motor_typedef *_motor){
 	  if(input_vars.input_options & 0b0001){
 		  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
 			  input_vars.ADC1_req = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
+			  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_OOR){
+				  //input_vars.ADC1_req = 0.0f;
+				  handleError(_motor, ERROR_INPUT_OOR);
+			  }
 			  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
 			  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
 		  }

@@ -36,7 +36,7 @@
 #define USE_FIELD_WEAKENINGV2
 #define USE_HIGHHOPES_PHASE_BALANCING
 
-#define GET_THROTTLE_INPUT  _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR4;  // Throttle for IMS board
+#define GET_THROTTLE_INPUT  _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR3;  // Throttle for IMS board
 #define GET_FETU_T _motor->Raw.MOSu_T = ADC1_buffer[0] //Temperature on PA3
 #define GET_FETV_T _motor->Raw.MOSv_T = ADC2_buffer[2] //Temperature on PB0
 #define GET_FETW_T _motor->Raw.MOSw_T = ADC2_buffer[3] //Temperature on PB1

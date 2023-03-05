@@ -27,6 +27,8 @@
 #define MAX_IQ_REQUEST 10.0f
 #define MIN_IQ_REQUEST -10
 #define DEFAULT_CONTROL_MODE MOTOR_CONTROL_MODE_TORQUE
+#define ADC1OOR 4094
+
 
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
 #define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.

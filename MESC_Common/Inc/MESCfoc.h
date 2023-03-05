@@ -163,6 +163,17 @@
 #define ABS_MIN_BUS_VOLTAGE 12.0f //We do not run below the typical gate driver safe working voltage.
 #endif
 
+
+#ifndef ADC1OOR
+#define ADC1OOR 4095
+#endif
+
+#ifndef ADC2OOR
+#define ADC2OOR 4095
+#endif
+
+
+
 typedef struct {
 	int Iu;
 	int Iv;
@@ -530,10 +541,13 @@ typedef struct {
 /////////////////ADC///////////////
 	uint32_t adc1_MIN; //Value below which response is zero
 	uint32_t adc1_MAX; //Max throttle calculated at this point
+	uint32_t adc1_OOR;
 	float adc1_gain[2];
 
 	uint32_t adc2_MIN;
 	uint32_t adc2_MAX;
+	uint32_t adc2_OOR;
+
 	float adc2_gain[2];
 
 	float ADC1_polarity;
