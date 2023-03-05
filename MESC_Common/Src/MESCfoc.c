@@ -1947,11 +1947,12 @@ float  Square(float x){ return((x)*(x));}
 			  break;
 	  }
 	  /////////////////Handle the killswitch
+#ifdef KILLSWITCH_GPIO
 	  if(input_vars.nKillswitch == 0){
 		  _motor->FOC.Idq_prereq.q = 0.0f;
 		  _motor->FOC.Idq_prereq.d = 0.0f;
-
 	  }
+#endif
 		///////////////////////Run the state machine//////////////////////////////////
 	switch(_motor->MotorState){
 		case MOTOR_STATE_TRACKING:
@@ -2787,6 +2788,7 @@ void collectInputs(MESC_motor_typedef *_motor){
 			  input_vars.ADC1_req = 0.0f;
 		  }
 	  }
+#ifdef KILLSWITCH_GPIO
 	  if(input_vars.input_options & 0b10000){//Killswitch
 		if(KILLSWITCH_GPIO->IDR & (0x01<<KILLSWITCH_IONO)){
 			input_vars.nKillswitch = 1;
@@ -2799,6 +2801,7 @@ void collectInputs(MESC_motor_typedef *_motor){
 	  }else{//If we are not using the killswitch, then it should be "on"
 			input_vars.nKillswitch = 1;
 	  }
+#endif
 }
 
 void RunMTPA(MESC_motor_typedef *_motor){
