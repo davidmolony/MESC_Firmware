@@ -500,13 +500,14 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 	InputInit();
 
 	motor_profile->L_QD = motor_profile->L_Q-motor_profile->L_D;
+	motor_profile->flux_linkage = mtr[0].m.flux_linkage;
 	motor_profile->flux_linkage_max = 1.3f*motor_profile->flux_linkage;
 	motor_profile->flux_linkage_min = 0.7f*motor_profile->flux_linkage;
 	motor_profile->flux_linkage_gain = 10.0f * sqrtf(motor_profile->flux_linkage);
 
-	mtr[0].m.flux_linkage_max = motor_profile->flux_linkage_max;
-	mtr[0].m.flux_linkage_min = motor_profile->flux_linkage_min;
-	mtr[0].m.flux_linkage_gain = motor_profile->flux_linkage_gain;
+//	mtr[0].m.flux_linkage_max = motor_profile->flux_linkage_max;
+//	mtr[0].m.flux_linkage_min = motor_profile->flux_linkage_min;
+//	mtr[0].m.flux_linkage_gain = motor_profile->flux_linkage_gain;
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
