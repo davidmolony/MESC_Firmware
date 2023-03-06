@@ -27,6 +27,28 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# TODO for each www/*.{html|css|js}
-#     embed file
-#     add entry to global manifest
+WWWDIR="$(builtin cd "$(dirname "${BASH_SOURCE[@]}")" && pwd -P)/www"
+
+echo "INFO: WWWDIR is '${WWWDIR}'"
+
+URLOUT="${WWWDIR}/url.cpp"
+WWWOUT="${WWWDIR}/www.cpp"
+
+> "${URLOUT}"
+> "${WWWOUT}"
+
+pushd "${WWWDIR}" || return 1
+
+while read -r wwwfil
+do
+    srcfil="${wwwfil:2}"
+    echo "INFO: Processing '${srcfil}'"
+    cppfil="${srcfil}.cpp"
+    xxd -include "${srcfil}" | sed 's:^unsigned char :static char const :g; s:^unsigned int .*$::g' > "${cppfil}"
+    printf '#include "%s"\n' "${cppfil}" >> "${WWWOUT}"
+    lblnam=$(echo "${srcfil}" | tr '.' '_')
+    printf '    { "/%s", MESC::UI::WiFi::HTTPServer::URLEntry{ {"%s"}, %s, sizeof(%s) } },' "${srcfil}" "${srcfil}" "${lblnam}" "${lblnam}" >> "${URLOUT}"
+done < <(find . -type f -name '*.css' -o -name '*.html' -o -name '*.js')
+
+popd
+

@@ -44,9 +44,10 @@ namespace MESC
                 return UINT16_C(8080);
             }
 
-            std::pair< bool, std::string > HTTPServer::lookup( std::string const url ) const
+            std::pair< bool, HTTPServer::URLEntry > HTTPServer::lookup( std::string const url ) const
             {
-                return std::make_pair<>( false, std::string() );
+                URLEntry e;
+                return std::make_pair<>( false, e );
             (void)url;
             }
 
@@ -76,14 +77,14 @@ namespace MESC
                             size_t const end = s.find( ' ', 4 );
                             std::string const url = s.substr(4,end-4);
                             Serial.println( ("INFO: URL '" + url + "'").c_str() );
-                            std::pair< bool, std::string > const pay = lookup( url );
+                            std::pair< bool, URLEntry > const pay = lookup( url );
                             if (pay.first == false)
                             {
                                 header.setStatus( HTTP::Status::NOT_FOUND );
                             }
                             else
                             {
-                                size_t const len = pay.second.length();
+                                size_t const len = pay.second.size;
                                 if (len == 0)
                                 {
                                     header.setStatus( HTTP::Status::NO_CONTENT );
@@ -91,7 +92,7 @@ namespace MESC
                                 else
                                 {
                                     header.setContentLength( len );
-                                    resp_pay.push_back( pay.second );
+                                    resp_pay.push_back( pay.second.data );
                                 }
                             }
                         }/*

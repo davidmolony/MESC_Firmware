@@ -70,14 +70,20 @@ public:
         }
     }
 
-    virtual std::pair< bool, std::string > lookup( std::string const url ) const
+    virtual std::pair< bool, URLEntry > lookup( std::string const url ) const
     {
+        URLEntry e;
+
         if (url == "/")
         {
-            return std::make_pair<>( true, std::string("Hello world!") );
+            static char const data[] = {'H','e','l','l','o',' ','w','o','r','l','d'};
+            e.path = "index.html";
+            e.data = data;
+            e.size = sizeof(data);
+            return std::make_pair<>( true, e );
         }
         
-        return std::make_pair<>( false, std::string() );
+        return std::make_pair<>( false, e );
     }
 };
 

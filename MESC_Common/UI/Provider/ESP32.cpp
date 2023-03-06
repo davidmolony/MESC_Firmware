@@ -32,13 +32,18 @@
 #include <WiFi.h>
 
 #include <map>
-
+// STARTING_AUTO_GENERATED_WWW_DATA
+#include "../www/www.cpp"
+// FINISHED_AUTO_GENERATED_WWW_DATA
 static WiFiServer * g_esp32_wifi_server = NULL;
 static IPAddress    g_esp32_ip;
 
-static std::map< std::string, std::string > const url_content
+static std::map< std::string, MESC::UI::WiFi::HTTPServer::URLEntry > const url_content
 {
-    { "/", "<!-- -->" },
+    { "/", MESC::UI::WiFi::HTTPServer::URLEntry{ {"index.html"}, index_html, sizeof(index_html) } },
+// STARTING_AUTO_GENERATED_URL_ENTRY
+#include "../www/url.cpp"
+// FINISHED_AUTO_GENERATED_URL_ENTRY
 };
 
 // MESC::UI::WiFi::AccessPoint
@@ -118,13 +123,14 @@ void MESC_ESP32::runHTTP()
     client.stop();
 }
 
-std::pair< bool, std::string > MESC_ESP32::lookup( std::string const url ) const
+std::pair< bool, MESC::UI::WiFi::HTTPServer::URLEntry > MESC_ESP32::lookup( std::string const url ) const
 {
-    std::map< std::string, std::string >::const_iterator it = url_content.find( url );
+    std::map< std::string, MESC::UI::WiFi::HTTPServer::URLEntry >::const_iterator it = url_content.find( url );
 
     if (it == url_content.cend())
     {
-        return std::make_pair<>( false, std::string() );
+        MESC::UI::WiFi::HTTPServer::URLEntry e;
+        return std::make_pair<>( false, e );
     }
     else
     {

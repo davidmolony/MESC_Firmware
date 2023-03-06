@@ -1,0 +1,1 @@
+    { "/index.html", MESC::UI::WiFi::HTTPServer::URLEntry{ {"index.html"}, index_html, sizeof(index_html) } },
