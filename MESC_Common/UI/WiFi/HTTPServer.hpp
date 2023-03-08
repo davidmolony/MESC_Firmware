@@ -54,7 +54,7 @@ namespace MESC
                     size_t       size;
                 };
 
-                virtual std::pair< bool, URLEntry > lookup( std::string const url ) const;
+                virtual std::pair< bool, URLEntry > lookup( std::string const url, std::string const method ) const;
             protected:
                 void        process_request( char const c );
                 bool        response_available() const;

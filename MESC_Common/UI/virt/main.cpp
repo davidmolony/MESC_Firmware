@@ -70,11 +70,14 @@ public:
         }
     }
 
-    virtual std::pair< bool, URLEntry > lookup( std::string const url ) const
+    virtual std::pair< bool, URLEntry > lookup( std::string const url, std::string const method ) const
     {
         URLEntry e;
 
-        if (url == "/")
+        if  (
+                (method == "GET")
+            &&  (url == "/")
+            )
         {
             static char const data[] = {'H','e','l','l','o',' ','w','o','r','l','d'};
             e.path = "index.html";

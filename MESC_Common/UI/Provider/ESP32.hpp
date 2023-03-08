@@ -42,7 +42,7 @@ public:
 // MESC::UI::WiFi::HTTPServer
     virtual bool startHTTP() override;
     virtual void runHTTP()   override;
-    virtual std::pair< bool, MESC::UI::WiFi::HTTPServer::URLEntry > lookup( std::string const url ) const override;
+    virtual std::pair< bool, MESC::UI::WiFi::HTTPServer::URLEntry > lookup( std::string const url, std::string const method ) const override;
 };
 
 #endif

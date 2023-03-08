@@ -44,11 +44,12 @@ namespace MESC
                 return UINT16_C(8080);
             }
 
-            std::pair< bool, HTTPServer::URLEntry > HTTPServer::lookup( std::string const url ) const
+            std::pair< bool, HTTPServer::URLEntry > HTTPServer::lookup( std::string const url, std::string const method ) const
             {
                 URLEntry e;
                 return std::make_pair<>( false, e );
             (void)url;
+            (void)method;
             }
 
             void HTTPServer::process_request( char const c )
@@ -71,13 +72,23 @@ namespace MESC
                         
                         std::string s = req.front();
                         req.pop_front();
+                        std::string method;
 
                         if (s.compare(0,5,"GET /") == 0)
+                        {
+                            method = "GET";
+                        }
+                        else if (s.compare(0,6,"POST /") == 0)
+                        {
+                            method = "POST";
+                        }
+
+                        if (method.length() > 0)
                         {
                             size_t const end = s.find( ' ', 4 );
                             std::string const url = s.substr(4,end-4);
                             Serial.println( ("INFO: URL '" + url + "'").c_str() );
-                            std::pair< bool, URLEntry > const pay = lookup( url );
+                            std::pair< bool, URLEntry > const pay = lookup( url, method );
                             if (pay.first == false)
                             {
                                 header.setStatus( HTTP::Status::NOT_FOUND );

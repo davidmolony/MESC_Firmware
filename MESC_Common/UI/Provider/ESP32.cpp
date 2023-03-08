@@ -123,9 +123,51 @@ void MESC_ESP32::runHTTP()
     client.stop();
 }
 
-std::pair< bool, MESC::UI::WiFi::HTTPServer::URLEntry > MESC_ESP32::lookup( std::string const url ) const
+static std::string TERM_RESP = std::string("?");
+
+static void TERM_GET( std::string const io )
 {
-    std::map< std::string, MESC::UI::WiFi::HTTPServer::URLEntry >::const_iterator it = url_content.find( url );
+    Serial.print( "TERM_GET: " );
+    Serial.println( io.c_str() );
+}
+
+static void TERM_PUT( std::string const io )
+{
+    Serial.print( "TERM_PUT: " );
+    Serial.println( io.c_str() );
+}
+
+std::pair< bool, MESC::UI::WiFi::HTTPServer::URLEntry > MESC_ESP32::lookup( std::string const url, std::string const method ) const
+{
+// Dynamic page
+    if (url.substr(0,6) == "/TERM?")
+    {
+        std::string const opt = url.substr(6);
+
+        if (method == "GET")
+        {
+            TERM_GET( opt );
+        }
+        else if (method == "POST")
+        {
+            TERM_PUT( opt );
+        }
+
+        MESC::UI::WiFi::HTTPServer::URLEntry e;
+        
+        e.path = "TERM";
+        e.data = TERM_RESP.c_str();
+        e.size = TERM_RESP.length();
+
+        return std::make_pair<>( true, e );
+    }
+// Static page
+    std::map< std::string, MESC::UI::WiFi::HTTPServer::URLEntry >::const_iterator it = url_content.cend();
+    
+    if (method == "GET")
+    {
+        url_content.find( url );
+    }
 
     if (it == url_content.cend())
     {
