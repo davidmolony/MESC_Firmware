@@ -203,6 +203,9 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	// triggering the ADC, which in turn triggers the ISR routine and wrecks the
 	// startup
 	mesc_init_3(_motor);
+	//Set the keybits
+	_motor->key_bits = UNINITIALISED_KEY + KILLSWITCH_KEY + SAFESTART_KEY;
+
 while(_motor->MotorState == MOTOR_STATE_INITIALISING){
 	//At this point, the ADCs have started and we want nothing to happen until initialisation complete
 	generateBreakAll();
@@ -235,6 +238,13 @@ while(_motor->MotorState == MOTOR_STATE_INITIALISING){
 	  // interrupt
 
   _motor->conf_is_valid = true;
+
+  //Lock it in initialising while the offsets not completed
+	while(_motor->key_bits & UNINITIALISED_KEY){
+		_motor->MotorState = MOTOR_STATE_INITIALISING;
+		HAL_Delay(0);
+		generateBreakAll();
+	}
 }
 
 void InputInit(){
@@ -305,6 +315,7 @@ static int Iuoff, Ivoff, Iwoff;
         _motor->offset.Iu =  Iuoff/initcycles;
         _motor->offset.Iv =  Ivoff/initcycles;
         _motor->offset.Iw =  Iwoff/initcycles;
+        _motor->key_bits &= ~UNINITIALISED_KEY;
 //ToDo, do we want some safety checks here like offsets being roughly correct?
     	_motor->MotorState = MOTOR_STATE_TRACKING;
         htim1.Instance->BDTR |= TIM_BDTR_MOE;
@@ -1952,8 +1963,8 @@ float  Square(float x){ return((x)*(x));}
 	  }
 	  /////////////////Handle the safe startup
 	  safeStart(_motor);
-	  /////////////////Handle the killswitch
-	  if((input_vars.nKillswitch == 0) ||(!(_motor->safe_start[1] == _motor->safe_start[0]))){
+	  /////////////////Handle the keybits (initialised flag, killswitch and safestart)
+	  if((_motor->key_bits)){
 		  _motor->FOC.Idq_prereq.q = 0.0f;
 		  _motor->FOC.Idq_prereq.d = 0.0f;
 	  }
@@ -2796,14 +2807,18 @@ void collectInputs(MESC_motor_typedef *_motor){
 	  if(input_vars.input_options & 0b10000){//Killswitch
 		if(KILLSWITCH_GPIO->IDR & (0x01<<KILLSWITCH_IONO)){
 			input_vars.nKillswitch = 1;
+			_motor->key_bits &= ~KILLSWITCH_KEY;
 		}else{
 			input_vars.nKillswitch = 0;
+			_motor->key_bits |= KILLSWITCH_KEY;
 		}
 		if(input_vars.invert_killswitch){
 			input_vars.nKillswitch = !input_vars.nKillswitch;
+			_motor->key_bits ^= KILLSWITCH_KEY;
 		}
 	  }else{//If we are not using the killswitch, then it should be "on"
 			input_vars.nKillswitch = 1;
+			_motor->key_bits &= ~KILLSWITCH_KEY;
 	  }
 #else
 	  input_vars.nKillswitch = 1;
@@ -2963,11 +2978,12 @@ void ThrottleTemperature(MESC_motor_typedef *_motor){
 void safeStart(MESC_motor_typedef *_motor){
 	if((_motor->FOC.Idq_req.q == 0.0f)&&(_motor->FOC.Idq_prereq.q == 0.0f)){
 		_motor->safe_start[1]++;
-	}else if(_motor->safe_start[1]<_motor->safe_start[0] && _motor->safe_start[1]>1){
-		_motor->safe_start[1]--;
+	}else if(_motor->safe_start[1]<_motor->safe_start[0] ){
+		_motor->safe_start[1]=0;
 	}
-	if(_motor->safe_start[1] >_motor->safe_start[0]){
+	if(_motor->safe_start[1] >=_motor->safe_start[0]){
 		_motor->safe_start[1] = _motor->safe_start[0];
+		_motor->key_bits &= ~SAFESTART_KEY;
 	}
 }
 

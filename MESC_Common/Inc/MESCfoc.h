@@ -480,6 +480,7 @@ typedef struct{
 	MESChall_s hall;
 	bool conf_is_valid;
 	int32_t safe_start[2];
+	uint32_t key_bits; //When any of these are low, we keep the motor disabled
 }MESC_motor_typedef;
 
 extern MESC_motor_typedef mtr[NUM_MOTORS];

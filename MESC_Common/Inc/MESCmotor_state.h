@@ -153,6 +153,10 @@ typedef enum {
   MOTOR_CONTROL_TYPE_BLDC
 } motor_control_type_e;
 
+#define UNINITIALISED_KEY 1
+#define KILLSWITCH_KEY 2
+#define SAFESTART_KEY 4
+
 /* Function prototypes -----------------------------------------------*/
 
 void MESC_Init();

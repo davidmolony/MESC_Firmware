@@ -16,7 +16,7 @@
 
 #define ABS_MAX_PHASE_CURRENT 400.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.
 #define ABS_MAX_BUS_VOLTAGE 90.0f
-#define ABS_MIN_BUS_VOLTAGE 38.0f
+#define ABS_MIN_BUS_VOLTAGE 42.0f
 #define R_SHUNT 0.00033f
 #define OPGAIN 10.5f
 
@@ -79,6 +79,8 @@
 #define SLOWLED GPIOC
 #define SLOWLEDIO GPIO_PIN_9
 #define SLOWLEDIONO 9
+
+//#define SAFE_START_DEFAULT 0
 
 
 #define LOGGING
