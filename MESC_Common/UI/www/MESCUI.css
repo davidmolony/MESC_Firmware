@@ -1,0 +1,121 @@
+/*
+* Copyright 2021-2022 cod3b453
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*
+* 1. Redistributions of source code must retain the above copyright notice, this
+*    list of conditions and the following disclaimer.
+*
+* 2. Redistributions in binary form must reproduce the above copyright notice,
+*    this list of conditions and the following disclaimer in the documentation
+*    and/or other materials provided with the distribution.
+*
+* 3. Neither the name of the copyright holder nor the names of its contributors
+*    may be used to endorse or promote products derived from this software
+*    without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+body {
+    font-family : monospace;
+    cursor      : default;
+}
+
+canvas {
+    border : 1px solid #000000;
+    display: block;
+    margin : 10px;
+}
+
+input {
+    margin-right : 10px;
+    width        : 100px;
+}
+
+input[type=button] {
+    cursor : pointer;
+}
+
+input[type=number] {
+    text-align : right;
+}
+
+input[type=text] {
+    text-align : right;
+}
+
+input[type=text].command {
+    text-align : left;
+    width      : 200px;
+}
+
+input[type=text].name {
+    text-align : left;
+}
+
+label {
+    display     : inline-block;
+    font-weight : bold;
+    width       : 100px;
+}
+
+select {
+    cursor       : pointer;
+    margin-right : 10px;
+    width        : 100px;
+}
+
+select[disabled] {
+    cursor : default;
+}
+
+div.screen table {
+    border: 1px solid #808080;
+}
+
+div.screen table td {
+    background-color : #C0C0C0;
+    border-collapse  : collapse;
+    border-spacing   : 0;
+    font-weight      : bold;
+    text-align       : center;
+}
+
+div.screen table td:hover {
+    background-color : #FFFFC0;
+}
+
+textarea {
+    height     : 400px;
+    width      : 800px;
+    min-width  : 400px;
+    min-height : 200px;
+}
+
+.action {
+    cursor : pointer;
+}
+
+.action:hover {
+    background-color : #FFFFE0;
+}
+
+.entrybox {
+    border         : 1px solid #000000;
+    display        : inline-block;
+    margin-bottom  : 10px;
+    margin-right   : 10px;
+    padding        : 10px;
+    vertical-align : top;
+}

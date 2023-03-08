@@ -47,7 +47,7 @@ do
     xxd -include "${srcfil}" | sed 's:^unsigned char :static char const :g; s:^unsigned int .*$::g' > "${cppfil}"
     printf '#include "%s"\n' "${cppfil}" >> "${WWWOUT}"
     lblnam=$(echo "${srcfil}" | tr '.' '_')
-    printf '    { "/%s", MESC::UI::WiFi::HTTPServer::URLEntry{ {"%s"}, %s, sizeof(%s) } },' "${srcfil}" "${srcfil}" "${lblnam}" "${lblnam}" >> "${URLOUT}"
+    printf '    { "/%s", MESC::UI::WiFi::HTTPServer::URLEntry{ {"%s"}, %s, sizeof(%s) } },\n' "${srcfil}" "${srcfil}" "${lblnam}" "${lblnam}" >> "${URLOUT}"
 done < <(find . -type f -name '*.css' -o -name '*.html' -o -name '*.js')
 
 popd
