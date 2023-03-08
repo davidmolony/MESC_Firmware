@@ -2772,7 +2772,6 @@ void collectInputs(MESC_motor_typedef *_motor){
 		  }
 	  }
 
-	  //ADC1 input
 	  if(input_vars.input_options & 0b0010){
 		  //ADC2 input
 		  if(_motor->Raw.ADC_in_ext2>input_vars.adc2_MIN){
@@ -2789,6 +2788,7 @@ void collectInputs(MESC_motor_typedef *_motor){
 		  }
 
 	  }
+	  //ADC1 input
 	  if(input_vars.input_options & 0b0001){
 		  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
 			  input_vars.ADC1_req = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
@@ -2822,6 +2822,7 @@ void collectInputs(MESC_motor_typedef *_motor){
 	  }
 #else
 	  input_vars.nKillswitch = 1;
+	  _motor->key_bits &= ~KILLSWITCH_KEY;
 #endif
 }
 
