@@ -34,8 +34,9 @@
 namespace HTTP
 {
     ResponseHeader::ResponseHeader()
-    :   m_status      ( Status::OK             )
-    ,   m_content_type( ContentType::TEXT_HTML )
+    :   m_status        ( Status::OK             )
+    ,   m_content_type  ( ContentType::TEXT_HTML )
+    ,   m_content_length( 0                      )
     {
 
     }
@@ -66,12 +67,9 @@ namespace HTTP
         line.assign( "Server: MESCUI ");
         buf.push_back( line );
 
-        if (m_content_length > 0)
-        {
-            line.assign( "Content-Length: ");
-            line.append( std::to_string( m_content_length ) );
-            buf.push_back( line );
-        }
+        line.assign( "Content-Length: ");
+        line.append( std::to_string( m_content_length ) );
+        buf.push_back( line );
 
         line.assign( "Content-Type: ");
         line.append( to_string( m_content_type ) );

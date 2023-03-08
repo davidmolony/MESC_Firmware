@@ -66,7 +66,7 @@ namespace MESC
 
                     if (reqbuf.size() == 0)
                     {
-                        HTTP::ResponseHeader header;
+                        HTTP::ResponseHeader header = HTTP::ResponseHeader();
 
                         Serial.println( "INFO: Processing HTTP request" );
                         
@@ -113,6 +113,8 @@ namespace MESC
                         }*/
 
                         header.generate_response( resp_hdr );
+
+                        req.clear();
                     }
                     else
                     {

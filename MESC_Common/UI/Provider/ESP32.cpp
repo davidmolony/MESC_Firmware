@@ -81,6 +81,16 @@ bool MESC_ESP32::startHTTP()
     uint16_t const port = getPort();
     g_esp32_wifi_server = new WiFiServer( port );
 
+    for ( auto it : url_content )
+    {
+        Serial.print( it.first.c_str() );
+        Serial.print( " is " );
+        Serial.print( it.second.path.c_str() );
+        Serial.print( " [" );
+        Serial.print( std::to_string(it.second.size).c_str() );
+        Serial.println( "]" );
+    }
+
     if (g_esp32_wifi_server)
     {
         g_esp32_wifi_server->begin();
@@ -100,27 +110,25 @@ void MESC_ESP32::runHTTP()
     }
 
     Serial.println( "INFO: Starting HTTP client session" );
-
-    while (client.connected())
+    
+    if (client.connected())
     {
-        if (client.available())
+        while (client.available())
         {
             char const c = client.read();
             process_request( c );
-
-            while (response_available())
-            {
-                std::string s = "HTTP RESP>";
-                s.append( get_response_line() );
-                Serial.print( s.c_str());
-                client.print( s.c_str() );
-            }
         }
+        while (response_available())
+        {
+            std::string s = "HTTP RESP>";
+            s.append( get_response_line() );
+            Serial.print( s.c_str());
+            client.print( s.c_str() );
+        }
+        client.stop();
     }
 
     Serial.println( "INFO: Finished HTTP client session" );
-    
-    client.stop();
 }
 
 static std::string TERM_RESP = std::string("?");
@@ -139,6 +147,10 @@ static void TERM_PUT( std::string const io )
 
 std::pair< bool, MESC::UI::WiFi::HTTPServer::URLEntry > MESC_ESP32::lookup( std::string const url, std::string const method ) const
 {
+    Serial.print( "URL: " );
+    Serial.println( url.c_str() );
+    Serial.print( "METHOD: " );
+    Serial.println( method.c_str() );
 // Dynamic page
     if (url.substr(0,6) == "/TERM?")
     {
@@ -166,7 +178,7 @@ std::pair< bool, MESC::UI::WiFi::HTTPServer::URLEntry > MESC_ESP32::lookup( std:
     
     if (method == "GET")
     {
-        url_content.find( url );
+        it = url_content.find( url );
     }
 
     if (it == url_content.cend())
