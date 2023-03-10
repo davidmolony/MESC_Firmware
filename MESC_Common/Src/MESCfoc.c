@@ -335,10 +335,11 @@ void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor) {
 	FASTLED->BSRR = FASTLEDIO;
 #endif
 	uint32_t cycles = CPU_CYCLES;
-	if (_motor->mtimer->Instance->CNT > 512) {
+	if (_motor->mtimer->Instance->CR1&0x16) {//Polling the DIR (direction) bit on the motor counter DIR = 1 = downcounting
 		fastLoop(_motor);
 		_motor->FOC.cycles_fastloop = CPU_CYCLES - cycles;
-	} else {
+	}
+	if (!(_motor->mtimer->Instance->CR1&0x16)) {//Polling the DIR (direction) bit on the motor counter DIR = 0 = upcounting
 		hyperLoop(_motor);
 		_motor->FOC.cycles_hyperloop = CPU_CYCLES - cycles;
 	}

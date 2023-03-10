@@ -462,7 +462,7 @@ void populate_vars(){
 	TERM_addVar(input_vars.ADC2_polarity			, -1.0f		, 1.0f		, "adc2_pol"	, "ADC2 polarity"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.max_request_Idq.q		, 0.0f		, 300.0f	, "curr_max"	, "Max motor current"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(input_vars.min_request_Idq.q		, -300.0f	, 0.0f		, "curr_min"	, "Min motor current"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
-	TERM_addVar(mtr[0].FOC.pwm_frequency			, 0.0f		, 50000.0f	, "pwm_freq"	, "PWM frequency"						, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.pwm_frequency			, 0.0f		, 100000.0f	, "pwm_freq"	, "PWM frequency"						, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(input_vars.UART_req					, -1000.0f	, 1000.0f	, "UART_req"	, "Uart input"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.FW_curr_max				, 0.0f		, 200.0f	, "FW_curr"		, "Field Weakening Current"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.input_options			, 0			, 16		, "input_opt"	, "Inputs [1=ADC1 2=ADC2 4=PPM 8=UART]"	, VAR_ACCESS_RW	, callback	, &TERM_varList);
