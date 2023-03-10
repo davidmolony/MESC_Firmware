@@ -30,18 +30,19 @@
 #include <WiFi.h>
 #include <WebServer.h>
 
+#include <tuple>
+#include <vector>
+
 static WebServer * g_esp32_webserver = NULL;
 static IPAddress   g_esp32_ip;
 // STARTING_AUTO_GENERATED_WWW_DATA
 #include "www/www.cpp"
 // FINISHED_AUTO_GENERATED_WWW_DATA
 // STARTING_AUTO_GENERATED_URL_ENTRY
-static std::vector< std::pair< char const *, char const * > > g_root =
+static std::vector< std::tuple< char const *, char const *, char const * > > const g_root =
 {
-    std::make_pair<>( "/index.html" , index_html ),
-    std::make_pair<>( "/MESCUI.html", MESCUI_html),
-    std::make_pair<>( "/MESCUI.css" , MESCUI_css ),
-    std::make_pair<>( "/MESCUI.js"  , MESCUI_js  ),
+    std::make_tuple<>( "/"           , "text/html"      , index_html ),
+#include "www/url.cpp"
 };
 // FINSHED_AUTO_GENERATED_URL_ENTRY
 void setup()
@@ -54,9 +55,14 @@ void setup()
     
     g_esp32_webserver = new WebServer( 8080 );
 
-    for ( auto e : g_root )
+    for ( auto const & e : g_root )
     {
-        g_esp32_webserver->on( e.first, [e]() { g_esp32_webserver->send( 200, "text/html", e.second ); } );
+        g_esp32_webserver->on( std::get<0>(e),
+            [e]()
+            {
+                g_esp32_webserver->send( 200, std::get<1>(e), std::get<2>(e) );
+            }
+        );
     }
 
     g_esp32_webserver->onNotFound( []() { g_esp32_webserver->send( 404, "text/plain", "nope" ); } );

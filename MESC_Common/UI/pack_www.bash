@@ -44,10 +44,21 @@ do
     srcfil="${wwwfil:2}"
     echo "INFO: Processing '${srcfil}'"
     cppfil="${srcfil}.cpp"
-    xxd -include "${srcfil}" | sed 's:^unsigned char :static char const :g; s:^unsigned int .*$::g' > "${cppfil}"
+    xxd -include "${srcfil}" | sed 's:^unsigned char :static char const :g; s:^unsigned int .*$::g; s:^};$:, 0x00\n};:' > "${cppfil}"
     printf '#include "%s"\n' "${cppfil}" >> "${WWWOUT}"
+    srcmime='text/plain'
+    if [[ "${srcfil}" =~ css$ ]]
+    then
+        srcmime='text/css'
+    elif [[ "${srcfil}" =~ html$ ]]
+    then
+        srcmime='text/html'
+    elif [[ "${srcfil}" =~ js$ ]]
+    then
+        srcmime='text/javascript'
+    fi
     lblnam=$(echo "${srcfil}" | tr '.' '_')
-    printf '    { "/%s", MESC::UI::WiFi::HTTPServer::URLEntry{ {"%s"}, %s, sizeof(%s) } },\n' "${srcfil}" "${srcfil}" "${lblnam}" "${lblnam}" >> "${URLOUT}"
+    printf '    std::make_tuple<>( "/%s", "%s", %s ),\n' "${srcfil}" "${srcmime}" "${lblnam}" >> "${URLOUT}"
 done < <(find . -type f -name '*.css' -o -name '*.html' -o -name '*.js')
 
 popd
