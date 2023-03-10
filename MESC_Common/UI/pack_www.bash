@@ -58,7 +58,7 @@ do
         srcmime='text/javascript'
     fi
     lblnam=$(echo "${srcfil}" | tr '.' '_')
-    printf '    std::make_tuple<>( "/%s", "%s", %s ),\n' "${srcfil}" "${srcmime}" "${lblnam}" >> "${URLOUT}"
+    printf '    MESC_WWW_ENTRY( "/%s", "%s", %s ),\n' "${srcfil}" "${srcmime}" "${lblnam}" >> "${URLOUT}"
 done < <(find . -type f -name '*.css' -o -name '*.html' -o -name '*.js')
 
 popd

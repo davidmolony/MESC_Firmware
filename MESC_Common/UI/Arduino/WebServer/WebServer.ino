@@ -30,34 +30,73 @@
 #include <WiFi.h>
 #include <WebServer.h>
 
+#include <string>
 #include <tuple>
 #include <vector>
 
-static WebServer * g_esp32_webserver = NULL;
-static IPAddress   g_esp32_ip;
+static char     const * g_esp32_webserver_ssid    = "MESC_UI_AP_1234";
+static char     const * g_esp32_webserver_pswd    = "password";
+static int      const   g_esp32_webserver_channel = 11;
+static uint16_t const   g_esp32_webserver_port    = 80;
+
+static WebServer  * g_esp32_webserver = NULL;
+static IPAddress    g_esp32_ip;
 // STARTING_AUTO_GENERATED_WWW_DATA
 #include "www/www.cpp"
 // FINISHED_AUTO_GENERATED_WWW_DATA
-// STARTING_AUTO_GENERATED_URL_ENTRY
+#define MESC_WWW_ENTRY(path,mime,data) std::make_tuple<>( path, mime, data )
 static std::vector< std::tuple< char const *, char const *, char const * > > const g_root =
 {
-    std::make_tuple<>( "/"           , "text/html"      , index_html ),
+    MESC_WWW_ENTRY( "/", "text/html", index_html ),
+// STARTING_AUTO_GENERATED_URL_ENTRY
 #include "www/url.cpp"
-};
 // FINSHED_AUTO_GENERATED_URL_ENTRY
+};
+
+static std::string getAddress()
+{
+    return  std::to_string(g_esp32_ip[0])
+    + "." + std::to_string(g_esp32_ip[1])
+    + "." + std::to_string(g_esp32_ip[2])
+    + "." + std::to_string(g_esp32_ip[3])
+    + ":" + std::to_string(g_esp32_webserver_port);
+}
+
 void setup()
 {
-    Serial.begin(9600);
-    Serial.println("INFO: Starting MESC WebServer Initialisation");
+    Serial.begin( 9600 );
+    Serial.println( "INFO: Starting MESC WebServer Initialisation" );
 
-    WiFi.softAP( "MESC_UI_AP_1234", "password", 11 );
+    WiFi.softAP( g_esp32_webserver_ssid, g_esp32_webserver_pswd, 11 );
+
+    Serial.println("INFO: Started Access Point");
+
     g_esp32_ip = WiFi.softAPIP();
     
-    g_esp32_webserver = new WebServer( 8080 );
+    Serial.print("INFO: Address is ");
+    std::string const addr = getAddress();
+    Serial.println( addr.c_str() );
+
+    g_esp32_webserver = new WebServer( g_esp32_webserver_port );
+
+    Serial.println("INFO: Adding fall-back handler");
+
+    g_esp32_webserver->onNotFound(
+        []()
+        {
+            g_esp32_webserver->send( 404, "text/plain", "nope" );
+        }
+    );
+
+    Serial.println("INFO: Adding MESC_WWW_ENTRY entries");
 
     for ( auto const & e : g_root )
     {
-        g_esp32_webserver->on( std::get<0>(e),
+        Serial.print("    ");
+        char const * path = std::get<0>(e);
+        Serial.println( path );
+
+        g_esp32_webserver->on( path,
             [e]()
             {
                 g_esp32_webserver->send( 200, std::get<1>(e), std::get<2>(e) );
@@ -65,7 +104,7 @@ void setup()
         );
     }
 
-    g_esp32_webserver->onNotFound( []() { g_esp32_webserver->send( 404, "text/plain", "nope" ); } );
+    Serial.println("INFO: Starting MESC WebServer");
 
     g_esp32_webserver->begin();
 
