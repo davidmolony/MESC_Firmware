@@ -176,6 +176,12 @@
 #define SAFE_START_DEFAULT 100
 #endif
 
+#ifndef DEFAULT_ENCODER_POLARITY
+#define DEFAULT_ENCODER_POLARITY 0
+#endif
+#ifndef ENCODER_E_OFFSET
+#define ENCODER_E_OFFSET 0
+#endif
 
 typedef struct {
 	int Iu;
@@ -245,8 +251,12 @@ typedef struct {
 
   uint16_t openloop_step;//The angle to increment by for openloop
   uint16_t FOCAngle;    // Angle generated in the hall sensor estimator
+  uint32_t encoder_duration;
+  uint32_t encoder_pulse;
+  uint32_t encoder_OK;
   uint16_t enc_angle;
   uint16_t enc_offset;
+  uint16_t encoder_polarity_invert;
   int enc_obs_angle;
   float FLAdiff;
   MESCsin_cos_s sincosangle;  // This variable carries the current sin and cosine of
@@ -287,6 +297,8 @@ typedef struct {
 //Hall start
   int hall_initialised;
   int hall_start_now;
+//Encoder start
+  int enc_start_now;
 
   float pwm_period;
   float pwm_frequency;
@@ -689,7 +701,7 @@ void MESC_IC_Init(
 TIM_HandleTypeDef _IC_TIMER
 #endif
 );
-void MESC_IC_IRQ_Handler(uint32_t SR, uint32_t CCR1, uint32_t CCR2);
+void MESC_IC_IRQ_Handler(MESC_motor_typedef *_motor, uint32_t SR, uint32_t CCR1, uint32_t CCR2);
 
 
 ////BLDC

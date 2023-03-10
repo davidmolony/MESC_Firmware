@@ -151,6 +151,10 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	_motor->hall.angular_velocity = 0.0f;
 	_motor->hall.angle_step = 0.0f;
 
+	//PWM Encoder
+	_motor->FOC.enc_offset = ENCODER_E_OFFSET;
+	_motor->FOC.encoder_polarity_invert = DEFAULT_ENCODER_POLARITY;
+
 	_motor->hall.hall_error = 0;
 	//Init the BLDC
 	_motor->BLDC.com_flux = _motor->m.flux_linkage*1.65f;//0.02f;
@@ -380,8 +384,15 @@ void fastLoop(MESC_motor_typedef *_motor) {
 			}else{
 				_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_b, _motor->FOC.flux_a)) - 32768;
 			}
-		}else{flux_observer(_motor);}
-
+		}else if(_motor->FOC.enc_start_now){
+			float encsin, enccos;
+			sin_cos_fast((_motor->FOC.enc_angle-10430), &encsin, &enccos);
+			_motor->FOC.flux_a = 0.95f*_motor->FOC.flux_a + enccos * 0.05f * _motor->m.flux_linkage;
+			_motor->FOC.flux_b = 0.95f*_motor->FOC.flux_b + encsin * 0.05f * _motor->m.flux_linkage;
+			flux_observer(_motor);
+		}else{
+			flux_observer(_motor);
+		}
 #else
     	flux_observer(_motor);
 #endif
@@ -2675,6 +2686,11 @@ void SlowHall(MESC_motor_typedef *_motor){
 	}else if(fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f){
 		_motor->FOC.hall_start_now = 0;
 	}
+	if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.encoder_OK)){
+			_motor->FOC.enc_start_now = 1;
+	}else if(fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f){
+		_motor->FOC.enc_start_now = 0;
+	}
 }
 void ToggleHFI(MESC_motor_typedef *_motor){
 	if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > _motor->FOC.HFI_toggle_voltage)||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < -_motor->FOC.HFI_toggle_voltage)||(_motor->MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
@@ -3033,9 +3049,13 @@ TIM_HandleTypeDef _IC_TIMER
 	  _IC_TIMER.Instance-> CCER = 49;
 	  _IC_TIMER.Instance-> ARR = 65000;
 	  _IC_TIMER.Instance-> DMAR = 1;
-	#ifdef IC_TIMER_RCPWM
+#ifdef IC_TIMER_RCPWM
 	  _IC_TIMER.Instance->PSC = (HAL_RCC_GetHCLKFreq()/(1000000*SLOWTIM_SCALER))-1;
-	#endif
+#else //RCtimer is used for PWM encoder
+	  _IC_TIMER.Instance->PSC = (HAL_RCC_GetHCLKFreq()/(4119000*SLOWTIM_SCALER))-1;
+//The encoder PWM timers have a nominal frequency of 1kHz with 4119 levels
+
+#endif
 	  IC_TIM_GPIO->MODER |= MODE_AF<<(2*IC_TIM_IONO);
 	  IC_TIM_GPIO->AFR[0] |=0x2<<(IC_TIM_IONO*4);
 	  //__HAL_TIM_ENABLE_IT(_IC_TIMER,TIM_IT_UPDATE);
@@ -3044,7 +3064,7 @@ TIM_HandleTypeDef _IC_TIMER
 }
 
 uint32_t SRtemp2, SRtemp3;
-void MESC_IC_IRQ_Handler(uint32_t SR, uint32_t CCR1, uint32_t CCR2){
+void MESC_IC_IRQ_Handler(MESC_motor_typedef *_motor, uint32_t SR, uint32_t CCR1, uint32_t CCR2){
 #ifdef IC_TIMER_RCPWM
 	if((SR & 0x4)&&!(SR&0x1)){
 		SRtemp2 = SR;
@@ -3055,8 +3075,26 @@ void MESC_IC_IRQ_Handler(uint32_t SR, uint32_t CCR1, uint32_t CCR2){
 		SRtemp3 = SR;
 		input_vars.pulse_recieved = 0;
 	}
-#else //This will be for the encoder I guess...
-
+#endif
+#ifdef IC_TIMER_ENCODER //This will be for the encoder I guess...
+	//The encoder PWM timers have a nominal frequency of 1kHz with 4119 levels
+	if((SR & 0x4)&&!(SR&0x1)){
+		SRtemp2 = SR;
+		_motor->FOC.encoder_duration = CCR1;
+		_motor->FOC.encoder_pulse = CCR2;
+		_motor->FOC.encoder_OK = 1;
+//		_motor->FOC.enc_angle =
+//				(uint16_t)((((4119*CCR2)/CCR1-16)*(uint32_t)_motor->m.pole_pairs)%65536);
+		_motor->FOC.enc_angle = _motor->FOC.enc_offset +
+						(uint16_t)(((65536*(CCR2-16))/(CCR1-24)*(uint32_t)_motor->m.pole_pairs)%65536);
+		if(_motor->FOC.encoder_polarity_invert){
+			_motor->FOC.enc_angle = 65536 - _motor->FOC.enc_angle;
+		}
+	}
+	if(SR & 0x1||_motor->FOC.encoder_pulse<14||_motor->FOC.encoder_pulse>(_motor->FOC.encoder_duration-7)){
+		SRtemp3 = SR;
+		_motor->FOC.encoder_OK = 0;
+	}
 #endif
 }
 
