@@ -88,6 +88,46 @@ void setup()
         }
     );
 
+    Serial.println("INFO: Adding UART handler");
+
+    g_esp32_webserver->on( "/UART", // [GET] UART?command=<COMMAND> _OR_ [POST] UART command=<COMMAND
+        []()
+        {
+            if (!g_esp32_webserver->hasArg( "command" ))
+            {
+                g_esp32_webserver->send( 400 );
+                return;
+            }
+
+            String const command = g_esp32_webserver->arg( "command" );
+
+            Serial.print("INFO: UART [");
+            Serial.print( command );
+            Serial.println("]");
+
+            HTTPMethod const method = g_esp32_webserver->method();
+
+            switch (method)
+            {
+                case HTTP_GET:
+                {    
+                    // TODO Serial.write
+                    std::string const resp; // TODO Serial.read
+                    g_esp32_webserver->send( 200, "text/plain", resp.c_str() );
+                    return;
+                }
+                case HTTP_POST:
+                    // TODO Serial.write
+                    g_esp32_webserver->send( 202 );
+                    return;
+                default:
+                  break;
+            }
+
+            g_esp32_webserver->send( 400 );
+        }
+    );
+
     Serial.println("INFO: Adding MESC_WWW_ENTRY entries");
 
     for ( auto const & e : g_root )
