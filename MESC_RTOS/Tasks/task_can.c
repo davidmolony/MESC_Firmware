@@ -86,10 +86,13 @@ void buffer_uint32(uint8_t* buffer, uint32_t number) {
 
 uint32_t buffer_to_uint32(uint8_t* buffer) {
 	uint32_t number;
-	number = (uint32_t)buffer << 24;
-	number |= (uint32_t)buffer << 16;
-	number |= (uint32_t)buffer << 8;
-	number |= (uint32_t)buffer;
+	number = (uint32_t)*buffer << 24;
+	buffer++;
+	number |= (uint32_t)*buffer << 16;
+	buffer++;
+	number |= (uint32_t)*buffer << 8;
+	buffer++;
+	number |= (uint32_t)*buffer;
 	return number;
 }
 
@@ -132,7 +135,7 @@ bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t r
 	packet.message_id = message_id;
 	packet.receiver = receiver;
 	packet.sender = handle->node_id;
-	packet.len = sizeof(float);
+	packet.len = sizeof(float)*2;
 	memcpy(&packet.buffer[0], &n1, sizeof(float));
 	memcpy(&packet.buffer[4], &n2, sizeof(float));
 	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
@@ -144,7 +147,7 @@ bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t 
 	packet.message_id = message_id;
 	packet.receiver = receiver;
 	packet.sender = handle->node_id;
-	packet.len = sizeof(uint32_t);
+	packet.len = sizeof(uint32_t)*2;
 	buffer_uint32(&packet.buffer[0], n1);
 	buffer_uint32(&packet.buffer[4], n2);
 	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
@@ -207,6 +210,7 @@ void TASK_CAN_packet_received(TASK_CAN_handle * handle, uint32_t id, uint8_t sen
 			if(node==NULL && node != NODE_OVERRUN){
 				node = pvPortMalloc(sizeof(TASK_CAN_node));
 				if(node){
+					memset(node, 0, sizeof(TASK_CAN_node));
 					node_lut[sender] = node;
 					node->last_seen = 3;
 					node->id = sender;

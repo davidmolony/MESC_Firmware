@@ -36,6 +36,7 @@
 #include "Tasks/task_cli.h"
 #include "Tasks/task_can.h"
 #include "Tasks/task_overlay.h"
+#include "Dash/MESCmotor_state.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -53,8 +54,7 @@
 dash_data dash;
 
 void * TASK_CAN_allocate_node(TASK_CAN_handle * handle, TASK_CAN_node * node){
-	if(memcmp(node->short_name, "ESC", 3)){
-		memset(node, 0, sizeof(TASK_CAN_node));
+	if(memcmp(node->short_name, "ESC", 3)==0){
 		node->type = NODE_TYPE_ESC;
 		node->data = pvPortMalloc(sizeof(esc_data));
 	}
@@ -81,33 +81,32 @@ float req = 0.0;
 
 
 void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
+	TASK_CAN_node * node = TASK_CAN_get_node_from_id(sender);
 	switch(id){
+		case CAN_ID_ADC1_2_REQ:{
+			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
+				esc_data * esc = node->data;
+				esc->adc1 = buffer_to_float(data);
+				esc->adc2 = buffer_to_float(data+4);
+			}
+			break;
+		}
 		case CAN_ID_SPEED:{
-			TASK_CAN_node * node = TASK_CAN_get_node_from_id(sender);
 			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
 				esc_data * esc = node->data;
 				esc->speed = buffer_to_float(data);
 			}
 			break;
 		}
-		case CAN_ID_BUS_VOLTAGE:{
-			TASK_CAN_node * node = TASK_CAN_get_node_from_id(sender);
+		case CAN_ID_BUS_VOLT_CURR:{
 			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
 				esc_data * esc = node->data;
 				esc->bus_voltage = buffer_to_float(data);
-			}
-			break;
-		}
-		case CAN_ID_BUS_CURRENT:{
-			TASK_CAN_node * node = TASK_CAN_get_node_from_id(sender);
-			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
-				esc_data * esc = node->data;
-				esc->bus_current = buffer_to_float(data);
+				esc->bus_current = buffer_to_float(data+4);
 			}
 			break;
 		}
 		case CAN_ID_TEMP_MOT_MOS1:{
-			TASK_CAN_node * node = TASK_CAN_get_node_from_id(sender);
 			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
 				esc_data * esc = node->data;
 				esc->temp_motor = buffer_to_float(data);
@@ -116,7 +115,6 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 			break;
 		}
 		case CAN_ID_TEMP_MOS2_MOS3:{
-			TASK_CAN_node * node = TASK_CAN_get_node_from_id(sender);
 			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
 				esc_data * esc = node->data;
 				esc->temp_mos2 = buffer_to_float(data);
@@ -125,15 +123,22 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 			break;
 		}
 		case CAN_ID_MOTOR_CURRENT:{
-			TASK_CAN_node * node = TASK_CAN_get_node_from_id(sender);
 			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
 				esc_data * esc = node->data;
-				esc->motor_current = buffer_to_float(data);
+				esc->Iq = buffer_to_float(data);
+				esc->Id = buffer_to_float(data+4);
+			}
+			break;
+		}
+		case CAN_ID_MOTOR_VOLTAGE:{
+			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
+				esc_data * esc = node->data;
+				esc->Vq = buffer_to_float(data);
+				esc->Vd = buffer_to_float(data+4);
 			}
 			break;
 		}
 		case CAN_ID_STATUS:{
-			TASK_CAN_node * node = TASK_CAN_get_node_from_id(sender);
 			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
 				esc_data * esc = node->data;
 				esc->status = buffer_to_uint32(data);
@@ -157,17 +162,17 @@ void task_ssd(void * argument){
 	    ssd1306_Fill(Black);
 
 	    ssd1306_SetCursor(2, y);
-	    snprintf(buffer,sizeof(buffer),"Speed: %2.2f", 0);
+	    snprintf(buffer,sizeof(buffer),"Speed: %2.2f", 0.0);
 	    ssd1306_WriteString(buffer, Font_11x18, White);
 	    y += 19;
 
 	    ssd1306_SetCursor(2, y);
-	    snprintf(buffer,sizeof(buffer),"Curr : %2.2f", 0);
+	    snprintf(buffer,sizeof(buffer),"Curr : %2.2f", 0.0);
 	    ssd1306_WriteString(buffer, Font_11x18, White);
 	    y += 19;
 
 	    ssd1306_SetCursor(2, y);
-	    snprintf(buffer,sizeof(buffer),"Volt : %2.2f", 0);
+	    snprintf(buffer,sizeof(buffer),"Volt : %2.2f", 0.0);
 		ssd1306_WriteString(buffer, Font_11x18, White);
 		y += 19;
 
@@ -183,6 +188,80 @@ void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle){
 }
 
 void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
+
+}
+
+uint8_t CMD_esc_info(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+	ttprintf("ESC detail info:\r\n");
+
+	for(uint32_t i=0;i<NUM_NODES;i++){
+		TASK_CAN_node * node = TASK_CAN_get_node_from_id(i);
+		if(node!=NULL && node != NODE_OVERRUN){
+			ttprintf("ID: %u\tType: %s\r\n", node->id, node->short_name);
+
+			if(node->data && node->type == NODE_TYPE_ESC){
+				esc_data * esc = node->data;
+				ttprintf("\tSpeed: %f\r\n", esc->speed, esc->motor_current);
+				ttprintf("\tIq: %f \tId: %f \tVq: %f Vd: %f\t\r\n", esc->Iq, esc->Id, esc->Vq, esc->Vd);
+				ttprintf("\tADC1: %f \tADC2: %f\r\n", esc->adc1, esc->adc2);
+				ttprintf("\tTemp Motor: %f \tTemp Mos1: %f \tTemp Mos2: %f \tTemp Mos3: %f\r\n", esc->temp_motor, esc->temp_mos1, esc->temp_mos2, esc->temp_mos3);
+				ttprintf("\tBus voltage: %f \tBus current: %f\r\n", esc->bus_voltage, esc->bus_current);
+
+				ttprintf("\tMESC status: ");
+
+				switch(esc->status){
+				case MOTOR_STATE_INITIALISING:
+					ttprintf("INITIALISING");
+					break;
+				case MOTOR_STATE_DETECTING:
+					ttprintf("DETECTING");
+					break;
+				case MOTOR_STATE_MEASURING:
+					ttprintf("MEASURING");
+					break;
+				case MOTOR_STATE_ALIGN:
+					ttprintf("ALIGN");
+					break;
+				case MOTOR_STATE_OPEN_LOOP_STARTUP:
+					ttprintf("OL STARTUP");
+					break;
+				case MOTOR_STATE_OPEN_LOOP_TRANSITION:
+					ttprintf("OL TRANSITION");
+					break;
+				case MOTOR_STATE_TRACKING:
+					ttprintf("TRACKING");
+					break;
+				case MOTOR_STATE_RUN:
+					ttprintf("RUN");
+					break;
+				case MOTOR_STATE_GET_KV:
+					ttprintf("GET KV");
+					break;
+				case MOTOR_STATE_TEST:
+					ttprintf("TEST");
+					break;
+				case MOTOR_STATE_ERROR:
+					ttprintf("ERROR");
+					break;
+				case MOTOR_STATE_RECOVERING:
+					ttprintf("RECOVERING");
+					break;
+				case MOTOR_STATE_IDLE:
+					ttprintf("IDLE");
+					break;
+				case MOTOR_STATE_SLAMBRAKE:
+					ttprintf("SLAMBRAKE");
+					break;
+				}
+				ttprintf("\r\n");
+
+			}
+
+
+		}
+	}
+
+	return TERM_CMD_EXIT_SUCCESS;
 
 }
 
@@ -205,6 +284,8 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 	TERM_addCommand(CMD_nodes, "nodes", "Node info", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_can_send, "can_send", "Send CAN message", 0, &TERM_defaultList);
+
+	TERM_addCommand(CMD_esc_info, "esc", "ESC info", 0, &TERM_defaultList);
 
 	TermCommandDescriptor * varAC = TERM_addCommand(CMD_log, "log", "Configure logging", 0, &TERM_defaultList);
 	TERM_addCommandAC(varAC, TERM_varCompleter, null_handle.varHandle->varListHead);

@@ -275,9 +275,10 @@ void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle){
 
 	TASK_CAN_add_float(handle	, CAN_ID_ADC1_2_REQ	  	, CAN_BROADCAST, input_vars.ADC1_req		, input_vars.ADC2_req	, 0);
 	TASK_CAN_add_float(handle	, CAN_ID_SPEED		  	, CAN_BROADCAST, motor_curr->FOC.eHz		, 0.0f					, 0);
-	TASK_CAN_add_float(handle	, CAN_ID_BUS_VOLTAGE 	, CAN_BROADCAST, motor_curr->Conv.Vbus		, 0.0f					, 0);
-	TASK_CAN_add_float(handle	, CAN_ID_BUS_CURRENT 	, CAN_BROADCAST, motor_curr->FOC.Ibus		, 0.0f					, 0);
+	TASK_CAN_add_float(handle	, CAN_ID_BUS_VOLT_CURR 	, CAN_BROADCAST, motor_curr->Conv.Vbus		, motor_curr->FOC.Ibus	, 0);
 	TASK_CAN_add_uint32(handle	, CAN_ID_STATUS	  		, CAN_BROADCAST, motor_curr->MotorState		, 0						, 0);
+	TASK_CAN_add_float(handle	, CAN_ID_MOTOR_CURRENT 	, CAN_BROADCAST, motor_curr->FOC.Idq.q		, motor_curr->FOC.Idq.d	, 0);
+	TASK_CAN_add_float(handle	, CAN_ID_MOTOR_VOLTAGE 	, CAN_BROADCAST, motor_curr->FOC.Vdq.q		, motor_curr->FOC.Vdq.d	, 0);
 
 }
 

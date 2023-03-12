@@ -48,6 +48,8 @@ typedef struct{
 
 typedef struct{
 	float speed;
+	float adc1;
+	float adc2;
 	float bus_voltage;
 	float bus_current;
 	float motor_current;
@@ -56,6 +58,10 @@ typedef struct{
 	float temp_mos2;
 	float temp_mos3;
 	uint32_t status;
+	float Iq;
+	float Id;
+	float Vq;
+	float Vd;
 } esc_data;
 
 
