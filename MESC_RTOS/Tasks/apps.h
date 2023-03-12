@@ -24,11 +24,11 @@
 #if !defined(app_apps_H)
 #define app_apps_H
 
+#include <MESC/calibrate.h>
+#include <MESC/hfi.h>
 #include "TTerm/Core/include/TTerm.h"
 
 #include "top.h"
-#include "calibrate.h"
-#include "hfi.h"
 #include "app_template.h"
 #include "cana.h"
 

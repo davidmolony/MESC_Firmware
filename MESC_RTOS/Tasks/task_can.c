@@ -45,6 +45,10 @@
 
 #define TASK_CAN_BROADCAST 0
 
+TASK_CAN_node * node_lut[NUM_NODES];
+
+TASK_CAN_node last_overrun;
+
 void TASK_CAN_init_can(TASK_CAN_handle * handle){
 
 	CAN_FilterTypeDef sFilterConfig; //declare CAN filter structure
@@ -113,9 +117,6 @@ uint16_t extract_id(uint32_t ext_id, uint8_t * sender, uint8_t * receiver){
 }
 
 
-
-TASK_CAN_nodes nodes[NUM_NODES];
-
 typedef struct {
 	uint16_t message_id;
 	uint8_t sender;
@@ -181,28 +182,42 @@ __weak void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t se
   UNUSED(len);
 }
 
+__weak void * TASK_CAN_allocate_node(TASK_CAN_handle * handle, TASK_CAN_node * node){
+	UNUSED(handle);
+	return NULL;
+}
+
+__weak void * TASK_CAN_free_node(TASK_CAN_handle * handle, TASK_CAN_node * node){
+	UNUSED(handle);
+	return NULL;
+}
+
 void TASK_CAN_packet_received(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
 	switch(id){
 		case CAN_ID_PING:{
-			bool found=false;
-			int32_t first_empty=-1;
 
-			for(uint32_t i=0;i<NUM_NODES;i++){
-				if(nodes[i].id == sender){
-					nodes[i].last_seen = 3;
-					found=true;
-					break;
+			TASK_CAN_node * node = TASK_CAN_get_node_from_id(sender);
+
+			if(node == NODE_OVERRUN){
+				last_overrun.id = sender;
+				memcpy(last_overrun.short_name, data,8);
+				last_overrun.short_name[8] = 0;
+			}
+
+			if(node==NULL && node != NODE_OVERRUN){
+				node = pvPortMalloc(sizeof(TASK_CAN_node));
+				if(node){
+					node_lut[sender] = node;
+					node->last_seen = 3;
+					node->id = sender;
+					memcpy(node->short_name, data,8);
+					node->short_name[8] = 0;
+					TASK_CAN_allocate_node(handle, node);
+
 				}
-				if(nodes[i].id == 0 && first_empty == -1) first_empty = i;
+			}else{
+				node->last_seen = 3;
 			}
-
-			if(found==false){
-				nodes[first_empty].last_seen = 3;
-				nodes[first_empty].id = sender;
-				memcpy(nodes[first_empty].short_name, data,8);
-				nodes[first_empty].short_name[8] = 0;
-			}
-
 			break;
 		}
 		case CAN_ID_CONNECT:{
@@ -226,7 +241,7 @@ void TASK_CAN_packet_received(TASK_CAN_handle * handle, uint32_t id, uint8_t sen
 
 
 
-void task_rx_can(void * argument){
+void TASK_CAN_rx(void * argument){
 	port_str * port = argument;
 	TASK_CAN_handle * handle = port->hw;
 
@@ -251,7 +266,6 @@ void task_rx_can(void * argument){
 	}
 
 }
-volatile uint32_t level=0;
 
 void TASK_CAN_ping(TASK_CAN_handle * handle){
 	if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)){
@@ -270,12 +284,18 @@ void TASK_CAN_ping(TASK_CAN_handle * handle){
 		HAL_CAN_AddTxMessage(handle->hw, &TxHeader, buffer, &TxMailbox);  //function to add message for transmition
 	}
 
+
 	for(uint32_t i=0;i<NUM_NODES;i++){
-		if(nodes[i].id && nodes[i].last_seen){
-			nodes[i].last_seen--;
-			if(nodes[i].last_seen == 0){
-				nodes[i].id = 0;
-				memset(nodes[i].short_name,0,9);
+		TASK_CAN_node * node = TASK_CAN_get_node_from_id(i);
+
+		if(node!=NULL && node != NODE_OVERRUN){
+			node->last_seen--;
+			if(node->last_seen == 0){
+				if(node->data){
+					TASK_CAN_free_node(handle, node);
+				}
+				vPortFree(node);
+				node_lut[i] = NULL;
 			}
 		}
 	}
@@ -308,9 +328,17 @@ uint32_t TASK_CAN_connect(TASK_CAN_handle * handle, uint16_t remote, uint8_t con
 
 }
 
+TASK_CAN_node * TASK_CAN_get_node_from_id(uint8_t id){
+	if (id<NUM_NODES) {
+		return node_lut[id];
+	}else{
+		return (TASK_CAN_node *)0xFFFFFFFF;
+	}
+
+}
 
 
-void task_tx_can(void * argument){
+void TASK_CAN_tx(void * argument){
 
 	port_str * port = argument;
 	TASK_CAN_handle * handle = port->hw;
@@ -377,8 +405,33 @@ void task_tx_can(void * argument){
 		}
 
 	}
-
 }
+
+
+__weak void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle){
+  UNUSED(handle);
+}
+
+__weak void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
+  UNUSED(handle);
+}
+
+void TASK_CAN_telemetry(void * argument){
+	uint32_t count=0;
+	port_str * port = argument;
+	TASK_CAN_handle * handle = port->hw;
+	while(1){
+
+		if(count==5){
+			TASK_CAN_telemetry_slow(handle);
+			count=0;
+		}
+		count++;
+		TASK_CAN_telemetry_fast(handle);
+		vTaskDelay(pdMS_TO_TICKS(100));
+	}
+}
+
 
 #define CAN_STREAM_SIZE 128
 
@@ -390,8 +443,9 @@ void TASK_CAN_init(port_str * port, char * short_name){
 	handle->rx_queue = xQueueCreate(128, sizeof(TASK_CAN_packet));
 	handle->tx_queue = xQueueCreate(128, sizeof(TASK_CAN_packet));
 
-	xTaskCreate(task_rx_can, "task_rx_can", 256, (void*)port, osPriorityAboveNormal, &handle->rx_task_handle);
-	xTaskCreate(task_tx_can, "task_tx_can", 256, (void*)port, osPriorityAboveNormal, &handle->tx_task_handle);
+	xTaskCreate(TASK_CAN_rx, "task_rx_can", 256, (void*)port, osPriorityAboveNormal, &handle->rx_task_handle);
+	xTaskCreate(TASK_CAN_tx, "task_tx_can", 256, (void*)port, osPriorityAboveNormal, &handle->tx_task_handle);
+	xTaskCreate(TASK_CAN_telemetry, "can_metry", 256, (void*)port, osPriorityAboveNormal, NULL);
 }
 
 
@@ -400,14 +454,29 @@ uint8_t CMD_nodes(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	bool found = false;
 	ttprintf("ID: %u\tType: %s\tThis node\r\n", can1.node_id, can1.short_name);
 	for(uint32_t i=0;i<NUM_NODES;i++){
-		if(nodes[i].id){
-			ttprintf("ID: %u\tType: %s\tLast seen: %u\r\n", nodes[i].id, nodes[i].short_name, nodes[i].last_seen);
+		TASK_CAN_node * node = TASK_CAN_get_node_from_id(i);
+		if(node!=NULL && node != NODE_OVERRUN){
+			ttprintf("ID: %u\tType: %s\tLast seen: %u\r\n", node->id, node->short_name, node->last_seen);
 			found=true;
 		}
 	}
 	if(found==false){
-		ttprintf("No node found\r\n");
+		ttprintf("No active nodes found\r\n\r\n");
 	}
+
+	ttprintf("Passive nodes:\r\n");
+
+	uint32_t cnt=2000;
+	uint8_t last_id=0;
+	while(cnt){
+		if(last_id != last_overrun.id){
+			ttprintf("ID: %u\tType: %s\r\n", last_overrun.id, last_overrun.short_name);
+			last_id = last_overrun.id;
+		}
+		cnt--;
+		vTaskDelay(1);
+	}
+
 	return TERM_CMD_EXIT_SUCCESS;
 
 }

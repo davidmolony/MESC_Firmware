@@ -30,18 +30,17 @@
  ******************************************************************************/
 
 #include "main.h"
-#include "init.h"
+#include "Tasks/init.h"
 #include "TTerm/Core/include/TTerm.h"
-#include "task_cli.h"
-#include "task_overlay.h"
+#include "Tasks/task_cli.h"
+#include "Tasks/task_overlay.h"
 #include "MESCmotor_state.h"
 #include "MESCmotor.h"
 #include "MESCflash.h"
-#include "MESCinterface.h"
-
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <MESC/MESCinterface.h>
 
 extern uint16_t deadtime_comp;
 
@@ -268,6 +267,28 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 		default:
 			break;
 	}
+}
+
+void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle){
+
+	MESC_motor_typedef * motor_curr = &mtr[0];
+
+	TASK_CAN_add_float(handle	, CAN_ID_ADC1_2_REQ	  	, CAN_BROADCAST, input_vars.ADC1_req		, input_vars.ADC2_req	, 0);
+	TASK_CAN_add_float(handle	, CAN_ID_SPEED		  	, CAN_BROADCAST, motor_curr->FOC.eHz		, 0.0f					, 0);
+	TASK_CAN_add_float(handle	, CAN_ID_BUS_VOLTAGE 	, CAN_BROADCAST, motor_curr->Conv.Vbus		, 0.0f					, 0);
+	TASK_CAN_add_float(handle	, CAN_ID_BUS_CURRENT 	, CAN_BROADCAST, motor_curr->FOC.Ibus		, 0.0f					, 0);
+	TASK_CAN_add_uint32(handle	, CAN_ID_STATUS	  		, CAN_BROADCAST, motor_curr->MotorState		, 0						, 0);
+
+}
+
+void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
+
+	MESC_motor_typedef * motor_curr = &mtr[0];
+
+	TASK_CAN_add_float(handle	, CAN_ID_TEMP_MOT_MOS1	, CAN_BROADCAST, motor_curr->Conv.Motor_T			, motor_curr->Conv.MOSu_T			, 0);
+	TASK_CAN_add_float(handle	, CAN_ID_TEMP_MOS2_MOS3	, CAN_BROADCAST, motor_curr->Conv.MOSv_T			, motor_curr->Conv.MOSw_T			, 0);
+	TASK_CAN_add_uint32(handle	, CAN_ID_FOC_HYPER		, CAN_BROADCAST, motor_curr->FOC.cycles_fastloop	, motor_curr->FOC.cycles_hyperloop	, 0);
+
 }
 
 

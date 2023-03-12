@@ -33,11 +33,35 @@
 #ifndef INC_MESC_INTERFACE_H_
 #define INC_MESC_INTERFACE_H_
 
-#include "task_cli.h"
+#include "Tasks/task_cli.h"
+
+
+#define CAN_NAME "DASHF407"
+
+
+typedef struct{
+	uint8_t id_speed;
+	float speed;
+	uint8_t id_voltage;
+	float bus_voltage;
+} dash_data;
+
+typedef struct{
+	float speed;
+	float bus_voltage;
+	float bus_current;
+	float motor_current;
+	float temp_motor;
+	float temp_mos1;
+	float temp_mos2;
+	float temp_mos3;
+	uint32_t status;
+} esc_data;
+
+
+
 
 void MESCinterface_init(TERMINAL_HANDLE * handle);
-
-uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 
 
 #endif /* INC_MESC_INTERFACE_H_ */

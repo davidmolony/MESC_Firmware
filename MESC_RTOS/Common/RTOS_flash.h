@@ -1,8 +1,8 @@
 /*
  **
  ******************************************************************************
- * @file           : MESCinterface.h
- * @brief          : Initializing RTOS system and parameters
+ * @file           : RTOS_flash.h
+ * @brief          : Flash IO functions
  ******************************************************************************
  * @attention
  *
@@ -29,13 +29,19 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
+#ifndef RTOS_FLASH_H_
+#define RTOS_FLASH_H_
 
-#ifndef INC_MESC_INTERFACE_H_
-#define INC_MESC_INTERFACE_H_
+#include <stdint.h>
 
-#include "task_cli.h"
+uint32_t RTOS_flash_clear(void * address, uint32_t len);
+uint32_t RTOS_flash_start_write(void * address, void * data, uint32_t len);
+uint32_t RTOS_flash_write(void * address, void * data, uint32_t len);
+uint32_t RTOS_flash_end_write(void * address, void * data, uint32_t len);
+uint32_t RTOS_flash_sector_address( uint32_t const index );
+uint32_t RTOS_flash_sector_index(uint32_t const address);
+uint32_t RTOS_flash_base_address(void);
+uint32_t RTOS_flash_base_size(void);
 
-void DASHinterface_init(TERMINAL_HANDLE * handle);
 
-
-#endif /* INC_MESC_INTERFACE_H_ */
+#endif /* RTOS_FLASH_H_ */

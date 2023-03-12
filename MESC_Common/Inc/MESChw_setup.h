@@ -1,7 +1,7 @@
 /*
  **
  ******************************************************************************
- * @file           : MESChw_setup.c
+ * @file           : MESChw_setup.h
  * @brief          : Initialisation code for the PCB
  ******************************************************************************
  * @attention
@@ -21,6 +21,9 @@
  *  Created on: 25 Jul 2020
  *      Author: David Molony
  */
+
+#if !defined(MESChw_setup_H)
+#define MESChw_setup_H
 
 #include "stm32fxxx_hal.h"
 #include "MESCfoc.h"
@@ -143,3 +146,5 @@ Temperature parameters
 #define MESC_PROFILE_TEMP_SH_R
 #define MESC_PROFILE_TEMP_SH_R0
 */
+
+#endif

@@ -30,6 +30,4 @@
 #define MESC_UART_USB 		MESC_USB
 #define HW_UART huart1
 
-uint32_t getFlashBaseAddress( void );
-uint32_t getFlashBaseSize( void );
 

@@ -74,7 +74,6 @@
 #define OVERLAY_OUTPUT_VT100 		1
 #define OVERLAY_OUTPUT_CSV 			2
 #define OVERLAY_OUTPUT_JSON			3
-#define OVERLAY_OUTPUT_CAN			4
 
 
 void show_overlay(TERMINAL_HANDLE * handle){
@@ -217,19 +216,7 @@ void show_overlay_json(TERMINAL_HANDLE * handle){
 
 }
 
-extern TASK_CAN_handle can1;
-void show_overlay_can(TERMINAL_HANDLE * handle){
-#ifndef DASH
-	MESC_motor_typedef * motor_curr = &mtr[0];
 
-	TASK_CAN_add_float( &can1, CAN_ID_SPEED		  	, CAN_BROADCAST, motor_curr->FOC.eHz		, 0.0f, 0);
-	TASK_CAN_add_float( &can1, CAN_ID_BUS_VOLTAGE 	, CAN_BROADCAST, motor_curr->Conv.Vbus		, 0.0f, 0);
-	TASK_CAN_add_float( &can1, CAN_ID_BUS_CURRENT 	, CAN_BROADCAST, motor_curr->FOC.Ibus		, 0.0f, 0);
-	TASK_CAN_add_float( &can1, CAN_ID_TEMP_MOT_MOS1	, CAN_BROADCAST, motor_curr->Conv.Motor_T	, motor_curr->Conv.MOSu_T, 0);
-	TASK_CAN_add_float( &can1, CAN_ID_TEMP_MOS2_MOS3, CAN_BROADCAST, motor_curr->Conv.MOSv_T	, motor_curr->Conv.MOSw_T, 0);
-	TASK_CAN_add_uint32(&can1, CAN_ID_STATUS	  	, CAN_BROADCAST, motor_curr->MotorState		, 0, 0);
-#endif
-}
 
 /* `#END` */
 /* ------------------------------------------------------------------------ */
@@ -270,9 +257,6 @@ void task_overlay_TaskProc(void *pvParameters) {
 				break;
 			case OVERLAY_OUTPUT_JSON:
 				show_overlay_json(handle);
-				break;
-			case OVERLAY_OUTPUT_CAN:
-				show_overlay_can(handle);
 				break;
         }
 
@@ -330,12 +314,6 @@ uint8_t CMD_status(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	if(strcmp(args[0], "json") == 0){
 		port->overlay_handle.delay = 100;  //ms
 		port->overlay_handle.output_type = OVERLAY_OUTPUT_JSON;
-		start_overlay_task(handle);
-		return TERM_CMD_EXIT_SUCCESS;
-	}
-	if(strcmp(args[0], "can") == 0){
-		port->overlay_handle.delay = 100;  //ms
-		port->overlay_handle.output_type = OVERLAY_OUTPUT_CAN;
 		start_overlay_task(handle);
 		return TERM_CMD_EXIT_SUCCESS;
 	}

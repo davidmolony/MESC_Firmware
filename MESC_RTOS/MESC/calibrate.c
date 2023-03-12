@@ -1,8 +1,8 @@
 /*
  **
  ******************************************************************************
- * @file           : hfi.c
- * @brief          : HFI debug task
+ * @file           : calibrate.c
+ * @brief          : ADC input calibration app
  ******************************************************************************
  * @attention
  *
@@ -29,13 +29,13 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
-#include "hfi.h"
+
+#include <MESC/calibrate.h>
 #include "string.h"
 #include "MESCfoc.h"
-#include "MESChw_setup.h"
 
-#define APP_NAME "hfi"
-#define APP_DESCRIPTION "HFI test"
+#define APP_NAME "calibrate"
+#define APP_DESCRIPTION "Calibrates inputs"
 #define APP_STACK 512
 
 static uint8_t CMD_main(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
@@ -43,7 +43,7 @@ static void TASK_main(void *pvParameters);
 static uint8_t INPUT_handler(TERMINAL_HANDLE * handle, uint16_t c);
 
 
-uint8_t REGISTER_hfi(TermCommandDescriptor * desc){
+uint8_t REGISTER_calibrate(TermCommandDescriptor * desc){
     TERM_addCommand(CMD_main, APP_NAME, APP_DESCRIPTION, 0, desc); 
     return pdTRUE;
 }
@@ -85,7 +85,7 @@ static void bargraph(TERMINAL_HANDLE * handle, float min, float max, float val){
 		buffer[i+1] = i<norm? '#' : '_';
 	}
 	buffer[41]='|';
-	ttprintf("%s %f ", buffer, val);
+	ttprintf("%s %10.0f ", buffer, val);
 
 }
 
@@ -95,7 +95,7 @@ static void bargraph(TERMINAL_HANDLE * handle, float min, float max, float val){
 #define ARROW_LEFT 	0x1004
 #define ARROW_RIGHT 0x1003
 
-#define MAX_ITEMS	3
+#define MAX_ITEMS	2
 
 static void highlight(TERMINAL_HANDLE * handle, char * text ,int index, int count){
 	if(count==index){
@@ -117,61 +117,59 @@ static void TASK_main(void *pvParameters){
     uint16_t c=0;
     int selected=0;
 
-    TERM_setCursorPos(handle, MAX_ITEMS*2+3, 0);
-    ttprintf("Keys: [UP/DOWN] Select item, [-/+] Modify values, [r] Reset value, [CTRL+C] Quit");
+    TERM_setCursorPos(handle, MAX_ITEMS*3+3, 0);
+    ttprintf("Keys: [UP/DOWN] Select item, [-/+] Save min/max value, [r] Reset MIN/MAX, [i] change polarity [CTRL+C] Quit");
 
     do{
     	TERM_sendVT100Code(handle,_VT100_CURSOR_DISABLE, 0);
     	TERM_setCursorPos(handle, 1, 0);
-    	highlight(handle, "Angle:", 0, selected);
+    	highlight(handle, "ADC1:", 0, selected);
     	TERM_setCursorPos(handle, 2, 0);
-    	bargraph(handle, 0, 65536, motor_curr->FOC.FOCAngle);
+    	bargraph(handle, 0, 4095, motor_curr->Raw.ADC_in_ext1);
+    	ttprintf("MIN: %6d MAX: %6d INV: %1.0f", input_vars.adc1_MIN, input_vars.adc1_MAX, input_vars.ADC1_polarity);
+    	TERM_setCursorPos(handle, 3, 0);
+    	bargraph(handle, 0.0f, input_vars.max_request_Idq.q, input_vars.ADC1_req);
+    	ttprintf("Request: %f", input_vars.ADC1_req);
 
     	if(selected==0){
-    		if(c=='r'){
-    			motor_curr->FOC.FOCAngle=32768;
-    		}
+			if(c=='r'){
+				input_vars.adc1_MIN=0;
+				input_vars.adc1_MAX=4095;
+			}
 			if(c=='-'){
-				motor_curr->FOC.FOCAngle-=100;
+				input_vars.adc1_MIN=motor_curr->Raw.ADC_in_ext1;
 			}
 			if(c=='+'){
-				motor_curr->FOC.FOCAngle+=100;
+				input_vars.adc1_MAX=motor_curr->Raw.ADC_in_ext1;
+			}
+			if(c=='i'){
+				input_vars.ADC1_polarity *= -1.0f;
 			}
     	}
 
 
-    	TERM_setCursorPos(handle, 3, 0);
-    	highlight(handle, "Voltage:", 1, selected);
-		TERM_setCursorPos(handle, 4, 0);
-		bargraph(handle, 0, motor_curr->Conv.Vbus, motor_curr->meas.hfi_voltage);
+    	TERM_setCursorPos(handle, 4, 0);
+    	highlight(handle, "ADC2:", 1, selected);
+		TERM_setCursorPos(handle, 5, 0);
+		bargraph(handle, 0, 4095, 0);
+		ttprintf("MIN: %6d MAX: %6d INV: %1.0f", input_vars.adc2_MIN, input_vars.adc2_MAX, input_vars.ADC2_polarity);
+    	TERM_setCursorPos(handle, 6, 0);
+    	bargraph(handle, 0.0f, input_vars.max_request_Idq.q, input_vars.ADC1_req);
+    	ttprintf("Request: %f", input_vars.ADC1_req);
 
 		if(selected==1){
 			if(c=='r'){
-				motor_curr->meas.hfi_voltage = HFI_VOLTAGE;
+				input_vars.adc2_MIN=0;
+				input_vars.adc2_MAX=4095;
 			}
 			if(c=='-'){
-				motor_curr->meas.hfi_voltage -= 1.0f;
-				if(motor_curr->meas.hfi_voltage<0) motor_curr->meas.hfi_voltage=0;
+				input_vars.adc2_MIN=100;
 			}
 			if(c=='+'){
-				motor_curr->meas.hfi_voltage += 1.0f;
+				input_vars.adc2_MAX=100;
 			}
-		}
-
-		TERM_setCursorPos(handle, 5, 0);
-		highlight(handle, "Mod didq:", 2, selected);
-		TERM_setCursorPos(handle, 6, 0);
-		bargraph(handle, 0, 10, motor_curr->FOC.HFI45_mod_didq);
-
-		if(selected==2){
-			if(c=='r'){
-				motor_curr->FOC.HFI45_mod_didq = HFI_THRESHOLD;
-			}
-			if(c=='-'){
-				motor_curr->FOC.HFI45_mod_didq -= 0.1f;
-			}
-			if(c=='+'){
-				motor_curr->FOC.HFI45_mod_didq += 0.1f;
+			if(c=='i'){
+				input_vars.ADC2_polarity *= -1.0f;
 			}
 		}
 
@@ -183,6 +181,7 @@ static void TASK_main(void *pvParameters){
 			selected--;
 			if(selected<0) selected = MAX_ITEMS-1;
 		}
+
 
         c=0;
         xStreamBufferReceive(handle->currProgram->inputStream,&c,sizeof(c),pdMS_TO_TICKS(100));

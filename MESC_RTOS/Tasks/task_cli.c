@@ -29,81 +29,24 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+
+#ifndef DASH
+#include "MESC/MESCinterface.h"
+#else
+#include "DASH/MESCinterface.h"
+#endif
+
+#include "Common/RTOS_flash.h"
 #include "main.h"
 #include "task_cli.h"
-#include <string.h>
 #include "cmsis_os.h"
 #include "TTerm/Core/include/TTerm.h"
-#include <stdio.h>
-#include "stdarg.h"
-#include "init.h"
-#ifndef DASH
-#include "MESCinterface.h"
-#else
-#include "DASHinterface.h"
-#endif
 #include "usbd_cdc_if.h"
-
 #include "task_can.h"
 
-
-uint32_t flash_clear(void * address, uint32_t len){
-	FLASH_WaitForLastOperation(500);
-	HAL_FLASH_Unlock();
-	FLASH_WaitForLastOperation(500);
-	eraseFlash((uint32_t)address, len);
-	HAL_FLASH_Lock();
-	FLASH_WaitForLastOperation(500);
-	return len;
-}
-
-uint32_t flash_start_write(void * address, void * data, uint32_t len){
-	uint8_t * buffer = data;
-	FLASH_WaitForLastOperation(500);
-	HAL_FLASH_Unlock();
-	FLASH_WaitForLastOperation(500);
-	uint32_t written=0;
-	while(len){
-		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, (uint32_t)address, *buffer)==HAL_OK){
-			written++;
-		}
-		buffer++;
-		address++;
-		len--;
-	}
-	return written;
-}
-
-uint32_t flash_write(void * address, void * data, uint32_t len){
-	uint8_t * buffer = data;
-	uint32_t written=0;
-	while(len){
-		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, (uint32_t)address, *buffer)==HAL_OK){
-			written++;
-		}
-		buffer++;
-		address++;
-		len--;
-	}
-	return written;
-}
-
-uint32_t flash_end_write(void * address, void * data, uint32_t len){
-	uint8_t * buffer = data;
-	uint32_t written=0;
-	while(len){
-		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, (uint32_t)address, *buffer)==HAL_OK){
-			written++;
-		}
-		buffer++;
-		address++;
-		len--;
-	}
-	FLASH_WaitForLastOperation(500);
-	HAL_FLASH_Lock();
-	FLASH_WaitForLastOperation(500);
-	return written;
-}
 
 
 
@@ -267,7 +210,7 @@ void task_cli(void * argument)
 		case HW_TYPE_CAN:
 			port->rx_stream = xStreamBufferCreate(port->rx_buffer_size, 1);
 			port->tx_stream = xStreamBufferCreate(port->rx_buffer_size, 1);
-			TASK_CAN_init(port, "DASHF407");
+			TASK_CAN_init(port, CAN_NAME);
 			break;
 	}
 
@@ -293,13 +236,10 @@ void task_cli(void * argument)
 	}
 
 	if(term_cli != NULL){
-		null_handle.varHandle = TERM_VAR_init(term_cli, (uint8_t*)getFlashBaseAddress(), getFlashBaseSize(), flash_clear, flash_start_write, flash_write, flash_end_write);
+		null_handle.varHandle = TERM_VAR_init(term_cli, (uint8_t*)RTOS_flash_base_address(), RTOS_flash_base_size(), RTOS_flash_clear, RTOS_flash_start_write, RTOS_flash_write, RTOS_flash_end_write);
 	}
-#ifndef DASH
+
 	MESCinterface_init(term_cli);
-#else
-	DASHinterface_init(term_cli);
-#endif
 
 	if(port->hw_type == HW_TYPE_UART){
 		rd_ptr = uart_get_write_pos(port); //Clear input buffer.
