@@ -164,23 +164,54 @@ void task_ssd(void * argument){
 	ssd1306_Init();
 	char buffer[64];
 
+	TASK_CAN_node * node = NULL;
+	esc_data * esc;
+	float val;
+
 	while(1){
+
 		uint32_t y = 0;
 
 	    ssd1306_Fill(Black);
 
 	    ssd1306_SetCursor(2, y);
-	    snprintf(buffer,sizeof(buffer),"Speed: %2.2f", adc[0]);
+
+	    node = TASK_CAN_get_node_from_id(dash.id_speed);
+	    if(node!=NULL && node->data!=NULL){
+	    	esc = node->data;
+	    	val = esc->speed;
+	    }else{
+	    	val = NAN;
+	    }
+
+	    snprintf(buffer,sizeof(buffer),"Speed: %2.2f", val);
 	    ssd1306_WriteString(buffer, Font_11x18, White);
 	    y += 19;
 
 	    ssd1306_SetCursor(2, y);
-	    snprintf(buffer,sizeof(buffer),"Curr : %2.2f", 0.0);
+
+	    node = TASK_CAN_get_node_from_id(dash.id_voltage);
+	    if(node!=NULL && node->data!=NULL){
+	    	esc = node->data;
+	    	val = esc->motor_current;
+	    }else{
+	    	val = NAN;
+	    }
+
+	    snprintf(buffer,sizeof(buffer),"Curr : %2.2f", val);
 	    ssd1306_WriteString(buffer, Font_11x18, White);
 	    y += 19;
 
 	    ssd1306_SetCursor(2, y);
-	    snprintf(buffer,sizeof(buffer),"Volt : %2.2f", 0.0);
+
+	    node = TASK_CAN_get_node_from_id(dash.id_voltage);
+	    if(node!=NULL && node->data!=NULL){
+	    	esc = node->data;
+	    	val = esc->bus_voltage;
+	    }else{
+	    	val = NAN;
+	    }
+	    snprintf(buffer,sizeof(buffer),"Volt : %2.2f", val);
 		ssd1306_WriteString(buffer, Font_11x18, White);
 		y += 19;
 

@@ -48,6 +48,8 @@ uint8_t REGISTER_calibrate(TermCommandDescriptor * desc){
     return pdTRUE;
 }
 
+extern float remote_adc[2];
+
 static uint8_t CMD_main(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     
     uint8_t currArg = 0;
@@ -95,7 +97,7 @@ static void bargraph(TERMINAL_HANDLE * handle, float min, float max, float val){
 #define ARROW_LEFT 	0x1004
 #define ARROW_RIGHT 0x1003
 
-#define MAX_ITEMS	2
+#define MAX_ITEMS	4
 
 static void highlight(TERMINAL_HANDLE * handle, char * text ,int index, int count){
 	if(count==index){
@@ -172,6 +174,19 @@ static void TASK_main(void *pvParameters){
 				input_vars.ADC2_polarity *= -1.0f;
 			}
 		}
+
+
+    	TERM_setCursorPos(handle, 7, 0);
+    	highlight(handle, "Remote ADC1:", 2, selected);
+		TERM_setCursorPos(handle, 8, 0);
+    	bargraph(handle, 0.0f, 1.0f, remote_adc[0]);
+    	ttprintf("Request: %f", remote_adc[0]);
+
+    	TERM_setCursorPos(handle, 9, 0);
+    	highlight(handle, "Remote ADC2:", 2, selected);
+		TERM_setCursorPos(handle, 10, 0);
+    	bargraph(handle, 0.0f, 1.0f, remote_adc[1]);
+    	ttprintf("Request: %f", remote_adc[1]);
 
 		if(c==ARROW_DOWN){
 			selected++;
