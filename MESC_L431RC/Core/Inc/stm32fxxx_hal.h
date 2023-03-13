@@ -8,7 +8,7 @@
 #ifndef INC_STM32FXXX_HAL_H_
 #define INC_STM32FXXX_HAL_H_
 
-#include "stm32L4xx_hal.h"
+#include "stm32l4xx_hal.h"
 #include "MESC_L431.h"
 // TODO move all the 431 specific defines (STM32L4xx) into this from:
 // MESCfoc.c

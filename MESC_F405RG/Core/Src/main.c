@@ -188,6 +188,7 @@ int main(void)
   //Set motor timer
   mtr[0].mtimer = &htim1;
   mtr[0].stimer = &htim2;
+  //mtr[0].encspi = &hspi3;
   temp_init( PROFILE_DEFAULT );
   motor_init( PROFILE_DEFAULT );
   MESCInit(&mtr[0]);
