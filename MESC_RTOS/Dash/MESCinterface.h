@@ -62,6 +62,8 @@ typedef struct{
 	float Id;
 	float Vq;
 	float Vd;
+	uint32_t cycles_fastloop;
+	uint32_t cycles_hyperloop;
 } esc_data;
 
 

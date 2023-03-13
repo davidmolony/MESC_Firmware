@@ -145,16 +145,24 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 			}
 			break;
 		}
+		case CAN_ID_FOC_HYPER:{
+			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
+				esc_data * esc = node->data;
+				esc->cycles_fastloop = buffer_to_uint32(data);
+				esc->cycles_hyperloop = buffer_to_uint32(data+4);
+			}
+			break;
+		}
 		default:
 			break;
 	}
 }
 
+float adc[4];
 
 void task_ssd(void * argument){
 	ssd1306_Init();
 	char buffer[64];
-
 
 	while(1){
 		uint32_t y = 0;
@@ -162,7 +170,7 @@ void task_ssd(void * argument){
 	    ssd1306_Fill(Black);
 
 	    ssd1306_SetCursor(2, y);
-	    snprintf(buffer,sizeof(buffer),"Speed: %2.2f", 0.0);
+	    snprintf(buffer,sizeof(buffer),"Speed: %2.2f", adc[0]);
 	    ssd1306_WriteString(buffer, Font_11x18, White);
 	    y += 19;
 
@@ -176,15 +184,30 @@ void task_ssd(void * argument){
 		ssd1306_WriteString(buffer, Font_11x18, White);
 		y += 19;
 
-
 	    ssd1306_UpdateScreen();
-	    vTaskDelay(50);
+	    vTaskDelay(20);
 
 	}
 }
 
-void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle){
+extern ADC_HandleTypeDef hadc1;
 
+
+void task_analog(void * argument){
+
+	while(1){
+		adc[0] = (float)ADC1->JDR1 / 4095.0f;
+		adc[1] = (float)ADC1->JDR2 / 4095.0f;
+		adc[2] = (float)ADC1->JDR3 / 4095.0f;
+		adc[3] = (float)ADC1->JDR4 / 4095.0f;
+
+		HAL_ADCEx_InjectedStart(&hadc1);
+	    vTaskDelay(10);
+	}
+}
+
+void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle){
+	TASK_CAN_add_float(handle	, CAN_ID_ADC1_2_REQ	  	, CAN_BROADCAST, adc[0]		, adc[1]	, 0);
 }
 
 void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
@@ -206,6 +229,7 @@ uint8_t CMD_esc_info(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 				ttprintf("\tADC1: %f \tADC2: %f\r\n", esc->adc1, esc->adc2);
 				ttprintf("\tTemp Motor: %f \tTemp Mos1: %f \tTemp Mos2: %f \tTemp Mos3: %f\r\n", esc->temp_motor, esc->temp_mos1, esc->temp_mos2, esc->temp_mos3);
 				ttprintf("\tBus voltage: %f \tBus current: %f\r\n", esc->bus_voltage, esc->bus_current);
+				ttprintf("\tCycles fastloop: %u \tCycles hyperloop: %u\r\n", esc->cycles_fastloop, esc->cycles_hyperloop);
 
 				ttprintf("\tMESC status: ");
 
@@ -303,9 +327,9 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 
 	vTaskDelay(100);
-;
-	xTaskCreate(task_ssd, "tskSSD", 1024, NULL, osPriorityNormal, NULL);
 
+	xTaskCreate(task_ssd, "tskSSD", 1024, NULL, osPriorityNormal, NULL);
+	xTaskCreate(task_analog, "tskAnalog", 128, NULL, osPriorityAboveNormal, NULL);
 
 
 }
