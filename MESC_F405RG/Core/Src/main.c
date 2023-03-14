@@ -169,11 +169,6 @@ int main(void)
 #ifdef IC_TIMER
   MESC_IC_Init(IC_TIMER);
 #endif
-char a[5] = {"hello"};
-  while(1){
-	  HAL_UART_Transmit_DMA(&huart3, &a, 5);
-HAL_Delay(100);
-  }
 
 #ifdef USE_ENCODER
   HAL_SPI_Init(&hspi3);
