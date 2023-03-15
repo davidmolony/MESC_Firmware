@@ -4,11 +4,15 @@
 //#include "CL700_V0_3.h"
 //#include "MX_FOC_IMS.h"
 //#include "MX_FOC_GaN.h"
-#include "GIGAVESC.h"
+//#include "GIGAVESC.h"
+#include "Dual_Stepper.h"
+
 
 #define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!
 
+#ifndef NUM_MOTORS
 #define NUM_MOTORS	1
+#endif
 
 #define SLOWTIM_SCALER 2
 
@@ -47,7 +51,7 @@
 #define USE_PROFILE
 
 #ifndef FIELD_WEAKENING_CURRENT
-#define FIELD_WEAKENING_CURRENT 10.0f //This does not set whether FW is used, just the default current
+#define FIELD_WEAKENING_CURRENT 0.10f //This does not set whether FW is used, just the default current
 #endif
 
 #ifndef FIELD_WEAKENING_THRESHOLD

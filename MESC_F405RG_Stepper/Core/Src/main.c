@@ -193,7 +193,7 @@ int main(void)
   */
 HAL_Delay(1);
   //Set motor timer
-  mtr[0].mtimer = &htim1;
+  mtr[0].mtimer = &htim8;
   mtr[0].stimer = &htim2;
   //mtr[0].encspi = &hspi3;
   temp_init( PROFILE_DEFAULT );

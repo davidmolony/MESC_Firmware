@@ -97,6 +97,14 @@
 #define DEFAULT_MOTOR_R 0.062f //Ohms
 #define DEFAULT_MOTOR_PP 6 //Pole Pairs
 
+#elif defined(PKP246D23A2) //Can't remember, guessing.
+#define MAX_MOTOR_PHASE_CURRENT 2.3f //
+#define DEFAULT_MOTOR_POWER 40.0f
+#define DEFAULT_FLUX_LINKAGE 0.0035f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.00165f //Henries
+#define DEFAULT_MOTOR_Lq 0.00165f//Henries
+#define DEFAULT_MOTOR_R 0.20f //Ohms
+#define DEFAULT_MOTOR_PP 50 //Pole Pairs
 
 #elif defined(BR3536_1200KV)
 

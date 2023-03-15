@@ -71,10 +71,15 @@ void hw_init(MESC_motor_typedef *_motor) {
 void getRawADC(MESC_motor_typedef *_motor) {
 	//Get the injected critical conversions
 
-  _motor->Raw.Iu = hadc1.Instance->JDR1;  // U Current
-  _motor->Raw.Iv = hadc2.Instance->JDR1;  // V Current
-  _motor->Raw.Iw = hadc3.Instance->JDR1;  // W Current
-  _motor->Raw.Vbus = hadc3.Instance->JDR3;  // DC Link Voltage
+//  _motor->Raw.Iu = hadc1.Instance->JDR1;  // U Current
+//  _motor->Raw.Iv = hadc2.Instance->JDR1;  // V Current
+//  _motor->Raw.Iw = hadc3.Instance->JDR1;  // W Current
+//  _motor->Raw.Vbus = hadc3.Instance->JDR3;  // DC Link Voltage
+
+  _motor->Raw.Iu = ADC2_buffer[1];  // U Current
+  _motor->Raw.Iv = ADC2_buffer[0];	// V Current
+  _motor->Raw.Iw = 2048;			//Dummy W current, only 2 phase
+  _motor->Raw.Vbus = ADC2_buffer[2];
 
   GET_THROTTLE_INPUT; //Define a similar macro in the header file for your board that maps the throttle
 #ifdef GET_THROTTLE_INPUT2

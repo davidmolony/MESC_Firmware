@@ -680,6 +680,10 @@ uint16_t phasebalance;
     		-_motor->Conv.Iu -_motor->Conv.Iv;
 #endif
 
+#ifdef STEPPER_MOTOR //Skip the Clarke transform
+    _motor->FOC.Iab.a = _motor->Conv.Iu;
+    _motor->FOC.Iab.b = _motor->Conv.Iv;
+#else
 
     // Power Variant Clark transform
     // Here we select the phases that have the lowest duty cycle to us, since
@@ -732,7 +736,7 @@ uint16_t phasebalance;
 	          one_on_sqrt3 * _motor->Conv.Iw;
 	break;
     }//End of phase selection switch
-
+#endif
     // Park
     _motor->FOC.Idq.d = _motor->FOC.sincosangle.cos * _motor->FOC.Iab.a +
                      _motor->FOC.sincosangle.sin * _motor->FOC.Iab.b;
@@ -1174,7 +1178,15 @@ float Vd, Vq;
                       _motor->FOC.sincosangle.sin * Vq;
     _motor->FOC.Vab.b = _motor->FOC.sincosangle.sin * Vd +
                       _motor->FOC.sincosangle.cos * Vq;
+#ifdef STEPPER_MOTOR//Skip inverse Clark
 
+    _motor->mtimer->Instance->CCR1 = (uint16_t)(1.0f * _motor->FOC.Vab_to_PWM * (_motor->FOC.Vab.a) + _motor->FOC.PWMmid);
+    _motor->mtimer->Instance->CCR2 = (uint16_t)(-1.0f * _motor->FOC.Vab_to_PWM * (_motor->FOC.Vab.a) + _motor->FOC.PWMmid);
+    _motor->mtimer->Instance->CCR3 = (uint16_t)(1.0f * _motor->FOC.Vab_to_PWM * (_motor->FOC.Vab.b) + _motor->FOC.PWMmid);
+    _motor->mtimer->Instance->CCR4 = (uint16_t)(-1.0f * _motor->FOC.Vab_to_PWM * (_motor->FOC.Vab.b) + _motor->FOC.PWMmid);
+
+
+#else
 	// Inverse Clark transform - power variant
 	_motor->FOC.inverterVoltage[0] = _motor->FOC.Vab.a;
 	_motor->FOC.inverterVoltage[1] = -0.5f*_motor->FOC.inverterVoltage[0];
@@ -1279,7 +1291,7 @@ static int carryU, carryV, carryW;
 	}
 #endif
 #endif
-
+#endif //End of #ifdef STEPPER_MOTOR
 
   }
 
@@ -1762,14 +1774,14 @@ __NOP();
 
   void calculateGains(MESC_motor_typedef *_motor) {
     _motor->FOC.pwm_period = 1.0f/_motor->FOC.pwm_frequency;
-    _motor->mtimer->Instance->ARR = HAL_RCC_GetHCLKFreq()/(((float)htim1.Instance->PSC + 1.0f) * 2*_motor->FOC.pwm_frequency);
-    _motor->mtimer->Instance->CCR4 = htim1.Instance->ARR-50; //Just short of dead center (dead center will not actually trigger the conversion)
+    _motor->mtimer->Instance->ARR = HAL_RCC_GetHCLKFreq()/(((float)_motor->mtimer->Instance->PSC + 1.0f) * 2*_motor->FOC.pwm_frequency);
+    _motor->mtimer->Instance->CCR4 = _motor->mtimer->Instance->ARR-50; //Just short of dead center (dead center will not actually trigger the conversion)
     #ifdef SINGLE_ADC
-    _motor->mtimer->Instance->CCR4 = htim1.Instance->ARR-80; //If we only have one ADC, we need to convert early otherwise the data will not be ready in time
+    _motor->mtimer->Instance->CCR4 = _motor->mtimer->Instance->ARR-80; //If we only have one ADC, we need to convert early otherwise the data will not be ready in time
     #endif
-    _motor->FOC.PWMmid = htim1.Instance->ARR * 0.5f;
+    _motor->FOC.PWMmid = _motor->mtimer->Instance->ARR * 0.5f;
 
-    _motor->FOC.ADC_duty_threshold = htim1.Instance->ARR * 0.90f;
+    _motor->FOC.ADC_duty_threshold = _motor->mtimer->Instance->ARR * 0.90f;
 
 
     calculateFlux(_motor);
@@ -1937,7 +1949,12 @@ float  Square(float x){ return((x)*(x));}
     // In this loop, we will fetch the throttle values, and run functions that
     // are critical, but do not need to be executed very often e.g. adjustment
     // for battery voltage change
-
+if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == 0){
+	input_vars.ADC1_polarity = -1.0f;
+}
+if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == 0){
+	input_vars.ADC1_polarity = 1.0f;
+}
 	  houseKeeping(_motor);	//General dross that keeps things ticking over, like nudging the observer
 	  collectInputs(_motor); //Get all the throttle inputs
 
