@@ -85,7 +85,7 @@
 #define USE_CLAMPED_OBSERVER_CENTERING //Pick one of the two centering methods... preferably this one
 
 /////////////////////Related to COMMs INTERFACE//////////////////////////////
-#define MESC_UART_USB 		MESC_USB
+//#define MESC_UART_USB 		MESC_USB
 #define HW_UART huart3
 
 /////////////////////Prototype stuff that does not really work nicely//////////////////////////////
