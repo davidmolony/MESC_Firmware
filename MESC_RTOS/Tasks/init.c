@@ -32,13 +32,33 @@
 #include "init.h"
 #include "task_cli.h"
 #include "main.h"
-#include "usbd_def.h"
 #include "stdarg.h"
 
+
 extern UART_HandleTypeDef HW_UART;
+
+#ifdef MESC_UART_USB
+
 extern USBD_HandleTypeDef hUsbDeviceFS;
+port_str main_usb = {	.hw = &hUsbDeviceFS,
+						.hw_type = HW_TYPE_USB,
+					    .rx_buffer_size = 512,
+						.half_duplex = false,
+						.task_handle = NULL
+};
+
+#endif
+
 #ifdef HAL_CAN_MODULE_ENABLED
 extern CAN_HandleTypeDef hcan1;
+
+port_str main_can = {	.hw = &hcan1,
+						.hw_type = HW_TYPE_CAN,
+					    .rx_buffer_size = 512,
+						.half_duplex = false,
+						.task_handle = NULL
+};
+
 #endif
 
 port_str main_uart = {	.hw = &HW_UART,
@@ -48,21 +68,7 @@ port_str main_uart = {	.hw = &HW_UART,
 						.task_handle = NULL
 };
 
-port_str main_usb = {	.hw = &hUsbDeviceFS,
-						.hw_type = HW_TYPE_USB,
-					    .rx_buffer_size = 512,
-						.half_duplex = false,
-						.task_handle = NULL
-};
 
-#ifdef HAL_CAN_MODULE_ENABLED
-port_str main_can = {	.hw = &hcan1,
-						.hw_type = HW_TYPE_CAN,
-					    .rx_buffer_size = 512,
-						.half_duplex = false,
-						.task_handle = NULL
-};
-#endif
 
 
 #if EXTENDED_PRINTF == 1
@@ -89,8 +95,12 @@ TERMINAL_HANDLE null_handle = {
 
 void init_system(void){
 
+#ifdef MESC_UART_USB
 	task_cli_init(&main_usb);
+#endif
+
 	task_cli_init(&main_uart);
+
 #ifdef HAL_CAN_MODULE_ENABLED
 	task_cli_init(&main_can);
 #endif
