@@ -248,6 +248,8 @@ void TIM2_IRQHandler(void)
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
 
 	MESC_Slow_IRQ_handler(&mtr[0]);
+	MESC_Slow_IRQ_handler(&mtr[1]);
+
 
   /* USER CODE END TIM2_IRQn 0 */
   /* USER CODE BEGIN TIM2_IRQn 1 */
@@ -291,7 +293,7 @@ void USART3_IRQHandler(void)
 void TIM8_UP_TIM13_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM8_UP_TIM13_IRQn 0 */
-	MESC_PWM_IRQ_handler(&mtr[0]);
+	MESC_PWM_IRQ_handler(&mtr[1]);
 	directionstat = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim8);
   __HAL_TIM_CLEAR_IT(&htim8, TIM_IT_UPDATE);
   /* USER CODE END TIM8_UP_TIM13_IRQn 0 */

@@ -11,7 +11,7 @@
 #define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!
 
 #ifndef NUM_MOTORS
-#define NUM_MOTORS	1
+#define NUM_MOTORS	2
 #endif
 
 #define SLOWTIM_SCALER 2

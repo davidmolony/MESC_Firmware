@@ -224,13 +224,13 @@ while(_motor->MotorState == MOTOR_STATE_INITIALISING){
 #ifdef USE_ENCODER
   _motor->FOC.enc_offset = ENCODER_E_OFFSET;
 #endif
+	//  __HAL_TIM_ENABLE_IT(_motor->stimer, TIM_IT_UPDATE);
 
   	  //Start the slowloop timer
   	  HAL_TIM_Base_Start(_motor->stimer);
 	// Here we can auto set the prescaler to get the us input regardless of the main clock
 	  __HAL_TIM_SET_PRESCALER(_motor->stimer, ((HAL_RCC_GetHCLKFreq())/ 1000000 - 1));
 	  __HAL_TIM_SET_AUTORELOAD(_motor->stimer,(1000000/SLOWTIM_SCALER) / SLOW_LOOP_FREQUENCY); //Run slowloop at 100Hz
-	  __HAL_TIM_ENABLE_IT(_motor->stimer, TIM_IT_UPDATE);
 
 	  InputInit();
 
@@ -320,6 +320,11 @@ static int Iuoff, Ivoff, Iwoff;
         _motor->offset.Iv =  Ivoff/initcycles;
         _motor->offset.Iw =  Iwoff/initcycles;
         _motor->key_bits &= ~UNINITIALISED_KEY;
+        initcycles = 0;
+        Iuoff = 0;
+        Ivoff = 0;
+        Iwoff = 0;
+
 //ToDo, do we want some safety checks here like offsets being roughly correct?
     	_motor->MotorState = MOTOR_STATE_TRACKING;
         htim1.Instance->BDTR |= TIM_BDTR_MOE;
@@ -1306,6 +1311,9 @@ static int carryU, carryV, carryW;
 #ifdef INV_ENABLE_M1
 	  INV_ENABLE_M1->BSRR = INV_ENABLE_M1_IO<<16U; //Write the inverter enable pin low
 #endif
+#ifdef INV_ENABLE_M2
+	  INV_ENABLE_M2->BSRR = INV_ENABLE_M2_IO<<16U; //Write the inverter enable pin low
+#endif
     phU_Break(_motor);
     phV_Break(_motor );
     phW_Break(_motor );
@@ -1313,6 +1321,9 @@ static int carryU, carryV, carryW;
   void generateEnable(MESC_motor_typedef *_motor) {
 #ifdef INV_ENABLE_M1
 	  INV_ENABLE_M1->BSRR = INV_ENABLE_M1_IO;//Write the inverter enable pin high
+#endif
+#ifdef INV_ENABLE_M2
+	  INV_ENABLE_M2->BSRR = INV_ENABLE_M2_IO;//Write the inverter enable pin high
 #endif
     phU_Enable(_motor);
     phV_Enable(_motor);

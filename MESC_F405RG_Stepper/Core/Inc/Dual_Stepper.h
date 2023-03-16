@@ -37,6 +37,7 @@
 #define USE_FIELD_WEAKENINGV2
 
 #define GET_THROTTLE_INPUT  _motor->Raw.ADC_in_ext1 = ADC2_buffer[3];  // Throttle for Stepper board
+#define GET_THROTTLE_INPUT2  _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR4;  // Throttle for Stepper board
 
 //#define USE_LR_OBSERVER
 
@@ -78,9 +79,13 @@
 #define SLOWLEDIONO 12
 
 //GPIO for BRK
-#define INV_ENABLE_M1 GPIOD
+#define INV_ENABLE_M1 GPIOB
 #define INV_ENABLE_M1_IO GPIO_PIN_2
 #define INV_ENABLE_M1_IONO 2
+
+#define INV_ENABLE_M2 GPIOD
+#define INV_ENABLE_M2_IO GPIO_PIN_2
+#define INV_ENABLE_M2_IONO 2
 
 //GPIO for IC timer //These actually have to be timer compatible pins and
 //you must have done something (anything) with the timer in CUBEMX to make it generate the config files
