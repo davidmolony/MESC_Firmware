@@ -34,12 +34,12 @@
 		<link>
 			<name>MESC_Common</name>
 			<type>2</type>
-			<locationURI>copy_PARENT/MESC_Common</locationURI>
+			<locationURI>PARENT-1-PROJECT_LOC/MESC_Common</locationURI>
 		</link>
 		<link>
 			<name>MESC_RTOS</name>
 			<type>2</type>
-			<locationURI>copy_PARENT/MESC_RTOS</locationURI>
+			<locationURI>PARENT-1-PROJECT_LOC/MESC_RTOS</locationURI>
 		</link>
 	</linkedResources>
 	<variableList>
