@@ -27,32 +27,13 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-const modules = [
-    'terminal',
-    'version'
-];
-
-function load_module( mod )
+function version_init()
 {
-    var obj_js = document.createElement( 'script' );
+    var obj_app = document.getElementById( 'app' );
 
-    obj_js.type = 'text/javascript';
-    obj_js.src = mod + '.js';
-
-    document.head.appendChild( obj_js );
+    obj_app.innerHTML += "Version loaded!";
 }
 
-function load_modules()
-{
-    for ( var i = 0; i < modules.length; ++i )
-    {
-        var mod = modules[i];
-        console.log( "Loading module '" + mod + "'" );
-        load_module( mod );
-    }
-}
-
-function init()
-{
-    load_modules();
-}
+console.log( "Starting Version module" );
+version_init();
+console.log( "Finished Version module" );

@@ -34,6 +34,12 @@
 #include <tuple>
 #include <vector>
 
+#define USE_UART
+
+#ifdef USE_UART
+#define UART Serial2
+#endif
+
 static char     const * g_esp32_webserver_ssid    = "MESC_UI_AP_1234";
 static char     const * g_esp32_webserver_pswd    = "password";
 static int      const   g_esp32_webserver_channel = 11;
@@ -66,6 +72,12 @@ void setup()
 {
     Serial.begin( 9600 );
     Serial.println( "INFO: Starting MESC WebServer Initialisation" );
+#ifdef USE_UART
+    Serial.println("INFO: Starting UART");
+
+    Serial2.begin( 9600 );
+#endif
+    Serial.println("INFO: Starting Access Point");
 
     WiFi.softAP( g_esp32_webserver_ssid, g_esp32_webserver_pswd, 11 );
 
@@ -111,13 +123,25 @@ void setup()
             {
                 case HTTP_GET:
                 {    
-                    // TODO Serial.write
-                    std::string const resp; // TODO Serial.read
+#ifdef USE_UART
+                    UART.println( command );
+#endif
+                    std::string resp;
+#ifdef USE_UART
+                    while (UART.available())
+                    {
+                        char const c = UART.read();
+
+                        resp.append( 1, c );
+                    }
+#endif
                     g_esp32_webserver->send( 200, "text/plain", resp.c_str() );
                     return;
                 }
                 case HTTP_POST:
-                    // TODO Serial.write
+#ifdef USE_UART
+                    UART.println( command );
+#endif
                     g_esp32_webserver->send( 202 );
                     return;
                 default:

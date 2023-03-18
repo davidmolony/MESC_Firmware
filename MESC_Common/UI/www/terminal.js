@@ -27,32 +27,41 @@
 * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-const modules = [
-    'terminal',
-    'version'
-];
-
-function load_module( mod )
+function terminal_init()
 {
-    var obj_js = document.createElement( 'script' );
+    var obj_app = document.getElementById( 'app' );
 
-    obj_js.type = 'text/javascript';
-    obj_js.src = mod + '.js';
+    var obj_history = document.createElement( 'div' );
 
-    document.head.appendChild( obj_js );
+        var obj_text = document.createElement( 'textarea' );
+        obj_text.id = 'app-terminal-history'
+        obj_text.readOnly = true;
+        obj_history.appendChild( obj_text );
+
+    obj_app.appendChild( obj_history );
+
+    var obj_form = document.createElement( 'form' );
+
+    obj_form.method = 'GET';
+    obj_form.action = 'UART';
+
+        var obj_input = document.createElement( 'input' );
+        obj_input.type = 'text';
+        obj_input.name = 'command';
+
+    obj_form.appendChild( obj_input );
+
+        var obj_button = document.createElement( 'input' );
+        obj_button.type = 'submit';
+        obj_button.value = 'Send';
+
+    obj_form.appendChild( obj_button );
+
+    obj_app.appendChild( obj_form );
+
+    obj_app.innerHTML += "Terminal loaded!";
 }
 
-function load_modules()
-{
-    for ( var i = 0; i < modules.length; ++i )
-    {
-        var mod = modules[i];
-        console.log( "Loading module '" + mod + "'" );
-        load_module( mod );
-    }
-}
-
-function init()
-{
-    load_modules();
-}
+console.log( "Starting Terminal module" );
+terminal_init();
+console.log( "Finished Terminal module" );
