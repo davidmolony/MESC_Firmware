@@ -155,6 +155,11 @@ void TERM_destroyHandle(TERMINAL_HANDLE * handle){
     vPortFree(handle->inputBuffer);
     vPortFree(handle->currUserName);
     
+#if TERM_SUPPORT_VARIABLES
+    vPortFree(handle->varHandle);
+#endif
+
+
     uint8_t currHistoryPos = 0;
     for(;currHistoryPos < TERM_HISTORYSIZE; currHistoryPos++){
         if(handle->historyBuffer[currHistoryPos] != 0){

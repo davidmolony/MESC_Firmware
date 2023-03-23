@@ -52,6 +52,7 @@ typedef struct {
 	uint32_t stream_dropped;
 	char short_name[9];
 	QueueHandle_t rx_queue;
+	uint32_t rx_dropped;
 	QueueHandle_t tx_queue;
 }TASK_CAN_handle;
 
@@ -85,9 +86,12 @@ TASK_CAN_node * TASK_CAN_get_node_from_id(uint8_t id);
 
 bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, float n1, float n2, uint32_t timeout);
 bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint32_t n1, uint32_t n2, uint32_t timeout);
+bool TASK_CAN_add_sample(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint16_t row, uint8_t col, uint8_t flags, float value, uint32_t timeout);
 
-float buffer_to_float(uint8_t* buffer);
-uint32_t buffer_to_uint32(uint8_t* buffer);
+float PACK_buf_to_float(uint8_t* buffer);
+uint32_t PACK_buf_to_u32(uint8_t* buffer);
+uint16_t PACK_buf_to_u16(uint8_t* buffer);
+uint8_t PACK_buf_to_u8(uint8_t* buffer);
 
 
 #endif

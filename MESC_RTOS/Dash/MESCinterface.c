@@ -41,6 +41,8 @@
 #include <string.h>
 #include <math.h>
 
+#include "TTerm/Core/include/TTerm_cwd.h"
+
 
 #include "fatfs.h"
 #include "tcp_serv.h"
@@ -52,6 +54,20 @@
 
 
 dash_data dash;
+
+
+#define N_COLS 8
+#define N_ROWS 1000
+
+#ifdef STM32F407xx
+__attribute__((section (".ccmram")))
+#endif
+float sample_data[N_COLS][N_ROWS];
+
+#ifdef STM32F407xx
+__attribute__((section (".ccmram")))
+#endif
+uint32_t n_rows;
 
 void * TASK_CAN_allocate_node(TASK_CAN_handle * handle, TASK_CAN_node * node){
 	if(memcmp(node->short_name, "ESC", 3)==0){
@@ -77,86 +93,164 @@ void populate_vars(){
 
 }
 
-float req = 0.0;
+void save_fastloop(uint32_t rows){
+
+     FIL out;
+     char timecode[32];
+     snprintf(timecode, sizeof(timecode), "fl_%u.csv", xTaskGetTickCount());
+
+
+     FRESULT res = f_open(&out,timecode,FA_WRITE | FA_CREATE_ALWAYS);
+     if(res != FR_OK){
+         return;
+     }
+
+
+     char buffer[512];
+     uint32_t len;
+     unsigned int written=0;
+     len = sprintf(buffer, "timestamp,Vbus,Iu,Iv,Iw,Vd,Vq,angle\r\n");
+     f_write(&out, buffer, len, &written);
+     for(uint8_t i=0;i<rows;i++){
+
+		len = sprintf(buffer, "%f,%f,%f,%f,%f,%f,%f,%f\r\n", sample_data[0][i], sample_data[1][i], sample_data[2][i], sample_data[3][i],
+				sample_data[4][i], sample_data[5][i], sample_data[6][i], sample_data[7][i]);
+		f_write(&out, buffer, len, &written);
+
+     }
+
+     f_close(&out);
+
+	return;
+}
+
+extern volatile TERMINAL_HANDLE * debug;
+uint32_t count=0;
+
+void TASK_CAN_packet_esc(esc_data * esc, uint32_t id, uint8_t* data, uint32_t len){
+	switch(id){
+		case CAN_ID_ADC1_2_REQ:
+			esc->adc1 = PACK_buf_to_float(data);
+			esc->adc2 = PACK_buf_to_float(data+4);
+			break;
+		case CAN_ID_SPEED:
+			esc->speed = PACK_buf_to_float(data);
+			break;
+		case CAN_ID_BUS_VOLT_CURR:
+			esc->bus_voltage = PACK_buf_to_float(data);
+			esc->bus_current = PACK_buf_to_float(data+4);
+			break;
+		case CAN_ID_TEMP_MOT_MOS1:
+			esc->temp_motor = PACK_buf_to_float(data);
+			esc->temp_mos1 = PACK_buf_to_float(data+4);
+			break;
+		case CAN_ID_TEMP_MOS2_MOS3:
+			esc->temp_mos2 = PACK_buf_to_float(data);
+			esc->temp_mos3 = PACK_buf_to_float(data+4);
+			break;
+		case CAN_ID_MOTOR_CURRENT:
+			esc->Iq = PACK_buf_to_float(data);
+			esc->Id = PACK_buf_to_float(data+4);
+			break;
+		case CAN_ID_MOTOR_VOLTAGE:
+			esc->Vq = PACK_buf_to_float(data);
+			esc->Vd = PACK_buf_to_float(data+4);
+			break;
+		case CAN_ID_STATUS:
+			esc->status = PACK_buf_to_u32(data);
+			break;
+		case CAN_ID_FOC_HYPER:
+			esc->cycles_fastloop = PACK_buf_to_u32(data);
+			esc->cycles_hyperloop = PACK_buf_to_u32(data+4);
+			break;
+		case CAN_ID_SAMPLE:{
+
+			uint16_t row = PACK_buf_to_u16(data);
+			uint8_t col = PACK_buf_to_u8(data+2);
+			uint8_t flags = PACK_buf_to_u8(data+3);
+			float val = PACK_buf_to_float(data+4);
+
+			if(flags==CAN_SAMPLE_FLAG_START){
+				count=0;
+			}
+
+			if(row < N_ROWS && col < N_COLS){
+				sample_data[col][row] = val;
+				count++;
+				if(row > n_rows){
+					n_rows = row + 1;
+				}
+			}
+
+			if(flags==CAN_SAMPLE_FLAG_END){
+				save_fastloop(n_rows);
+				//Activate save function
+				count=0;
+			}
+
+		}
+	}
+
+}
+
 
 
 void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
 	TASK_CAN_node * node = TASK_CAN_get_node_from_id(sender);
+
+	if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
+		esc_data * esc = node->data;
+		TASK_CAN_packet_esc(esc, id, data, len);
+		return;
+	}
 	switch(id){
-		case CAN_ID_ADC1_2_REQ:{
-			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
-				esc_data * esc = node->data;
-				esc->adc1 = buffer_to_float(data);
-				esc->adc2 = buffer_to_float(data+4);
-			}
-			break;
-		}
-		case CAN_ID_SPEED:{
-			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
-				esc_data * esc = node->data;
-				esc->speed = buffer_to_float(data);
-			}
-			break;
-		}
-		case CAN_ID_BUS_VOLT_CURR:{
-			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
-				esc_data * esc = node->data;
-				esc->bus_voltage = buffer_to_float(data);
-				esc->bus_current = buffer_to_float(data+4);
-			}
-			break;
-		}
-		case CAN_ID_TEMP_MOT_MOS1:{
-			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
-				esc_data * esc = node->data;
-				esc->temp_motor = buffer_to_float(data);
-				esc->temp_mos1 = buffer_to_float(data+4);
-			}
-			break;
-		}
-		case CAN_ID_TEMP_MOS2_MOS3:{
-			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
-				esc_data * esc = node->data;
-				esc->temp_mos2 = buffer_to_float(data);
-				esc->temp_mos3 = buffer_to_float(data+4);
-			}
-			break;
-		}
-		case CAN_ID_MOTOR_CURRENT:{
-			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
-				esc_data * esc = node->data;
-				esc->Iq = buffer_to_float(data);
-				esc->Id = buffer_to_float(data+4);
-			}
-			break;
-		}
-		case CAN_ID_MOTOR_VOLTAGE:{
-			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
-				esc_data * esc = node->data;
-				esc->Vq = buffer_to_float(data);
-				esc->Vd = buffer_to_float(data+4);
-			}
-			break;
-		}
-		case CAN_ID_STATUS:{
-			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
-				esc_data * esc = node->data;
-				esc->status = buffer_to_uint32(data);
-			}
-			break;
-		}
-		case CAN_ID_FOC_HYPER:{
-			if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
-				esc_data * esc = node->data;
-				esc->cycles_fastloop = buffer_to_uint32(data);
-				esc->cycles_hyperloop = buffer_to_uint32(data+4);
-			}
-			break;
-		}
+
 		default:
 			break;
 	}
 }
+
+
+uint8_t CMD_f_log(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+
+     FIL out;
+     char * filePath = FS_newCWD(handle->cwdPath, args[0]);
+
+     FRESULT res = f_open(&out,filePath,FA_WRITE | FA_CREATE_ALWAYS);
+     if(res != FR_OK){
+         vPortFree(filePath);
+         ttprintf("Error creating file\r\n");
+         return TERM_CMD_EXIT_SUCCESS;
+     }
+
+
+     char buffer[512];
+     uint32_t len;
+     unsigned int written=0;
+     len = sprintf(buffer, "id,ticks,speed,adc1,adc2,bus_voltage,bus_current,motor_current,temp_motor,temp_mos1,temp_mos2,temp_mos3,status,Iq,Id,Vq,Vd,cycles_fl,cycles_hl\r\n");
+     ttprintf("len: %u\r\n", len);
+     f_write(&out, buffer, len, &written);
+     for(uint8_t i=0;i<100;i++){
+    	 for(uint32_t id=1;id<NUM_NODES;id++){
+			 TASK_CAN_node * node = TASK_CAN_get_node_from_id(id);
+			 if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
+				esc_data * esc = node->data;
+				len = sprintf(buffer, "%u,%u,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%u,%f,%f,%f,%f,%u,%u\r\n", id, xTaskGetTickCount() ,esc->speed, esc->adc1,
+						esc->adc2, esc->bus_voltage, esc->bus_current, esc->motor_current,
+						esc->temp_motor, esc->temp_mos1, esc->temp_mos2, esc->temp_mos3, esc->status, esc->Iq, esc->Id, esc->Vq, esc->Vd, esc->cycles_fastloop, esc->cycles_hyperloop);
+				f_write(&out, buffer, len, &written);
+			 }
+    	 }
+    	 vTaskDelay(100);
+     }
+
+     f_close(&out);
+     vPortFree(filePath);
+
+
+	return TERM_CMD_EXIT_SUCCESS;
+}
+
 
 float adc[4];
 
@@ -326,6 +420,7 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 	if(is_init) return;
 	is_init=true;
 
+	n_rows = 0;
 
 	populate_vars();
 
@@ -341,6 +436,8 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 	TERM_addCommand(CMD_can_send, "can_send", "Send CAN message", 0, &TERM_defaultList);
 
 	TERM_addCommand(CMD_esc_info, "esc", "ESC info", 0, &TERM_defaultList);
+
+	TERM_addCommand(CMD_f_log, "flog", "Log data", 0, &TERM_defaultList);
 
 	TermCommandDescriptor * varAC = TERM_addCommand(CMD_log, "log", "Configure logging", 0, &TERM_defaultList);
 	TERM_addCommandAC(varAC, TERM_varCompleter, null_handle.varHandle->varListHead);

@@ -375,7 +375,7 @@ void populate_vars(){
 void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
 	switch(id){
 		case CAN_ID_IQREQ:{
-			float req = buffer_to_float(data);
+			float req = PACK_buf_to_float(data);
 			if(req > 0){
 				input_vars.UART_req = req * input_vars.max_request_Idq.q;
 			}else{
@@ -389,8 +389,8 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 		}
 		case CAN_ID_ADC1_2_REQ:{
 			if(sender == adc_node){
-				remote_adc[0] = buffer_to_float(data);
-				remote_adc[1] = buffer_to_float(data+4);
+				remote_adc[0] = PACK_buf_to_float(data);
+				remote_adc[1] = PACK_buf_to_float(data+4);
 			}
 			break;
 		}
@@ -419,6 +419,52 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 	TASK_CAN_add_float(handle	, CAN_ID_TEMP_MOT_MOS1	, CAN_BROADCAST, motor_curr->Conv.Motor_T			, motor_curr->Conv.MOSu_T			, 0);
 	TASK_CAN_add_float(handle	, CAN_ID_TEMP_MOS2_MOS3	, CAN_BROADCAST, motor_curr->Conv.MOSv_T			, motor_curr->Conv.MOSw_T			, 0);
 	TASK_CAN_add_uint32(handle	, CAN_ID_FOC_HYPER		, CAN_BROADCAST, motor_curr->FOC.cycles_fastloop	, motor_curr->FOC.cycles_hyperloop	, 0);
+
+}
+
+
+void TASK_CAN_aux_data(TASK_CAN_handle * handle){
+	static int samples_sent=-1;
+	static int current_pos=0;
+	static float timestamp;
+
+	MESC_motor_typedef * motor_curr = &mtr[0];
+
+	if(print_samples_now){
+		if(samples_sent == -1){
+			current_pos = sampled_vars.current_sample;
+			TASK_CAN_add_sample(handle, CAN_ID_SAMPLE, 0, 0, 0, CAN_SAMPLE_FLAG_START, 0.0f, 100);
+			samples_sent=0;
+			return;
+		}
+
+		timestamp += motor_curr->FOC.pwm_period;
+		TASK_CAN_add_sample(handle, CAN_ID_SAMPLE, 0, samples_sent, 0, 0, timestamp, 100);
+		TASK_CAN_add_sample(handle, CAN_ID_SAMPLE, 0, samples_sent, 1, 0, sampled_vars.Vbus[current_pos], 100);
+		TASK_CAN_add_sample(handle, CAN_ID_SAMPLE, 0, samples_sent, 2, 0, sampled_vars.Iu[current_pos], 100);
+		TASK_CAN_add_sample(handle, CAN_ID_SAMPLE, 0, samples_sent, 3, 0, sampled_vars.Iv[current_pos], 100);
+		TASK_CAN_add_sample(handle, CAN_ID_SAMPLE, 0, samples_sent, 4, 0, sampled_vars.Iw[current_pos], 100);
+		TASK_CAN_add_sample(handle, CAN_ID_SAMPLE, 0, samples_sent, 5, 0, sampled_vars.Vd[current_pos], 100);
+		TASK_CAN_add_sample(handle, CAN_ID_SAMPLE, 0, samples_sent, 6, 0, sampled_vars.Vq[current_pos], 100);
+		TASK_CAN_add_sample(handle, CAN_ID_SAMPLE, 0, samples_sent, 7, 0, sampled_vars.angle[current_pos], 100);
+
+		samples_sent++;
+		current_pos++;
+		if(current_pos == LOGLENGTH){
+			current_pos = 0;
+		}
+		if(samples_sent == LOGLENGTH){
+			timestamp = 0;
+			samples_sent = -2;
+			print_samples_now = 0;
+			lognow = 1;
+			return;
+		}
+	}
+	if(samples_sent == -2){
+		samples_sent = -1;
+		TASK_CAN_add_sample(handle, CAN_ID_SAMPLE, 0, 0, 0, CAN_SAMPLE_FLAG_END, 0.0f, 100);
+	}
 
 }
 

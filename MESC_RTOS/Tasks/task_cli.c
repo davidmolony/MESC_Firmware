@@ -59,9 +59,9 @@ void putbuffer_uart(unsigned char *buf, unsigned int len, port_str * port){
 		vTaskDelay(1);
 	}
 	HAL_UART_Transmit_DMA(uart_handle, buf, len);
-	vTaskDelay(1);
+	//vTaskDelay(1);
 	while(uart_handle->gState == HAL_UART_STATE_BUSY_TX){
-		vTaskDelay(1);
+		vTaskDelay(0);
 	}
 
 	if(port->half_duplex) uart_handle->Instance->CR1 |= USART_CR1_RE;
@@ -225,10 +225,10 @@ void task_cli(void * argument)
 	switch(port->hw_type){
 		case HW_TYPE_UART:
 			term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "uart");
+			debug = term_cli;
 			break;
 		case HW_TYPE_USB:
 			term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "usb");
-			debug = term_cli;
 			break;
 		case HW_TYPE_CAN:
 			term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "CAN");

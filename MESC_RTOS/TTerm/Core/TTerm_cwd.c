@@ -157,10 +157,13 @@ uint8_t CMD_cat(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
             vPortFree(buffer);
             return TERM_CMD_EXIT_SUCCESS;
         }
-        while(f_gets(buffer,BUFFER_SIZE,&fp) !=  0 ){
-            ttprintf("%s", buffer);  
-            vTaskDelay(10);
-        }
+
+        unsigned int br=0;
+        do{
+        	f_read(&fp, buffer, BUFFER_SIZE, &br);
+        	ttprintf(NULL, buffer, br);
+        }while(br);
+
         f_close(&fp);
         vPortFree(buffer);
         vPortFree(filePath);

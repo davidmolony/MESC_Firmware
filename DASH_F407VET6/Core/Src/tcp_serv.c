@@ -10,13 +10,22 @@
 static void task_server(void * argument);
 static void task_client(void * argument);
 
+typedef struct{
+	int socket;
+}tcp_serv_str;
+
+
 #define DEBUG_TCP 0
 
 void tcp_serv_init(){
 
-	tcp_serv_bind(7);
+	tcp_serv_str * server = pvPortMalloc(sizeof(tcp_serv_str));
+	if(server==NULL) return;
 
-	xTaskCreate(task_server, "tskServ", 256, NULL, osPriorityNormal, NULL);
+	server->socket = tcp_serv_bind(7);
+	if(server->socket < 0) return;
+
+	xTaskCreate(task_server, "tskServ", 256, server, osPriorityNormal, NULL);
 }
 
 void ext_printnet(port_str * port, const char* format, ...) {
@@ -46,16 +55,14 @@ void ext_printnet(port_str * port, const char* format, ...) {
 
 
 
-#define SA struct sockaddr
-int sockfd;
-
 void task_server(void * argument){
+	tcp_serv_str * server = argument;
 	while(1){
 		struct sockaddr_in cli;
 		int connfd;
 
 		socklen_t len = sizeof(cli);
-		connfd = accept(sockfd, (SA*)&cli, &len);
+		connfd = accept(server->socket, (SA*)&cli, &len);
 
 		if (connfd < 0) {
 #if DEBUG_TCP
@@ -76,8 +83,8 @@ void task_server(void * argument){
 
 // Driver function
 int tcp_serv_bind(uint16_t port){
-    int len;
     struct sockaddr_in servaddr;
+    int sockfd;
 
     // socket create and verification
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -85,7 +92,7 @@ int tcp_serv_bind(uint16_t port){
 #if DEBUG_TCP
         printf("socket creation failed...\n");
 #endif
-        return 0;
+        return -1;
     }
     else{
 #if DEBUG_TCP
@@ -104,7 +111,7 @@ int tcp_serv_bind(uint16_t port){
 #if DEBUG_TCP
         printf("socket bind failed...\n");
 #endif
-        return 0;
+        return -1;
     } else {
 #if DEBUG_TCP
         printf("Socket successfully binded..\n");
@@ -116,12 +123,12 @@ int tcp_serv_bind(uint16_t port){
 #if DEBUG_TCP
         printf("Listen failed...\n");
 #endif
-        return 0;
+        return -1;
     } else {
 #if DEBUG_TCP
         printf("Server listening..\n");
 #endif
-    	return 1;
+    	return sockfd;
     }
 }
 

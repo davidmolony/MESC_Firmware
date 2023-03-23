@@ -49,6 +49,8 @@ TASK_CAN_node * node_lut[NUM_NODES];
 
 TASK_CAN_node last_overrun;
 
+uint8_t num_nodes_active=0;
+
 void TASK_CAN_init_can(TASK_CAN_handle * handle){
 
 	CAN_FilterTypeDef sFilterConfig; //declare CAN filter structure
@@ -74,7 +76,7 @@ void TASK_CAN_init_can(TASK_CAN_handle * handle){
 
 }
 
-void buffer_uint32(uint8_t* buffer, uint32_t number) {
+void PACK_u32_to_buf(uint8_t* buffer, uint32_t number) {
 	*buffer = number >> 24;
 	buffer++;
 	*buffer = number >> 16;
@@ -84,7 +86,21 @@ void buffer_uint32(uint8_t* buffer, uint32_t number) {
 	*buffer = number;
 }
 
-uint32_t buffer_to_uint32(uint8_t* buffer) {
+void PACK_u16_to_buf(uint8_t* buffer, uint16_t number) {
+	*buffer = number >> 8;
+	buffer++;
+	*buffer = number;
+}
+
+void PACK_u8_to_buf(uint8_t* buffer, uint8_t number) {
+	*buffer = number;
+}
+
+void PACK_float_to_buf(uint8_t* buffer, float number) {
+	memcpy(buffer, &number, sizeof(float));
+}
+
+uint32_t PACK_buf_to_u32(uint8_t* buffer) {
 	uint32_t number;
 	number = (uint32_t)*buffer << 24;
 	buffer++;
@@ -96,13 +112,27 @@ uint32_t buffer_to_uint32(uint8_t* buffer) {
 	return number;
 }
 
-float buffer_to_float(uint8_t* buffer) {
+uint16_t PACK_buf_to_u16(uint8_t* buffer) {
+	uint16_t number;
+	number = (uint16_t)*buffer << 8;
+	buffer++;
+	number |= (uint16_t)*buffer;
+	return number;
+}
+
+uint8_t PACK_buf_to_u8(uint8_t* buffer) {
+	uint8_t number;
+	number = *buffer;
+	return number;
+}
+
+float PACK_buf_to_float(uint8_t* buffer) {
 	float ret;
 	memcpy(&ret,buffer, sizeof(float));
 	return ret;
 }
 
-void buffer_8b_char(uint8_t* buffer, char * short_name) {
+void PACK_8b_char_to_buf(uint8_t* buffer, char * short_name) {
 	memcpy(buffer, short_name, 8);
 }
 
@@ -148,11 +178,24 @@ bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t 
 	packet.receiver = receiver;
 	packet.sender = handle->node_id;
 	packet.len = sizeof(uint32_t)*2;
-	buffer_uint32(&packet.buffer[0], n1);
-	buffer_uint32(&packet.buffer[4], n2);
+	PACK_u32_to_buf(&packet.buffer[0], n1);
+	PACK_u32_to_buf(&packet.buffer[4], n2);
 	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
 }
 
+bool TASK_CAN_add_sample(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint16_t row, uint8_t col, uint8_t flags, float value, uint32_t timeout){
+	TASK_CAN_packet packet;
+
+	packet.message_id = message_id;
+	packet.receiver = receiver;
+	packet.sender = handle->node_id;
+	packet.len = 8; //Full 8 byte
+	PACK_u16_to_buf(&packet.buffer[0], row);
+	PACK_u8_to_buf(&packet.buffer[2], col);
+	PACK_u8_to_buf(&packet.buffer[3], flags);
+	PACK_float_to_buf(&packet.buffer[4], value);
+	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
+}
 
 
 void CAN1_RX0_IRQHandler(void)
@@ -169,7 +212,9 @@ void CAN1_RX0_IRQHandler(void)
 	if(packet.receiver == 0 || packet.receiver == can1.node_id){
 
 		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-		xQueueSendFromISR(can1.rx_queue, &packet, &xHigherPriorityTaskWoken);
+		if(xQueueSendFromISR(can1.rx_queue, &packet, &xHigherPriorityTaskWoken) != pdPASS){
+			can1.rx_dropped++;
+		}
 
 		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 	}
@@ -276,7 +321,7 @@ void TASK_CAN_ping(TASK_CAN_handle * handle){
 
 		uint8_t buffer[8];
 		uint32_t TxMailbox;
-		buffer_8b_char(buffer, handle->short_name);
+		PACK_8b_char_to_buf(buffer, handle->short_name);
 
 		CAN_TxHeaderTypeDef TxHeader;
 		TxHeader.ExtId = generate_id(CAN_ID_PING, handle->node_id, TASK_CAN_BROADCAST);
@@ -288,7 +333,7 @@ void TASK_CAN_ping(TASK_CAN_handle * handle){
 		HAL_CAN_AddTxMessage(handle->hw, &TxHeader, buffer, &TxMailbox);  //function to add message for transmition
 	}
 
-
+	uint8_t active_nodes=0;
 	for(uint32_t i=0;i<NUM_NODES;i++){
 		TASK_CAN_node * node = TASK_CAN_get_node_from_id(i);
 
@@ -300,8 +345,16 @@ void TASK_CAN_ping(TASK_CAN_handle * handle){
 				}
 				vPortFree(node);
 				node_lut[i] = NULL;
+			}else{
+				active_nodes++;
 			}
 		}
+	}
+	num_nodes_active = active_nodes;
+	if(num_nodes_active > 0){
+		CLEAR_BIT(handle->hw->Instance->MCR, CAN_MCR_NART);  //Activate automatic retransmission if at least one other node is on the bus
+	}else{
+		SET_BIT(handle->hw->Instance->MCR, CAN_MCR_NART);
 	}
 }
 
@@ -340,7 +393,8 @@ TASK_CAN_node * TASK_CAN_get_node_from_id(uint8_t id){
 	}
 
 }
-
+volatile uint32_t tx_error=0;
+volatile uint32_t tx_error1=0;
 
 void TASK_CAN_tx(void * argument){
 
@@ -365,7 +419,7 @@ void TASK_CAN_tx(void * argument){
 
 
 	while(1){
-		if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)>2 && xTaskGetTickCount() > last_stream + 1){
+		if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)){//&& xTaskGetTickCount() > last_stream + 1){
 			last_stream = xTaskGetTickCount();
 			uint8_t buffer[8];
 
@@ -376,7 +430,7 @@ void TASK_CAN_tx(void * argument){
 				TxHeader.ExtId = generate_id(CAN_ID_TERMINAL, handle->node_id, handle->remote_node_id);
 				TxHeader.DLC = len;
 
-				HAL_CAN_AddTxMessage(handle->hw, &TxHeader, buffer, &TxMailbox);  //function to add message for transmition
+				HAL_CAN_AddTxMessage(handle->hw, &TxHeader, buffer, &TxMailbox);
 
 			}
 
@@ -392,7 +446,7 @@ void TASK_CAN_tx(void * argument){
 				TxHeader.DLC = packet.len;
 				TxHeader.TransmitGlobalTime = DISABLE;
 
-				HAL_CAN_AddTxMessage(handle->hw, &TxHeader, packet.buffer, &TxMailbox);  //function to add message for transmition
+				HAL_CAN_AddTxMessage(handle->hw, &TxHeader, packet.buffer, &TxMailbox);
 
 			}
 		}
@@ -401,6 +455,7 @@ void TASK_CAN_tx(void * argument){
 			TASK_CAN_ping(handle);
 			last_ping = xTaskGetTickCount();
 		}
+
 
 		if(xStreamBufferIsEmpty(port->tx_stream) && uxQueueMessagesWaiting(handle->tx_queue) == 0){
 			vTaskDelay(10);
@@ -420,19 +475,28 @@ __weak void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
   UNUSED(handle);
 }
 
+__weak void TASK_CAN_aux_data(TASK_CAN_handle * handle){
+  UNUSED(handle);
+}
+
 void TASK_CAN_telemetry(void * argument){
 	uint32_t count=0;
 	port_str * port = argument;
 	TASK_CAN_handle * handle = port->hw;
 	while(1){
 
-		if(count==5){
+		if(count % 10 == 0){
+			TASK_CAN_telemetry_fast(handle);
+		}
+		if(count==100){
 			TASK_CAN_telemetry_slow(handle);
 			count=0;
 		}
+
 		count++;
-		TASK_CAN_telemetry_fast(handle);
-		vTaskDelay(pdMS_TO_TICKS(100));
+		TASK_CAN_aux_data(handle);
+
+		vTaskDelay(pdMS_TO_TICKS(10));
 	}
 }
 
@@ -516,6 +580,9 @@ uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 			if(i+1 < argCount){
 				receiver = strtoul(args[i+1], NULL, 0);
 			}
+		}
+		if(strcmp(args[i], "-i")==0){
+			ttprintf("Dropped frames\r\nTX: %u RX: %u\r\n", can1.stream_dropped, can1.rx_dropped);
 		}
 	}
 

@@ -68,7 +68,7 @@ TASK_CAN_handle can1 = { 	.hw = &hcan1,
 };
 port_str main_can = {	.hw = &can1,
 						.hw_type = HW_TYPE_CAN,
-					    .rx_buffer_size = 128,
+					    .rx_buffer_size = 512,
 						.half_duplex = false,
 						.task_handle = NULL
 };
