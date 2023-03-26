@@ -558,7 +558,7 @@ if(_motor->MotorState==MOTOR_STATE_RUN||_motor->MotorState==MOTOR_STATE_MEASURIN
 #ifdef LOGGING
 if(lognow){
 	static int post_error_samples;
-	if(_motor->MotorState!=MOTOR_STATE_ERROR){
+	if(_motor->MotorState!=MOTOR_STATE_ERROR && _motor->sample_now == false){
 	logVars(_motor);
 	post_error_samples = 50;
 	}else{//If we have an error state, we want to keep the data surrounding the error log, including some sampled during and after the fault
@@ -567,6 +567,7 @@ if(lognow){
 			post_error_samples--;
 		}else if(post_error_samples == 1){
 			print_samples_now = 1;
+			_motor->sample_now = false;
 			post_error_samples--;
 		}else{
 			__NOP();

@@ -30,6 +30,8 @@
 #define CAN_ID_FOC_HYPER		0x2C1
 
 #define CAN_ID_SAMPLE			0x300
+#define CAN_ID_SAMPLE_NOW		0x301
+#define CAN_ID_SAMPLE_SEND		0x302
 
 
 #define CAN_BROADCAST	0

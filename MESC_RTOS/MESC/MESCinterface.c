@@ -373,6 +373,8 @@ void populate_vars(){
 
 
 void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
+	MESC_motor_typedef * motor_curr = &mtr[0];
+
 	switch(id){
 		case CAN_ID_IQREQ:{
 			float req = PACK_buf_to_float(data);
@@ -387,6 +389,13 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 
 			break;
 		}
+		case CAN_ID_SAMPLE_NOW:
+			motor_curr->sample_no_auto_send = true;
+			motor_curr->sample_now = true;
+			break;
+		case CAN_ID_SAMPLE_SEND:
+			motor_curr->sample_no_auto_send = false;
+			break;
 		case CAN_ID_ADC1_2_REQ:{
 			if(sender == adc_node){
 				remote_adc[0] = PACK_buf_to_float(data);
@@ -423,6 +432,8 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 }
 
 
+#define POST_ERROR_SAMPLES 		50
+
 void TASK_CAN_aux_data(TASK_CAN_handle * handle){
 	static int samples_sent=-1;
 	static int current_pos=0;
@@ -430,11 +441,12 @@ void TASK_CAN_aux_data(TASK_CAN_handle * handle){
 
 	MESC_motor_typedef * motor_curr = &mtr[0];
 
-	if(print_samples_now){
+	if(print_samples_now && motor_curr->sample_no_auto_send == false){
 		if(samples_sent == -1){
 			current_pos = sampled_vars.current_sample;
-			TASK_CAN_add_sample(handle, CAN_ID_SAMPLE, 0, 0, 0, CAN_SAMPLE_FLAG_START, 0.0f, 100);
+			TASK_CAN_add_sample(handle, CAN_ID_SAMPLE, 0, 0, 0, CAN_SAMPLE_FLAG_START, (float)LOGLENGTH, 100);
 			samples_sent=0;
+			timestamp = motor_curr->FOC.pwm_period * (float)POST_ERROR_SAMPLES * -1.0f;
 			return;
 		}
 

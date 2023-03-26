@@ -73,6 +73,7 @@ void * TASK_CAN_allocate_node(TASK_CAN_handle * handle, TASK_CAN_node * node){
 	if(memcmp(node->short_name, "ESC", 3)==0){
 		node->type = NODE_TYPE_ESC;
 		node->data = pvPortMalloc(sizeof(esc_data));
+		((esc_data*)node->data)->node = node;
 	}
 	return NULL;
 }
@@ -82,6 +83,7 @@ void * TASK_CAN_free_node(TASK_CAN_handle * handle, TASK_CAN_node * node){
 	return NULL;
 }
 
+char fl_file_prefix[64] = "fl";
 
 void populate_vars(){
 	can1.node_id = 255;
@@ -90,38 +92,56 @@ void populate_vars(){
 	TERM_addVar(can1.node_id						, 1			, 254		, "node_id"		, "Node ID"								, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(dash.id_speed						, 1			, 254		, "id_speed"	, "Obtain speed from ID"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(dash.id_voltage						, 1			, 254		, "id_voltage"	, "Obtain bus voltage from ID"			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(fl_file_prefix						, 0			, 0			, "fl_file"		, "Fastloop file template"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 
 }
 
-void save_fastloop(uint32_t rows){
+typedef struct{
+	uint16_t rows;
+	uint16_t start;
+	esc_data * esc;
+} save_arg;
 
-     FIL out;
-     char timecode[32];
-     snprintf(timecode, sizeof(timecode), "fl_%u.csv", xTaskGetTickCount());
+volatile TaskHandle_t save_fastloop_handle;
+
+void TASK_CAN_save_fastloop_data(void * argument){
+
+	save_arg * arg = argument;
+
+	TASK_CAN_node * node = arg->esc->node;
+
+    FIL out;
+    char timecode[64];
+    snprintf(timecode, sizeof(timecode), "%s_%u_%u.csv", fl_file_prefix, node->id, (uint32_t)xTaskGetTickCount());
 
 
-     FRESULT res = f_open(&out,timecode,FA_WRITE | FA_CREATE_ALWAYS);
-     if(res != FR_OK){
-         return;
-     }
+    FRESULT res = f_open(&out,timecode,FA_WRITE | FA_CREATE_ALWAYS);
+    if(res != FR_OK){
+    	goto CLEANUP;
+    }
 
 
-     char buffer[512];
-     uint32_t len;
-     unsigned int written=0;
-     len = sprintf(buffer, "timestamp,Vbus,Iu,Iv,Iw,Vd,Vq,angle\r\n");
-     f_write(&out, buffer, len, &written);
-     for(uint8_t i=0;i<rows;i++){
+    char buffer[200];
+    uint32_t len;
+    unsigned int written=0;
+    len = sprintf(buffer, "timestamp,Vbus,Iu,Iv,Iw,Vd,Vq,angle\r\n");
+    f_write(&out, buffer, len, &written);
+    for(uint8_t i=0;i<arg->rows;i++){
 
-		len = sprintf(buffer, "%f,%f,%f,%f,%f,%f,%f,%f\r\n", sample_data[0][i], sample_data[1][i], sample_data[2][i], sample_data[3][i],
-				sample_data[4][i], sample_data[5][i], sample_data[6][i], sample_data[7][i]);
+    	len = snprintf(buffer, sizeof(buffer), "%f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.0f\r\n", sample_data[0][i], sample_data[1][i], sample_data[2][i], sample_data[3][i],
+																							sample_data[4][i], sample_data[5][i], sample_data[6][i], sample_data[7][i]);
 		f_write(&out, buffer, len, &written);
 
-     }
+    }
 
-     f_close(&out);
+    f_close(&out);
 
-	return;
+
+    CLEANUP:
+	vPortFree(arg);
+	save_fastloop_handle = NULL;
+    vTaskDelete(NULL);
+    vTaskDelay(portMAX_DELAY);
 }
 
 extern volatile TERMINAL_HANDLE * debug;
@@ -172,9 +192,19 @@ void TASK_CAN_packet_esc(esc_data * esc, uint32_t id, uint8_t* data, uint32_t le
 
 			if(flags==CAN_SAMPLE_FLAG_START){
 				count=0;
-			}
-
-			if(row < N_ROWS && col < N_COLS){
+			}else if(flags==CAN_SAMPLE_FLAG_END){
+				if(strcmp(fl_file_prefix, "") != 0){ //Only save if a filename is set
+					save_arg * arg = pvPortMalloc(sizeof(save_arg));
+					arg->start = 0;
+					arg->rows = n_rows;
+					arg->esc = esc;
+					if(arg){
+						xTaskCreate(TASK_CAN_save_fastloop_data, "task_save", 512, arg, osPriorityNormal, &save_fastloop_handle);
+					}
+				}
+				//Activate save function
+				count=0;
+			}else if(row < N_ROWS && col < N_COLS){
 				sample_data[col][row] = val;
 				count++;
 				if(row > n_rows){
@@ -182,11 +212,7 @@ void TASK_CAN_packet_esc(esc_data * esc, uint32_t id, uint8_t* data, uint32_t le
 				}
 			}
 
-			if(flags==CAN_SAMPLE_FLAG_END){
-				save_fastloop(n_rows);
-				//Activate save function
-				count=0;
-			}
+
 
 		}
 	}
@@ -208,6 +234,51 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 		default:
 			break;
 	}
+}
+
+uint8_t CMD_sample(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+	uint32_t id=0;
+
+	for(int i=0;i<argCount;i++){
+		if(strcmp(args[i], "-id")==0){
+			if(i+1 < argCount){
+				id = strtoul(args[i+1], NULL, 0);
+				TASK_CAN_add_uint32(&can1, CAN_ID_SAMPLE_NOW, id, 0, 0, 100);
+				vTaskDelay(2);
+				TASK_CAN_add_uint32(&can1, CAN_ID_SAMPLE_SEND, id, 0, 0, 100);
+				ttprintf("Sent sample now to ID: %u\r\n", id);
+			}
+		}
+		if(strcmp(args[i], "-a")==0){
+			TASK_CAN_add_uint32(&can1, CAN_ID_SAMPLE_NOW, 0, 0, 0, 100); //Send sample now as broadcast to all ESCs
+			for(uint32_t id=1;id<NUM_NODES;id++){
+				TASK_CAN_node * node = TASK_CAN_get_node_from_id(id);
+				if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
+					uint32_t timeout = 1000;
+					while(save_fastloop_handle != NULL){
+						timeout--;
+						if(timeout==0){
+							ttprintf("Cannot free save task\r\n");
+							return TERM_CMD_EXIT_SUCCESS;
+						}
+						vTaskDelay(1);
+					}
+					TASK_CAN_add_uint32(&can1, CAN_ID_SAMPLE_SEND, id, 0, 0, 100);
+					timeout = 2000;
+					ttprintf("Saving fastloop data from ESC %u\r\n", id);
+					while(save_fastloop_handle == NULL && timeout){
+						timeout--;
+						vTaskDelay(1);
+					}
+					if(timeout==0){
+						ttprintf("Timeout on ESC %u\r\n", id);
+						continue;
+					}
+				}
+			}
+		}
+	}
+	return TERM_CMD_EXIT_SUCCESS;
 }
 
 
@@ -438,6 +509,8 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 	TERM_addCommand(CMD_esc_info, "esc", "ESC info", 0, &TERM_defaultList);
 
 	TERM_addCommand(CMD_f_log, "flog", "Log data", 0, &TERM_defaultList);
+
+	TERM_addCommand(CMD_sample, "sample", "Sample now", 0, &TERM_defaultList);
 
 	TermCommandDescriptor * varAC = TERM_addCommand(CMD_log, "log", "Configure logging", 0, &TERM_defaultList);
 	TERM_addCommandAC(varAC, TERM_varCompleter, null_handle.varHandle->varListHead);

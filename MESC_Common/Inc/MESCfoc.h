@@ -460,6 +460,8 @@ typedef struct{
 	MESCmeas_s meas;
 	MESChall_s hall;
 	bool conf_is_valid;
+	bool sample_now;
+	bool sample_no_auto_send;
 }MESC_motor_typedef;
 
 extern MESC_motor_typedef mtr[NUM_MOTORS];

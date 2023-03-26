@@ -34,6 +34,7 @@
 #define INC_MESC_INTERFACE_H_
 
 #include "Tasks/task_cli.h"
+#include "Tasks/task_can.h"
 
 
 #define CAN_NAME "DASHF407"
@@ -47,6 +48,7 @@ typedef struct{
 } dash_data;
 
 typedef struct{
+	TASK_CAN_node * node;
 	float speed;
 	float adc1;
 	float adc2;

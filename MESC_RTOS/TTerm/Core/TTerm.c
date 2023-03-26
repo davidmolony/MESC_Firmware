@@ -110,6 +110,7 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
         TERM_addCommand(CMD_echo, "echo", "echo echo", 0, &TERM_defaultList);
         TERM_addCommand(CMD_cd, "cd", "Change directory", 0, &TERM_defaultList);
         TERM_addCommand(CMD_mkdir, "mkdir", "Make directory", 0, &TERM_defaultList);
+        TERM_addCommand(CMD_rm, "rm", "Remove file/directory", 0, &TERM_defaultList);
         #endif  
         
 		#if TERM_SUPPORT_VARIABLES
