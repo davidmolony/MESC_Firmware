@@ -327,7 +327,7 @@ void callback(TermVariableDescriptor * var){
 }
 
 uint8_t adc_node;
-float remote_adc[2];
+
 
 void populate_vars(){
 	//		   | Variable							| MIN		| MAX		| NAME			| DESCRIPTION							| RW			| CALLBACK	| VAR LIST HANDLE
@@ -385,10 +385,6 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 			}
 			break;
 		}
-		case CAN_ID_CONNECT:{
-
-			break;
-		}
 		case CAN_ID_SAMPLE_NOW:
 			motor_curr->sample_no_auto_send = true;
 			motor_curr->sample_now = true;
@@ -398,8 +394,8 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 			break;
 		case CAN_ID_ADC1_2_REQ:{
 			if(sender == adc_node){
-				remote_adc[0] = PACK_buf_to_float(data);
-				remote_adc[1] = PACK_buf_to_float(data+4);
+				input_vars.REMOTE_ADC1_req = PACK_buf_to_float(data);
+				input_vars.REMOTE_ADC2_req = PACK_buf_to_float(data+4);
 			}
 			break;
 		}
@@ -432,7 +428,7 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 }
 
 
-#define POST_ERROR_SAMPLES 		50
+#define POST_ERROR_SAMPLES 		LOGLENGTH/2
 
 void TASK_CAN_aux_data(TASK_CAN_handle * handle){
 	static int samples_sent=-1;

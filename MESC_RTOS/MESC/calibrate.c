@@ -179,14 +179,14 @@ static void TASK_main(void *pvParameters){
     	TERM_setCursorPos(handle, 7, 0);
     	highlight(handle, "Remote ADC1:", 2, selected);
 		TERM_setCursorPos(handle, 8, 0);
-    	bargraph(handle, 0.0f, 1.0f, remote_adc[0]);
-    	ttprintf("Request: %f", remote_adc[0]);
+    	bargraph(handle, 0.0f, 1.0f, input_vars.REMOTE_ADC1_req);
+    	ttprintf("Request: %f", input_vars.REMOTE_ADC1_req);
 
     	TERM_setCursorPos(handle, 9, 0);
     	highlight(handle, "Remote ADC2:", 2, selected);
 		TERM_setCursorPos(handle, 10, 0);
-    	bargraph(handle, 0.0f, 1.0f, remote_adc[1]);
-    	ttprintf("Request: %f", remote_adc[1]);
+    	bargraph(handle, 0.0f, 1.0f, input_vars.REMOTE_ADC2_req);
+    	ttprintf("Request: %f", input_vars.REMOTE_ADC2_req);
 
 		if(c==ARROW_DOWN){
 			selected++;

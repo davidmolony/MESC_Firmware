@@ -94,6 +94,7 @@ void MX_LWIP_Init(void)
   attributes.stack_size = INTERFACE_THREAD_STACK_SIZE;
   attributes.priority = osPriorityBelowNormal;
   osThreadNew(ethernet_link_thread, &gnetif, &attributes);
+  vTaskDelay(pdMS_TO_TICKS(1000));
 /* USER CODE END H7_OS_THREAD_NEW_CMSIS_RTOS_V2 */
 
   /* Start DHCP negotiation for a network interface (IPv4) */

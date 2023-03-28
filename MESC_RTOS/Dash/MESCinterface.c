@@ -84,6 +84,9 @@ void * TASK_CAN_free_node(TASK_CAN_handle * handle, TASK_CAN_node * node){
 }
 
 char fl_file_prefix[64] = "fl";
+char sl_file_prefix[64] = "sl";
+bool enable_display = false;
+volatile bool enable_slow_log = false;
 
 void populate_vars(){
 	can1.node_id = 255;
@@ -93,6 +96,9 @@ void populate_vars(){
 	TERM_addVar(dash.id_speed						, 1			, 254		, "id_speed"	, "Obtain speed from ID"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(dash.id_voltage						, 1			, 254		, "id_voltage"	, "Obtain bus voltage from ID"			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(fl_file_prefix						, 0			, 0			, "fl_file"		, "Fastloop file template"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(sl_file_prefix						, 0			, 0			, "sl_file"		, "Slowloop file template"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(enable_display						, 0			, 1			, "ena_disp"	, "Enable OLED"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(enable_slow_log						, 0			, 1			, "ena_log"		, "Enable slow log"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 
 }
 
@@ -226,9 +232,10 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 
 	if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
 		esc_data * esc = node->data;
-		TASK_CAN_packet_esc(esc, id, data, len);
+		TASK_CAN_packet_esc(esc, id, data, len);  //Process ESC data
 		return;
 	}
+
 	switch(id){
 
 		default:
@@ -240,7 +247,12 @@ uint8_t CMD_sample(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	uint32_t id=0;
 
 	for(int i=0;i<argCount;i++){
-		if(strcmp(args[i], "-id")==0){
+		if(strcmp(args[i], "-?")==0){
+			ttprintf("Usage: sample [flags]\r\n");
+			ttprintf("\t -i [id]\t Get a fastloop log from id\r\n");
+			ttprintf("\t -a\t Get a fastloop log from all ESCs at once\r\n");
+		}
+		if(strcmp(args[i], "-i")==0){
 			if(i+1 < argCount){
 				id = strtoul(args[i+1], NULL, 0);
 				TASK_CAN_add_uint32(&can1, CAN_ID_SAMPLE_NOW, id, 0, 0, 100);
@@ -282,44 +294,81 @@ uint8_t CMD_sample(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 }
 
 
-uint8_t CMD_f_log(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+void TASK_SLOW_LOG(void * argument){
 
-     FIL out;
-     char * filePath = FS_newCWD(handle->cwdPath, args[0]);
+    char timecode[64];
 
-     FRESULT res = f_open(&out,filePath,FA_WRITE | FA_CREATE_ALWAYS);
-     if(res != FR_OK){
-         vPortFree(filePath);
-         ttprintf("Error creating file\r\n");
-         return TERM_CMD_EXIT_SUCCESS;
-     }
+    FRESULT res;
+    uint32_t count=0;
+
+    uint32_t filesize=0;
+
+    FIL out;
+    do{
+    	count++;
+    	snprintf(timecode, sizeof(timecode), "%s_%u.csv", sl_file_prefix, count);
+    	res = f_open(&out,timecode,FA_READ);
+    	f_close(&out);
+    	vTaskDelay(5);
+    }while(res ==FR_OK);
 
 
-     char buffer[512];
-     uint32_t len;
-     unsigned int written=0;
-     len = sprintf(buffer, "id,ticks,speed,adc1,adc2,bus_voltage,bus_current,motor_current,temp_motor,temp_mos1,temp_mos2,temp_mos3,status,Iq,Id,Vq,Vd,cycles_fl,cycles_hl\r\n");
-     ttprintf("len: %u\r\n", len);
-     f_write(&out, buffer, len, &written);
-     for(uint8_t i=0;i<100;i++){
-    	 for(uint32_t id=1;id<NUM_NODES;id++){
+
+    res = f_open(&out,timecode,FA_WRITE | FA_CREATE_ALWAYS);
+    if(res != FR_OK){
+        goto CLEANUP; //Terminate the task
+    }
+
+    char buffer[512];
+    uint32_t len;
+    unsigned int written=0;
+    len = sprintf(buffer, "id,ticks,speed,adc1,adc2,bus_voltage,bus_current,motor_current,temp_motor,temp_mos1,temp_mos2,temp_mos3,status,Iq,Id,Vq,Vd,cycles_fl,cycles_hl\r\n");
+    filesize +=len ;
+    f_write(&out, buffer, len, &written);
+    f_close(&out);
+
+    while(1){
+   	 for(uint32_t id=1;id<NUM_NODES;id++){
 			 TASK_CAN_node * node = TASK_CAN_get_node_from_id(id);
 			 if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
 				esc_data * esc = node->data;
-				len = sprintf(buffer, "%u,%u,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%u,%f,%f,%f,%f,%u,%u\r\n", id, xTaskGetTickCount() ,esc->speed, esc->adc1,
+				len = sprintf(buffer, "%u,%u,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%u,%.3f,%.3f,%.3f,%.3f,%u,%u\r\n", id, xTaskGetTickCount() ,esc->speed, esc->adc1,
 						esc->adc2, esc->bus_voltage, esc->bus_current, esc->motor_current,
 						esc->temp_motor, esc->temp_mos1, esc->temp_mos2, esc->temp_mos3, esc->status, esc->Iq, esc->Id, esc->Vq, esc->Vd, esc->cycles_fastloop, esc->cycles_hyperloop);
-				f_write(&out, buffer, len, &written);
+				res = f_open(&out,timecode,FA_WRITE | FA_OPEN_APPEND);
+				if(res == FR_OK){
+					f_write(&out, buffer, len, &written);
+					filesize += len;
+					f_close(&out);
+				}
 			 }
-    	 }
-    	 vTaskDelay(100);
-     }
+   	 }
+   	 vTaskDelay(100);
+   	 if(enable_slow_log==false){
+   		 goto CLEANUP;  //Terminate the task
+   	 }
 
-     f_close(&out);
-     vPortFree(filePath);
+   	 if(filesize > 1024 * 1024 * 200){  //200 Megabyte
+   		 count++;
+   		 snprintf(timecode, sizeof(timecode), "%s_%u.csv", sl_file_prefix, count);
+   		 res = f_open(&out,timecode,FA_WRITE | FA_CREATE_ALWAYS);
+   		 if(res == FR_OK){
+   			filesize=0;
+   		    len = sprintf(buffer, "id,ticks,speed,adc1,adc2,bus_voltage,bus_current,motor_current,temp_motor,temp_mos1,temp_mos2,temp_mos3,status,Iq,Id,Vq,Vd,cycles_fl,cycles_hl\r\n");
+   		    filesize +=len ;
+   		    f_write(&out, buffer, len, &written);
+   		    f_close(&out);
+   		 }
+   	 }
 
 
-	return TERM_CMD_EXIT_SUCCESS;
+
+    }
+
+
+    CLEANUP:
+    vTaskDelete(NULL);
+    vTaskDelay(portMAX_DELAY);
 }
 
 
@@ -500,7 +549,6 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 	}
 
-	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_ifconfig, "ifconfig", "ifconfig", 0, &TERM_defaultList);
 
 	TERM_addCommand(CMD_nodes, "nodes", "Node info", 0, &TERM_defaultList);
@@ -508,12 +556,7 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 	TERM_addCommand(CMD_esc_info, "esc", "ESC info", 0, &TERM_defaultList);
 
-	TERM_addCommand(CMD_f_log, "flog", "Log data", 0, &TERM_defaultList);
-
 	TERM_addCommand(CMD_sample, "sample", "Sample now", 0, &TERM_defaultList);
-
-	TermCommandDescriptor * varAC = TERM_addCommand(CMD_log, "log", "Configure logging", 0, &TERM_defaultList);
-	TERM_addCommandAC(varAC, TERM_varCompleter, null_handle.varHandle->varListHead);
 
 	REGISTER_apps(&TERM_defaultList);
 
@@ -528,9 +571,13 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 
 	vTaskDelay(100);
-
-	xTaskCreate(task_ssd, "tskSSD", 1024, NULL, osPriorityNormal, NULL);
+	if(enable_display){
+		xTaskCreate(task_ssd, "tskSSD", 1024, NULL, osPriorityNormal, NULL);
+	}
 	xTaskCreate(task_analog, "tskAnalog", 128, NULL, osPriorityAboveNormal, NULL);
 
+	if(enable_slow_log){
+		xTaskCreate(TASK_SLOW_LOG, "tskSLOW", 1024, NULL, osPriorityNormal, NULL);
+	}
 
 }

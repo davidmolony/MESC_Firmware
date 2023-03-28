@@ -560,7 +560,7 @@ if(lognow){
 	static int post_error_samples;
 	if(_motor->MotorState!=MOTOR_STATE_ERROR && _motor->sample_now == false){
 	logVars(_motor);
-	post_error_samples = 50;
+	post_error_samples = LOGLENGTH/2;
 	}else{//If we have an error state, we want to keep the data surrounding the error log, including some sampled during and after the fault
 		if(post_error_samples>1){
 			logVars(_motor);
