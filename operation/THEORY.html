@@ -1,0 +1,317 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Theory of operation - Molony Electronic Speed Control (MESC) Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction/INTRODUCTION.html"><strong aria-hidden="true">1.</strong> Introduction to the MESC</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../introduction/FOREWORD.html"><strong aria-hidden="true">1.1.</strong> Foreword</a></li><li class="chapter-item expanded "><a href="../introduction/LICENSE.html"><strong aria-hidden="true">1.2.</strong> License</a></li><li class="chapter-item expanded "><a href="../introduction/FEATURES.html"><strong aria-hidden="true">1.3.</strong> Features</a></li></ol></li><li class="chapter-item expanded "><a href="../operation/INTRODUCTION.html"><strong aria-hidden="true">2.</strong> Theory and Operation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../operation/THEORY.html" class="active"><strong aria-hidden="true">2.1.</strong> Theory of operation</a></li><li class="chapter-item expanded "><a href="../operation/CONTROL.html"><strong aria-hidden="true">2.2.</strong> Control loops</a></li><li class="chapter-item expanded "><a href="../operation/PORTING.html"><strong aria-hidden="true">2.3.</strong> Porting to other microprocessors</a></li></ol></li><li class="chapter-item expanded "><a href="../debugging/DEBUGGING.html"><strong aria-hidden="true">3.</strong> Debugging STM32CubeIDE</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../debugging/FIRMWARE_INTRO.html"><strong aria-hidden="true">3.1.</strong> Getting started</a></li></ol></li><li class="chapter-item expanded "><a href="../MP2/INTRO.html"><strong aria-hidden="true">4.</strong> Reference ESC: the MP2</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Molony Electronic Speed Control (MESC) Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="theory-and-operation"><a class="header" href="#theory-and-operation">Theory and Operation</a></h1>
+<h2 id="hardware"><a class="header" href="#hardware">Hardware:</a></h2>
+<p>Any STM32 based 3 phase system using Timer1 for PWM High and Low and 3 phase current plus bus voltage measurement. Canonical hardware is F303, but better results can be made with external amplification so the F303 is no longer preferred.
+Preferable to have phase voltage sensors for restart while spinning and tracking without modulation (gives reduced drag and better efficiency)
+Specifically intended for the MESC_FOC_ESC and MP2 hardware, but also running on F405, F401, L431 and F411 targets.</p>
+<h2 id="forenote"><a class="header" href="#forenote">Forenote:</a></h2>
+<p>After the explanation in the PWM section, it will be assumed that timer1 refers to any timer used for the PWM generation, which is propogated as mtr[n]-&gt;mtimer after being introduced as a handle in the PWM ISR. 
+Multi motor is a new concept originating December 2022.
+PWM frequency and V0V7 frequency are distinct, and there is latent confusion since some codebases and manufacturers like to cite ambiguously &quot;switching frequency&quot; since it gives the impression the system is capable of double the frequency it really is.
+When choosing a PWM frequency when coming from another motor control system, be aware the convention used. VESC, ASI some BLDC controllers and probably others cite switching frequency. MESC uses PWM frequency so you may need to choose a value half what you used before, e.g. VESC 30kHz is equivalent to MESC 15kHz.</p>
+<h3 id="center-aligned-pwm"><a class="header" href="#center-aligned-pwm">Center Aligned PWM</a></h3>
+<p>//ToDo, add pictures and exlpanation of PWM center aligned generation for 3 phase currents. Anyone already reading this... There are quite a few resources that can explain this on the web already.</p>
+<h3 id="pwm"><a class="header" href="#pwm">PWM</a></h3>
+<p>Timer1 (or Timer 8 if using dual motor) set up to generate complimentary centre aligned PWM with dead time, with frequency configurable using #define PWM_FREQUENCY 25000 in your hardware apecific header.</p>
+<p>These timers are assigned an alias specific to the motor instance such that mtr[0]-&gt;mtimer = htim1 and mtr[1]-&gt;mtimer = htim8. It is also possible to use htim20 on large STM devices.</p>
+<p>The center aligned PWM counts (mtimer-&gt;Instance-&gt;CNT) up from 0 to ARR (Auto Reload), where the direction is changed and it starts to count down. When the count is below the CCR (Compare Register) the timer outputs HIGH to the high side MOS and LOW to the low side MOS, and the phase is connected to VBat. When it is above the CCR, the two outputs swap, and the phase is connected to ground.
+This means that a higher CCR gives a larger pulse of bus voltage to the motor.</p>
+<p>Space vector modulation variant &quot;mid point clamp&quot; primarily used; bottom clamp implementation exists, and is used for overmodulation, but results in less good FET currnt sharing.
+Centring at 50% duty cycle has a few advantages - it allows recirculation through the high side FETs as well as the low side, which evens out the load on them, and cancels most offsets. 
+The SVM is implemented as the true inverse clarke transform (2 phase to 3 phase) followed by selection of the highest and lowest voltage phases to generate a mid point. This mid point is then fixed to mtimer-&gt;ARR/2, effectively allowing the unipolar DC link to generate AC voltages.</p>
+<p>For higher modulation indices (typically &gt;95%), bottom clamp implementation can be used for FOC control. It is a bit noisier, less FET sharing, but allows for longer current sampling periods, and therefore higher modulation. 
+SVPWM mid point clamp assumes the circle limiter clips the Vd and Vq such that the inverse transform is limited to what will fit within the bus voltage.</p>
+<p>There is no hard limit on ERPM (= 60 x eHz), but eventually it trips. Has worked to over 300kerpm on F405 targets with a GaN power stage. This is uselessly high in practice.
+Most motors cannot cope with this speed due to stator eddie and hysteresis losses. Typical 0.2mm laminations become very inefficient at around 1kHz.
+The limit of proper commutation is roughly 20PWM periods per eHz, so at 20kHz PWM, it is possible to run to 1000eHz with good performance. This can be increased slightly by enabling interpolation (#define INTERPOLATE_V7_ANGLE)</p>
+<h4 id="pwm-isr-interrupt-service-routine-aka-irq-generation"><a class="header" href="#pwm-isr-interrupt-service-routine-aka-irq-generation">PWM ISR (Interrupt Service Routine, aka IRQ) generation</a></h4>
+<p>The mtimer generates the interrupts for the FOC, with interrupts enabled at over and underflow of the timer (when CNT = 0 and ARR). The configured ISR this enters through is TIM1_UP_TIM10 at vector address 0x0000 00A4 on STM32F405. ST remap this to the &quot;stm32f4xx_it.c&quot; where it enters the function: 
+void TIM1_UP_TIM10_IRQHandler(void)
+Within this ST calllback, MESC calls 
+MESC_PWM_IRQ_handler(&amp;mtr[n]) where n would typically be 0 for the timer1 callback, 1 for timer8 callback and 2 for timer20 if used. This function is implemented in MESC_Common in MESCfoc.c</p>
+<p>From here on, the code is largely generic to MESC (exception being the getRawADC(_motor) function which has to return the specific ADC readings mapping the ADC to the MESC RAW data.</p>
+<p>Owing to the number of clock cycles per PWM period for the MCU to complete math (e.g. for STM32F303 72MHzcore/25KHzpwm/2 = 1440 clock cycles) math occurring in the interrupt must be fast.
+Firmware will be targetting &lt;1000 clock cycles per Fastloop and &lt;&lt;1000 cycles per hyperloop to enable high frequency operation. Therefore, many functions and precalculations are pushed into the slowloop.</p>
+<p>The MESC_PWM_IRQ_handler calls fastLoop(_motor) when the timer is counting down, and hyperloop(_motor) when the timer is counting up (note that _motor represents mtr[0], mtr[1], mtr[2]... depending on what handle was passed in the PWM ISR function!)
+fastLoop contains the FOC control, the feedback between current measurement and voltage output and the sensorless observer.
+hyperLoop contains the HFI injection function, angle interpolation and when used, synchronous encoder readings. 
+Both contain a call to the SVPWM function writePWM(_motor) so that the PWM can be updated 2x per PWM period.</p>
+<h3 id="adc"><a class="header" href="#adc">ADC</a></h3>
+<p>ADC conversions are triggered (preferably, where available) by mtimer CCR4 on TRGO. ADCs 1,2,3 are used to get fully synchronous current readings on F303 and F405, but on other targets, or with multiple motors, they sometimes must be sequential. This does not in practice result in a noticeable loss of performance. Vbus is read immediately after current reading as the next most critical parameter.</p>
+<p>Within the fastLoop, which occurs at mtimer top shortly after the ADC conversion has been initiated, a call is made to ADCConversion(_motor) which calls getRawADC(_motor) which is a function specific to the hardware target, and must be implemented in the user's MESChw_setup.c file if different to existing targets. Once the raw values are attained, the fastLoop procedes with no hardware specific call.</p>
+<p>ADC interrupt is now reserved for overcurrent protection events with the analog watchdog and it is recommended to set the threshold to a range the current sensors can reliably reach; typically 10-50 counts for opamp and perhaps up to 400 counts for inductive sensors. These thresholds can be set in CUBEMX for new hardware or can be written directly to the hadc1.Instance-&gt;HTR and LTR.</p>
+<h3 id="interrupt-priority"><a class="header" href="#interrupt-priority">Interrupt priority</a></h3>
+<p>Interrupt priority is critical and must be taken into account when setting up the system. The order should go:
+-1 Reset, NMI
+0 Physical fault handlers (busfault etc...) and the hardfault handler. These should be populated with a generateBreakAll() function to immediately disable all motors if they are reached.
+1 (optional) Timer1/8 BRK interrupt - This will already have turned off the PWM through hardware link.
+1 (optional) ADC watchdog interrupt (should only ever be reached in an out of range event, and should be populated with a handleError(&amp;mtr[n], ERROR_ADC_OUT_OF_RANGE_IA) or generateBreakAll().
+2 Timer1/8 Update - This calls the fast and hyperloops and is the main control loop.
+3 Slowloop timer
+...
+5-onwards USB, UART, DMAs, SPI, systick... in any order of your choosing.</p>
+<h3 id="hall"><a class="header" href="#hall">Hall</a></h3>
+<p>Hall sensors only commutation is supported, but only in forward mode (swap a pair of motor phase wires if it runs backwards) but full support will be gradually deprecated since sensorless works much better. 
+Hall startup option relies on a different mechanism and work in either direction by preloading the observer with flux linkages derived during Tracking.
+Timer XOR hall input is not currently used, instead the fastloop just samples and counts PWM cycles since the last hall state change, which is fed into a filter. This reduces accuracy, but improves reliability, noise rejection and portability.</p>
+<h3 id="encoder"><a class="header" href="#encoder">Encoder</a></h3>
+<p>TLE5012B crudely supported in SSC (SPI) mode. The SPI reads are called synchronously from the hyperLoop and therefore PWM frequency is limited to about 20kHz to allow time for the data transfer.
+ABI not currently supported. </p>
+<h3 id="pwm-input"><a class="header" href="#pwm-input">PWM Input</a></h3>
+<p>Timer2,3 or 4 can be set up in reset mode, with prescaler sunch that one count = 1us (e.g. for F303 at 72MHz we would use a prescaler of 71. We use a 65535 period, with trigger/reset mapped to TI1FP1, and channel one capturing on rising edge, direct mode, channel 2 capturing on falling edge indirect mode - remapped to TI2FP2. This gives two CC register values, CC1 timing the period of the pulses, and CC2 timing the on time.<br />
+Interrupt: update interrupt used. We expect a value very close to 20000us from an RC sender (50Hz). Check CC1 is 20000+/-~10000. If outside this bounds, set input capture flag low. CC2 is the pulse time.</p>
+<h3 id="over-current-comparators"><a class="header" href="#over-current-comparators">Over Current Comparators</a></h3>
+<h4 id="on-f303-based-hardware"><a class="header" href="#on-f303-based-hardware">On F303 based hardware</a></h4>
+<p>Comparators set up to trigger Tim1 break2 state in the event of overcurrent event, which should turn off all outputs to high impedance on F303 hardware. 
+0.5mOhm shunts (2x1mohm) or 1mOhm (2x2mOhm original hardware) at 100amps gives 50mV, with a pullup to 100mV. Vrefint is 1.23V, so 1/4Vref used for comparator-ve - 310mV. This triggers the comparator at 400A nominal (a LOT of current, but the intended FETs are rated for that for 100us, which is ~2 PWM periods... If alternate FETs used, should check this, or just hope for the best, or modify the shunt resistors to have higher value.<br />
+Timer1 should have a BRK filter set to avoid switching noise</p>
+<h4 id="on-most-other-hardware"><a class="header" href="#on-most-other-hardware">On most other hardware</a></h4>
+<p>On F4, L4 and other targets, the expectation is that there is a fault input on the PB12 pin for timer1,which is setup to capture and stop PWM generation on this input. Timer8 is mapped to PA6, annoyingly removing an ADC channel.
+Hardware without overcurrent comparators is OK, the overcurrent and over voltage is also taken care of in the fastloop, or by the analog watchdog if set up.</p>
+<h2 id="coms"><a class="header" href="#coms">Coms</a></h2>
+<p>Primarily, initially, serial used. 
+USB CDC (serial) implemented for F303, F401 and F405 targets</p>
+<h3 id="serial"><a class="header" href="#serial">Serial</a></h3>
+<p>TBC.</p>
+<h2 id="watchdog-timer"><a class="header" href="#watchdog-timer">Watchdog timer</a></h2>
+<p>Not currently implemented. Lack of it has not presented any issue so far. ToDo...
+If implementing specifically for your hardware,set it running in the hardwareInit() function. The watchdog timer should be kicked by the fast control loop after the VIcheck is completed to ensure a response to overvoltage and current events is possible.
+Period of ~1ms 
+On overflow, generate a break state on the motor and reset MCU - control loop no longer running, motor could be stopped, freewheeling, generally making a mess of currents and generating high voltages.</p>
+<h2 id="general-workflow"><a class="header" href="#general-workflow">General workflow</a></h2>
+<h3 id="fast-control-loop"><a class="header" href="#fast-control-loop">Fast Control loop</a></h3>
+<p>Fast control loop must:<br />
+Retrieve current and Vbus values from ADC 
+Carry out the conversion to floating point SI units
+Check for over limit events if not handled in hardware
+Retrieve phase voltage values if not modulating
+Process the state machine (Idle, running, tracking, error... and sensor mode)<br />
+Manipulate currents and voltages to Vab (Clarke transform) and Vdq(Park transform)(FOC)<br />
+Calculate current position and speed (get Hallsensor values, sensorless observer)<br />
+Run FOC PI controller
+Run Field weakening and circle limiter
+Run SVPWM (include inverse clark/park)
+Update inverter PWM values based on phase and voltage</p>
+<h3 id="hyper-control-loop"><a class="header" href="#hyper-control-loop">Hyper Control loop</a></h3>
+<p>Hyper control loop has more optional things, which can include:
+Process HFI
+Read encoder
+Interpolate the angle
+IF logging: write currents and voltage to logging buffer, increment/wrap logging buffer index </p>
+<h3 id="slow-control-loop"><a class="header" href="#slow-control-loop">Slow control loop</a></h3>
+<p>Execute every 10ms. Originally this ran on the RCPWM input, but not it runs independently. 
+The slowloop can be run at any speed from about 20Hz to 1kHz on any timer with interrupt priority lower than the fastloop timer and ADC interrupt (if used)
+State machine processing (ToDo)</p>
+<p>Update parameters (e.g. volts to PWM, gains...)
+Run MTPA
+Run power and current limitations</p>
+<p>Speed Ramps etc... ToDo</p>
+<h3 id="coms-loop"><a class="header" href="#coms-loop">Coms loop</a></h3>
+<p>ToDo, currently only simple single character arguments. C0d3b453 working on an implementation...
+Runs on UART RX interrupt
+DMA used to transmit strings.</p>
+<h2 id="speeds-angles-input-params"><a class="header" href="#speeds-angles-input-params">Speeds, angles, input params...</a></h2>
+<h3 id="motor-params-demanded-will-be"><a class="header" href="#motor-params-demanded-will-be">Motor params demanded will be:</a></h3>
+<p>PP - Pole pairs
+Finds kV as mWb on detection
+Rph - Phase resistance (=1/2 phase:phase resistance) detected by measurement protocol
+Ld - Phase inductance in Ld detected by measurement protocol as Lx = Vdinjected/(di/dt)
+Lq - As Ld but found by Vq injection
+Max motor current
+Max power
+Switching frequency</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../operation/INTRODUCTION.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="../operation/CONTROL.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../operation/INTRODUCTION.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="../operation/CONTROL.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </body>
+</html>
