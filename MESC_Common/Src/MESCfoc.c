@@ -231,7 +231,7 @@ while(_motor->MotorState == MOTOR_STATE_INITIALISING){
 	// Here we can auto set the prescaler to get the us input regardless of the main clock
 	  __HAL_TIM_SET_PRESCALER(_motor->stimer, ((HAL_RCC_GetHCLKFreq())/ 1000000 - 1));
 	  __HAL_TIM_SET_AUTORELOAD(_motor->stimer,(1000000/SLOWTIM_SCALER) / SLOW_LOOP_FREQUENCY); //Run slowloop at 100Hz
-
+	  __HAL_TIM_ENABLE_IT(_motor->stimer, TIM_IT_UPDATE);
 	  InputInit();
 
   	  //htim1.Instance->BDTR |=TIM_BDTR_MOE;
@@ -1960,12 +1960,12 @@ float  Square(float x){ return((x)*(x));}
     // In this loop, we will fetch the throttle values, and run functions that
     // are critical, but do not need to be executed very often e.g. adjustment
     // for battery voltage change
-if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == 0){
-	input_vars.ADC1_polarity = -1.0f;
-}
-if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == 0){
-	input_vars.ADC1_polarity = 1.0f;
-}
+//if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == 0){
+//	input_vars.ADC1_polarity = -1.0f;
+//}
+//if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == 0){
+//	input_vars.ADC1_polarity = 1.0f;
+//}
 	  houseKeeping(_motor);	//General dross that keeps things ticking over, like nudging the observer
 	  collectInputs(_motor); //Get all the throttle inputs
 
