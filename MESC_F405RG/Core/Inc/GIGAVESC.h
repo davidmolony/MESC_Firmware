@@ -26,7 +26,7 @@
 #define R_VBUS_BOTTOM 1500.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 82000.0f
 
-
+#define DEFAULT_INPUT 0b0001
 
 #define MAX_ID_REQUEST 2.0f
 #define MAX_IQ_REQUEST 20.0f
@@ -61,13 +61,14 @@
 //#define DEFAULT_HFI_TYPE HFI_TYPE_D
 //#define DEFAULT_HFI_TYPE HFI_TYPE_SPECIAL
 
-//#define USE_HALL_START
+#define USE_HALL_START
 #define HALL_VOLTAGE_THRESHOLD 1.5f
 
 //#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
 #define POLE_PAIRS 10
-#define ENCODER_E_OFFSET 25000
+#define ENCODER_E_OFFSET 32000
 #define POLE_ANGLE (65536/POLE_PAIRS)
+#define DEFAULT_ENCODER_POLARITY 1
 
 //#define USE_SALIENT_OBSERVER //If not defined, it assumes that Ld and Lq are equal, which is fine usually.
 
@@ -79,4 +80,13 @@
 #define SLOWLEDIO GPIO_PIN_7
 #define SLOWLEDIONO 7
 
+//GPIO for IC timer //These actually have to be timer compatible pins and
+//you must have done something (anything) with the timer in CUBEMX to make it generate the config files
+#define IC_TIM_GPIO GPIOB
+#define IC_TIM_PIN GPIO_PIN_6
+#define IC_TIM_IONO 6
+#define IC_TIMER htim4 //This must be TIM2-TIM5. Untested with other timers
+//Assign a use for the input capture timer
+//#define IC_TIMER_RCPWM
+//#define IC_TIMER_ENCODER
 #endif /* INC_MX_FOC_IMS_H_ */

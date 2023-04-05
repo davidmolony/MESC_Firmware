@@ -35,6 +35,10 @@
 #include "task_cli.h"
 #include "TTerm/Core/include/TTerm.h"
 
+#ifdef MESC_UART_USB
+#include "usbd_cdc_if.h"
+#endif
+
 void init_system(void);
 void init_system_running(void);
 

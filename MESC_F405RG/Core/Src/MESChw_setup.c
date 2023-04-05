@@ -77,7 +77,9 @@ void getRawADC(MESC_motor_typedef *_motor) {
   _motor->Raw.Vbus = hadc3.Instance->JDR3;  // DC Link Voltage
 
   GET_THROTTLE_INPUT; //Define a similar macro in the header file for your board that maps the throttle
-
+#ifdef GET_THROTTLE_INPUT2
+  GET_THROTTLE_INPUT2; //Define a similar macro in the header file for your board that maps the throttle
+#endif
 #ifdef GET_FETU_T
   GET_FETU_T;
 #endif

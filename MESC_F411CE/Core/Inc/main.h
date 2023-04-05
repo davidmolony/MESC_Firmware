@@ -37,6 +37,8 @@ extern "C" {
 #include "MESChw_setup.h"
 #include "MESCmotor_state.h"
 #include "MESCsin_lut.h"
+#include "MESCerror.h"
+
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

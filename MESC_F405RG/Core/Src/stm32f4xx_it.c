@@ -43,7 +43,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
+uint32_t SRtemp;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -262,9 +262,9 @@ void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
 //This should now be for the RCPWM/PWM  input interrupt
-__HAL_TIM_CLEAR_IT(&htim4, TIM_IT_CC1);
-__HAL_TIM_CLEAR_IT(&htim4, TIM_IT_CC2);
-__HAL_TIM_CLEAR_IT(&htim4, TIM_IT_UPDATE);
+	MESC_IC_IRQ_Handler(&mtr[0], htim4.Instance->SR,htim4.Instance->CCR1,htim4.Instance->CCR2);
+	htim4.Instance->SR = 0x0; //Clear all the interrupts and flags
+
   /* USER CODE END TIM4_IRQn 0 */
   /* USER CODE BEGIN TIM4_IRQn 1 */
 

@@ -54,6 +54,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	bool measure_RL = false;
 	bool measure_res = false;
+	bool measure_ind = false;
 	bool measure_kv  = false;
 	bool measure_linkage = false;
 	bool measure_hfi = false;
@@ -76,6 +77,9 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		}
 		if(strcmp(args[i], "-s")==0){
 			measure_res = true;
+		}
+		if(strcmp(args[i], "-l")==0){
+			measure_ind = true;
 		}
 		if(strcmp(args[i], "-h")==0){
 			measure_hfi = true;
@@ -150,12 +154,13 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 
 		ttprintf("R = %f %s\r\nLd = %f %s\r\nLq = %f %s\r\n\r\n", R, Runit, Ld, Lunit, Lq, Lunit);
-calculateGains(motor_curr);
+		calculateGains(motor_curr);
 		vTaskDelay(1000);
 	}
 
 	if(measure_res){
-		//Measure resistance and inductance
+		//Measure resistance
+		float old_L_D = motor_curr->m.L_D;
 		motor_curr->m.R = 0.0001f;//0.1mohm, really low
 		motor_curr->m.L_D = 0.000001f;//1uH, really low
 		calculateGains(motor_curr);
@@ -169,7 +174,7 @@ calculateGains(motor_curr);
 		ttprintf("Measuring resistance \r\nWaiting for result");
 		int a=200;
 		float Itop, Ibot, Vtop, Vbot;
-		input_vars.UART_req = 5.0f;
+		input_vars.UART_req = 0.45f*motor_curr->m.Imax;
 
 		while(a){
 			xSemaphoreGive(port->term_block);
@@ -179,9 +184,10 @@ calculateGains(motor_curr);
 			Ibot = Ibot+motor_curr->FOC.Idq.q;
 			Vbot = Vbot+motor_curr->FOC.Vdq.q;
 			a--;
+			motor_curr->FOC.FOCAngle +=300;
 		}
 		a=200;
-		input_vars.UART_req = 10.0f;
+		input_vars.UART_req = 0.55f*motor_curr->m.Imax;
 		while(a){
 			xSemaphoreGive(port->term_block);
 			vTaskDelay(5);
@@ -190,6 +196,7 @@ calculateGains(motor_curr);
 			Itop = Itop+motor_curr->FOC.Idq.q;
 			Vtop = Vtop+motor_curr->FOC.Vdq.q;
 			a--;
+			motor_curr->FOC.FOCAngle +=300;
 		}
 
 		motor_curr->m.R = (Vtop-Vbot)/((Itop-Ibot)); //Calculate the resistance
@@ -214,9 +221,112 @@ calculateGains(motor_curr);
 
 
 		ttprintf("R = %f %s\r\n\r\n", R, Runit);
+		motor_curr->m.L_D =old_L_D;
 		calculateGains(motor_curr);
 		vTaskDelay(1000);
 	}
+
+	if(measure_ind){
+		//Measure inductance, second method
+
+		ttprintf("Measuring Inductance\r\nWaiting for result");
+		int a=200;
+		float Itop, Ibot;
+		float offsetcurr = 20.0f; //We will apply D axis current to the rotor to lock it and see saturation
+		float Loffset[3];
+		float Lqoffset[3];
+
+
+		//set things up to do the L measurement
+		motor_curr->MotorState = MOTOR_STATE_RUN;
+		input_vars.UART_req = 0.25f; //Stop it going into tracking mode
+		motor_curr->HFIType = HFI_TYPE_SPECIAL;
+		motor_curr->FOC.special_injectionVd = 0.2f;
+		motor_curr->FOC.special_injectionVq = 0.0f;
+		motor_curr->MotorSensorMode = MOTOR_SENSOR_MODE_OPENLOOP;
+		motor_curr->FOC.openloop_step = 0;
+		motor_curr->FOC.FOCAngle = 0;
+		input_vars.UART_dreq = -5.0f;
+		motor_curr->FOC.didq.d = 0.0f;
+		vTaskDelay(10);
+
+		//Determine the voltage required
+		while(a){
+			if(fabsf(motor_curr->FOC.didq.d)<5.0f){
+				motor_curr->FOC.special_injectionVd *=1.05f;
+				if(motor_curr->FOC.special_injectionVd > (0.5f * motor_curr->Conv.Vbus))
+				{
+					motor_curr->FOC.special_injectionVd = 0.5f * motor_curr->Conv.Vbus;
+				}
+			}
+			xSemaphoreGive(port->term_block);
+			vTaskDelay(5);
+			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			ttprintf(".");
+			a--;
+		}
+		int b;
+		//Measure the Ld
+		for(b=0;b<3; b++){
+			Loffset[b] = 0.0f;
+			a=200;
+			input_vars.UART_dreq = -motor_curr->m.Imax * 0.25f * (float)b;
+			while(a){
+				Loffset[b] = Loffset[b] + motor_curr->FOC.didq.d;
+				xSemaphoreGive(port->term_block);
+				vTaskDelay(5);
+				xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+				ttprintf(".");
+				a--;
+			}
+		Loffset[b] = Loffset[b]/200;
+		Loffset[b] = motor_curr->FOC.pwm_period * motor_curr->FOC.special_injectionVd/Loffset[b];
+		}
+
+		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
+		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
+		ttprintf("D-Inductance = %f , %f , %f  H\r\n voltage was %f \r\n", Loffset[0],Loffset[1],Loffset[2], motor_curr->FOC.special_injectionVd);
+
+		//Now do Lq
+		motor_curr->FOC.special_injectionVq = motor_curr->FOC.special_injectionVd;
+		float c = motor_curr->FOC.special_injectionVq;
+		motor_curr->FOC.special_injectionVd = 0.0f;
+		for(b=0;b<3; b++){
+			Lqoffset[b] = 0.0f;
+			a=200;
+			input_vars.UART_dreq = -10.0f ;
+			motor_curr->FOC.special_injectionVq = c * (1+(float)b);
+			if(motor_curr->FOC.special_injectionVq > motor_curr->Conv.Vbus*0.5f){motor_curr->FOC.special_injectionVq = motor_curr->Conv.Vbus*0.5f;}
+			while(a){
+				Lqoffset[b] = Lqoffset[b] + motor_curr->FOC.didq.q;
+				xSemaphoreGive(port->term_block);
+				vTaskDelay(5);
+				xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+				ttprintf(".");
+				a--;
+			}
+		Lqoffset[b] = Lqoffset[b]/200;
+		Lqoffset[b] = motor_curr->FOC.pwm_period * motor_curr->FOC.special_injectionVq/Lqoffset[b];
+		}
+
+//Put things back to runable
+		motor_curr->HFIType = HFI_TYPE_NONE;
+		motor_curr->MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
+		input_vars.UART_req = 0.0f; //Turn it off.
+		input_vars.UART_dreq = 0.0f;
+		motor_curr->MotorState = MOTOR_STATE_TRACKING;
+
+
+		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
+		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
+		ttprintf("Q-Inductance = %f , %f , %f  H\r\n voltage was %f \r\n", Lqoffset[0],Lqoffset[1],Lqoffset[2], motor_curr->FOC.special_injectionVq);
+
+		motor_curr->FOC.special_injectionVd = 0.0f;
+		motor_curr->FOC.special_injectionVq = 0.0f;
+
+		vTaskDelay(200);
+	}
+
 
 	if(measure_kv){
 		//Measure kV
@@ -352,12 +462,16 @@ void populate_vars(){
 	TERM_addVar(input_vars.ADC2_polarity			, -1.0f		, 1.0f		, "adc2_pol"	, "ADC2 polarity"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.max_request_Idq.q		, 0.0f		, 300.0f	, "curr_max"	, "Max motor current"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(input_vars.min_request_Idq.q		, -300.0f	, 0.0f		, "curr_min"	, "Min motor current"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
-	TERM_addVar(mtr[0].FOC.pwm_frequency			, 0.0f		, 50000.0f	, "pwm_freq"	, "PWM frequency"						, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.pwm_frequency			, 0.0f		, 100000.0f	, "pwm_freq"	, "PWM frequency"						, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(input_vars.UART_req					, -1000.0f	, 1000.0f	, "UART_req"	, "Uart input"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].FOC.FW_curr_max				, 0.0f		, 200.0f	, "FW_curr"		, "Field Weakening Current"				, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.FW_curr_max				, 0.0f		, 200.0f	, "FW_curr"		, "Field Weakening Current"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.input_options			, 0			, 16		, "input_opt"	, "Inputs [1=ADC1 2=ADC2 4=PPM 8=UART]"	, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].safe_start[0]				, 0			, 1000		, "safe_start"	, "Countdown before allowing throttle"	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].safe_start[1]				, 0			, 1000		, "safe_count"	, "Live count before allowing throttle"	, VAR_ACCESS_R	, NULL		, &TERM_varList);
+
 
 	TermVariableDescriptor * desc;
+	desc = TERM_addVar(MESC_errors						,-HUGE_VAL 	, HUGE_VAL  , "error"		, "System errors"						, VAR_ACCESS_TR  , NULL		, &TERM_varList);
 	desc = TERM_addVar(mtr[0].Conv.Vbus					, 0.0f		, HUGE_VAL  , "vbus"		, "Read input voltage"					, VAR_ACCESS_TR  , NULL		, &TERM_varList);
 	TERM_setFlag(desc, FLAG_TELEMETRY_ON);
 
@@ -386,13 +500,14 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 	InputInit();
 
 	motor_profile->L_QD = motor_profile->L_Q-motor_profile->L_D;
+	motor_profile->flux_linkage = mtr[0].m.flux_linkage;
 	motor_profile->flux_linkage_max = 1.3f*motor_profile->flux_linkage;
 	motor_profile->flux_linkage_min = 0.7f*motor_profile->flux_linkage;
 	motor_profile->flux_linkage_gain = 10.0f * sqrtf(motor_profile->flux_linkage);
 
-	mtr[0].m.flux_linkage_max = motor_profile->flux_linkage_max;
-	mtr[0].m.flux_linkage_min = motor_profile->flux_linkage_min;
-	mtr[0].m.flux_linkage_gain = motor_profile->flux_linkage_gain;
+//	mtr[0].m.flux_linkage_max = motor_profile->flux_linkage_max;
+//	mtr[0].m.flux_linkage_min = motor_profile->flux_linkage_min;
+//	mtr[0].m.flux_linkage_gain = motor_profile->flux_linkage_gain;
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);

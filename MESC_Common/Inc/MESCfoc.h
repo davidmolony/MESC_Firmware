@@ -131,32 +131,56 @@
 #endif
 
 #ifndef HALL_IIR
-#define HALL_IIR 0.02f
+#define HALL_IIR 0.05f
 #endif
 
-#define HALL_IIRN (1.0-HALL_IIR)
+#define HALL_IIRN (1.0f-HALL_IIR)
 
 //Position and speed estimator defaults
 #ifndef PLL_KP
-#define PLL_KP 0.5
+#define PLL_KP 0.5f
 #endif
 #ifndef PLL_KI
-#define PLL_KI 0.02
+#define PLL_KI 0.02f
 #endif
 
 #ifndef POS_KP
-#define POS_KP 0.0002
+#define POS_KP 0.0002f
 #endif
 #ifndef POS_KI
-#define POS_KI 0.1
+#define POS_KI 0.1f
 #endif
 #ifndef POS_KD
-#define POS_KD 0.002
+#define POS_KD 0.002f
 #endif
 
 
 #ifndef DEFAULT_CONTROL_MODE
 #define DEFAULT_CONTROL_MODE MOTOR_CONTROL_MODE_TORQUE
+#endif
+
+#ifndef ABS_MIN_BUS_VOLTAGE
+#define ABS_MIN_BUS_VOLTAGE 12.0f //We do not run below the typical gate driver safe working voltage.
+#endif
+
+
+#ifndef ADC1OOR
+#define ADC1OOR 4095
+#endif
+
+#ifndef ADC2OOR
+#define ADC2OOR 4095
+#endif
+
+#ifndef SAFE_START_DEFAULT
+#define SAFE_START_DEFAULT 100
+#endif
+
+#ifndef DEFAULT_ENCODER_POLARITY
+#define DEFAULT_ENCODER_POLARITY 0
+#endif
+#ifndef ENCODER_E_OFFSET
+#define ENCODER_E_OFFSET 0
 #endif
 
 typedef struct {
@@ -227,8 +251,12 @@ typedef struct {
 
   uint16_t openloop_step;//The angle to increment by for openloop
   uint16_t FOCAngle;    // Angle generated in the hall sensor estimator
+  uint32_t encoder_duration;
+  uint32_t encoder_pulse;
+  uint32_t encoder_OK;
   uint16_t enc_angle;
   uint16_t enc_offset;
+  uint16_t encoder_polarity_invert;
   int enc_obs_angle;
   float FLAdiff;
   MESCsin_cos_s sincosangle;  // This variable carries the current sin and cosine of
@@ -269,6 +297,8 @@ typedef struct {
 //Hall start
   int hall_initialised;
   int hall_start_now;
+//Encoder start
+  int enc_start_now;
 
   float pwm_period;
   float pwm_frequency;
@@ -317,6 +347,7 @@ typedef struct {
   float HFI_Gain;
   float HFI_int_err;
   float HFI_accu;
+  MESCiq_s didq;
   int32_t HFI_countdown;
   uint32_t HFI_count;
   uint32_t HFI_test_increment;
@@ -460,6 +491,8 @@ typedef struct{
 	MESCmeas_s meas;
 	MESChall_s hall;
 	bool conf_is_valid;
+	int32_t safe_start[2];
+	uint32_t key_bits; //When any of these are low, we keep the motor disabled
 }MESC_motor_typedef;
 
 extern MESC_motor_typedef mtr[NUM_MOTORS];
@@ -525,19 +558,26 @@ typedef struct {
 /////////////////ADC///////////////
 	uint32_t adc1_MIN; //Value below which response is zero
 	uint32_t adc1_MAX; //Max throttle calculated at this point
+	uint32_t adc1_OOR;
 	float adc1_gain[2];
 
 	uint32_t adc2_MIN;
 	uint32_t adc2_MAX;
+	uint32_t adc2_OOR;
+
 	float adc2_gain[2];
 
 	float ADC1_polarity;
 	float ADC2_polarity;
 
 	float UART_req;
+	float UART_dreq;
 	float RCPWM_req;
 	float ADC1_req;
 	float ADC2_req;
+
+	uint16_t nKillswitch;
+	uint16_t invert_killswitch;
 
 	uint32_t input_options; //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
 
@@ -652,7 +692,17 @@ void RunHFI(MESC_motor_typedef *_motor);
 void ToggleHFI(MESC_motor_typedef *_motor);
 void collectInputs(MESC_motor_typedef *_motor);
 void RunMTPA(MESC_motor_typedef *_motor);
+void safeStart(MESC_motor_typedef *_motor);
+
 void RunSpeedControl(MESC_motor_typedef *_motor);
+
+void MESC_IC_Init(
+#ifdef IC_TIMER
+TIM_HandleTypeDef _IC_TIMER
+#endif
+);
+void MESC_IC_IRQ_Handler(MESC_motor_typedef *_motor, uint32_t SR, uint32_t CCR1, uint32_t CCR2);
+
 
 ////BLDC
 void BLDCCommute(MESC_motor_typedef *_motor);
