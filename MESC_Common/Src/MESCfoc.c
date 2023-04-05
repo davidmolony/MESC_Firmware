@@ -224,6 +224,7 @@ while(_motor->MotorState == MOTOR_STATE_INITIALISING){
 #ifdef USE_ENCODER
   _motor->FOC.enc_offset = ENCODER_E_OFFSET;
 #endif
+	//  __HAL_TIM_ENABLE_IT(_motor->stimer, TIM_IT_UPDATE);
 
   	  //Start the slowloop timer
   	  HAL_TIM_Base_Start(_motor->stimer);
@@ -231,7 +232,6 @@ while(_motor->MotorState == MOTOR_STATE_INITIALISING){
 	  __HAL_TIM_SET_PRESCALER(_motor->stimer, ((HAL_RCC_GetHCLKFreq())/ 1000000 - 1));
 	  __HAL_TIM_SET_AUTORELOAD(_motor->stimer,(1000000/SLOWTIM_SCALER) / SLOW_LOOP_FREQUENCY); //Run slowloop at 100Hz
 	  __HAL_TIM_ENABLE_IT(_motor->stimer, TIM_IT_UPDATE);
-
 	  InputInit();
 
   	  //htim1.Instance->BDTR |=TIM_BDTR_MOE;
@@ -320,6 +320,11 @@ static int Iuoff, Ivoff, Iwoff;
         _motor->offset.Iv =  Ivoff/initcycles;
         _motor->offset.Iw =  Iwoff/initcycles;
         _motor->key_bits &= ~UNINITIALISED_KEY;
+        initcycles = 0;
+        Iuoff = 0;
+        Ivoff = 0;
+        Iwoff = 0;
+
 //ToDo, do we want some safety checks here like offsets being roughly correct?
     	_motor->MotorState = MOTOR_STATE_TRACKING;
         htim1.Instance->BDTR |= TIM_BDTR_MOE;
@@ -680,6 +685,10 @@ uint16_t phasebalance;
     		-_motor->Conv.Iu -_motor->Conv.Iv;
 #endif
 
+#ifdef STEPPER_MOTOR //Skip the Clarke transform
+    _motor->FOC.Iab.a = _motor->Conv.Iu;
+    _motor->FOC.Iab.b = _motor->Conv.Iv;
+#else
 
     // Power Variant Clark transform
     // Here we select the phases that have the lowest duty cycle to us, since
@@ -732,7 +741,7 @@ uint16_t phasebalance;
 	          one_on_sqrt3 * _motor->Conv.Iw;
 	break;
     }//End of phase selection switch
-
+#endif
     // Park
     _motor->FOC.Idq.d = _motor->FOC.sincosangle.cos * _motor->FOC.Iab.a +
                      _motor->FOC.sincosangle.sin * _motor->FOC.Iab.b;
@@ -750,10 +759,45 @@ uint16_t phasebalance;
 
   /////////////////////////////////////////////////////////////////////////////
   // SENSORLESS IMPLEMENTATION//////////////////////////////////////////////////
+  float fluxa, fluxb, fluxd, fluxq, fbd, fbq;
+void flux_observer_V2(MESC_motor_typedef *_motor){
+/*	Inspired by the dq reference frame use of Alex Evers, author of the UniMoC
+	This observer will attempt to track flux in the dq frame with the following actions:
+	1) Carry out the fluxa = integral(Va-Rxia) and fluxb = integral(Vb-Rxib)
+	2) Magically remove the inductive fluxes from the integral (subtract inverse park transform of LqIq and LdId?) and Apply atan2 to calculate the angle
 
+	3) Convert the fluxes  to dq frame via park
+	4) Modify with the subtraction of Lqxiq and Ldxid respectively
+	5) Apply the feedback based on the deviation from reference fluxes
+		5)a) From here, could get feedback for an observer in dq frame?
+	6) Modify with the addition of Lqxiq and Ldxid respectively (inverse of 4)
+	7) Convert fluxes from dq frame to ab frame overwriting fluxa and fluxb
+
+*/
+fluxa = fluxa + (_motor->FOC.Vab.a - _motor->FOC.Iab.a * _motor->m.R)*_motor->FOC.pwm_period;
+fluxb = fluxb + (_motor->FOC.Vab.b - _motor->FOC.Iab.b * _motor->m.R)*_motor->FOC.pwm_period;
+
+
+// Park transform
+fluxd = _motor->FOC.sincosangle.cos * fluxa +
+	    _motor->FOC.sincosangle.sin * fluxb;
+fluxq = _motor->FOC.sincosangle.cos * fluxb -
+		_motor->FOC.sincosangle.sin * fluxa;
+
+//This is not part of the final version
+if (fluxa > _motor->FOC.flux_observed) {
+	fluxa = _motor->FOC.flux_observed;}
+if (fluxa < -_motor->FOC.flux_observed) {
+	fluxa = -_motor->FOC.flux_observed;}
+if (fluxb > _motor->FOC.flux_observed) {
+	fluxb = _motor->FOC.flux_observed;}
+if (fluxb < -_motor->FOC.flux_observed) {
+	fluxb = -_motor->FOC.flux_observed;}
+}
 
   void flux_observer(MESC_motor_typedef *_motor) {
-    // LICENCE NOTE REMINDER:
+	//flux_observer_V2(_motor); //For testing comparison, running both at the same time
+	// LICENCE NOTE REMINDER:
     // This work deviates slightly from the BSD 3 clause licence.
     // The work here is entirely original to the MESC FOC project, and not based
     // on any appnotes, or borrowed from another project. This work is free to
@@ -1174,7 +1218,15 @@ float Vd, Vq;
                       _motor->FOC.sincosangle.sin * Vq;
     _motor->FOC.Vab.b = _motor->FOC.sincosangle.sin * Vd +
                       _motor->FOC.sincosangle.cos * Vq;
+#ifdef STEPPER_MOTOR//Skip inverse Clark
 
+    _motor->mtimer->Instance->CCR1 = (uint16_t)(1.0f * _motor->FOC.Vab_to_PWM * (_motor->FOC.Vab.a) + _motor->FOC.PWMmid);
+    _motor->mtimer->Instance->CCR2 = (uint16_t)(-1.0f * _motor->FOC.Vab_to_PWM * (_motor->FOC.Vab.a) + _motor->FOC.PWMmid);
+    _motor->mtimer->Instance->CCR3 = (uint16_t)(1.0f * _motor->FOC.Vab_to_PWM * (_motor->FOC.Vab.b) + _motor->FOC.PWMmid);
+    _motor->mtimer->Instance->CCR4 = (uint16_t)(-1.0f * _motor->FOC.Vab_to_PWM * (_motor->FOC.Vab.b) + _motor->FOC.PWMmid);
+
+
+#else
 	// Inverse Clark transform - power variant
 	_motor->FOC.inverterVoltage[0] = _motor->FOC.Vab.a;
 	_motor->FOC.inverterVoltage[1] = -0.5f*_motor->FOC.inverterVoltage[0];
@@ -1279,7 +1331,7 @@ static int carryU, carryV, carryW;
 	}
 #endif
 #endif
-
+#endif //End of #ifdef STEPPER_MOTOR
 
   }
 
@@ -1294,6 +1346,9 @@ static int carryU, carryV, carryW;
 #ifdef INV_ENABLE_M1
 	  INV_ENABLE_M1->BSRR = INV_ENABLE_M1_IO<<16U; //Write the inverter enable pin low
 #endif
+#ifdef INV_ENABLE_M2
+	  INV_ENABLE_M2->BSRR = INV_ENABLE_M2_IO<<16U; //Write the inverter enable pin low
+#endif
     phU_Break(_motor);
     phV_Break(_motor );
     phW_Break(_motor );
@@ -1301,6 +1356,9 @@ static int carryU, carryV, carryW;
   void generateEnable(MESC_motor_typedef *_motor) {
 #ifdef INV_ENABLE_M1
 	  INV_ENABLE_M1->BSRR = INV_ENABLE_M1_IO;//Write the inverter enable pin high
+#endif
+#ifdef INV_ENABLE_M2
+	  INV_ENABLE_M2->BSRR = INV_ENABLE_M2_IO;//Write the inverter enable pin high
 #endif
     phU_Enable(_motor);
     phV_Enable(_motor);
@@ -1762,14 +1820,14 @@ __NOP();
 
   void calculateGains(MESC_motor_typedef *_motor) {
     _motor->FOC.pwm_period = 1.0f/_motor->FOC.pwm_frequency;
-    _motor->mtimer->Instance->ARR = HAL_RCC_GetHCLKFreq()/(((float)htim1.Instance->PSC + 1.0f) * 2*_motor->FOC.pwm_frequency);
-    _motor->mtimer->Instance->CCR4 = htim1.Instance->ARR-50; //Just short of dead center (dead center will not actually trigger the conversion)
+    _motor->mtimer->Instance->ARR = HAL_RCC_GetHCLKFreq()/(((float)_motor->mtimer->Instance->PSC + 1.0f) * 2*_motor->FOC.pwm_frequency);
+    _motor->mtimer->Instance->CCR4 = _motor->mtimer->Instance->ARR-50; //Just short of dead center (dead center will not actually trigger the conversion)
     #ifdef SINGLE_ADC
-    _motor->mtimer->Instance->CCR4 = htim1.Instance->ARR-80; //If we only have one ADC, we need to convert early otherwise the data will not be ready in time
+    _motor->mtimer->Instance->CCR4 = _motor->mtimer->Instance->ARR-80; //If we only have one ADC, we need to convert early otherwise the data will not be ready in time
     #endif
-    _motor->FOC.PWMmid = htim1.Instance->ARR * 0.5f;
+    _motor->FOC.PWMmid = _motor->mtimer->Instance->ARR * 0.5f;
 
-    _motor->FOC.ADC_duty_threshold = htim1.Instance->ARR * 0.90f;
+    _motor->FOC.ADC_duty_threshold = _motor->mtimer->Instance->ARR * 0.90f;
 
 
     calculateFlux(_motor);
@@ -1937,7 +1995,13 @@ float  Square(float x){ return((x)*(x));}
     // In this loop, we will fetch the throttle values, and run functions that
     // are critical, but do not need to be executed very often e.g. adjustment
     // for battery voltage change
-
+	  ///Process buttons for direction
+//if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == 0){
+//	input_vars.ADC1_polarity = -1.0f;
+//}
+//if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == 0){
+//	input_vars.ADC1_polarity = 1.0f;
+//}
 	  houseKeeping(_motor);	//General dross that keeps things ticking over, like nudging the observer
 	  collectInputs(_motor); //Get all the throttle inputs
 
