@@ -520,4 +520,4 @@ VP_TIM4_VS_no_output3.Signal=TIM4_VS_no_output3
 VP_TIM7_VS_ClockSourceINT.Mode=Enable_Timer
 VP_TIM7_VS_ClockSourceINT.Signal=TIM7_VS_ClockSourceINT
 board=custom
-isbadioc=true
+isbadioc=false

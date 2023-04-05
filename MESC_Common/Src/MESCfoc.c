@@ -759,10 +759,45 @@ uint16_t phasebalance;
 
   /////////////////////////////////////////////////////////////////////////////
   // SENSORLESS IMPLEMENTATION//////////////////////////////////////////////////
+  float fluxa, fluxb, fluxd, fluxq, fbd, fbq;
+void flux_observer_V2(MESC_motor_typedef *_motor){
+/*	Inspired by the dq reference frame use of Alex Evers, author of the UniMoC
+	This observer will attempt to track flux in the dq frame with the following actions:
+	1) Carry out the fluxa = integral(Va-Rxia) and fluxb = integral(Vb-Rxib)
+	2) Magically remove the inductive fluxes from the integral (subtract inverse park transform of LqIq and LdId?) and Apply atan2 to calculate the angle
 
+	3) Convert the fluxes  to dq frame via park
+	4) Modify with the subtraction of Lqxiq and Ldxid respectively
+	5) Apply the feedback based on the deviation from reference fluxes
+		5)a) From here, could get feedback for an observer in dq frame?
+	6) Modify with the addition of Lqxiq and Ldxid respectively (inverse of 4)
+	7) Convert fluxes from dq frame to ab frame overwriting fluxa and fluxb
+
+*/
+fluxa = fluxa + (_motor->FOC.Vab.a - _motor->FOC.Iab.a * _motor->m.R)*_motor->FOC.pwm_period;
+fluxb = fluxb + (_motor->FOC.Vab.b - _motor->FOC.Iab.b * _motor->m.R)*_motor->FOC.pwm_period;
+
+
+// Park transform
+fluxd = _motor->FOC.sincosangle.cos * fluxa +
+	    _motor->FOC.sincosangle.sin * fluxb;
+fluxq = _motor->FOC.sincosangle.cos * fluxb -
+		_motor->FOC.sincosangle.sin * fluxa;
+
+//This is not part of the final version
+if (fluxa > _motor->FOC.flux_observed) {
+	fluxa = _motor->FOC.flux_observed;}
+if (fluxa < -_motor->FOC.flux_observed) {
+	fluxa = -_motor->FOC.flux_observed;}
+if (fluxb > _motor->FOC.flux_observed) {
+	fluxb = _motor->FOC.flux_observed;}
+if (fluxb < -_motor->FOC.flux_observed) {
+	fluxb = -_motor->FOC.flux_observed;}
+}
 
   void flux_observer(MESC_motor_typedef *_motor) {
-    // LICENCE NOTE REMINDER:
+	//flux_observer_V2(_motor); //For testing comparison, running both at the same time
+	// LICENCE NOTE REMINDER:
     // This work deviates slightly from the BSD 3 clause licence.
     // The work here is entirely original to the MESC FOC project, and not based
     // on any appnotes, or borrowed from another project. This work is free to
@@ -1960,6 +1995,7 @@ float  Square(float x){ return((x)*(x));}
     // In this loop, we will fetch the throttle values, and run functions that
     // are critical, but do not need to be executed very often e.g. adjustment
     // for battery voltage change
+	  ///Process buttons for direction
 //if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == 0){
 //	input_vars.ADC1_polarity = -1.0f;
 //}
