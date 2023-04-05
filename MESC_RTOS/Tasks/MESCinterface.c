@@ -382,11 +382,12 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		}
 		motor_curr->m.flux_linkage_max = motor_curr->FOC.flux_observed*1.5f;
 		motor_curr->m.flux_linkage_min = motor_curr->FOC.flux_observed*0.5f;
+		motor_curr->m.flux_linkage = motor_curr->FOC.flux_observed;
 
 		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
 		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
 
-		ttprintf("Flux linkage = %f mWb\r\n\r\n", motor_curr->FOC.flux_observed * 1000.0);
+		ttprintf("Flux linkage = %f mWb\r\n\r\n", motor_curr->m.flux_linkage * 1000.0);
 		ttprintf("Did the motor spin for >2seconds?");
 
 		vTaskDelay(200);
