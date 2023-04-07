@@ -1,0 +1,22 @@
+Although git supports symlinks, these are platform-dependant in terms of:
+    - Operating system
+        - User permissions (Windows)
+    - File system
+
+Initial set up must be performed with the correct script as follows:
+
+#==========#===================================================================#
+|          |                          Operating System                         |
+| Symlinks +---------------------------+--------------+------------------------+
+|          | Linux                     | Windows <10  | Windows 10+ [1]        |
+#==========#===========================#==============#========================#
+| Yes      | setup_linux_symlink.bash  |    (N/A)     | setup_Win10_mklink.bat |
+#----------+---------------------------+--------------+------------------------#
+| No       | setup_linux.bash          |            setup_Win10.bat            |
+#==========#===========================#==============#========================#
+
+Note also that non-symlink modes of operation require re-running these scripts
+for updates in www to be propaged to the project.
+
+[1] By default, symlinks are not enabled and require "developer mode" to be
+enabled - this does not remove file system restrictions
