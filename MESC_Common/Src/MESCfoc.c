@@ -1147,7 +1147,7 @@ if (fluxb < -_motor->FOC.flux_observed) {
       }else{
 		  _motor->FOC.FW_current = _motor->FOC.FW_current +0.01f*_motor->FOC.FW_curr_max;
       }
-      if(_motor->FOC.FW_current>0.0f){_motor->FOC.FW_current=0.0f;}
+      if(_motor->FOC.FW_current>_motor->FOC.Idq_req.d){_motor->FOC.FW_current=_motor->FOC.Idq_req.d;}
       if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current= -_motor->FOC.FW_curr_max;}
 #else
   } //Just close the circle limiter bracket
@@ -3148,8 +3148,13 @@ void MESC_IC_IRQ_Handler(MESC_motor_typedef *_motor, uint32_t SR, uint32_t CCR1,
 		_motor->FOC.encoder_duration = CCR1;
 		_motor->FOC.encoder_pulse = CCR2;
 		_motor->FOC.encoder_OK = 1;
-//		_motor->FOC.enc_angle =
-//				(uint16_t)((((4119*CCR2)/CCR1-16)*(uint32_t)_motor->m.pole_pairs)%65536);
+
+		if(CCR2<14||CCR1<3500||CCR1>4500){
+			//Handle the error?
+		}
+		if(CCR2<16){//No error but need to stop it from underflowing the following math
+			CCR2 = 16;
+		}
 		_motor->FOC.enc_angle = _motor->FOC.enc_offset +
 						(uint16_t)(((65536*(CCR2-16))/(CCR1-24)*(uint32_t)_motor->m.pole_pairs)%65536);
 		if(_motor->FOC.encoder_polarity_invert){

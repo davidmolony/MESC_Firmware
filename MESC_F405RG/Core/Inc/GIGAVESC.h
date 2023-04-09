@@ -88,5 +88,5 @@
 #define IC_TIMER htim4 //This must be TIM2-TIM5. Untested with other timers
 //Assign a use for the input capture timer
 //#define IC_TIMER_RCPWM
-//#define IC_TIMER_ENCODER
+#define IC_TIMER_ENCODER
 #endif /* INC_MX_FOC_IMS_H_ */
