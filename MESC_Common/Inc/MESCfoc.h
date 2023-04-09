@@ -256,6 +256,8 @@ typedef struct {
   uint32_t encoder_OK;
   uint16_t enc_angle;
   uint16_t enc_offset;
+  float encsin;
+  float enccos;
   uint16_t encoder_polarity_invert;
   int enc_obs_angle;
   float FLAdiff;

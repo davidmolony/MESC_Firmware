@@ -391,10 +391,8 @@ void fastLoop(MESC_motor_typedef *_motor) {
 				_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_b, _motor->FOC.flux_a)) - 32768;
 			}
 		}else if(_motor->FOC.enc_start_now){
-			float encsin, enccos;
-			sin_cos_fast((_motor->FOC.enc_angle-10430), &encsin, &enccos);
-			_motor->FOC.flux_a = 0.95f*_motor->FOC.flux_a + enccos * 0.05f * _motor->m.flux_linkage;
-			_motor->FOC.flux_b = 0.95f*_motor->FOC.flux_b + encsin * 0.05f * _motor->m.flux_linkage;
+			_motor->FOC.flux_a = 0.95f*_motor->FOC.flux_a + _motor->FOC.enccos * 0.05f * _motor->m.flux_linkage;
+			_motor->FOC.flux_b = 0.95f*_motor->FOC.flux_b + _motor->FOC.encsin * 0.05f * _motor->m.flux_linkage;
 			flux_observer(_motor);
 		}else{
 			flux_observer(_motor);
@@ -3161,6 +3159,9 @@ void MESC_IC_IRQ_Handler(MESC_motor_typedef *_motor, uint32_t SR, uint32_t CCR1,
 			_motor->FOC.enc_angle = 65536 - _motor->FOC.enc_angle;
 		}
 	}
+	//Calculate the sin and cos coefficients for future use in the flux observer
+	sin_cos_fast((_motor->FOC.enc_angle-10430), &_motor->FOC.encsin, &_motor->FOC.enccos);
+
 	if(SR & 0x1||_motor->FOC.encoder_pulse<14||_motor->FOC.encoder_pulse>(_motor->FOC.encoder_duration-7)){
 		SRtemp3 = SR;
 		_motor->FOC.encoder_OK = 0;
