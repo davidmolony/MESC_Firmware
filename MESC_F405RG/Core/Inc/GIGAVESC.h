@@ -16,8 +16,8 @@
 #define SHUNT_POLARITY -1.0f
 
 #define ABS_MAX_PHASE_CURRENT 250.0f
-#define ABS_MAX_BUS_VOLTAGE 45.0f
-#define ABS_MIN_BUS_VOLTAGE 38.0f
+#define ABS_MAX_BUS_VOLTAGE 50.0f
+#define ABS_MIN_BUS_VOLTAGE 24.0f
 #define R_SHUNT 0.00025f
 #define OPGAIN 20.0f*36.0f/(10.0f+10.0f+36.0f)
 //Gigavesc Control board v0.1 has a 0.25mR and 10-30-10 divider onto the opamp input to enable some filtering
@@ -44,11 +44,11 @@
 //#define USE_LR_OBSERVER
 
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
-#define INTERPOLATE_V7_ANGLE
-#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_SENSORLESS
+//#define INTERPOLATE_V7_ANGLE
+//#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_SENSORLESS
 //#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_HALL
 //#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_OPENLOOP
-//#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_ENCODER
+#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_ENCODER
 //#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_HFI
 
 //#define USE_HFI
@@ -66,7 +66,7 @@
 
 //#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
 #define POLE_PAIRS 10
-#define ENCODER_E_OFFSET 32000
+#define ENCODER_E_OFFSET 39000
 #define POLE_ANGLE (65536/POLE_PAIRS)
 #define DEFAULT_ENCODER_POLARITY 1
 

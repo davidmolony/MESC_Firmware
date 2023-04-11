@@ -255,6 +255,11 @@ typedef struct {
   uint32_t encoder_pulse;
   uint32_t encoder_OK;
   uint16_t enc_angle;
+  uint16_t enc_period_count;
+
+  uint16_t last_enc_angle;
+  int16_t enc_pwm_step;
+
   uint16_t enc_offset;
   float encsin;
   float enccos;

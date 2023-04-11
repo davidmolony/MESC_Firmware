@@ -52,6 +52,7 @@
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
 extern ADC_HandleTypeDef hadc1, hadc2, hadc3, hadc4;
+extern DAC_HandleTypeDef hdac;
 
 float one_on_sqrt6 = 0.408248f;
 float one_on_sqrt3 = 0.577350f;
@@ -154,6 +155,7 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	//PWM Encoder
 	_motor->FOC.enc_offset = ENCODER_E_OFFSET;
 	_motor->FOC.encoder_polarity_invert = DEFAULT_ENCODER_POLARITY;
+	_motor->FOC.enc_period_count = 1; //Avoid /0s
 
 	_motor->hall.hall_error = 0;
 	//Init the BLDC
@@ -365,7 +367,7 @@ void fastLoop(MESC_motor_typedef *_motor) {
   // First thing we ever want to do is convert the ADC values
   // to real, useable numbers.
   ADCConversion(_motor);
-
+HAL_DAC_SetValue(&hdac, DAC_CHANNEL_2, DAC_ALIGN_12B_R, (_motor->FOC.FOCAngle>>4));
   switch (_motor->MotorState) {
 
   	case MOTOR_STATE_INITIALISING:
@@ -373,14 +375,9 @@ void fastLoop(MESC_motor_typedef *_motor) {
   		break;
 
     case MOTOR_STATE_RUN:
-      if (_motor->MotorSensorMode == MOTOR_SENSOR_MODE_HALL) {
-			_motor->FOC.inject = 0;
-			hallAngleEstimator();
-			angleObserver(_motor);
-			MESCFOC(_motor);
-			writePWM(_motor);
-      } else if (_motor->MotorSensorMode == MOTOR_SENSOR_MODE_SENSORLESS) {
-#ifdef USE_HALL_START
+    	switch(_motor->MotorSensorMode){
+    	case MOTOR_SENSOR_MODE_SENSORLESS:
+		#ifdef USE_HALL_START
 		if(_motor->FOC.hall_start_now){
 			_motor->FOC.flux_a = HALL_IIRN*_motor->FOC.flux_a + HALL_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][0];
 			_motor->FOC.flux_b = HALL_IIRN*_motor->FOC.flux_b + HALL_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][1];
@@ -397,20 +394,31 @@ void fastLoop(MESC_motor_typedef *_motor) {
 		}else{
 			flux_observer(_motor);
 		}
-#else
-    	flux_observer(_motor);
-#endif
+		#else
+    		flux_observer(_motor);
+		#endif
 			MESCFOC(_motor);
 			writePWM(_motor);
-      } else if (_motor->MotorSensorMode == MOTOR_SENSOR_MODE_ENCODER) {
-		  _motor->FOC.FOCAngle = _motor->FOC.enc_angle;
-		  MESCFOC(_motor);
-		  writePWM(_motor);
-      } else if(_motor->MotorSensorMode == MOTOR_SENSOR_MODE_OPENLOOP){
-		  OLGenerateAngle(_motor);
-		  MESCFOC(_motor);
-		  writePWM(_motor);
-      }
+    		break;
+    	case MOTOR_SENSOR_MODE_HALL:
+			_motor->FOC.inject = 0;
+			hallAngleEstimator();
+			angleObserver(_motor);
+			MESCFOC(_motor);
+			writePWM(_motor);
+    		break;
+    	case MOTOR_SENSOR_MODE_OPENLOOP:
+			OLGenerateAngle(_motor);
+			MESCFOC(_motor);
+			writePWM(_motor);
+    		break;
+    	case MOTOR_SENSOR_MODE_ENCODER:
+    		_motor->FOC.enc_period_count++;
+			_motor->FOC.FOCAngle = _motor->FOC.enc_angle + (uint16_t)((float)(_motor->FOC.enc_period_count) * (float)_motor->FOC.enc_pwm_step);//_motor->FOC.FOCAngle + _motor->FOC.enc_pwm_step;//
+			MESCFOC(_motor);
+			writePWM(_motor);
+    		break;
+    	}//End of MotorSensorMode switch
       break;
 
     case MOTOR_STATE_TRACKING:
@@ -3106,7 +3114,7 @@ TIM_HandleTypeDef _IC_TIMER
 ){
 #ifdef IC_TIMER
 	_IC_TIMER.Instance-> SMCR = 84;
-	  _IC_TIMER.Instance-> DIER = 5;
+	  _IC_TIMER.Instance-> DIER = 3;
 	  _IC_TIMER.Instance-> SR = 0;
 	  _IC_TIMER.Instance-> CCMR1 = 513;
 	  _IC_TIMER.Instance-> CCER = 49;
@@ -3125,8 +3133,10 @@ TIM_HandleTypeDef _IC_TIMER
 	  _IC_TIMER.Instance-> CR1 = 5;
 #endif
 }
-
+uint16_t testreg[3][99];
+uint16_t PWMencINC;
 uint32_t SRtemp2, SRtemp3;
+static uint16_t last_angle;
 void MESC_IC_IRQ_Handler(MESC_motor_typedef *_motor, uint32_t SR, uint32_t CCR1, uint32_t CCR2){
 #ifdef IC_TIMER_RCPWM
 	if((SR & 0x4)&&!(SR&0x1)){
@@ -3141,7 +3151,7 @@ void MESC_IC_IRQ_Handler(MESC_motor_typedef *_motor, uint32_t SR, uint32_t CCR1,
 #endif
 #ifdef IC_TIMER_ENCODER //This will be for the encoder I guess...
 	//The encoder PWM timers have a nominal frequency of 1kHz with 4119 levels
-	if((SR & 0x4)&&!(SR&0x1)){
+	if((SR & 0x2)&&!(SR&0x1)){
 		SRtemp2 = SR;
 		_motor->FOC.encoder_duration = CCR1;
 		_motor->FOC.encoder_pulse = CCR2;
@@ -3153,14 +3163,25 @@ void MESC_IC_IRQ_Handler(MESC_motor_typedef *_motor, uint32_t SR, uint32_t CCR1,
 		if(CCR2<16){//No error but need to stop it from underflowing the following math
 			CCR2 = 16;
 		}
-		_motor->FOC.enc_angle = _motor->FOC.enc_offset +
+		uint16_t temp_enc_ang;
+		temp_enc_ang = _motor->FOC.enc_offset +
 						(uint16_t)(((65536*(CCR2-16))/(CCR1-24)*(uint32_t)_motor->m.pole_pairs)%65536);
-		if(_motor->FOC.encoder_polarity_invert){
-			_motor->FOC.enc_angle = 65536 - _motor->FOC.enc_angle;
-		}
+
+			if(_motor->FOC.encoder_polarity_invert){
+				_motor->FOC.enc_angle = 65536 - temp_enc_ang;
+			} else{
+				_motor->FOC.enc_angle = temp_enc_ang;
+			}
+
+		//Calculate the deltas and steps
+		_motor->FOC.enc_pwm_step = 0.9f*_motor->FOC.enc_pwm_step +
+				0.1f*(((int16_t)(_motor->FOC.enc_angle - _motor->FOC.last_enc_angle))/(_motor->FOC.enc_period_count + 0.1f));
+		_motor->FOC.last_enc_angle = _motor->FOC.enc_angle;
+		_motor->FOC.enc_period_count = 0;
 	}
+
 	//Calculate the sin and cos coefficients for future use in the flux observer
-	sin_cos_fast((_motor->FOC.enc_angle-10430), &_motor->FOC.encsin, &_motor->FOC.enccos);
+	sin_cos_fast((_motor->FOC.enc_angle), &_motor->FOC.encsin, &_motor->FOC.enccos);
 
 	if(SR & 0x1||_motor->FOC.encoder_pulse<14||_motor->FOC.encoder_pulse>(_motor->FOC.encoder_duration-7)){
 		SRtemp3 = SR;
