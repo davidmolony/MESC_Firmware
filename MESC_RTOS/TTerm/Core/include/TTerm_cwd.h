@@ -30,5 +30,8 @@ uint8_t CMD_echo(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 uint8_t CMD_ls(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 uint8_t CMD_cd(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 uint8_t CMD_mkdir(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+uint8_t CMD_rm(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+
+char * FS_newCWD(char * oldPath, char * newPath);
 
 #endif

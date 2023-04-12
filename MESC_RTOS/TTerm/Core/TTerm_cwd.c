@@ -24,7 +24,7 @@
 #include "TTerm/Core/include/TTerm.h"
 #if TERM_SUPPORT_CWD == 1
 
-#include "TTerm_cwd.h"
+#include "TTerm/Core/include/TTerm_cwd.h"
 #include "FreeRTOS.h"
 #include "ff.h"
 #include "ffconf.h"
@@ -157,10 +157,13 @@ uint8_t CMD_cat(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
             vPortFree(buffer);
             return TERM_CMD_EXIT_SUCCESS;
         }
-        while(f_gets(buffer,BUFFER_SIZE,&fp) !=  0 ){
-            ttprintf("%s", buffer);  
-            vTaskDelay(10);
-        }
+
+        unsigned int br=0;
+        do{
+        	f_read(&fp, buffer, BUFFER_SIZE, &br);
+        	ttprintf(NULL, buffer, br);
+        }while(br);
+
         f_close(&fp);
         vPortFree(buffer);
         vPortFree(filePath);
@@ -285,6 +288,7 @@ uint8_t CMD_echo(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
             ttprintf("Error creating file\r\n");
             return TERM_CMD_EXIT_SUCCESS;
         }
+        //vTaskDelay(10);
         if(argCount==3){  
             conv_esc(args[0]);
             ttprintf(args[0]);
@@ -349,6 +353,21 @@ uint8_t CMD_ls(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
         f_closedir(&dir);
     }
 
+    FATFS *fs;
+    DWORD fre_clust, fre_sect, tot_sect;
+
+
+    /* Get volume information and free clusters of drive 1 */
+    res = f_getfree("0:", &fre_clust, &fs);
+    if (res) return TERM_CMD_EXIT_SUCCESS;
+
+    /* Get total sectors and free sectors */
+    tot_sect = (fs->n_fatent - 2) * fs->csize;
+    fre_sect = fre_clust * fs->csize;
+
+    /* Print the free space (assuming 512 bytes/sector) */
+    ttprintf("\r\n%10lu KiB total drive space.\r\n%10lu KiB available.\r\n", tot_sect / 2, fre_sect / 2);
+
     return TERM_CMD_EXIT_SUCCESS;
 }
 
@@ -412,6 +431,32 @@ uint8_t CMD_mkdir(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     
     vPortFree(dirPath);
     
+    return TERM_CMD_EXIT_SUCCESS;
+}
+
+uint8_t CMD_rm(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+    if(argCount == 0){
+        return TERM_CMD_EXIT_ERROR;
+    }
+
+    FRESULT res;
+
+    char * dirPath = FS_newCWD(handle->cwdPath, args[0]);
+
+
+    //delete file
+    res = f_unlink(dirPath);
+    if(res != FR_OK){
+        ttprintf("File or directory not found\r\n");
+    }else{
+    	ttprintf("%s deleted.", dirPath);
+    }
+
+
+
+
+    vPortFree(dirPath);
+
     return TERM_CMD_EXIT_SUCCESS;
 }
 

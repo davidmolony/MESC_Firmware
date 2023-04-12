@@ -29,76 +29,27 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+
+#ifndef DASH
+#include "MESC/MESCinterface.h"
+#else
+#include "DASH/MESCinterface.h"
+#endif
+
+#include "Common/RTOS_flash.h"
 #include "main.h"
 #include "task_cli.h"
-#include <string.h>
 #include "cmsis_os.h"
 #include "TTerm/Core/include/TTerm.h"
-#include <stdio.h>
-#include "stdarg.h"
-#include "init.h"
-#include "MESCinterface.h"
+#include "task_can.h"
 
-
-
-uint32_t flash_clear(void * address, uint32_t len){
-	FLASH_WaitForLastOperation(500);
-	HAL_FLASH_Unlock();
-	FLASH_WaitForLastOperation(500);
-	eraseFlash((uint32_t)address, len);
-	HAL_FLASH_Lock();
-	FLASH_WaitForLastOperation(500);
-	return len;
-}
-
-uint32_t flash_start_write(void * address, void * data, uint32_t len){
-	uint8_t * buffer = data;
-	FLASH_WaitForLastOperation(500);
-	HAL_FLASH_Unlock();
-	FLASH_WaitForLastOperation(500);
-	uint32_t written=0;
-	while(len){
-		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, (uint32_t)address, *buffer)==HAL_OK){
-			written++;
-		}
-		buffer++;
-		address++;
-		len--;
-	}
-	return written;
-}
-
-uint32_t flash_write(void * address, void * data, uint32_t len){
-	uint8_t * buffer = data;
-	uint32_t written=0;
-	while(len){
-		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, (uint32_t)address, *buffer)==HAL_OK){
-			written++;
-		}
-		buffer++;
-		address++;
-		len--;
-	}
-	return written;
-}
-
-uint32_t flash_end_write(void * address, void * data, uint32_t len){
-	uint8_t * buffer = data;
-	uint32_t written=0;
-	while(len){
-		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, (uint32_t)address, *buffer)==HAL_OK){
-			written++;
-		}
-		buffer++;
-		address++;
-		len--;
-	}
-	FLASH_WaitForLastOperation(500);
-	HAL_FLASH_Lock();
-	FLASH_WaitForLastOperation(500);
-	return written;
-}
-
+#ifdef MESC_UART_USB
+#include "usbd_cdc_if.h"
+#include "usbd_def.h"
+#endif
 
 
 void putbuffer_uart(unsigned char *buf, unsigned int len, port_str * port){
@@ -110,9 +61,9 @@ void putbuffer_uart(unsigned char *buf, unsigned int len, port_str * port){
 		vTaskDelay(1);
 	}
 	HAL_UART_Transmit_DMA(uart_handle, buf, len);
-	vTaskDelay(1);
+	//vTaskDelay(1);
 	while(uart_handle->gState == HAL_UART_STATE_BUSY_TX){
-		vTaskDelay(1);
+		vTaskDelay(0);
 	}
 
 	if(port->half_duplex) uart_handle->Instance->CR1 |= USART_CR1_RE;
@@ -135,33 +86,19 @@ void putbuffer_usb(unsigned char *buf, unsigned int len, port_str * port){
 }
 
 
-void putbuffer_can(unsigned char *buf, unsigned int len, port_str * port){
-#ifdef HAL_CAN_MODULE_ENABLED
+void putbuffer_stream(unsigned char *buf, unsigned int len, port_str * port){
 	xSemaphoreTake(port->tx_semaphore, portMAX_DELAY);
+	uint32_t write_len = len;
 	while(len){
-		uint32_t TxMailbox;
-		if(HAL_CAN_GetTxMailboxesFreeLevel(port->hw)){
-			uint32_t transmit_bytes = len>8 ? 8 : len;
-
-			CAN_TxHeaderTypeDef TxHeader;
-			TxHeader.StdId = CAN_ID_1;
-			TxHeader.ExtId = 0x01;
-			TxHeader.RTR = CAN_RTR_DATA;
-			TxHeader.IDE = CAN_ID_STD;
-			TxHeader.DLC = transmit_bytes;
-			TxHeader.TransmitGlobalTime = DISABLE;
-
-			HAL_StatusTypeDef ret = HAL_CAN_AddTxMessage(port->hw, &TxHeader, buf, &TxMailbox);  //function to add message for transmition
-			if(ret== HAL_OK){
-				len -= transmit_bytes;
-				buf += transmit_bytes;
-			}
+		if(len > port->rx_buffer_size){
+			write_len = port->rx_buffer_size;
+		}else{
+			write_len = len;
 		}
-
-		vTaskDelay(1);
+		len -= xStreamBufferSend(port->tx_stream, buf, write_len, portMAX_DELAY);
+		buf += write_len;
 	}
 	xSemaphoreGive(port->tx_semaphore);
-#endif
 }
 
 void putbuffer(unsigned char *buf, unsigned int len, port_str * port){
@@ -174,7 +111,7 @@ void putbuffer(unsigned char *buf, unsigned int len, port_str * port){
 		putbuffer_usb(buf, len, port);
 		break;
 	case HW_TYPE_CAN:
-		putbuffer_can(buf, len, port);
+		putbuffer_stream(buf, len, port);
 		break;
 
 	}
@@ -275,7 +212,11 @@ void task_cli(void * argument)
 			rx_stream = xStreamBufferCreate(port->rx_buffer_size, 1);
 			break;
 		case HW_TYPE_CAN:
-			CLI_init_can(port);
+			port->rx_stream = xStreamBufferCreate(port->rx_buffer_size, 1);
+			port->tx_stream = xStreamBufferCreate(port->rx_buffer_size, 1);
+#ifdef HAL_CAN_MODULE_ENABLED
+			TASK_CAN_init(port, CAN_NAME);
+#endif
 			break;
 	}
 
@@ -290,10 +231,10 @@ void task_cli(void * argument)
 	switch(port->hw_type){
 		case HW_TYPE_UART:
 			term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "uart");
+			debug = term_cli;
 			break;
 		case HW_TYPE_USB:
 			term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "usb");
-			debug = term_cli;
 			break;
 		case HW_TYPE_CAN:
 			term_cli =  TERM_createNewHandle(ext_printf, port, pdTRUE, &TERM_defaultList, NULL, "CAN");
@@ -301,7 +242,7 @@ void task_cli(void * argument)
 	}
 
 	if(term_cli != NULL){
-		null_handle.varHandle = TERM_VAR_init(term_cli, (uint8_t*)getFlashBaseAddress(), getFlashBaseSize(), flash_clear, flash_start_write, flash_write, flash_end_write);
+		null_handle.varHandle = TERM_VAR_init(term_cli, (uint8_t*)RTOS_flash_base_address(), RTOS_flash_base_size(), RTOS_flash_clear, RTOS_flash_start_write, RTOS_flash_write, RTOS_flash_end_write);
 	}
 
 	MESCinterface_init(term_cli);
@@ -310,7 +251,6 @@ void task_cli(void * argument)
 		rd_ptr = uart_get_write_pos(port); //Clear input buffer.
 	}
 
-	//tcp_serv_init();
 
   /* Infinite loop */
 	for(;;)
@@ -327,27 +267,19 @@ void task_cli(void * argument)
 					rd_ptr &= ((uint32_t)port->rx_buffer_size - 1);
 				}
 				break;
+			case HW_TYPE_CAN:
+				xSemaphoreTake(port->term_block, portMAX_DELAY);
+				while(xStreamBufferReceive(port->rx_stream, &c, 1, 1)){
+					TERM_processBuffer(&c,1,term_cli);
+				}
+				xSemaphoreGive(port->term_block);
+				break;
 			case HW_TYPE_USB:
 				while(xStreamBufferReceive(rx_stream, &c, 1, 1)){
 					xSemaphoreTake(port->term_block, portMAX_DELAY);
 					TERM_processBuffer(&c,1,term_cli);
 					xSemaphoreGive(port->term_block);
 				}
-			case HW_TYPE_CAN:
-#ifdef HAL_CAN_MODULE_ENABLED
-				xSemaphoreTake(port->term_block, portMAX_DELAY);
-				while(HAL_CAN_GetRxFifoFillLevel(port->hw, CAN_RX_FIFO0)){
-					CAN_RxHeaderTypeDef pheader;
-					uint8_t buffer[8];
-					HAL_CAN_GetRxMessage(port->hw, CAN_RX_FIFO0, &pheader, buffer);
-					if(pheader.StdId == CAN_ID_1){
-						TERM_processBuffer(buffer,pheader.DLC,term_cli);
-					}
-
-				}
-				xSemaphoreGive(port->term_block);
-#endif
-				break;
 			break;
 		}
 

@@ -61,6 +61,8 @@ typedef struct{
 	overlay_handle overlay_handle;
 	SemaphoreHandle_t term_block;
 	SemaphoreHandle_t tx_semaphore;
+	StreamBufferHandle_t rx_stream;
+	StreamBufferHandle_t tx_stream;
 } port_str;
 
 

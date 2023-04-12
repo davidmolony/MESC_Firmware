@@ -35,8 +35,10 @@
 
 #include "task_overlay.h"
 #include "task_cli.h"
+#include "task_can.h"
 #include "cmsis_os.h"
 #include <stdio.h>
+
 
 
 /* RTOS includes. */
@@ -53,8 +55,10 @@
  */
 /* `#START USER_INCLUDE SECTION` */
 #include "TTerm/Core/include/TTerm.h"
+#ifndef DASH
 #include "MESCfoc.h"
 #include "MESCmotor_state.h"
+#endif
 
 /* `#END` */
 /* ------------------------------------------------------------------------ */
@@ -73,7 +77,7 @@
 
 
 void show_overlay(TERMINAL_HANDLE * handle){
-
+#ifndef DASH
 	MESC_motor_typedef * motor_curr = &mtr[0];
 
 	TERM_sendVT100Code(handle, _VT100_CURSOR_SAVE_POSITION,0);
@@ -145,6 +149,7 @@ void show_overlay(TERMINAL_HANDLE * handle){
 
 	TERM_sendVT100Code(handle, _VT100_CURSOR_RESTORE_POSITION,0);
 	TERM_sendVT100Code(handle, _VT100_CURSOR_ENABLE,0);
+#endif
 
 }
 
@@ -210,6 +215,8 @@ void show_overlay_json(TERMINAL_HANDLE * handle){
     ttprintf(NULL, buffer, sizeof(buffer)-bytes_left);
 
 }
+
+
 
 /* `#END` */
 /* ------------------------------------------------------------------------ */
@@ -455,7 +462,7 @@ void print_index(TERMINAL_HANDLE * handle, char * name, uint32_t count, float in
 }
 
 void log_fastloop(TERMINAL_HANDLE * handle){
-
+#ifndef DASH
 	lognow = 1;
 	vTaskDelay(100);
 
@@ -486,9 +493,8 @@ void log_fastloop(TERMINAL_HANDLE * handle){
 
 
 	lognow = 1;
-
+#endif
 }
-
 
 
 /*****************************************************************************
