@@ -35,6 +35,7 @@ extern "C" {
 #include "MESCBLDC.h"
 #include "MESC_Comms.h"
 #include "MESCfoc.h"
+#include "MESCerror.h"
 #include "MESChw_setup.h"
 #include "MESCmotor_state.h"
 #include "MESCsin_lut.h"

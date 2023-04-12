@@ -44,7 +44,6 @@
 #include "task_cli.h"
 #include "cmsis_os.h"
 #include "TTerm/Core/include/TTerm.h"
-#include "usbd_cdc_if.h"
 #include "task_can.h"
 
 
@@ -74,11 +73,13 @@ void USB_CDC_TransmitCplt(){
 }
 
 void putbuffer_usb(unsigned char *buf, unsigned int len, port_str * port){
+#ifdef MESC_UART_USB
 	xSemaphoreTake(port->tx_semaphore, portMAX_DELAY);
 	while(CDC_Transmit_FS((uint8_t*)buf, len)== USBD_BUSY){
 		vTaskDelay(1);
 	}
 	xSemaphoreGive(port->tx_semaphore);
+#endif
 }
 
 
