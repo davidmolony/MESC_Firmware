@@ -3166,20 +3166,23 @@ void MESC_IC_IRQ_Handler(MESC_motor_typedef *_motor, uint32_t SR, uint32_t CCR1,
 		uint16_t temp_enc_ang;
 		temp_enc_ang = _motor->FOC.enc_offset +
 						(uint16_t)(((65536*(CCR2-16))/(CCR1-24)*(uint32_t)_motor->m.pole_pairs)%65536);
+//Set the angles used and zero the counter
+		if(_motor->FOC.encoder_polarity_invert){
+			_motor->FOC.last_enc_period = _motor->FOC.enc_period_count;
+			_motor->FOC.enc_period_count = 0;
+			_motor->FOC.enc_angle = 65536 - temp_enc_ang;
+		} else{
+			_motor->FOC.last_enc_period = _motor->FOC.enc_period_count;
+			_motor->FOC.enc_angle = temp_enc_ang;
+			_motor->FOC.enc_period_count = 0;
+		}
 
-			if(_motor->FOC.encoder_polarity_invert){
-				_motor->FOC.enc_angle = 65536 - temp_enc_ang;
-			} else{
-				_motor->FOC.enc_angle = temp_enc_ang;
-			}
-
-		//Calculate the deltas and steps
-		_motor->FOC.enc_pwm_step = 0.9f*_motor->FOC.enc_pwm_step +
-				0.1f*(((int16_t)(_motor->FOC.enc_angle - _motor->FOC.last_enc_angle))/(_motor->FOC.enc_period_count + 0.1f));
+	//Calculate the deltas and steps
+		_motor->FOC.enc_pwm_step = 0.8f*_motor->FOC.enc_pwm_step +
+				0.2f*(((int16_t)(_motor->FOC.enc_angle - _motor->FOC.last_enc_angle))/(_motor->FOC.last_enc_period + 0.1f));
 		_motor->FOC.last_enc_angle = _motor->FOC.enc_angle;
-		_motor->FOC.enc_period_count = 0;
 	}
-
+	//For sensorless-PWM encoder combined mode
 	//Calculate the sin and cos coefficients for future use in the flux observer
 	sin_cos_fast((_motor->FOC.enc_angle), &_motor->FOC.encsin, &_motor->FOC.enccos);
 

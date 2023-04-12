@@ -256,6 +256,7 @@ typedef struct {
   uint32_t encoder_OK;
   uint16_t enc_angle;
   uint16_t enc_period_count;
+  uint16_t last_enc_period;
 
   uint16_t last_enc_angle;
   int16_t enc_pwm_step;
