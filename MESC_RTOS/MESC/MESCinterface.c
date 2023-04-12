@@ -472,9 +472,10 @@ void populate_vars(){
 	TERM_addVar(input_vars.input_options			, 0			, 16		, "input_opt"	, "Inputs [1=ADC1 2=ADC2 4=PPM 8=UART]"	, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].safe_start[0]				, 0			, 1000		, "safe_start"	, "Countdown before allowing throttle"	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].safe_start[1]				, 0			, 1000		, "safe_count"	, "Live count before allowing throttle"	, VAR_ACCESS_R	, NULL		, &TERM_varList);
+#ifdef HAL_CAN_MODULE_ENABLED
 	TERM_addVar(can1.node_id						, 1			, 254		, "node_id"	    , "Node ID"								, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(adc_node							, 1			, 254		, "can_adc"	    , "can ADC ID"							, VAR_ACCESS_RW	, callback	, &TERM_varList);
-
+#endif
 
 	TermVariableDescriptor * desc;
 	desc = TERM_addVar(MESC_errors						,-HUGE_VAL 	, HUGE_VAL  , "error"		, "System errors"						, VAR_ACCESS_TR  , NULL		, &TERM_varList);
@@ -486,7 +487,7 @@ void populate_vars(){
 
 }
 
-
+#ifdef HAL_CAN_MODULE_ENABLED
 void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
 	MESC_motor_typedef * motor_curr = &mtr[0];
 
@@ -590,7 +591,7 @@ void TASK_CAN_aux_data(TASK_CAN_handle * handle){
 	}
 
 }
-
+#endif
 
 
 void MESCinterface_init(TERMINAL_HANDLE * handle){
@@ -624,8 +625,10 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
 
+#ifdef HAL_CAN_MODULE_ENABLED
 	TERM_addCommand(CMD_nodes, "nodes", "Node info", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_can_send, "can_send", "Send CAN message", 0, &TERM_defaultList);
+#endif
 
 	TermCommandDescriptor * varAC = TERM_addCommand(CMD_log, "log", "Configure logging", 0, &TERM_defaultList);
 	TERM_addCommandAC(varAC, TERM_varCompleter, null_handle.varHandle->varListHead);

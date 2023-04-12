@@ -27,7 +27,7 @@
 
 #define FLASH_STORAGE_PAGE 	7
 
-#define MESC_UART_USB 		MESC_USB
+//#define MESC_UART_USB 		MESC_USB
 #define HW_UART huart1
 
 

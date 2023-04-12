@@ -46,7 +46,10 @@
 #include "TTerm/Core/include/TTerm.h"
 #include "task_can.h"
 
-
+#ifdef MESC_UART_USB
+#include "usbd_cdc_if.h"
+#include "usbd_def.h"
+#endif
 
 
 void putbuffer_uart(unsigned char *buf, unsigned int len, port_str * port){
@@ -211,7 +214,9 @@ void task_cli(void * argument)
 		case HW_TYPE_CAN:
 			port->rx_stream = xStreamBufferCreate(port->rx_buffer_size, 1);
 			port->tx_stream = xStreamBufferCreate(port->rx_buffer_size, 1);
+#ifdef HAL_CAN_MODULE_ENABLED
 			TASK_CAN_init(port, CAN_NAME);
+#endif
 			break;
 	}
 

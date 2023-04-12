@@ -117,7 +117,7 @@ void TASK_CAN_save_fastloop_data(void * argument){
 	TASK_CAN_node * node = arg->esc->node;
 
     FIL out;
-    char timecode[64];
+    char timecode[90];
     snprintf(timecode, sizeof(timecode), "%s_%u_%u.csv", fl_file_prefix, node->id, (uint32_t)xTaskGetTickCount());
 
 
@@ -296,7 +296,7 @@ uint8_t CMD_sample(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 void TASK_SLOW_LOG(void * argument){
 
-    char timecode[64];
+    char timecode[79];
 
     FRESULT res;
     uint32_t count=0;

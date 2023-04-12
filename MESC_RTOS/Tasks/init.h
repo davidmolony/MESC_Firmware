@@ -45,7 +45,10 @@ void init_system_running(void);
 
 extern port_str main_uart;
 extern port_str main_usb;
+
+#ifdef HAL_CAN_MODULE_ENABLED
 extern TASK_CAN_handle can1;
+#endif
 
 #define CAN_ID_1 11
 #define CAN_ID_2 11

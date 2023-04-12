@@ -40,11 +40,25 @@
 #endif
 
 
+#ifdef HAL_CAN_MODULE_ENABLED
+extern CAN_HandleTypeDef hcan1;
+#endif
+
+#ifdef HW_UART
 extern UART_HandleTypeDef HW_UART;
+port_str main_uart = {	.hw = &HW_UART,
+						.hw_type = HW_TYPE_UART,
+					    .rx_buffer_size = 512,
+						.half_duplex = false,
+						.task_handle = NULL
+};
+
+#endif
 
 #ifdef MESC_UART_USB
 
 extern USBD_HandleTypeDef hUsbDeviceFS;
+
 port_str main_usb = {	.hw = &hUsbDeviceFS,
 						.hw_type = HW_TYPE_USB,
 					    .rx_buffer_size = 512,
