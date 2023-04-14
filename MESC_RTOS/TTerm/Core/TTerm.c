@@ -303,6 +303,7 @@ uint8_t TERM_processBuffer(uint8_t * data, uint16_t length, TERMINAL_HANDLE * ha
 			}
     	}
     }
+    return length;
 }
 
 unsigned isACIILetter(char c){
@@ -526,7 +527,6 @@ uint8_t TERM_handleInput(uint16_t c, TERMINAL_HANDLE * handle){
             }else{
                 TERM_sendVT100Code(handle, _VT100_ERASE_LINE, 0);
                 unsigned printQuotationMarks = strchr(handle->autocompleteBuffer[handle->currAutocompleteCount - 1], ' ') != 0;
-                volatile TERMINAL_HANDLE * temp = handle;
                 
                 //workaround for inconsistent printf behaviour when using %.*s with length 0
                 if(handle->autocompleteStart == 0){
@@ -599,6 +599,7 @@ uint8_t TERM_handleInput(uint16_t c, TERMINAL_HANDLE * handle){
             TERM_printDebug(handle, "unknown code received: 0x%02x\r\n", c);
             break;
     }
+    return 1;
 }
 
 void TERM_checkForCopy(TERMINAL_HANDLE * handle, COPYCHECK_MODE mode){
@@ -745,7 +746,7 @@ uint8_t TERM_seperateArgs(char * data, uint16_t dataLength, char ** buff){
                 break;
         }
     }
-    if(quoteMark) TERM_ARGS_ERROR_STRING_LITERAL;
+    //if(quoteMark) TERM_ARGS_ERROR_STRING_LITERAL;
     return count;
 }
 
@@ -788,7 +789,7 @@ uint16_t TERM_countArgs(const char * data, uint16_t dataLength){
                 break;
         }
     }
-    if(quoteMark) TERM_ARGS_ERROR_STRING_LITERAL;
+    if(quoteMark) return TERM_ARGS_ERROR_STRING_LITERAL;
     return count;
 }
 
@@ -899,7 +900,7 @@ unsigned TERM_isSorted(TermCommandDescriptor * a, TermCommandDescriptor * b){
     }
 }
 
-char toLowerCase(char c){
+uint16_t toLowerCase(uint16_t c){
     if(c > 65 && c < 90){
         return c + 32;
     }

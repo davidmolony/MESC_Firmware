@@ -87,16 +87,16 @@ void show_overlay(TERMINAL_HANDLE * handle){
 	uint8_t col_pos = 90;
 	TERM_Box(handle, row_pos, col_pos, row_pos + 6, col_pos + 31);
 	TERM_setCursorPos(handle, row_pos + 1, col_pos + 1);
-	ttprintf("Bus Voltage:       %10.1fV", motor_curr->Conv.Vbus);
+	ttprintf("Bus Voltage:       %10.1fV", (double)motor_curr->Conv.Vbus);
 
 	TERM_setCursorPos(handle, row_pos + 2, col_pos + 1);
-	ttprintf("Bus Current:      %10.2f A", motor_curr->FOC.Ibus);
+	ttprintf("Bus Current:      %10.2f A", (double)motor_curr->FOC.Ibus);
 
 	TERM_setCursorPos(handle, row_pos + 3, col_pos + 1);
-	ttprintf("Speed:         %10.2f ERPM", motor_curr->FOC.eHz*60.0);
+	ttprintf("Speed:         %10.2f ERPM", (double)(motor_curr->FOC.eHz*60.0f));
 
 	TERM_setCursorPos(handle, row_pos + 4, col_pos + 1);
-	ttprintf("Power:            %10.2f W", motor_curr->FOC.currentPower.q);
+	ttprintf("Power:            %10.2f W", (double)motor_curr->FOC.currentPower.q);
 
 	TERM_setCursorPos(handle, row_pos + 5, col_pos + 1);
 	ttprintf("MESC status: ");
@@ -143,6 +143,9 @@ void show_overlay(TERMINAL_HANDLE * handle){
 		break;
 	case MOTOR_STATE_SLAMBRAKE:
 		ttprintf("        SLAMBRAKE");
+		break;
+	case MOTOR_STATE_RUN_BLDC:
+		ttprintf("         RUN BLDC");
 		break;
 	}
 
@@ -368,10 +371,10 @@ void print_array(TERMINAL_HANDLE * handle, char * name, void * array, uint32_t c
 	for(uint32_t i=0;i<count;i++){
 
 		switch(type){
-		case TERM_VARIABLE_FLOAT_ARRAY:
+			case TERM_VARIABLE_FLOAT_ARRAY:
 				written = snprintf(ptr, bytes_left, "%.2f,", (double)((float*)array)[currPos]);
-			break;
-		case TERM_VARIABLE_UINT_ARRAY:
+				break;
+			case TERM_VARIABLE_UINT_ARRAY:
 				switch(type_size){
 					case 1:
 						u_var = ((uint8_t*)array)[currPos];
@@ -384,8 +387,8 @@ void print_array(TERMINAL_HANDLE * handle, char * name, void * array, uint32_t c
 						break;
 				}
 
-				written = snprintf(ptr, bytes_left, "%u,", u_var);
-			break;
+				written = snprintf(ptr, bytes_left, "%lu,", u_var);
+				break;
 			case TERM_VARIABLE_INT_ARRAY:
 					switch(type_size){
 						case 1:
@@ -399,9 +402,10 @@ void print_array(TERMINAL_HANDLE * handle, char * name, void * array, uint32_t c
 							break;
 					}
 
-					written = snprintf(ptr, bytes_left, "%i,", i_var);
+					written = snprintf(ptr, bytes_left, "%li,", i_var);
 				break;
-
+			default:
+				break;
 		}
 
 		currPos++;
@@ -441,7 +445,7 @@ void print_index(TERMINAL_HANDLE * handle, char * name, uint32_t count, float in
 
 	for(uint32_t i=0;i<count;i++){
 
-		written = snprintf(ptr, bytes_left, "%f,", index);
+		written = snprintf(ptr, bytes_left, "%f,", (double)index);
 		index += increment;
 
 		ptr += written;

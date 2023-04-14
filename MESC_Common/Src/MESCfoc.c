@@ -45,9 +45,17 @@
 #include "MESCtemp.h"
 #include "MESCspeed.h"
 #include "MESCerror.h"
+#include "MESCposition.h"
+
+#ifdef MESC_UART_USB
+#include "usbd_cdc_if.h"
+#endif
 
 #include <math.h>
 #include <stdlib.h>
+#ifdef LOGGING
+#include <stdio.h>
+#endif
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
@@ -2131,6 +2139,8 @@ float  Square(float x){ return((x)*(x));}
 					break;
 				case MOTOR_CONTROL_MODE_POSITION:
 					__NOP();
+				default:
+					break;
 			}//end of ControlMode switch
 
 			SlowHFI(_motor);
@@ -2161,6 +2171,8 @@ float  Square(float x){ return((x)*(x));}
 						_motor->MotorState = MOTOR_STATE_TRACKING;
 						VICheck(_motor); //Immediately return it to error state if there is still a critical fault condition active
 					}
+				default:
+					break;
 			}
 			break;
 		case MOTOR_STATE_SLAMBRAKE:
@@ -2551,7 +2563,7 @@ uint32_t start_ticks;
 extern DMA_HandleTypeDef hdma_usart3_tx;
 void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma){
 #ifdef LOGGING
-	char send_buffer[100];
+	uint8_t send_buffer[100];
 	uint16_t length;
 	if(print_samples_now){
 		print_samples_now = 0;
@@ -2570,13 +2582,13 @@ void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma){
 					current_sample_pos = 0;	//Wrap
 				}
 
-				length = sprintf(send_buffer,"%.2f%.2f,%.2f,%.2f,%.2f,%.2f,%d;\r\n",
-						sampled_vars.Vbus[current_sample_pos],
-						sampled_vars.Iu[current_sample_pos],
-						sampled_vars.Iv[current_sample_pos],
-						sampled_vars.Iw[current_sample_pos],
-						sampled_vars.Vd[current_sample_pos],
-						sampled_vars.Vq[current_sample_pos],
+				length = snprintf((char*)send_buffer, sizeof(send_buffer) , "%.2f%.2f,%.2f,%.2f,%.2f,%.2f,%d;\r\n",
+						(double)sampled_vars.Vbus[current_sample_pos],
+						(double)sampled_vars.Iu[current_sample_pos],
+						(double)sampled_vars.Iv[current_sample_pos],
+						(double)sampled_vars.Iw[current_sample_pos],
+						(double)sampled_vars.Vd[current_sample_pos],
+						(double)sampled_vars.Vq[current_sample_pos],
 						sampled_vars.angle[current_sample_pos]);
 				if((HAL_GetTick()-start_ticks)>10000){
 				break;

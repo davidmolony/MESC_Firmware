@@ -85,7 +85,7 @@ static void bargraph(TERMINAL_HANDLE * handle, float min, float max, float val){
 		buffer[i+1] = i<norm? '#' : '_';
 	}
 	buffer[41]='|';
-	ttprintf("%s %f ", buffer, val);
+	ttprintf("%s %f ", buffer, (double)val);
 
 }
 

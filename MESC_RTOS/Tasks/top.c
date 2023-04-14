@@ -107,7 +107,7 @@ static void TASK_main(void *pvParameters){
 
             uint32_t cycles_left = cycles_available - max_cycles;
             float foc_load = 100.0f / cycles_available * max_cycles;
-            ttprintf("%sFOC load %3.0f%% - Hyperloop: %5d Fastloop: %5d Cycles to overrun: %5d\r\n", TERM_getVT100Code(_VT100_ERASE_LINE_END, 0),foc_load , sum_hyperloop, sum_fastloop, cycles_left);
+            ttprintf("%sFOC load %3.0f%% - Hyperloop: %5d Fastloop: %5d Cycles to overrun: %5d\r\n", TERM_getVT100Code(_VT100_ERASE_LINE_END, 0),(double)foc_load , sum_hyperloop, sum_fastloop, cycles_left);
 #endif
             uint32_t heapRemaining = xPortGetFreeHeapSize();
             ttprintf("%sMem: \t%db total,\t %db free,\t %db used (%d%%)\r\n", TERM_getVT100Code(_VT100_ERASE_LINE_END, 0), configTOTAL_HEAP_SIZE, heapRemaining, configTOTAL_HEAP_SIZE - heapRemaining, ((configTOTAL_HEAP_SIZE - heapRemaining) * 100) / configTOTAL_HEAP_SIZE);

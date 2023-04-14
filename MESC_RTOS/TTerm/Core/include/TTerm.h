@@ -30,6 +30,7 @@
 
 #include "TTerm_VT100.h"
 #include "TTerm/TTerm_config.h"
+#include "stdint.h"
 
 #define EXTENDED_PRINTF 1
 #define TERM_VERSION_STRING "V0.9"
@@ -107,17 +108,17 @@ typedef enum {
 } TermFlagType;
 
 #define TERM_addVar(var, min, max, name, description, rw, cb, listHandle) _Generic((var), \
-    uint8_t:    TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
-    uint16_t:   TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
-    uint32_t:   TERM_addVarUnsigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
-    int8_t:     TERM_addVarSigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
-    int16_t:    TERM_addVarSigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
-    int32_t:    TERM_addVarSigned(&var, sizeof(var), min, max, name, description, rw, cb, listHandle), \
-	bool:		TERM_addVarBool(&var, name, description, rw, cb, listHandle), \
-    float:      TERM_addVarFloat(&var, min, max, name, description, rw, cb, listHandle), \
-	float*:		TERM_addVarArrayFloat(&var, sizeof(var),  min, max, name, description, rw, cb, listHandle), \
-    char:       TERM_addVarChar(&var, name, description, rw, cb, listHandle), \
-    char*:      TERM_addVarString(&var, sizeof(var), name, description, rw, cb, listHandle))
+    uint8_t:    TERM_addVarUnsigned, \
+    uint16_t:   TERM_addVarUnsigned, \
+    uint32_t:   TERM_addVarUnsigned, \
+    int8_t:     TERM_addVarSigned, \
+    int16_t:    TERM_addVarSigned, \
+    int32_t:    TERM_addVarSigned, \
+    float:      TERM_addVarFloat, \
+	float*:		TERM_addVarArrayFloat, \
+	bool:		TERM_addVarBool, \
+    char:       TERM_addVarChar, \
+    char*:      TERM_addVarString)(&var, sizeof(var), min, max, name, description, rw, cb, listHandle)
 
 
 typedef uint32_t (* nvm_clear)(void * address, uint32_t len);
@@ -167,7 +168,7 @@ struct __TermVariableHandle__{
 	nvm_end_write nvm_end_write;
 };
 
-char toLowerCase(char c);
+uint16_t toLowerCase(uint16_t c);
 
 
 #if TERM_SUPPORT_APPS

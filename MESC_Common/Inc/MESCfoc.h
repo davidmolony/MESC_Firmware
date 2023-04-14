@@ -580,8 +580,9 @@ typedef struct {
 	float ADC1_req;
 	float ADC2_req;
 
-	float REMOTE_ADC1_req;
-	float REMOTE_ADC2_req;
+	uint8_t remote_ADC_can_id;
+	float remote_ADC1_req;
+	float remote_ADC2_req;
 
 
 	uint16_t nKillswitch;

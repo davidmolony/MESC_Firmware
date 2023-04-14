@@ -179,7 +179,7 @@ TermVariableDescriptor * TERM_addVarSigned(void* variable, uint16_t typeSize, in
     return newVAR;
 }
 
-TermVariableDescriptor * TERM_addVarFloat(void* variable, float min, float max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head){
+TermVariableDescriptor * TERM_addVarFloat(void* variable, uint16_t typeSize, float min, float max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head){
     //if(head == NULL) head = TERM_defaultList;
     if(head->nameLength == 0xff) return 0;
 
@@ -189,7 +189,7 @@ TermVariableDescriptor * TERM_addVarFloat(void* variable, float min, float max, 
     newVAR->min_float = min;
     newVAR->max_float = max;
     newVAR->type = TERM_VARIABLE_FLOAT;
-    newVAR->typeSize = sizeof(float);
+    newVAR->typeSize = typeSize;
     newVAR->name = name;
     newVAR->cb = cb;
     newVAR->nameLength = strlen(name);
@@ -221,7 +221,7 @@ TermVariableDescriptor * TERM_addVarArrayFloat(void* variable, uint32_t size,  f
     return newVAR;
 }
 
-TermVariableDescriptor * TERM_addVarString(void* variable, uint16_t typeSize, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head){
+TermVariableDescriptor * TERM_addVarString(void* variable, uint16_t typeSize, uint32_t min, uint32_t max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head){
     //if(head == NULL) head = TERM_defaultList;
     if(head->nameLength == 0xff) return 0;
 
@@ -242,7 +242,7 @@ TermVariableDescriptor * TERM_addVarString(void* variable, uint16_t typeSize, co
     return newVAR;
 }
 
-TermVariableDescriptor * TERM_addVarChar(void* variable, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head){
+TermVariableDescriptor * TERM_addVarChar(void* variable, uint16_t typeSize, uint32_t min, uint32_t max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head){
     //if(head == NULL) head = TERM_defaultList;
     if(head->nameLength == 0xff) return 0;
 
@@ -263,7 +263,7 @@ TermVariableDescriptor * TERM_addVarChar(void* variable, const char * name, cons
     return newVAR;
 }
 
-TermVariableDescriptor * TERM_addVarBool(void* variable, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head){
+TermVariableDescriptor * TERM_addVarBool(void* variable, uint16_t typeSize, uint32_t min, uint32_t max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head){
     //if(head == NULL) head = TERM_defaultList;
     if(head->nameLength == 0xff) return 0;
 
@@ -386,10 +386,10 @@ static void print_var_header_update(TERMINAL_HANDLE * handle){
 
 uint32_t TERM_var2str(TERMINAL_HANDLE * handle, TermVariableDescriptor * var, char * buffer, int32_t len ){
 
-    uint32_t u_temp_buffer=0;
-    int32_t i_temp_buffer=0;
-    float f_buffer;
-    uint32_t ret;
+    uint32_t u_temp_buffer = 0;
+    int32_t i_temp_buffer = 0;
+    //float f_buffer;
+    uint32_t ret = 0;
 
 	switch (var->type){
 	case TERM_VARIABLE_UINT:
@@ -425,10 +425,10 @@ uint32_t TERM_var2str(TERMINAL_HANDLE * handle, TermVariableDescriptor * var, ch
 		break;
 	case TERM_VARIABLE_FLOAT:
 
-		ret = snprintf(buffer, len, "%f", *(float*)var->variable);
+		ret = snprintf(buffer, len, "%f", (double)*(float*)var->variable);
 
 		break;
-//	case TERM_VARIABLE_FLOAT_ARRAY:
+	case TERM_VARIABLE_FLOAT_ARRAY:
 //		if(flag == HELPER_FLAG_DETAIL){
 //			for(uint32_t cnt=0;cnt<(var->typeSize / sizeof(float));cnt++){
 //				f_buffer = ((float*)var->variable)[cnt];
@@ -443,7 +443,13 @@ uint32_t TERM_var2str(TERMINAL_HANDLE * handle, TermVariableDescriptor * var, ch
 //			ttprintf("\033[37m| \033[32mArray[%u]", (var->typeSize / sizeof(float)));
 //		}
 //
-//		break;
+		break;
+	case TERM_VARIABLE_INT_ARRAY:
+		//TODO
+		break;
+	case TERM_VARIABLE_UINT_ARRAY:
+		//TODO
+		break;
 	case TERM_VARIABLE_CHAR:
 
 		ret = snprintf(buffer, len, "%c", *(char*)var->variable);
@@ -511,7 +517,7 @@ void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescriptor * var
 	case TERM_VARIABLE_FLOAT:
 
 		TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_B);
-		ttprintf("\033[37m| \033[32m%f", *(float*)var->variable);
+		ttprintf("\033[37m| \033[32m%f", (double)*(float*)var->variable);
 
 		break;
 	case TERM_VARIABLE_FLOAT_ARRAY:
@@ -519,7 +525,7 @@ void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescriptor * var
 			for(uint32_t cnt=0;cnt<(var->typeSize / sizeof(float));cnt++){
 				f_buffer = ((float*)var->variable)[cnt];
 				TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_B);
-				ttprintf("\033[37m| [%u] \033[32m%f", cnt , f_buffer);
+				ttprintf("\033[37m| [%u] \033[32m%f", cnt , (double)f_buffer);
 				if(cnt<(var->typeSize / sizeof(float)-1)){
 					ttprintf("\r\n");
 				}
@@ -529,6 +535,12 @@ void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescriptor * var
 			ttprintf("\033[37m| \033[32mArray[%u]", (var->typeSize / sizeof(float)));
 		}
 
+		break;
+	case TERM_VARIABLE_INT_ARRAY:
+		//TODO
+		break;
+	case TERM_VARIABLE_UINT_ARRAY:
+		//TODO
 		break;
 	case TERM_VARIABLE_CHAR:
 
@@ -561,7 +573,7 @@ void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescriptor * var
 				break;
 			case TERM_VARIABLE_FLOAT:
 			case TERM_VARIABLE_FLOAT_ARRAY:
-				ttprintf("\033[37m| %.2f", var->min_float);
+				ttprintf("\033[37m| %.2f", (double)var->min_float);
 				break;
 			case TERM_VARIABLE_BOOL:
 				ttprintf("\033[37m| false");
@@ -587,7 +599,7 @@ void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescriptor * var
 				break;
 			case TERM_VARIABLE_FLOAT:
 			case TERM_VARIABLE_FLOAT_ARRAY:
-				ttprintf("\033[37m| %.2f", var->max_float);
+				ttprintf("\033[37m| %.2f", (double)var->max_float);
 				break;
 			case TERM_VARIABLE_BOOL:
 				ttprintf("\033[37m| true");
@@ -759,6 +771,12 @@ static bool set_value(TermVariableDescriptor * var, char* value){
 		((float*)var->variable)[index] = f_temp_buffer;
 
 		break;
+	case TERM_VARIABLE_INT_ARRAY:
+		//TODO
+		break;
+	case TERM_VARIABLE_UINT_ARRAY:
+		//TODO
+		break;
 	case TERM_VARIABLE_CHAR:
 		*(char*)var->variable = value[0];
 		break;
@@ -911,7 +929,7 @@ uint32_t validate(TERMINAL_HANDLE * handle, FlashHeader * header){
 
 	//Checking CRC
 	for(uint32_t currPos=0;currPos < header->num_entries; currPos++){
-		if(currFlashVar < var->nvm_address || currFlashVar > var->nvm_address + var->nvm_size){
+		if(currFlashVar < (FlashVariable *)var->nvm_address || currFlashVar > (FlashVariable *)(var->nvm_address + var->nvm_size)){
 			return 0;
 		}
 		crc = TTERM_fnv1a_process_data(crc, currFlashVar, sizeof(FlashVariable));
@@ -1160,7 +1178,7 @@ uint8_t CMD_varLoad(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	FlashVariable * FlashVar = (FlashVariable*)(header + 1);
 	FlashVariable * currFlashVar = FlashVar;
 
-	if(header > address + storage_size || header < address){
+	if(header > (FlashHeader *)(address + storage_size) || header < (FlashHeader *)address){
 		ttprintf("Header out of bounds\r\n");
 		return TERM_CMD_EXIT_SUCCESS;
 	}

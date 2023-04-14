@@ -1,8 +1,8 @@
 /*
  **
  ******************************************************************************
- * @file           : task_can.c
- * @brief          : CAN-BUS-Task for MESC and TTERM
+ * @file           : CAN_helper.h
+ * @brief          : Helper functions for CAN
  ******************************************************************************
  * @attention
  *
@@ -29,30 +29,33 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
-#ifndef TASK_CAN_H_
-#define TASK_CAN_H_
+#ifndef CAN_HELPER_H_
+#define CAN_HELPER_H_
 
-#include "main.h"
-#include "task_cli.h"
-#include "CAN_helper.h"
+#include "CAN_types.h"
+#include "can_ids.h"
 
 #ifdef HAL_CAN_MODULE_ENABLED
 
-
-#define NUM_NODES 64
-
-#define NODE_OVERRUN (TASK_CAN_node*) 0xFFFFFFFF
-
-extern TASK_CAN_node nodes[NUM_NODES];
-
-void TASK_CAN_init(port_str * port, char * short_name);
-void TASK_CAN_set_stream(TASK_CAN_handle * handle, uint32_t id);
-uint8_t CMD_nodes(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
-uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
-uint32_t TASK_CAN_connect(TASK_CAN_handle * handle, uint16_t remote, uint8_t connect);
-
-TASK_CAN_node * TASK_CAN_get_node_from_id(uint8_t id);
-
+bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, float n1, float n2, uint32_t timeout);
+bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint32_t n1, uint32_t n2, uint32_t timeout);
+bool TASK_CAN_add_sample(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint16_t row, uint8_t col, uint8_t flags, float value, uint32_t timeout);
 
 #endif
-#endif
+
+float PACK_buf_to_float(uint8_t* buffer);
+uint32_t PACK_buf_to_u32(uint8_t* buffer);
+uint16_t PACK_buf_to_u16(uint8_t* buffer);
+uint8_t PACK_buf_to_u8(uint8_t* buffer);
+
+void PACK_u32_to_buf(uint8_t* buffer, uint32_t number);
+void PACK_u16_to_buf(uint8_t* buffer, uint16_t number);
+void PACK_u8_to_buf(uint8_t* buffer, uint8_t number);
+void PACK_float_to_buf(uint8_t* buffer, float number);
+void PACK_8b_char_to_buf(uint8_t* buffer, char * short_name);
+
+
+uint32_t generate_id(uint16_t id, uint8_t sender, uint8_t receiver);
+uint16_t extract_id(uint32_t ext_id, uint8_t * sender, uint8_t * receiver);
+
+#endif /* CAN_HELPER_H_ */

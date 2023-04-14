@@ -572,7 +572,7 @@ static void cli_process_read_float( void )
                 return;
         }
 
-        cli_reply( "%f" "\r" "\n", *((float const *)CLIlut.entry_ptr->var.r) );
+        cli_reply( "%f" "\r" "\n", (double)*((float const *)CLIlut.entry_ptr->var.r) );
     }
 }
 
@@ -710,7 +710,7 @@ static uint32_t cli_read_float(TERMINAL_HANDLE * handle, CLIEntry * entry, bool 
 			default:
 				return TERM_CMD_EXIT_ERROR;
 		}
-		ttprintf("%f\r\n",val);
+		ttprintf("%f\r\n",(double)val);
 		return TERM_CMD_EXIT_SUCCESS;
 	}else{
 		return TERM_CMD_EXIT_ERROR;

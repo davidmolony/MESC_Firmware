@@ -39,10 +39,5 @@
 #define CAN_SAMPLE_FLAG_START	1
 #define CAN_SAMPLE_FLAG_END		2
 
-typedef enum{
-	NODE_TYPE_ESC,
-	NODE_TYPE_DASH
-}node_type;
-
 
 #endif /* CAN_IDS_H_ */

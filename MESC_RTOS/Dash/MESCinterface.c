@@ -217,9 +217,6 @@ void TASK_CAN_packet_esc(esc_data * esc, uint32_t id, uint8_t* data, uint32_t le
 					n_rows = row + 1;
 				}
 			}
-
-
-
 		}
 	}
 

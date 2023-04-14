@@ -33,6 +33,7 @@
 #include "string.h"
 #include "task_cli.h"
 #include "init.h"
+#include "stdlib.h"
 
 #define APP_NAME "can"
 #define APP_DESCRIPTION "CAN test"

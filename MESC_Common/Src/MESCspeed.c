@@ -31,6 +31,7 @@
 
 #include "MESCmotor.h"
 #include "MESCprofile.h"
+#include "MESCcli.h"
 
 #include "conversions.h"
 
