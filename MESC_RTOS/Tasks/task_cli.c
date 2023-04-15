@@ -135,14 +135,14 @@ static uint32_t uart_get_write_pos(port_str * port){
 }
 
 
-void ext_printf(port_str * port, const char* format, ...) {
+uint32_t ext_printf(void * port, const char* format, ...) {
 	va_list arg;
 	va_start (arg, format);
-
+	int len = 0;
 	if(format != NULL){
-		int len;
+
 		char send_buffer[128];
-		len = vsnprintf(send_buffer, 128, format, arg);
+		len = vsnprintf(send_buffer, sizeof(send_buffer), format, arg);
 		if(len > sizeof(send_buffer)){
 			len = sizeof(send_buffer);
 		}
@@ -157,8 +157,7 @@ void ext_printf(port_str * port, const char* format, ...) {
 	}
 
 	va_end (arg);
-
-
+	return len;
 }
 
 StreamBufferHandle_t rx_stream;

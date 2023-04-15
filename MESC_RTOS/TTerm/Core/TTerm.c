@@ -906,12 +906,12 @@ uint16_t toLowerCase(uint16_t c){
     }
     
     switch(c){
-        case 'Ü':
-            return 'ü';
-        case 'Ä':
-            return 'ä';
-        case 'Ö':
-            return 'ö';
+        case 0xc39c: //Ü
+            return 0xc3bc;  //ü
+        case 0xc384: //Ä
+            return 0xc3a4;  //ä
+        case 0xc396:  //Ö
+            return 0xc3b6;  //ö
         default:
             return c;
     }

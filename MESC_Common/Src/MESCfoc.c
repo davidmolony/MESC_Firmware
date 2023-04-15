@@ -252,11 +252,11 @@ while(_motor->MotorState == MOTOR_STATE_INITIALISING){
   _motor->conf_is_valid = true;
 
   //Lock it in initialising while the offsets not completed
-	while(_motor->key_bits & UNINITIALISED_KEY){
-		_motor->MotorState = MOTOR_STATE_INITIALISING;
-		HAL_Delay(0);
-		generateBreakAll();
-	}
+//	while(_motor->key_bits & UNINITIALISED_KEY){
+//		_motor->MotorState = MOTOR_STATE_INITIALISING;
+//		HAL_Delay(0);
+//		generateBreakAll();
+//	}
 }
 
 void InputInit(){

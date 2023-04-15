@@ -435,9 +435,6 @@ void callback(TermVariableDescriptor * var){
 	InputInit();
 }
 
-uint8_t adc_node;
-
-
 void populate_vars(){
 	//		   | Variable							| MIN		| MAX		| NAME			| DESCRIPTION							| RW			| CALLBACK	| VAR LIST HANDLE
 	TERM_addVar(mtr[0].m.Imax						, 0.0f		, 500.0f	, "i_max"		, "Max current"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
@@ -507,7 +504,7 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 			motor_curr->sample_no_auto_send = false;
 			break;
 		case CAN_ID_ADC1_2_REQ:{
-			if(sender == adc_node){
+			if(sender == input_vars.remote_ADC_can_id){
 				input_vars.remote_ADC1_req = PACK_buf_to_float(data);
 				input_vars.remote_ADC2_req = PACK_buf_to_float(data+4);
 			}

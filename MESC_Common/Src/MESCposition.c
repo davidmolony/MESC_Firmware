@@ -8,6 +8,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "MESCposition.h"
+#include <math.h>
 
 void RunPosControl(MESC_motor_typedef *_motor){
 	_motor->pos.set_position += 1;
