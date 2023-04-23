@@ -97,6 +97,6 @@
 #define KILLSWITCH_PIN GPIO_PIN_2
 #define KILLSWITCH_IONO 2
 
-#define LOGLENGTH 1000
+#define LOGLENGTH 1500
 
 #endif /* INC_MX_FOC_IMS_H_ */
