@@ -2755,7 +2755,7 @@ void SlowHFI(MESC_motor_typedef *_motor){
 void SlowHall(MESC_motor_typedef *_motor){
 	if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.hall_initialised)&&(_motor->hall.current_hall_state>0)&&(_motor->hall.current_hall_state<7)){
 			_motor->FOC.hall_start_now = 1;
-	}else if(fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f){
+	}else if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f)||(_motor->hall.current_hall_state=0)||(_motor->hall.current_hall_state>6)){
 		_motor->FOC.hall_start_now = 0;
 	}
 	if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.encoder_OK)){
