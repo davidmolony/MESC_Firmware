@@ -180,7 +180,7 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
 	 mesc_init_1(_motor);
 
-	//HAL_Delay(3000);  // Give the everything else time to start up (e.g. throttle,
+	HAL_Delay(1000);  // Give the everything else time to start up (e.g. throttle,
 					// controller, PWM source...)
 
 	mesc_init_2(_motor);
@@ -1973,9 +1973,9 @@ __NOP();
     }
   }
   void MESC_Slow_IRQ_handler(MESC_motor_typedef *_motor){
-#ifdef SLOWLED
-	  SLOWLED->BSRR = SLOWLEDIO;
-#endif
+//#ifdef SLOWLED
+//	  SLOWLED->BSRR = SLOWLEDIO;
+//#endif
 //	if(_motor->stimer->Instance->SR & TIM_FLAG_CC2){
 //	  input_vars.IC_duration = _motor->stimer->Instance->CCR1;// HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_1);
 //	  input_vars.IC_pulse = _motor->stimer->Instance->CCR2;//HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_2);
@@ -1990,9 +1990,9 @@ __NOP();
 //	if(_motor->stimer->Instance->SR & TIM_FLAG_UPDATE){
 				  slowLoop(_motor);
 //	}
-#ifdef SLOWLED
-		SLOWLED->BSRR = SLOWLEDIO<<16U;
-#endif
+//#ifdef SLOWLED
+//		SLOWLED->BSRR = SLOWLEDIO<<16U;
+//#endif
   }
   extern uint32_t ADC_buffer[6];
 

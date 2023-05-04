@@ -87,6 +87,14 @@
 #define DEFAULT_MOTOR_R 0.0530f //Ohms
 #define DEFAULT_MOTOR_PP 5 //Pole Pairs
 
+#elif defined(VOILAMART1500W)
+#define MAX_MOTOR_PHASE_CURRENT 100.0f //
+#define DEFAULT_MOTOR_POWER 3000.0f //...
+#define DEFAULT_FLUX_LINKAGE 0.02650f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.0001290f //Henries
+#define DEFAULT_MOTOR_Lq 0.000280f//Henries
+#define DEFAULT_MOTOR_R 0.0510f //Ohms
+#define DEFAULT_MOTOR_PP 17 //Pole Pairs - No idea, guess from remembering 38 magnets
 
 #elif defined(PROPDRIVE2830_1000KV) //Can't remember, guessing.
 #define MAX_MOTOR_PHASE_CURRENT 20.0f //
