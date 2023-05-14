@@ -54,6 +54,6 @@ static void task_led( void * pvParameters )
 void task_led_init( void )
 {
 	TaskHandle_t xHandle = NULL;
-	xTaskCreate( task_led, "task_led", 32, SLOWLED, tskIDLE_PRIORITY, &xHandle );
+	xTaskCreate( task_led, "task_led", 128, SLOWLED, tskIDLE_PRIORITY, &xHandle );
 	configASSERT( xHandle );
 }
