@@ -343,7 +343,7 @@ void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor) {
 #endif
 	uint32_t cycles = CPU_CYCLES;
 	if (_motor->mtimer->Instance->CR1&0x16) {//Polling the DIR (direction) bit on the motor counter DIR = 1 = downcounting
-		fastLoop(_motor);
+//		fastLoop(_motor);
 		_motor->FOC.cycles_fastloop = CPU_CYCLES - cycles;
 	}
 	if (!(_motor->mtimer->Instance->CR1&0x16)) {//Polling the DIR (direction) bit on the motor counter DIR = 0 = upcounting
@@ -1150,9 +1150,9 @@ if (fluxb < -_motor->FOC.flux_observed) {
 #ifdef USE_FIELD_WEAKENINGV2
     	  //Closed loop field weakenning that works by only applying D axis current in the case where there is no duty left.
     	  //Seems very effective at increasing speed with good stability and maintaining max torque.
-    	  _motor->FOC.FW_current = _motor->FOC.FW_current -0.01f*_motor->FOC.FW_curr_max;
+    	  _motor->FOC.FW_current = 0.99f*_motor->FOC.FW_current -0.01f*_motor->FOC.FW_curr_max;
       }else{
-		  _motor->FOC.FW_current = _motor->FOC.FW_current +0.01f*_motor->FOC.FW_curr_max;
+		  _motor->FOC.FW_current = 0.99f*_motor->FOC.FW_current +0.01f*_motor->FOC.Idq_req.d;
       }
       if(_motor->FOC.FW_current>_motor->FOC.Idq_req.d){_motor->FOC.FW_current=_motor->FOC.Idq_req.d;}
       if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current= -_motor->FOC.FW_curr_max;}
@@ -1828,7 +1828,7 @@ __NOP();
   void calculateGains(MESC_motor_typedef *_motor) {
     _motor->FOC.pwm_period = 1.0f/_motor->FOC.pwm_frequency;
     _motor->mtimer->Instance->ARR = HAL_RCC_GetHCLKFreq()/(((float)_motor->mtimer->Instance->PSC + 1.0f) * 2*_motor->FOC.pwm_frequency);
-    _motor->mtimer->Instance->CCR4 = _motor->mtimer->Instance->ARR-50; //Just short of dead center (dead center will not actually trigger the conversion)
+    _motor->mtimer->Instance->CCR4 = _motor->mtimer->Instance->ARR-5; //Just short of dead center (dead center will not actually trigger the conversion)
     #ifdef SINGLE_ADC
     _motor->mtimer->Instance->CCR4 = _motor->mtimer->Instance->ARR-80; //If we only have one ADC, we need to convert early otherwise the data will not be ready in time
     #endif

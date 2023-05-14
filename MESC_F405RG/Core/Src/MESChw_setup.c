@@ -238,4 +238,5 @@ void mesc_init_3( MESC_motor_typedef *_motor )
     HAL_Delay(50); //Need to let the ADC start before we enable the fastloop interrupt, otherwise it returns 0 and errors.
 
     __HAL_TIM_ENABLE_IT(_motor->mtimer, TIM_IT_UPDATE);
+    __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_JEOC);
 }

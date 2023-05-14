@@ -15,8 +15,8 @@
 #define SHUNT_POLARITY -1.0f
 
 #define ABS_MAX_PHASE_CURRENT 400.0f
-#define ABS_MAX_BUS_VOLTAGE 44.0f
-#define ABS_MIN_BUS_VOLTAGE 40.0f
+#define ABS_MAX_BUS_VOLTAGE 48.0f
+#define ABS_MIN_BUS_VOLTAGE 38.0f
 #define R_SHUNT 0.00025f
 #define OPGAIN 20.0f*30.0f/(4.7f+4.7f+30.0f) //Control board v0.1 has a 4.7-30-4.7 divider onto the opamp input to enable some filtering
 
