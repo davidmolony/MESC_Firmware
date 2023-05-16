@@ -476,6 +476,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].m.pole_pairs					, 0			, 30		, "motor_pp"	, "Number of motor pole PAIRS"			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].MotorSensorMode				, 0			, 30		, "motor_sensor", "0=SL, 1=Hall, 2=OL, 3=ENC, 4=HFI"	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.openloop_step			, 0.0f		, 6000.0f	, "ol_step"		, "Angle per PWM period openloop"		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.FW_ehz_max				, 0.0f		, 6000.0f	, "fw_ehz"		, "max eHz under field weakenning"		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 
 
 	#ifdef HAL_CAN_MODULE_ENABLED

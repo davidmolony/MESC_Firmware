@@ -333,6 +333,8 @@ typedef struct {
   float FW_threshold;
   float FW_multiplier;
   float FW_current;
+  float FW_ehz_max;
+  float FW_estep_max;
 
   float flux_a;
   float flux_b;

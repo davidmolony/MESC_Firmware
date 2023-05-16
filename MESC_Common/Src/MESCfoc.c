@@ -177,8 +177,9 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
 	//Init the FW
     _motor->FOC.FW_curr_max = FIELD_WEAKENING_CURRENT;  // test number, to be stored in user settings
+    _motor->FOC.FW_ehz_max = FIELD_WEAKENING_EHZ;
 
-	 mesc_init_1(_motor);
+	mesc_init_1(_motor);
 
 	HAL_Delay(1000);  // Give the everything else time to start up (e.g. throttle,
 					// controller, PWM source...)
@@ -1150,9 +1151,14 @@ if (fluxb < -_motor->FOC.flux_observed) {
 #ifdef USE_FIELD_WEAKENINGV2
     	  //Closed loop field weakenning that works by only applying D axis current in the case where there is no duty left.
     	  //Seems very effective at increasing speed with good stability and maintaining max torque.
-    	  _motor->FOC.FW_current = 0.99f*_motor->FOC.FW_current -0.01f*_motor->FOC.FW_curr_max;
+    	  if(fabsf(_motor->FOC.PLL_int)<_motor->FOC.FW_estep_max){//Limit the FW ramp up based on speed to avoid overspeeding
+    		  _motor->FOC.FW_current = 0.995f*_motor->FOC.FW_current -0.005f*_motor->FOC.FW_curr_max;
+    	  }
       }else{
-		  _motor->FOC.FW_current = 0.99f*_motor->FOC.FW_current +0.01f*_motor->FOC.Idq_req.d;
+		  _motor->FOC.FW_current = 0.995f*_motor->FOC.FW_current +0.005f*_motor->FOC.Idq_req.d;
+      }
+      if(fabsf(_motor->FOC.PLL_int)>(1.05f*_motor->FOC.FW_estep_max)){//If overspeeding, roll back the FW
+    	  _motor->FOC.FW_current = 0.995f*_motor->FOC.FW_current +0.005f*_motor->FOC.Idq_req.d;
       }
       if(_motor->FOC.FW_current>_motor->FOC.Idq_req.d){_motor->FOC.FW_current=_motor->FOC.Idq_req.d;}
       if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current= -_motor->FOC.FW_curr_max;}
@@ -1847,6 +1853,8 @@ __NOP();
     // Pole zero cancellation for series PI control
     _motor->FOC.Iq_pgain = _motor->FOC.Id_pgain;
     _motor->FOC.Iq_igain = _motor->FOC.Id_igain;
+
+    _motor->FOC.FW_estep_max = _motor->FOC.FW_ehz_max*65536.0f/_motor->FOC.pwm_frequency;
 
 	  if(_motor->FOC.FW_curr_max>input_vars.max_request_Idq.q){
 		  _motor->FOC.FW_curr_max = 0.9f * input_vars.max_request_Idq.q; //Limit the field weakenning to 90% of the max current to avoid math errors

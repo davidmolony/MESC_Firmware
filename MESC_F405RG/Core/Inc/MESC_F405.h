@@ -50,6 +50,10 @@
 #define FIELD_WEAKENING_CURRENT 10.0f //This does not set whether FW is used, just the default current
 #endif
 
+#ifndef FIELD_WEAKENING_EHZ
+#define FIELD_WEAKENING_EHZ 6000 //This sets the max field weakening speed
+#endif
+
 #ifndef FIELD_WEAKENING_THRESHOLD
 #define FIELD_WEAKENING_THRESHOLD 0.8f
 #endif
