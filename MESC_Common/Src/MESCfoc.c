@@ -1152,14 +1152,14 @@ if (fluxb < -_motor->FOC.flux_observed) {
     	  //Closed loop field weakenning that works by only applying D axis current in the case where there is no duty left.
     	  //Seems very effective at increasing speed with good stability and maintaining max torque.
     	  if(fabsf(_motor->FOC.PLL_int)<_motor->FOC.FW_estep_max){//Limit the FW ramp up based on speed to avoid overspeeding
-    		  _motor->FOC.FW_current = 0.995f*_motor->FOC.FW_current -0.005f*_motor->FOC.FW_curr_max;
-    	  }
+    		  _motor->FOC.FW_current = 0.99f*_motor->FOC.FW_current -0.01f*_motor->FOC.FW_curr_max;
+    	  }//Exponentially tend towards the max FW current
       }else{
-		  _motor->FOC.FW_current = 0.995f*_motor->FOC.FW_current +0.005f*_motor->FOC.Idq_req.d;
-      }
-      if(fabsf(_motor->FOC.PLL_int)>(1.05f*_motor->FOC.FW_estep_max)){//If overspeeding, roll back the FW
-    	  _motor->FOC.FW_current = 0.995f*_motor->FOC.FW_current +0.005f*_motor->FOC.Idq_req.d;
-      }
+		  _motor->FOC.FW_current = 1.01f*_motor->FOC.FW_current + 0.0101f*_motor->FOC.FW_curr_max;
+      }//Unroll the exponential ramp up, with a small extra term to ensure we do not saturate the float
+//      if(fabsf(_motor->FOC.PLL_int)>(1.05f*_motor->FOC.FW_estep_max)){//If overspeeding, roll back the FW
+//    	  _motor->FOC.FW_current = 0.995f*_motor->FOC.FW_current +0.005f*_motor->FOC.Idq_req.d;
+//      }
       if(_motor->FOC.FW_current>_motor->FOC.Idq_req.d){_motor->FOC.FW_current=_motor->FOC.Idq_req.d;}
       if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current= -_motor->FOC.FW_curr_max;}
 #else
