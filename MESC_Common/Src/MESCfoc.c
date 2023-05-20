@@ -1158,7 +1158,7 @@ if (fluxb < -_motor->FOC.flux_observed) {
 		  _motor->FOC.FW_current = 1.01f*_motor->FOC.FW_current + 0.0101f*_motor->FOC.FW_curr_max;
       }//Unroll the exponential ramp up, with a small extra term to ensure we do not saturate the float
 //      if(fabsf(_motor->FOC.PLL_int)>(1.05f*_motor->FOC.FW_estep_max)){//If overspeeding, roll back the FW
-//    	  _motor->FOC.FW_current = 0.995f*_motor->FOC.FW_current +0.005f*_motor->FOC.Idq_req.d;
+//		  _motor->FOC.FW_current = 1.01f*_motor->FOC.FW_current + 0.0101f*_motor->FOC.FW_curr_max;
 //      }
       if(_motor->FOC.FW_current>_motor->FOC.Idq_req.d){_motor->FOC.FW_current=_motor->FOC.Idq_req.d;}
       if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current= -_motor->FOC.FW_curr_max;}
@@ -3025,12 +3025,11 @@ void houseKeeping(MESC_motor_typedef *_motor){
 void FWRampDown(MESC_motor_typedef *_motor){
 	//Ramp down the field weakening current
 	//Do NOT assign motorState here, since it could override error states
-	_motor->FOC.FW_current*=0.95f;
 	if(_motor->FOC.Vdq.q <0.0f){
-		_motor->FOC.Idq_prereq.q = 0.2f; //Apply a brake current
+		_motor->FOC.Idq_req.q = 0.2f; //Apply a brake current
 	}
 	if(_motor->FOC.Vdq.q >0.0f){
-		_motor->FOC.Idq_prereq.q = -0.2f; //Apply a brake current
+		_motor->FOC.Idq_req.q = -0.2f; //Apply a brake current
 	}
 }
 
