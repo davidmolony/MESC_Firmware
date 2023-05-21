@@ -1045,26 +1045,6 @@ if (fluxb < -_motor->FOC.flux_observed) {
     }else{
     	Idq_err.d = (_motor->FOC.Idq_req.d - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
     }
-#elif defined(USE_FIELD_WEAKENINGV3)
-    //If there is a Q current shortage, ramp it up, else ramp it down
-    //This appears to be identical to FW V2 in behaviour, but does not support backwards torque, so it is not preferred.
-    //Leaving as an option in case of weird FWv2 behaviour
-    if(Idq_err.q>0.1f){
-    	_motor->FOC.FW_current = _motor->FOC.FW_current -0.01f*_motor->FOC.FW_curr_max;
-    }else{
-    	_motor->FOC.FW_current = _motor->FOC.FW_current +0.01f*_motor->FOC.FW_curr_max;
-    }
-    //Bound it
-    if(_motor->FOC.FW_current>0.0f){_motor->FOC.FW_current=0.0f;}
-    if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current= -_motor->FOC.FW_curr_max;}
-//Apply the FW current and the PID loop
-	if((_motor->FOC.FW_current<_motor->FOC.Idq_req.d)&&(_motor->MotorState==MOTOR_STATE_RUN)){//Field weakenning is -ve, but there may already be d-axis from the MTPA
-        	Idq_err.d = (_motor->FOC.FW_current - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
-        }else{
-        	Idq_err.d = (_motor->FOC.Idq_req.d - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
-        }
-#else
-	Idq_err.d = (_motor->FOC.Idq_req.d - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
 #endif
 
     // Integral error
@@ -1100,12 +1080,15 @@ if (fluxb < -_motor->FOC.flux_observed) {
 		  //Preferable to use FWV2 with the D axis circle limiter,
 		  //this allows the D current to ramp all the way to max, whereas
 		  //the linear sqrt circle limiter is overcome by large q axis voltage demands
-		  _motor->FOC.FW_current = _motor->FOC.FW_current -0.01f*_motor->FOC.FW_curr_max;
+    	  //Closed loop field weakenning that works by only applying D axis current in the case where there is no duty left.
+    	  //Seems very effective at increasing speed with good stability and maintaining max torque.
+    		  _motor->FOC.FW_current = 0.99f*_motor->FOC.FW_current -0.01f*_motor->FOC.FW_curr_max;
+    	  //Exponentially tend towards the max FW current
       }else{
-		  _motor->FOC.FW_current = _motor->FOC.FW_current +0.01f*_motor->FOC.FW_curr_max;
-      }
-      if(_motor->FOC.FW_current>0.0f){_motor->FOC.FW_current=0.0f;}
-      if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current= -_motor->FOC.FW_curr_max;}
+		  _motor->FOC.FW_current = 1.01f*_motor->FOC.FW_current + 0.0101f*_motor->FOC.FW_curr_max;
+      }//Unroll the exponential ramp up, with a small extra term to ensure we do not saturate the float
+      if(_motor->FOC.FW_current>_motor->FOC.Idq_req.d){_motor->FOC.FW_current = _motor->FOC.Idq_req.d;}
+      if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current = -_motor->FOC.FW_curr_max;}
 #else
   } //Just close the bracket
 #endif
@@ -1151,21 +1134,18 @@ if (fluxb < -_motor->FOC.flux_observed) {
 #ifdef USE_FIELD_WEAKENINGV2
     	  //Closed loop field weakenning that works by only applying D axis current in the case where there is no duty left.
     	  //Seems very effective at increasing speed with good stability and maintaining max torque.
-    	  if(fabsf(_motor->FOC.PLL_int)<_motor->FOC.FW_estep_max){//Limit the FW ramp up based on speed to avoid overspeeding
     		  _motor->FOC.FW_current = 0.99f*_motor->FOC.FW_current -0.01f*_motor->FOC.FW_curr_max;
-    	  }//Exponentially tend towards the max FW current
+    	  //Exponentially tend towards the max FW current
       }else{
 		  _motor->FOC.FW_current = 1.01f*_motor->FOC.FW_current + 0.0101f*_motor->FOC.FW_curr_max;
-      }//Unroll the exponential ramp up, with a small extra term to ensure we do not saturate the float
-//      if(fabsf(_motor->FOC.PLL_int)>(1.05f*_motor->FOC.FW_estep_max)){//If overspeeding, roll back the FW
-//		  _motor->FOC.FW_current = 1.01f*_motor->FOC.FW_current + 0.0101f*_motor->FOC.FW_curr_max;
-//      }
-      if(_motor->FOC.FW_current>_motor->FOC.Idq_req.d){_motor->FOC.FW_current=_motor->FOC.Idq_req.d;}
-      if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current= -_motor->FOC.FW_curr_max;}
+      }//Exponentially diverge from the FW current. Note that this exponential implemented opposite to the ramp up!
+      if(_motor->FOC.FW_current>_motor->FOC.Idq_req.d){_motor->FOC.FW_current = _motor->FOC.Idq_req.d;}
+      if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current = -_motor->FOC.FW_curr_max;}
 #else
   } //Just close the circle limiter bracket
 #endif
 #else
+  	  //Fixed Vd and Vq limits.
       // These limits are experimental, but result in close to 100% modulation.
       // Since Vd and Vq are orthogonal, limiting Vd is not especially helpful
       // in reducing overall voltage magnitude, since the relation
@@ -1192,13 +1172,13 @@ if (fluxb < -_motor->FOC.flux_observed) {
 #ifdef USE_FIELD_WEAKENING
       //Calculate the module of voltage applied,
       Vmagnow2 = _motor->FOC.Vdq.d*_motor->FOC.Vdq.d+_motor->FOC.Vdq.q*_motor->FOC.Vdq.q; //Need to recalculate this since limitation has maybe been applied
-      //Apply a linear slope from the threshold to the max module
+      //Apply a linear slope from the threshold to the max module. Similar methodology to VESC, but run in fast loop
       //Step towards with exponential smoother
       if(Vmagnow2>(_motor->FOC.FW_threshold*_motor->FOC.FW_threshold)){
     	  _motor->FOC.FW_current = 0.95f*_motor->FOC.FW_current +
     			  	  	0.05f*_motor->FOC.FW_curr_max *_motor->FOC.FW_multiplier*
 						(_motor->FOC.FW_threshold - sqrtf(Vmagnow2));
-      }else{
+      }else{//We are outside the FW region
     	  _motor->FOC.FW_current*=0.95f;//Ramp down a bit slowly
 		  if(_motor->FOC.FW_current>0.1f){//We do not allow positive field weakening current, and we want it to actually go to zero eventually
 			  _motor->FOC.FW_current = 0.0f;
