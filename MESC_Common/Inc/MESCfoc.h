@@ -200,8 +200,8 @@ typedef struct {
 
 	int Motor_T;
 
-	int ADC_in_ext1;
-	int ADC_in_ext2;
+	int16_t ADC_in_ext1;
+	int16_t ADC_in_ext2;
 }MESC_raw_typedef;
 
 //extern MESC_raw_typedef motor1;
