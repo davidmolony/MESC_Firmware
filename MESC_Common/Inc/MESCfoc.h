@@ -43,6 +43,7 @@
 #include "stm32fxxx_hal.h"
 #include "MESCmotor_state.h"
 #include "MESCmotor.h"
+#include "MESCtemp.h"
 #include "MESC_BLDC.h"
 
 //#include "MESCposition.h"
@@ -198,7 +199,11 @@ typedef struct {
 	int MOSv_T;
 	int MOSw_T;
 
+	TEMP MOS_temp;
+
 	int Motor_T;
+
+	TEMP Motor_temp;
 
 	int ADC_in_ext1;
 	int ADC_in_ext2;

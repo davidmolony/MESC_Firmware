@@ -143,7 +143,6 @@ int main(void)
 
 
 //Initialise MESC
-temp_init(PROFILE_DEFAULT);
 motor_init(NULL);
 MESCInit(&mtr[0]);
 
