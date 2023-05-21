@@ -1,4 +1,4 @@
-# Copyright 2021-2022 cod3b453
+# Copyright 2021-2023 cod3b453
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -82,7 +82,6 @@ SET( ${PROJECT_NAME}_src
     ${CMAKE_CURRENT_LIST_DIR}/bist_bat.c
     ${CMAKE_CURRENT_LIST_DIR}/bist_cli.c
     ${CMAKE_CURRENT_LIST_DIR}/bist_profile.c
-    ${CMAKE_CURRENT_LIST_DIR}/bist_speed.c
     ${CMAKE_CURRENT_LIST_DIR}/bist_temp.c
     ${CMAKE_CURRENT_LIST_DIR}/gen_profile.c
     ${CMAKE_CURRENT_LIST_DIR}/virt_flash.c

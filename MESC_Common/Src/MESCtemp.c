@@ -235,9 +235,18 @@ uint32_t temp_get_adc( TEMP const * const temp, float const T )
     {
         case TEMP_METHOD_STEINHART_HART_BETA_R:
         {
-            float const K = CVT_CELSIUS_TO_KELVIN_F( T );
-            R_T = temp->parameters.SH.r * expf( temp->parameters.SH.Beta / K );
-            // OR R_T =  R0 * exp( Beta * (1 / K - 1 / T0) )
+            R_T = temp->parameters.SH.r * expf( temp->parameters.SH.Beta / T );
+            // OR R_T =  R0 * exp( Beta * (1 / T - 1 / T0) )
+            break;
+        }
+        case TEMP_METHOD_KTY83_122_LINEAR:
+        {
+            R_T = (T - 202.0f) / 0.10168f;
+            break;
+        }
+        case TEMP_METHOD_KTY84_130_LINEAR:
+        {
+            R_T = (T - 216.0f) / 0.14879f;
             break;
         }
         default:

@@ -1,5 +1,5 @@
 /*
-* Copyright 2021-2022 cod3b453
+* Copyright 2021-2023 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -31,6 +31,7 @@
 
 #include "MESCmotor.h"
 #include "MESCprofile.h"
+#include "MESCcli.h"
 
 #include "conversions.h"
 
@@ -49,7 +50,7 @@ void speed_init( SPEEDProfile const * const profile )
     {
         static SPEEDProfile speed_profile_default =
 		{
-        	{},
+        	{0,{{0,0},{0,0},{0,0},{0,0},{0,0},{0,0}}},
 			{1,1},
 			{26.0f,CONST_INCHES_PER_MILE_F}
 		};
@@ -88,12 +89,4 @@ void speed_register_vars( float const * const eHz, uint8_t const * const pp )
 float speed_get( void )
 {
     return ((*speed_eHz * rev_speed) / *speed_pp);
-}
-
-void speed_motor_limiter( void )
-{
-	static MOTORProfile profile;
-	profile = *motor_profile;
-	profile.Pmax = 50.0f; // W
-	motor_init( &profile );
 }

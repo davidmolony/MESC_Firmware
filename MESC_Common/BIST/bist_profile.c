@@ -1,5 +1,5 @@
 /*
-* Copyright 2021-2022 cod3b453
+* Copyright 2021-2023 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,7 +32,6 @@
 #include "MESCbat.h"
 #include "MESCmotor.h"
 #include "MESCspeed.h"
-#include "MESCtemp.h"
 #include "MESCui.h"
 
 #include <assert.h>
@@ -526,40 +525,6 @@ void bist_profile( void )
         fprintf( stdout, "INFO: Adding Speed entry\n" );
 
         ret = profile_put_entry( "MESC_SPEED", SPEED_PROFILE_SIGNATURE, &sp, &sp_size );
-
-        profile_get_last( &s, &h, &e, & o );
-        fprintf( stdout, "INFO: %d %s\n"
-                         "    S:%d %s\n"
-                         "    H:%d %s\n"
-                         "    E:%d %s\n"
-                         "    O:%d %s\n",
-            ret, getProfileStatusName(ret),
-            s, getProfileStatusName(s),
-            h, getProfileStatusName(h),
-            e, getProfileStatusName(e),
-            o, getProfileStatusName(o) );
-
-        profile_check_last(
-            PROFILE_STATUS_UNKNOWN,                 // No storage operation should be performed
-            PROFILE_STATUS_UNKNOWN,                 // No header operation should be performed
-            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC,     // A new entry should be allocated
-            PROFILE_STATUS_SUCCESS_ENTRY_ALLOC );   // A new entry should be allocated
-    }
-
-    if (profile_get_entry( "MESC_TEMP", TEMP_PROFILE_SIGNATURE, &buffer, &length ) == PROFILE_STATUS_SUCCESS)
-    {
-        TEMPProfile const * tp = (TEMPProfile *)buffer;
-        (void)tp;
-        fprintf( stdout, "INFO: Found Temperature entry\n" );
-    }
-    else
-    {
-        static TEMPProfile tp;
-        static uint32_t tp_size = sizeof(tp);
-        (void)tp;
-        fprintf( stdout, "INFO: Adding Temperature entry\n" );
-
-        ret = profile_put_entry( "MESC_TEMP", TEMP_PROFILE_SIGNATURE, &tp, &tp_size );
 
         profile_get_last( &s, &h, &e, & o );
         fprintf( stdout, "INFO: %d %s\n"
