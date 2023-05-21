@@ -15,7 +15,7 @@
 #define SHUNT_POLARITY -1.0f
 
 #define ABS_MAX_PHASE_CURRENT 400.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.
-#define ABS_MAX_BUS_VOLTAGE 50.0f
+#define ABS_MAX_BUS_VOLTAGE 80.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
 #define R_SHUNT 0.00033f
 #define OPGAIN 10.5f
@@ -24,8 +24,8 @@
 #define R_VBUS_TOP 100000.0f
 
 #define MAX_ID_REQUEST 2.0f
-#define MAX_IQ_REQUEST 10.0f
-#define MIN_IQ_REQUEST -10
+#define MAX_IQ_REQUEST 200.0f
+#define MIN_IQ_REQUEST 0.0f
 #define DEFAULT_CONTROL_MODE MOTOR_CONTROL_MODE_TORQUE
 #define ADC1OOR 4094
 
