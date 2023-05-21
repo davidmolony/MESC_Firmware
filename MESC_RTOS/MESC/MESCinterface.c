@@ -485,12 +485,38 @@ void populate_vars(){
 #endif
 
 	TermVariableDescriptor * desc;
-	desc = TERM_addVar(MESC_errors						,-HUGE_VAL 	, HUGE_VAL  , "error"		, "System errors"						, VAR_ACCESS_TR  , NULL		, &TERM_varList);
-	desc = TERM_addVar(mtr[0].Conv.Vbus					, 0.0f		, HUGE_VAL  , "vbus"		, "Read input voltage"					, VAR_ACCESS_TR  , NULL		, &TERM_varList);
-	TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+		desc = TERM_addVar(mtr[0].Conv.Vbus         , 0.0f      , HUGE_VAL  , "vbus"        , "Read input voltage"                  , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
 
-	desc = TERM_addVar(mtr[0].FOC.eHz					    , -HUGE_VAL , HUGE_VAL  , "ehz"			, "Motor electrical hz"					, VAR_ACCESS_TR  , NULL		, &TERM_varList);
-	TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+		desc = TERM_addVar(mtr[0].FOC.eHz           , -HUGE_VAL , HUGE_VAL  , "ehz"         , "Motor electrical hz"                 , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].FOC.Idq_smoothed.d , -HUGE_VAL , HUGE_VAL  , "id"      , "Phase Idq_d smoothed"                   , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].FOC.Idq_smoothed.q , -HUGE_VAL , HUGE_VAL  , "iq"      , "Phase Idq_q smoothed"                   , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].Raw.ADC_in_ext1    , 0		, 4096       , "adc1"   , "Raw ADC throttle"                    , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].Conv.MOSu_T        , 0.0f		, 4096.0f    , "TMOS"   , "MOSFET temp, kelvin"                     , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].Conv.Motor_T       , 0.0f 	, 4096.0f    , "TMOT"   , "Motor temp, kelvin"                      , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(MESC_errors          	, -HUGE_VAL , HUGE_VAL  , "error" 	, "System errors"       					, VAR_ACCESS_TR  , NULL, &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].FOC.Vdq.q     	, -4096.0f , 4096.0f  	, "Vq"    	, "FOC_Vdq_q"     							, VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].FOC.Vdq.d     	, -4096.0f , 4096.0f  	, "Vd"    , "FOC_Vdq_d"     							, VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].FOC.Idq_req.q 	, -4096.0f , 4096.0f  	, "iqreq" , "mtr[0].FOC.Idq_req.q"     					, VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
 
 }
 

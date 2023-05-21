@@ -425,7 +425,7 @@ uint32_t TERM_var2str(TERMINAL_HANDLE * handle, TermVariableDescriptor * var, ch
 		break;
 	case TERM_VARIABLE_FLOAT:
 
-		ret = snprintf(buffer, len, "%f", *(float*)var->variable);
+		ret = snprintf(buffer, len, "%.3f", *(float*)var->variable);
 
 		break;
 //	case TERM_VARIABLE_FLOAT_ARRAY:
