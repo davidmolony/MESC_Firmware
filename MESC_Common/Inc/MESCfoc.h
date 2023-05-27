@@ -631,8 +631,11 @@ void initialiseInverter(MESC_motor_typedef *_motor);
 
 void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor);
 							//Put this into the PWM interrupt,
-							//(or less optimally) ADC conversion complete interrupt
-							//If using ADC interrupt, may want to get ADC to convert on top and bottom of PWM
+void MESC_ADC_IRQ_handler(MESC_motor_typedef *_motor);
+							//Put this into the ADC interrupt
+							//Alternatively, the PWM and ADC IRQ handlers can be
+							//stacked in a single interrupt occurring once per period
+							//but HFI will be lost
 void fastLoop(MESC_motor_typedef *_motor);
 void hyperLoop(MESC_motor_typedef *_motor);
 void VICheck(MESC_motor_typedef *_motor);

@@ -477,6 +477,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].MotorSensorMode				, 0			, 30		, "motor_sensor", "0=SL, 1=Hall, 2=OL, 3=ENC, 4=HFI"	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.openloop_step			, 0.0f		, 6000.0f	, "ol_step"		, "Angle per PWM period openloop"		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.FW_ehz_max				, 0.0f		, 6000.0f	, "fw_ehz"		, "max eHz under field weakenning"		, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(MESC_all_errors						, -HUGE_VAL	, HUGE_VAL	, "error_all"	, "All errors encountered"				, VAR_ACCESS_R	, NULL		, &TERM_varList);
 
 
 	#ifdef HAL_CAN_MODULE_ENABLED
@@ -497,7 +498,7 @@ void populate_vars(){
 		desc = TERM_addVar(mtr[0].FOC.Idq_smoothed.q , -HUGE_VAL , HUGE_VAL  , "iq"      , "Phase Idq_q smoothed"                   , VAR_ACCESS_TR  , NULL         , &TERM_varList);
 		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
 
-		desc = TERM_addVar(mtr[0].Raw.ADC_in_ext1    , 0		, 4096       , "adc1"   , "Raw ADC throttle"                    , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		desc = TERM_addVar(mtr[0].Raw.ADC_in_ext1    , 0		, 4096       , "adc1"   , "Raw ADC throttle"                    	, VAR_ACCESS_TR  , NULL         , &TERM_varList);
 		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
 
 		desc = TERM_addVar(mtr[0].Conv.MOSu_T        , 0.0f		, 4096.0f    , "TMOS"   , "MOSFET temp, kelvin"                     , VAR_ACCESS_TR  , NULL         , &TERM_varList);
@@ -506,7 +507,7 @@ void populate_vars(){
 		desc = TERM_addVar(mtr[0].Conv.Motor_T       , 0.0f 	, 4096.0f    , "TMOT"   , "Motor temp, kelvin"                      , VAR_ACCESS_TR  , NULL         , &TERM_varList);
 		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
 
-		desc = TERM_addVar(MESC_errors          	, -HUGE_VAL , HUGE_VAL  , "error" 	, "System errors"       					, VAR_ACCESS_TR  , NULL, &TERM_varList);
+		desc = TERM_addVar(MESC_errors          	, -HUGE_VAL , HUGE_VAL  , "error" 	, "System errors now"       					, VAR_ACCESS_TR  , NULL			, &TERM_varList);
 		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
 
 		desc = TERM_addVar(mtr[0].FOC.Vdq.q     	, -4096.0f , 4096.0f  	, "Vq"    	, "FOC_Vdq_q"     							, VAR_ACCESS_TR  , NULL         , &TERM_varList);

@@ -345,15 +345,20 @@ void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor) {
 	uint32_t cycles = CPU_CYCLES;
 	if (_motor->mtimer->Instance->CR1&0x16) {//Polling the DIR (direction) bit on the motor counter DIR = 1 = downcounting
 //		fastLoop(_motor);
-		_motor->FOC.cycles_fastloop = CPU_CYCLES - cycles;
+		writePWM(_motor);
 	}
 	if (!(_motor->mtimer->Instance->CR1&0x16)) {//Polling the DIR (direction) bit on the motor counter DIR = 0 = upcounting
-		hyperLoop(_motor);
-		_motor->FOC.cycles_hyperloop = CPU_CYCLES - cycles;
+		  RunHFI(_motor);
+		  writePWM(_motor);
 	}
+	_motor->FOC.cycles_hyperloop = CPU_CYCLES - cycles;
+
 #ifdef FASTLED
 	FASTLED->BSRR = FASTLEDIO<<16U;
 #endif
+}
+void MESC_ADC_IRQ_handler(MESC_motor_typedef *_motor){
+	fastLoop(_motor);
 }
 
 // The fastloop runs at PWM timer counter top, which is when the new ADC current
@@ -363,6 +368,7 @@ void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor) {
 // clock cycles (f303) to convert.
 
 void fastLoop(MESC_motor_typedef *_motor) {
+	uint32_t cycles = CPU_CYCLES;
   // Call this directly from the TIM top IRQ
   _motor->hall.current_hall_state = getHallState(); //ToDo, this macro is not applicable to dual motors
   // First thing we ever want to do is convert the ADC values
@@ -399,25 +405,25 @@ void fastLoop(MESC_motor_typedef *_motor) {
     		flux_observer(_motor);
 		#endif
 			MESCFOC(_motor);
-			writePWM(_motor);
+//			writePWM(_motor);
     		break;
     	case MOTOR_SENSOR_MODE_HALL:
 			_motor->FOC.inject = 0;
 			hallAngleEstimator();
 			angleObserver(_motor);
 			MESCFOC(_motor);
-			writePWM(_motor);
+//			writePWM(_motor);
     		break;
     	case MOTOR_SENSOR_MODE_OPENLOOP:
 			OLGenerateAngle(_motor);
 			MESCFOC(_motor);
-			writePWM(_motor);
+//			writePWM(_motor);
     		break;
     	case MOTOR_SENSOR_MODE_ENCODER:
     		_motor->FOC.enc_period_count++;
 			_motor->FOC.FOCAngle = _motor->FOC.enc_angle + (uint16_t)((float)(_motor->FOC.enc_period_count) * (float)_motor->FOC.enc_pwm_step);
 			MESCFOC(_motor);
-			writePWM(_motor);
+//			writePWM(_motor);
     		break;
     	}//End of MotorSensorMode switch
 	break;
@@ -449,7 +455,7 @@ void fastLoop(MESC_motor_typedef *_motor) {
     	_motor->FOC.openloop_step = 60;
     	OLGenerateAngle(_motor);
     	MESCFOC(_motor);
-    	writePWM(_motor);
+//    	writePWM(_motor);
       // Write the PWM values
       break;
 
@@ -479,7 +485,7 @@ void fastLoop(MESC_motor_typedef *_motor) {
     	  _motor->MotorSensorMode = MOTOR_SENSOR_MODE_HALL;
         getHallTable(_motor);
         MESCFOC(_motor);
-        writePWM(_motor);
+//        writePWM(_motor);
       }
       break;
 
@@ -553,6 +559,41 @@ void fastLoop(MESC_motor_typedef *_motor) {
        HAL_ADC_Start(&hadc1); //Try to eliminate the HAL call, slow and inefficient. Leaving this here for now.
         //hadc1.Instance->CR2 |= (uint32_t)ADC_CR2_SWSTART;
 #endif
+
+#ifdef USE_LR_OBSERVER
+      LRObserverCollect();
+#endif
+#ifdef USE_ENCODER
+      tle5012(_motor);
+#endif
+
+//RunPLL for all angle options
+	_motor->FOC.PLL_angle = _motor->FOC.PLL_angle + (int16_t)_motor->FOC.PLL_int + (int16_t)_motor->FOC.PLL_error;
+	_motor->FOC.PLL_error = _motor->FOC.PLL_kp * (int16_t)(_motor->FOC.FOCAngle - (_motor->FOC.PLL_angle & 0xFFFF));
+	_motor->FOC.PLL_int = _motor->FOC.PLL_int + _motor->FOC.PLL_ki * _motor->FOC.PLL_error;
+	_motor->FOC.eHz = _motor->FOC.PLL_int * _motor->FOC.pwm_frequency*0.00001526f;//1/65536
+
+#ifdef LOGGING
+	if(lognow){
+		static int post_error_samples;
+		if(_motor->MotorState!=MOTOR_STATE_ERROR && _motor->sample_now == false){
+		logVars(_motor);
+		post_error_samples = LOGLENGTH/2;
+		}else{//If we have an error state, we want to keep the data surrounding the error log, including some sampled during and after the fault
+			if(post_error_samples>1){
+				logVars(_motor);
+				post_error_samples--;
+			}else if(post_error_samples == 1){
+				print_samples_now = 1;
+				_motor->sample_now = false;
+				post_error_samples--;
+			}else{
+				__NOP();
+			}
+		}
+	}
+#endif
+   _motor->FOC.cycles_fastloop = CPU_CYCLES - cycles;
 }
 
 // The hyperloop runs at PWM timer bottom, when the PWM is in V7 (all high)
@@ -568,62 +609,7 @@ static volatile float magnitude45;
 
 
 void hyperLoop(MESC_motor_typedef *_motor) {
-  if ((_motor->FOC.inject)&&(_motor->MotorState != MOTOR_STATE_TRACKING)) {
-	  RunHFI(_motor);
-  }else {
-	  _motor->FOC.Vd_injectionV = 0.0f;
-	  _motor->FOC.Vq_injectionV = 0.0f;
-//	  _motor->FOC.HFI_int_err = 0.0f;
-  }
-#ifdef USE_LR_OBSERVER
-      LRObserverCollect();
-#endif
-#ifdef USE_ENCODER
-tle5012(_motor);
-#endif
-
-//RunPLL for all angle options
-_motor->FOC.PLL_angle = _motor->FOC.PLL_angle + (int16_t)_motor->FOC.PLL_int + (int16_t)_motor->FOC.PLL_error;
-_motor->FOC.PLL_error = _motor->FOC.PLL_kp * (int16_t)(_motor->FOC.FOCAngle - (_motor->FOC.PLL_angle & 0xFFFF));
-_motor->FOC.PLL_int = _motor->FOC.PLL_int + _motor->FOC.PLL_ki * _motor->FOC.PLL_error;
-//if(_motor->FOC.PLL_int >10000.0f){_motor->FOC.PLL_int =10000.0f;}//Dealt with in slowloop housekeeping
-//if(_motor->FOC.PLL_int <-10000.0f){_motor->FOC.PLL_int =-10000.0f;}//Dealt with in slowloop housekeeping
-_motor->FOC.eHz = _motor->FOC.PLL_int * _motor->FOC.pwm_frequency/65536.0f;
-
-#ifdef INTERPOLATE_V7_ANGLE
-if(fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency){
-	//Only run it when there is likely to be good speed measurement stability and
-	//actual utility in doing it. At low speed, there is minimal benefit, and
-	//unstable speed estimation could make it worse.
-	//Presently, this causes issues with openloop iteration, and effectively doubles the speed. TBC
-	_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + 0.5f*_motor->FOC.PLL_int;
-}
-
-#endif
- // _motor->FOC.FOCAngle = _motor->FOC.FOCAngle + _motor->FOC.angle_error;
-if(_motor->MotorState==MOTOR_STATE_RUN||_motor->MotorState==MOTOR_STATE_MEASURING){
-	writePWM(_motor);
-	}
-#ifdef LOGGING
-if(lognow){
-	static int post_error_samples;
-	if(_motor->MotorState!=MOTOR_STATE_ERROR && _motor->sample_now == false){
-	logVars(_motor);
-	post_error_samples = LOGLENGTH/2;
-	}else{//If we have an error state, we want to keep the data surrounding the error log, including some sampled during and after the fault
-		if(post_error_samples>1){
-			logVars(_motor);
-			post_error_samples--;
-		}else if(post_error_samples == 1){
-			print_samples_now = 1;
-			_motor->sample_now = false;
-			post_error_samples--;
-		}else{
-			__NOP();
-		}
-	}
-}
-#endif
+//Empty now, merged into fastloop with new dual interrupt routine
 }
 
 #define MAX_ERROR_COUNT 1
@@ -1204,6 +1190,15 @@ float Vd, Vq;
     // Now we update the sin and cos values, since when we do the inverse
     // transforms, we would like to use the most up to date versions(or even the
     // next predicted version...)
+#ifdef INTERPOLATE_V7_ANGLE
+if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->FOC.inject==0)){
+	//Only run it when there is likely to be good speed measurement stability and
+	//actual utility in doing it. At low speed, there is minimal benefit, and
+	//unstable speed estimation could make it worse.
+	//Presently, this causes issues with openloop iteration, and effectively doubles the speed. TBC
+	_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + 0.5f*_motor->FOC.PLL_int;
+}
+#endif
 	sin_cos_fast(_motor->FOC.FOCAngle, &_motor->FOC.sincosangle.sin, &_motor->FOC.sincosangle.cos);
 
     // Inverse Park transform
@@ -1393,7 +1388,7 @@ static int carryU, carryV, carryW;
       _motor->FOC.inject = 0;  // flag to not inject at SVPWM top
 
       MESCFOC(_motor);
-      writePWM(_motor);
+//      writePWM(_motor);
 
       _motor->meas.top_V = 0;
       _motor->meas.bottom_V = 0;
@@ -1414,14 +1409,14 @@ static int carryU, carryV, carryW;
 
       _motor->FOC.inject = 0;
       MESCFOC(_motor);
-      writePWM(_motor);
+//      writePWM(_motor);
     }
 
     else if (_motor->meas.PWM_cycles < 40000) {  // Lower setpoint
       _motor->FOC.Idq_req.d = 0.20f*_motor->meas.measure_current;
       _motor->FOC.inject = 0;
       MESCFOC(_motor);
-      writePWM(_motor);
+//      writePWM(_motor);
 
       _motor->meas.bottom_V = _motor->meas.bottom_V + _motor->FOC.Vdq.d;
       _motor->meas.bottom_I = _motor->meas.bottom_I + _motor->FOC.Idq.d;
@@ -1434,7 +1429,7 @@ static int carryU, carryV, carryW;
       _motor->FOC.Idq_req.d = _motor->meas.measure_current;
       _motor->FOC.inject = 0;
       MESCFOC(_motor);
-      writePWM(_motor);
+//      writePWM(_motor);
 
     }
 
@@ -1442,7 +1437,7 @@ static int carryU, carryV, carryW;
       _motor->FOC.Idq_req.d = _motor->meas.measure_current;
       _motor->FOC.inject = 0;
       MESCFOC(_motor);
-      writePWM(_motor);
+//      writePWM(_motor);
 
       _motor->meas.top_V = _motor->meas.top_V + _motor->FOC.Vdq.d;
       _motor->meas.top_I = _motor->meas.top_I + _motor->FOC.Idq.d;
@@ -1734,7 +1729,7 @@ __NOP();
         generateBreak(_motor);
       }
     }
-    writePWM(_motor);
+//    writePWM(_motor);
 
     cycles++;
 
@@ -2144,6 +2139,7 @@ float  Square(float x){ return((x)*(x));}
 				if(fabsf(_motor->FOC.Idq_prereq.q)<0.1f){
 					_motor->MotorState = MOTOR_STATE_TRACKING;
 					VICheck(_motor); //Immediately return it to error state if there is still a critical fault condition active
+					clearErrors();
 				}
 				break;
 				case MOTOR_CONTROL_MODE_SPEED:
@@ -2597,6 +2593,7 @@ volatile float min1=1000.0f;
 volatile float max1=0.0f;
 
 void RunHFI(MESC_motor_typedef *_motor){
+  if ((_motor->FOC.inject)&&(_motor->MotorState != MOTOR_STATE_TRACKING)) {
 	int Idqreq_dir=0;
 	if (_motor->FOC.inject_high_low_now == 0){//First we create the toggle
 		_motor->FOC.inject_high_low_now = 1;
@@ -2681,6 +2678,10 @@ void RunHFI(MESC_motor_typedef *_motor){
 				_motor->FOC.Vq_injectionV = -_motor->FOC.special_injectionVq;			}
 		break;
 	}
+  }else {
+	  _motor->FOC.Vd_injectionV = 0.0f;
+	  _motor->FOC.Vq_injectionV = 0.0f;
+  }
 }
 
 
