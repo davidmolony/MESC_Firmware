@@ -375,7 +375,7 @@ typedef struct {
 
   float IIR[2];
   uint32_t cycles_fastloop;
-  uint32_t cycles_hyperloop;
+  uint32_t cycles_pwmloop;
 } MESCfoc_s;
 
 extern MESCfoc_s foc_vars;

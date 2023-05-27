@@ -322,21 +322,25 @@ static int Iuoff, Ivoff, Iwoff;
         _motor->offset.Iu =  Iuoff/initcycles;
         _motor->offset.Iv =  Ivoff/initcycles;
         _motor->offset.Iw =  Iwoff/initcycles;
-        _motor->key_bits &= ~UNINITIALISED_KEY;
         initcycles = 0;
         Iuoff = 0;
         Ivoff = 0;
         Iwoff = 0;
-
-//ToDo, do we want some safety checks here like offsets being roughly correct?
-    	_motor->MotorState = MOTOR_STATE_TRACKING;
-        htim1.Instance->BDTR |= TIM_BDTR_MOE;
+		if((_motor->offset.Iu>1500) &&(_motor->offset.Iu<2600)&&(_motor->offset.Iv>1500) &&(_motor->offset.Iv<2600)&&(_motor->offset.Iw>1500) &&(_motor->offset.Iw<2600)){
+			//ToDo, do we want some safety checks here like offsets being roughly correct?
+					_motor->MotorState = MOTOR_STATE_TRACKING;
+			        _motor->key_bits &= ~UNINITIALISED_KEY;
+					htim1.Instance->BDTR |= TIM_BDTR_MOE;
+		}else{
+			handleError(_motor, ERROR_STARTUP);
+			//Should just loop until this succeeds
+		}
       }
 }
 
 
-// This should be the only function needed to be added into the PWM interrupt
-// for MESC to run Ensure that it is followed by the clear timer update
+// This should be the function needed to be added into the PWM interrupt
+// for MESC to run. Ensure that it is followed by the clear timer update
 // interrupt
 void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor) {
 #ifdef FASTLED
@@ -344,14 +348,13 @@ void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor) {
 #endif
 	uint32_t cycles = CPU_CYCLES;
 	if (_motor->mtimer->Instance->CR1&0x16) {//Polling the DIR (direction) bit on the motor counter DIR = 1 = downcounting
-//		fastLoop(_motor);
 		writePWM(_motor);
 	}
 	if (!(_motor->mtimer->Instance->CR1&0x16)) {//Polling the DIR (direction) bit on the motor counter DIR = 0 = upcounting
 		  RunHFI(_motor);
 		  writePWM(_motor);
 	}
-	_motor->FOC.cycles_hyperloop = CPU_CYCLES - cycles;
+	_motor->FOC.cycles_pwmloop = CPU_CYCLES - cycles;
 
 #ifdef FASTLED
 	FASTLED->BSRR = FASTLEDIO<<16U;
@@ -1694,22 +1697,7 @@ __NOP();
         	_motor->meas.temp_FLB = _motor->FOC.flux_b;
         }
         MESCFOC(_motor);
-    }
-//    else if (cycles < 61000) {
-//    	generateBreak(_motor);
-//    	ADCPhaseConversion(_motor);
-//    	MESCTrack(_motor);
-//    }
-//    else if (cycles < 70001) {
-//    	generateEnable(_motor);
-//        _motor->FOC.Idq_int_err.d = 0.0f;
-//        MESCFOC(_motor);
-//
-//      count++;
-//      _motor->FOC.Idq_req.d = 0.0f;
-//      _motor->FOC.Idq_req.q = IMEASURE_CLOSEDLOOP;
-//    }
-    else if (cycles < 128000) {
+    } else if (cycles < 128000) {
       count++;
       _motor->FOC.Idq_req.d = 0.0f;
       _motor->FOC.Idq_req.q = IMEASURE_CLOSEDLOOP;
@@ -1817,9 +1805,7 @@ __NOP();
 
     _motor->FOC.ADC_duty_threshold = _motor->mtimer->Instance->ARR * 0.90f;
 
-
     calculateFlux(_motor);
-
 
     _motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
     //PID controller gains
@@ -1836,7 +1822,6 @@ __NOP();
 	  }
 	_motor->m.L_QD = _motor->m.L_Q-_motor->m.L_D;
 	_motor->FOC.d_polarity = 1;
-
   }
 
   void calculateVoltageGain(MESC_motor_typedef *_motor) {
@@ -1959,20 +1944,7 @@ __NOP();
 //#ifdef SLOWLED
 //	  SLOWLED->BSRR = SLOWLEDIO;
 //#endif
-//	if(_motor->stimer->Instance->SR & TIM_FLAG_CC2){
-//	  input_vars.IC_duration = _motor->stimer->Instance->CCR1;// HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_1);
-//	  input_vars.IC_pulse = _motor->stimer->Instance->CCR2;//HAL_TIM_ReadCapturedValue(&htim4 /*&htim3*/, TIM_CHANNEL_2);
-//	  input_vars.pulse_recieved = 1;
-//
-//	}else{
-//	  input_vars.IC_duration = 50000;
-//	  input_vars.IC_pulse = 0;
-//	  input_vars.pulse_recieved = 0;
-//
-//	}
-//	if(_motor->stimer->Instance->SR & TIM_FLAG_UPDATE){
-				  slowLoop(_motor);
-//	}
+	  slowLoop(_motor);
 //#ifdef SLOWLED
 //		SLOWLED->BSRR = SLOWLEDIO<<16U;
 //#endif
@@ -2022,7 +1994,30 @@ float  Square(float x){ return((x)*(x));}
 				  _motor->FOC.Duty_scaler = fabsf(total_in);
 			  }
 			  break;
+		  case MOTOR_CONTROL_MODE_MEASURING:
+			_motor->MotorSensorMode = MOTOR_SENSOR_MODE_OPENLOOP;
+			_motor->HFIType = HFI_TYPE_NONE;
+			_motor->FOC.Id_pgain = 0.0f;
+			_motor->FOC.Iq_pgain = 0.0f;
+			_motor->FOC.Id_igain = 0.0f;
+			_motor->FOC.Iq_igain = 0.0f;
+			_motor->FOC.openloop_step = (uint16_t)(600.0f*65536/_motor->FOC.pwm_frequency);//300Hz tone
+			_motor->FOC.Idq_int_err.d = 10.0f;//1V
+			_motor->FOC.Idq_int_err.q = 0.0f;//1V
+			_motor->FOC.Current_bandwidth = 0.0f;
+			_motor->FOC.PLL_int = 0.0f;
+			_motor->FOC.PLL_ki = 0.0f;
+			_motor->FOC.PLL_ki = 0.0f;
+			_motor->FOC.PLL_error = 0.0f;
 
+			_motor->m.R =10.0f*_motor->FOC.Idq_smoothed.d /(_motor->FOC.Idq_smoothed.d*_motor->FOC.Idq_smoothed.d +
+					_motor->FOC.Idq_smoothed.q*_motor->FOC.Idq_smoothed.q);
+			_motor->m.L_D = -10.0f*_motor->FOC.Idq_smoothed.q/(2.0f*3.1415f*600.0f*(_motor->FOC.Idq_smoothed.d*_motor->FOC.Idq_smoothed.d +
+					_motor->FOC.Idq_smoothed.q*_motor->FOC.Idq_smoothed.q));
+			if(_motor->MotorState !=MOTOR_STATE_ERROR){
+				_motor->MotorState = MOTOR_STATE_RUN;
+			}
+			  break;
 		  default:
 			  __NOP();
 			  break;
@@ -2734,7 +2729,7 @@ void SlowHFI(MESC_motor_typedef *_motor){
 
 			case HFI_TYPE_NONE:
 				_motor->FOC.inject = 0;
-				_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
+//				_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
 			break;
 			case HFI_TYPE_SPECIAL:
 				ToggleHFI(_motor);
