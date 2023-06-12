@@ -478,6 +478,8 @@ void populate_vars(){
 	TERM_addVar(mtr[0].FOC.openloop_step			, 0.0f		, 6000.0f	, "ol_step"		, "Angle per PWM period openloop"		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.FW_ehz_max				, 0.0f		, 6000.0f	, "fw_ehz"		, "max eHz under field weakenning"		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(MESC_all_errors						, -HUGE_VAL	, HUGE_VAL	, "error_all"	, "All errors encountered"				, VAR_ACCESS_R	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.hall_initialised			, 0		, 1	, "Hall_initialised"		, "hall start flag"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVarArrayFloat(mtr[0].m.hall_flux, sizeof(mtr[0].m.hall_flux),  -10.0f, 10.0f, "Hall_flux", "hall start table", VAR_ACCESS_RW, NULL, &TERM_varList);
 
 
 	#ifdef HAL_CAN_MODULE_ENABLED

@@ -303,7 +303,7 @@ typedef struct {
 
 
 //Hall start
-  int hall_initialised;
+  uint16_t hall_initialised;
   int hall_start_now;
 //Encoder start
   int enc_start_now;
