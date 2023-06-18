@@ -211,6 +211,7 @@ void mesc_init_3( MESC_motor_typedef *_motor )
 	HAL_Delay(10); //Delay enabling interrupt to avoid spurious error on startup due to ADC not being ready
 
 	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD); //ToDo, how do I put this into the whole shabang with multiple motors?...
+	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_JEOC); //ToDo, how do I put this into the whole shabang with multiple motors?...
 	__HAL_TIM_ENABLE_IT(_motor->mtimer, TIM_IT_UPDATE);
 
 	//Set up the input capture for throttle
