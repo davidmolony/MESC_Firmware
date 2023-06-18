@@ -17,6 +17,7 @@
 //#define JENS_SERVO
 //#define SEM_HDM82A8_30S
 //#define QS165
+//#define QS165V2
 //#define PROPDRIVE2830_1000KV
 //#define BR3536_1200KV
 //#define QS138_90H
@@ -77,6 +78,18 @@
 #define DEFAULT_MOTOR_R 0.0080f //Ohms
 #define DEFAULT_MOTOR_PP 7 //Pole Pairs
 //This assumes a 6.5mohm QS165 and 1.5mohm of MOS and cable. With such low resistance, it becomes important
+
+#elif defined(QS165V2)
+#define MAX_MOTOR_PHASE_CURRENT 450.0f //450A seems like a reasonable upper limit for these V2
+#define DEFAULT_MOTOR_POWER 12000.0f //Go on, change this to 15000
+#define DEFAULT_FLUX_LINKAGE 0.019f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000042f //Henries
+#define DEFAULT_MOTOR_Lq 0.000065f//Henries
+#define DEFAULT_MOTOR_R 0.0060f //Ohms
+#define DEFAULT_MOTOR_PP 5 //Pole Pairs
+//This assumes a 5mohm QS165V2 and 1.5mohm of MOS and cable. With such low resistance, it becomes important
+
+
 
 #elif defined(QS138)
 #define MAX_MOTOR_PHASE_CURRENT 400.0f //There seems to be no limit for these

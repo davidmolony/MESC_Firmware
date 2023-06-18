@@ -216,8 +216,16 @@ if(__HAL_ADC_GET_FLAG(&hadc3,ADC_FLAG_AWD)){
 	handleError(&mtr[0], ERROR_ADC_OUT_OF_RANGE_IC);
 }
 
-    __HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_AWD | ADC_FLAG_JEOC));
-    __HAL_ADC_CLEAR_FLAG(&hadc2, (ADC_FLAG_JSTRT | ADC_FLAG_AWD | ADC_FLAG_JEOC));
+if(__HAL_ADC_GET_FLAG(&hadc1,ADC_FLAG_JEOC)){
+	MESC_ADC_IRQ_handler(&mtr[0]);
+	__HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_EOC|ADC_FLAG_JEOC));
+}
+if(__HAL_ADC_GET_FLAG(&hadc2,ADC_FLAG_EOC)){
+	MESC_ADC_IRQ_handler(&mtr[1]);
+	__HAL_ADC_CLEAR_FLAG(&hadc2, (ADC_FLAG_EOC| ADC_FLAG_JEOC));
+}
+    __HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_AWD));
+    __HAL_ADC_CLEAR_FLAG(&hadc2, (ADC_FLAG_JSTRT | ADC_FLAG_AWD));
     __HAL_ADC_CLEAR_FLAG(&hadc3, (ADC_FLAG_JSTRT | ADC_FLAG_AWD | ADC_FLAG_JEOC));
 
   /* USER CODE END ADC_IRQn 0 */
@@ -232,7 +240,6 @@ void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
 	MESC_PWM_IRQ_handler(&mtr[0]);
-	directionstat = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim1);
   __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
   /* USER CODE END TIM1_UP_TIM10_IRQn 0 */
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 1 */
@@ -248,7 +255,7 @@ void TIM2_IRQHandler(void)
 	__HAL_TIM_CLEAR_IT(&htim2, TIM_IT_UPDATE);
 
 	MESC_Slow_IRQ_handler(&mtr[0]);
-	MESC_Slow_IRQ_handler(&mtr[1]);
+	//MESC_Slow_IRQ_handler(&mtr[1]);
 
 
   /* USER CODE END TIM2_IRQn 0 */
@@ -294,7 +301,6 @@ void TIM8_UP_TIM13_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM8_UP_TIM13_IRQn 0 */
 	MESC_PWM_IRQ_handler(&mtr[1]);
-	directionstat = __HAL_TIM_IS_TIM_COUNTING_DOWN(&htim8);
   __HAL_TIM_CLEAR_IT(&htim8, TIM_IT_UPDATE);
   /* USER CODE END TIM8_UP_TIM13_IRQn 0 */
   HAL_TIM_IRQHandler(&htim8);
