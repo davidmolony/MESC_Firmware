@@ -228,7 +228,7 @@ void mesc_init_3( MESC_motor_typedef *_motor )
     generateBreak(_motor);//We have started the timers, but we really do not want them PWMing yet
 	HAL_Delay(100);
 
-	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD);
+	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD|ADC_IT_JEOC);
 	__HAL_TIM_ENABLE_IT(_motor->mtimer,TIM_IT_UPDATE);
 
 //	hadc1.Instance->HTR = 4001; //Set your own limits if you want, or set them in the .ioc

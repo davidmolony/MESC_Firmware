@@ -177,7 +177,6 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
 	//Init the FW
     _motor->FOC.FW_curr_max = FIELD_WEAKENING_CURRENT;  // test number, to be stored in user settings
-    _motor->FOC.FW_ehz_max = FIELD_WEAKENING_EHZ;
 
 	mesc_init_1(_motor);
 
@@ -1814,8 +1813,6 @@ __NOP();
     // Pole zero cancellation for series PI control
     _motor->FOC.Iq_pgain = _motor->FOC.Id_pgain;
     _motor->FOC.Iq_igain = _motor->FOC.Id_igain;
-
-    _motor->FOC.FW_estep_max = _motor->FOC.FW_ehz_max*65536.0f/_motor->FOC.pwm_frequency;
 
 	  if(_motor->FOC.FW_curr_max>input_vars.max_request_Idq.q){
 		  _motor->FOC.FW_curr_max = 0.9f * input_vars.max_request_Idq.q; //Limit the field weakenning to 90% of the max current to avoid math errors

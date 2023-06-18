@@ -25,7 +25,7 @@
 #define R_VBUS_BOTTOM 3300.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 100000.0f
 
-#define DEFAULT_INPUT	0b1001 //0b...wxyz where w is UART, x is RCPWM, y is ADC2 z is ADC1
+#define DEFAULT_INPUT	0b1010 //0b...wxyz where w is UART, x is RCPWM, y is ADC2 z is ADC1
 
 #define MAX_ID_REQUEST 2.0f
 #define MAX_IQ_REQUEST 20.0f
