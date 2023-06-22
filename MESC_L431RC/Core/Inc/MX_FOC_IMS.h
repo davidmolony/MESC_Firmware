@@ -9,14 +9,14 @@
 #define INC_MX_FOC_IMS_H_
 
 //Pick a motor for default
-#define MCMASTER_70KV_8080
+#define QS165V2//MCMASTER_70KV_8080
 
 #define PWM_FREQUENCY 25000
 #define CUSTOM_DEADTIME 700 //ns
 
 #define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 50.0f
+#define ABS_MAX_PHASE_CURRENT 100.0f
 #define ABS_MAX_BUS_VOLTAGE 50.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
 #define R_SHUNT 0.00025f

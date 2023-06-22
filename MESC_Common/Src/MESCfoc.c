@@ -790,7 +790,7 @@ if (fluxb > _motor->FOC.flux_observed) {
 if (fluxb < -_motor->FOC.flux_observed) {
 	fluxb = -_motor->FOC.flux_observed;}
 }
-
+float La_last, Lb_last;
   void flux_observer(MESC_motor_typedef *_motor) {
 	//flux_observer_V2(_motor); //For testing comparison, running both at the same time
 	// LICENCE NOTE REMINDER:
@@ -1891,11 +1891,12 @@ __NOP();
   }
 
 
-  static int dp_periods = 3;
+  static volatile int dp_periods = 6;
   void doublePulseTest(MESC_motor_typedef *_motor) {
     static int dp_counter;
     if  (dp_counter == 0) { //Let bootstrap charge
-        phU_Enable(_motor);
+    	__HAL_TIM_DISABLE_IT(&htim1,TIM_IT_UPDATE); //DISABLE INTERRUPT, DANGEROUS
+    	phU_Enable(_motor);
         phV_Enable(_motor);
         phW_Enable(_motor);
         htim1.Instance->CCR1 = 0;
@@ -1904,7 +1905,7 @@ __NOP();
         test_vals.dp_current_final[dp_counter] =
             _motor->Conv.Iv;
         dp_counter++;
-      } else if(dp_counter <= (dp_periods-2)) { //W State ON
+      } else if(dp_counter <= (dp_periods-3)) { //W State ON
       htim1.Instance->CCR1 = 0;
       htim1.Instance->CCR2 = 0;
       htim1.Instance->CCR3 = htim1.Instance->ARR;
@@ -1914,7 +1915,13 @@ __NOP();
       test_vals.dp_current_final[dp_counter] =
           _motor->Conv.Iv;
       dp_counter++;
-    } else if (dp_counter == (dp_periods-1)) { //W short second pulse
+    } else if (dp_counter == (dp_periods-2)) { //Freewheel
+        htim1.Instance->CCR2 = 0;
+        htim1.Instance->CCR3 = 0;
+        test_vals.dp_current_final[dp_counter] =
+            _motor->Conv.Iv;
+        dp_counter++;
+     }else if (dp_counter == (dp_periods-1)) { //W short second pulse
         htim1.Instance->CCR2 = 0;
         htim1.Instance->CCR3 = 100;
         test_vals.dp_current_final[dp_counter] =
@@ -1934,7 +1941,8 @@ __NOP();
           _motor->Conv.Iv;
       dp_counter = 0;
       generateBreak(_motor);
-      _motor->MotorState = MOTOR_STATE_IDLE;
+      __HAL_TIM_ENABLE_IT(_motor->mtimer, TIM_IT_UPDATE);///RE-ENABLE INTERRUPT
+      _motor->MotorState = MOTOR_STATE_TRACKING;
     }
   }
   void MESC_Slow_IRQ_handler(MESC_motor_typedef *_motor){

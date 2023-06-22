@@ -283,6 +283,7 @@ typedef struct {
 
   float inverterVoltage[3];
   MESCiq_s Idq_req;							//The input to the PI controller. Load this with the values you want.
+  MESCiq_s Idq_prereq2;
   MESCiq_s Idq_prereq; 						//Before we set the input to the current PI controller, we want to run a series of calcs (collect variables,
 										  	  //calculate MTPA... that needs to be done without it putting jitter onto the PI input.
   float T_rollback;							//Scale the input parameters by this amount when thermal throttling

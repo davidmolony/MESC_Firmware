@@ -32,6 +32,7 @@
 #define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
 #define DEADTIME_COMP_V 10
 //#define MAX_MODULATION 1.02f
+#define CUSTOM_DEADTIME 800 //ns
 
 #define USE_FIELD_WEAKENINGV2
 #define USE_HIGHHOPES_PHASE_BALANCING

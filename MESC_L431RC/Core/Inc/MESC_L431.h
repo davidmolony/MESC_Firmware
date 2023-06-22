@@ -32,7 +32,7 @@
 #define  ADC2MAX 4095
 
 #define ADC1_POLARITY 1.0f
-#define ADC2_POLARITY -1.0f
+#define ADC2_POLARITY 1.0f
 
 
 //Use the Ebike Profile tool
