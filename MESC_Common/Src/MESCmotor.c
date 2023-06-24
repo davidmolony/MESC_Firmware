@@ -79,5 +79,5 @@ void motor_init( MOTORProfile * const profile )
 
 void speed_motor_limiter( void )
 {
-	motor_profile.Pmax = 50.0f; // W
+	motor_profile->Pmax = 50.0f; // Watts
 }
