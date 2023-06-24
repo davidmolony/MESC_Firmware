@@ -1,5 +1,5 @@
 /*
-* Copyright 2021-2022 cod3b453
+* Copyright 2021-2023 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -33,8 +33,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define TEMP_PROFILE_SIGNATURE MAKE_UINT32_STRING('M','T','P','E')
-
 enum TEMPMethod
 {
     TEMP_METHOD_STEINHART_HART_BETA_R,
@@ -52,17 +50,8 @@ enum TEMPSchema
 
 typedef enum TEMPSchema TEMPSchema;
 
-enum TEMPReading
+struct TEMP
 {
-    TEMP_READING_BOARD,
-    TEMP_READING_MOTOR,
-};
-
-typedef enum TEMPReading TEMPReading;
-
-struct TEMPProfile
-{
-    TEMPReading reading;
     float       V;
     float       R_F;
 
@@ -95,14 +84,11 @@ struct TEMPProfile
     }           limit;
 };
 
-typedef struct TEMPProfile TEMPProfile;
-extern TEMPProfile const * temp_profile;
+typedef struct TEMP TEMP;
 
-void temp_init( TEMPProfile const * const profile );
+float temp_read( TEMP const * const temp, uint32_t const adc_raw );
 
-float temp_read( uint32_t const adc_raw );
-
-uint32_t temp_get_adc( float const T );
+uint32_t temp_get_adc( TEMP const * const temp, float const T );
 
 enum TEMPState
 {
@@ -113,8 +99,8 @@ enum TEMPState
 
 typedef enum TEMPState TEMPState;
 
-TEMPState temp_check( float const T, float * const dT );
+TEMPState temp_check( TEMP const * const temp, float const T, float * const dT );
 
-TEMPState temp_check_raw( uint32_t const adc_raw, float * const dT );
+TEMPState temp_check_raw( TEMP const * const temp, uint32_t const adc_raw, float * const dT );
 
 #endif

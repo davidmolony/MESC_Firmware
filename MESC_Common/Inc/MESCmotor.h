@@ -1,5 +1,5 @@
 /*
-* Copyright 2021-2022 cod3b453
+* Copyright 2021-2023 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -58,8 +58,8 @@ struct MOTORProfile
 
 typedef struct MOTORProfile MOTORProfile;
 
-extern MOTORProfile  * motor_profile;
+extern MOTORProfile * motor_profile;
 
-void motor_init( MOTORProfile const * const profile );
+void motor_init( MOTORProfile * const profile );
 
 #endif

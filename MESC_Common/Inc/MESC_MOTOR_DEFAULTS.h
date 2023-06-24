@@ -148,6 +148,10 @@
 #define DEFAULT_MOTOR_Lq 0.000005f//Henries
 #define DEFAULT_MOTOR_R 0.0080f //Ohms Could be anything, but setting it lower means slower I term on the PID
 #define DEFAULT_MOTOR_PP 7 //Pole Pairs
+#define MIN_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE
+#define MAX_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE
+#define FLUX_LINKAGE_GAIN (10.0f * sqrtf(DEFAULT_FLUX_LINKAGE))
+#define NON_LINEAR_CENTERING_GAIN 5000.0f
 
 #endif
 

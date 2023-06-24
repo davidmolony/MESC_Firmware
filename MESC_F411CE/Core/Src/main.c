@@ -136,7 +136,6 @@ int main(void)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 #endif
-    temp_init( PROFILE_DEFAULT );
   //Set motor timer
     mtr[0].mtimer = &htim1;
     mtr[0].stimer = &htim2;

@@ -46,6 +46,8 @@
 #include "MESCspeed.h"
 #include "MESCerror.h"
 
+#include "conversions.h"
+
 #include <math.h>
 #include <stdlib.h>
 
@@ -174,6 +176,32 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	_motor->pos.Kp = POS_KP;
 	_motor->pos.Ki = POS_KI;
 	_motor->pos.Kd = POS_KD;
+	//
+	_motor->Raw.MOS_temp.V                  = 3.3f;
+	_motor->Raw.MOS_temp.R_F                = MESC_TEMP_MOS_R_F;
+	_motor->Raw.MOS_temp.adc_range          = 4096;
+	_motor->Raw.MOS_temp.method             = MESC_TEMP_MOS_METHOD;
+	_motor->Raw.MOS_temp.schema             = MESC_TEMP_MOS_SCHEMA;
+	_motor->Raw.MOS_temp.parameters.SH.Beta = MESC_TEMP_MOS_SH_BETA;
+	_motor->Raw.MOS_temp.parameters.SH.r    = MESC_TEMP_MOS_SH_R;
+	_motor->Raw.MOS_temp.parameters.SH.T0   = CVT_CELSIUS_TO_KELVIN_F( 25.0f );
+	_motor->Raw.MOS_temp.parameters.SH.R0   = MESC_TEMP_MOS_SH_R0;
+	_motor->Raw.MOS_temp.limit.Tmin         = CVT_CELSIUS_TO_KELVIN_F( -15.0f );
+	_motor->Raw.MOS_temp.limit.Thot         = CVT_CELSIUS_TO_KELVIN_F(  80.0f );
+	_motor->Raw.MOS_temp.limit.Tmax         = CVT_CELSIUS_TO_KELVIN_F( 100.0f );
+
+	_motor->Raw.Motor_temp.V                  = 3.3f;
+	_motor->Raw.Motor_temp.R_F                = MESC_TEMP_MOTOR_R_F;
+	_motor->Raw.Motor_temp.adc_range          = 4096;
+	_motor->Raw.Motor_temp.method             = MESC_TEMP_MOTOR_METHOD;
+	_motor->Raw.Motor_temp.schema             = MESC_TEMP_MOTOR_SCHEMA;
+	_motor->Raw.Motor_temp.parameters.SH.Beta = MESC_TEMP_MOTOR_SH_BETA;
+	_motor->Raw.Motor_temp.parameters.SH.r    = MESC_TEMP_MOTOR_SH_R;
+	_motor->Raw.Motor_temp.parameters.SH.T0   = CVT_CELSIUS_TO_KELVIN_F( 25.0f );
+	_motor->Raw.Motor_temp.parameters.SH.R0   = MESC_TEMP_MOTOR_SH_R0;
+	_motor->Raw.Motor_temp.limit.Tmin         = CVT_CELSIUS_TO_KELVIN_F( -15.0f );
+	_motor->Raw.Motor_temp.limit.Thot         = CVT_CELSIUS_TO_KELVIN_F(  80.0f );
+	_motor->Raw.Motor_temp.limit.Tmax         = CVT_CELSIUS_TO_KELVIN_F( 100.0f );
 
 	//Init the FW
     _motor->FOC.FW_curr_max = FIELD_WEAKENING_CURRENT;  // test number, to be stored in user settings
@@ -3017,7 +3045,7 @@ void FWRampDown(MESC_motor_typedef *_motor){
 static void handleThrottleTemperature(MESC_motor_typedef *_motor, float const T, float * const dTmax, int const errorcode )
 {
 	float dT = 0.0f;
-	TEMPState const temp_state = temp_check( T, &dT );
+	TEMPState const temp_state = temp_check( &_motor->Raw.Motor_temp, T, &dT );
 #define TMAX(a,b) (((a) > (b)) ? (a) : (b))
 	*dTmax = TMAX( *dTmax, dT );
 #undef TMAX
@@ -3031,17 +3059,17 @@ float dTmax = 0.0f;
 void ThrottleTemperature(MESC_motor_typedef *_motor){
 	dTmax = 0.0f;
 
-	_motor->Conv.MOSu_T  = 0.99f *_motor->Conv.MOSu_T + 0.01f * temp_read( _motor->Raw.MOSu_T );
-	_motor->Conv.MOSv_T  = 0.99f *_motor->Conv.MOSv_T + 0.01f * temp_read( _motor->Raw.MOSv_T );
-	_motor->Conv.MOSw_T  = 0.99f *_motor->Conv.MOSw_T + 0.01f * temp_read( _motor->Raw.MOSw_T );
-	_motor->Conv.Motor_T = 0.99f *_motor->Conv.Motor_T + 0.01f * temp_read( _motor->Raw.Motor_T );
+	_motor->Conv.MOSu_T  = 0.99f *_motor->Conv.MOSu_T  + 0.01f * temp_read( &_motor->Raw.MOS_temp  , _motor->Raw.MOSu_T  );
+	_motor->Conv.MOSv_T  = 0.99f *_motor->Conv.MOSv_T  + 0.01f * temp_read( &_motor->Raw.MOS_temp  , _motor->Raw.MOSv_T  );
+	_motor->Conv.MOSw_T  = 0.99f *_motor->Conv.MOSw_T  + 0.01f * temp_read( &_motor->Raw.MOS_temp  , _motor->Raw.MOSw_T  );
+	_motor->Conv.Motor_T = 0.99f *_motor->Conv.Motor_T + 0.01f * temp_read( &_motor->Raw.Motor_temp, _motor->Raw.Motor_T );
 
 	handleThrottleTemperature( _motor, _motor->Conv.MOSu_T , &dTmax, ERROR_OVERTEMPU );
 	handleThrottleTemperature( _motor, _motor->Conv.MOSv_T , &dTmax, ERROR_OVERTEMPV );
 	handleThrottleTemperature( _motor, _motor->Conv.MOSw_T , &dTmax, ERROR_OVERTEMPW );
 	//handleThrottleTemperature( _motor, _motor->Conv.Motor_T, &dTmax, ERROR_OVERTEMP_MOTOR );
 
-	_motor->FOC.T_rollback = (1.0f-dTmax/(temp_profile->limit.Tmax-temp_profile->limit.Thot));
+	_motor->FOC.T_rollback = (1.0f-dTmax/(_motor->Raw.MOS_temp.limit.Tmax-_motor->Raw.MOS_temp.limit.Thot));
 	if(_motor->FOC.T_rollback<=0.0f){
 		_motor->FOC.T_rollback = 0.0f;
 	}

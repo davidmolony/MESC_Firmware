@@ -209,7 +209,6 @@ int main(void)
     bat_init( PROFILE_DEFAULT );
     motor_init( PROFILE_DEFAULT );
     speed_init( PROFILE_DEFAULT );
-    temp_init( PROFILE_DEFAULT );
     // Initialise user Interface
     ui_init( PROFILE_DEFAULT );
 
