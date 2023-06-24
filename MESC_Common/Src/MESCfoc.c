@@ -2507,7 +2507,7 @@ uint16_t test_counts;
   }
 
   void HallFluxMonitor(MESC_motor_typedef *_motor){
-	  if(fabsf(_motor->FOC.Vdq.q)>10.0f){ //Are we actually spinning at a reasonable pace?
+	  if(fabsf(_motor->FOC.Vdq.q)>MIN_HALL_FLUX_VOLTS){ //Are we actually spinning at a reasonable pace?
 		  if((_motor->hall.current_hall_state>0)&&(_motor->hall.current_hall_state<7)){
 	  _motor->m.hall_flux[_motor->hall.current_hall_state - 1][0] =
 			  0.999f*_motor->m.hall_flux[_motor->hall.current_hall_state - 1][0] +

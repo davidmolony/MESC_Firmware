@@ -127,6 +127,15 @@
 #define DEFAULT_MOTOR_R 0.20f //Ohms
 #define DEFAULT_MOTOR_PP 50 //Pole Pairs
 
+#elif defined(G30)
+#define MAX_MOTOR_PHASE_CURRENT 50.0f //
+#define DEFAULT_MOTOR_POWER 250.0f //...
+#define DEFAULT_FLUX_LINKAGE 0.0180f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.0000850f //Henries
+#define DEFAULT_MOTOR_Lq 0.000150f//Henries
+#define DEFAULT_MOTOR_R 0.0210f //Ohms
+#define DEFAULT_MOTOR_PP 17 //Pole Pairs - No idea, guess
+
 #elif defined(BR3536_1200KV)
 
 //#elif defined() //... Define your motor parameters here...//

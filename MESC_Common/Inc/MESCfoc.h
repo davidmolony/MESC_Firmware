@@ -81,6 +81,10 @@
 							//1.05 is advised as max for low side shunts
 #endif
 
+#ifndef MIN_HALL_FLUX_VOLTS
+#define MIN_HALL_FLUX_VOLTS 10.0f
+#endif
+
 #ifndef I_MEASURE
 #define I_MEASURE 20.0f //Higher setpoint for resistance measurement
 #endif
