@@ -454,7 +454,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].m.R							, 0.0f		, 10.0f		, "r_phase"		, "Phase resistance"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].m.L_D						, 0.0f		, 10.0f		, "ld_phase"	, "Phase inductance"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].m.L_Q						, 0.0f		, 10.0f		, "lq_phase"	, "Phase inductance"					, VAR_ACCESS_RW	, callback  , &TERM_varList);
-	TERM_addVar(mtr[0].HFIType						, 0			, 3			, "hfi"			, "HFI type [0=None, 1=45deg, 2=d axis]", VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].HFIType						, 0			, 3			, "hfi_type"	, "HFI type [0=None, 1=45deg, 2=d axis]", VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.hfi_voltage				, 0.0f		, 50.0f		, "hfi_volt"	, "HFI voltage"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.HFI45_mod_didq			, 0.0f		, 2.0f		, "hfi_mod_didq", "HFI mod didq"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.HFI_Gain					, 0.0f		, 5000.0f	, "hfi_gain"	, "HFI gain"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
@@ -473,8 +473,10 @@ void populate_vars(){
 	TERM_addVar(mtr[0].safe_start[0]				, 0			, 1000		, "safe_start"	, "Countdown before allowing throttle"	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].safe_start[1]				, 0			, 1000		, "safe_count"	, "Live count before allowing throttle"	, VAR_ACCESS_R	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.enc_offset				, 0			, 65535		, "enc_offset"	, "Encoder alignment angle"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.encoder_polarity_invert	, 0			, 1			, "enc_polarity", "Encoder polarity"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].m.pole_pairs					, 0			, 30		, "motor_pp"	, "Number of motor pole PAIRS"			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].MotorSensorMode				, 0			, 30		, "motor_sensor", "0=SL, 1=Hall, 2=OL, 3=ENC, 4=HFI"	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].MotorSensorMode				, 0			, 30		, "motor_sensor", "0=SL, 1=Hall, 2=OL, 3=ABSENC, 4=INC_ENC, 5=HFI"	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].SLStartupSensor				, 0			, 30		, "SL_sensor"	, "0=OL, 1=Hall, 2=PWMENC, 3=HFI"		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.openloop_step			, 0.0f		, 6000.0f	, "ol_step"		, "Angle per PWM period openloop"		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.FW_ehz_max				, 0.0f		, 6000.0f	, "fw_ehz"		, "max eHz under field weakenning"		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(MESC_all_errors						, -HUGE_VAL	, HUGE_VAL	, "error_all"	, "All errors encountered"				, VAR_ACCESS_R	, NULL		, &TERM_varList);

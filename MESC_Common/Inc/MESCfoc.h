@@ -492,9 +492,11 @@ typedef struct{
 typedef struct{
 	TIM_HandleTypeDef *mtimer; //3 phase PWM timer
 	TIM_HandleTypeDef *stimer; //Timer that services the slowloop
+	TIM_HandleTypeDef *enctimer; //Timer devoted to taking incremental encoder inputs
 //problematic if there is no SPI allocated//	SPI_HandleTypeDef *encspi; //The SPI we have configured to talk to the encoder for this motor instance
 	motor_state_e MotorState;
 	motor_sensor_mode_e MotorSensorMode;
+	motor_startup_sensor_e SLStartupSensor;
 	motor_control_mode_e ControlMode;
 	motor_control_type_e MotorControlType;
 	HighPhase_e HighPhase;
@@ -713,6 +715,7 @@ void getDeadtime(MESC_motor_typedef *_motor);
 void LRObserver(MESC_motor_typedef *_motor);
 void LRObserverCollect(MESC_motor_typedef *_motor);
 void HallFluxMonitor(MESC_motor_typedef *_motor);
+void getIncEncAngle(MESC_motor_typedef *_motor);
 void logVars(MESC_motor_typedef *_motor);
 void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma);
 void RunHFI(MESC_motor_typedef *_motor);

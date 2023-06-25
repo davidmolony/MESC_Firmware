@@ -80,7 +80,7 @@ volatile int print_samples_now, lognow;
 #define DWT_CYCCNT      ((volatile uint32_t *)0xE0001004)
 #define CPU_CYCLES      *DWT_CYCCNT
 
-static void SlowHall(MESC_motor_typedef *_motor);
+static void SlowStartup(MESC_motor_typedef *_motor);
 static void SlowHFI(MESC_motor_typedef *_motor);
 static void calculatePower(MESC_motor_typedef *_motor);
 static void LimitFWCurrent(MESC_motor_typedef *_motor);
@@ -449,9 +449,15 @@ void fastLoop(MESC_motor_typedef *_motor) {
 			MESCFOC(_motor);
 //			writePWM(_motor);
     		break;
-    	case MOTOR_SENSOR_MODE_ENCODER:
+    	case MOTOR_SENSOR_MODE_ABSOLUTE_ENCODER:
     		_motor->FOC.enc_period_count++;
 			_motor->FOC.FOCAngle = _motor->FOC.enc_angle + (uint16_t)((float)(_motor->FOC.enc_period_count) * (float)_motor->FOC.enc_pwm_step);
+			MESCFOC(_motor);
+//			writePWM(_motor);
+    		break;
+    	case MOTOR_SENSOR_MODE_INCREMENTAL_ENCODER:
+    		getIncEncAngle(_motor);
+			_motor->FOC.FOCAngle = _motor->FOC.enc_angle;
 			MESCFOC(_motor);
 //			writePWM(_motor);
     		break;
@@ -473,7 +479,10 @@ void fastLoop(MESC_motor_typedef *_motor) {
 #ifdef USE_HALL_START
 		    	  HallFluxMonitor(_motor);
 #endif
-		      } else if (_motor->MotorSensorMode == MOTOR_SENSOR_MODE_ENCODER) {
+		      } else if ((_motor->MotorSensorMode == MOTOR_SENSOR_MODE_ABSOLUTE_ENCODER)) {
+					_motor->FOC.FOCAngle = _motor->FOC.enc_angle;
+		      } else if((_motor->MotorSensorMode == MOTOR_SENSOR_MODE_INCREMENTAL_ENCODER)){
+		    	  getIncEncAngle(_motor);
 					_motor->FOC.FOCAngle = _motor->FOC.enc_angle;
 		      }
 #endif
@@ -899,7 +908,7 @@ float La_last, Lb_last;
     }
 
 
-#ifdef USE_ENCODER
+#ifdef TRACK_ENCODER_OBSERVER_ERROR
     //This does not apply the encoder angle,
     //It tracks the difference between the encoder and the observer.
     _motor->FOC.enc_obs_angle = _motor->FOC.FOCAngle - _motor->FOC.enc_angle;
@@ -2152,8 +2161,7 @@ float  Square(float x){ return((x)*(x));}
 					__NOP();
 			}//end of ControlMode switch
 
-			SlowHFI(_motor);
-			SlowHall(_motor);
+			SlowStartup(_motor);
 			break;
 		case MOTOR_STATE_RUN_BLDC:
 			//Assign the Idqreq to the PI input
@@ -2268,7 +2276,7 @@ float  Square(float x){ return((x)*(x));}
 	  					//Shifting by 1/4 erev does not work for going backwards. Need to rethink.
 	  					//Problem is, depending on motor direction, the sign of the voltage generated swaps for the same rotor position.
 	  					//The atan2(flux linkages) is stable under this regime, but the same for voltage is not.
-	  					_motor->FOC.FOCAngle = angleDS;//_motor->FOC.enc_angle;//
+	  					_motor->FOC.FOCAngle = angleDS;//
 	  					sin_cos_fast(_motor->FOC.FOCAngle, &_motor->FOC.sincosangle.sin, &_motor->FOC.sincosangle.cos);
 
 	  					//Park transform it to get VdVq
@@ -2281,12 +2289,6 @@ float  Square(float x){ return((x)*(x));}
 	  					FLbDS = _motor->FOC.flux_observed*_motor->FOC.sincosangle.sin;
 	  		//Angle Errors for debugging
 	  					angleErrorDSENC = angleDS-_motor->FOC.enc_angle;
-	  		//			angleErrorPhaseSENC = _motor->FOC.FOCAngle-_motor->FOC.enc_angle;
-	  		//			angleErrorPhaseDS = _motor->FOC.FOCAngle - angleDS;
-	  		//Variables for monitoring and debugging to see if the preload will work
-	  		//			FLaDSErr = 1000.0f*(FLaDS-_motor->FOC.flux_a);
-	  		//			FLbDSErr = 1000.0f*(FLbDS-_motor->FOC.flux_b);
-
 	  		//Do actual preloading
 	  					_motor->FOC.flux_a = FLaDS;
 	  					_motor->FOC.flux_b = FLbDS;
@@ -2298,9 +2300,6 @@ float  Square(float x){ return((x)*(x));}
 	  					MESCFOC(_motor);
 	  					countdown_cycles = 9-countdown;
 	  					countdown = 1;
-
-
-
 	  		}
 	  		if(countdown > 10){
 	  			generateBreak(_motor);
@@ -2550,7 +2549,14 @@ uint16_t test_counts;
 		  _motor->FOC.hall_initialised = 1;
 	  }
   }
+void getIncEncAngle(MESC_motor_typedef *_motor){
+	if(_motor->FOC.encoder_polarity_invert){
+		_motor->FOC.enc_angle = _motor->m.pole_pairs*(65536-(16*(uint16_t)_motor->enctimer->Instance->CNT-16*(uint16_t)_motor->enctimer->Instance->CCR3)) + _motor->FOC.enc_offset;
 
+	}else{
+		_motor->FOC.enc_angle = _motor->m.pole_pairs*((16*(uint16_t)_motor->enctimer->Instance->CNT-16*(uint16_t)_motor->enctimer->Instance->CCR3)) + _motor->FOC.enc_offset;
+	}
+}
 
 void  logVars(MESC_motor_typedef *_motor){
 	sampled_vars.Vbus[sampled_vars.current_sample] = _motor->Conv.Vbus;
@@ -2769,24 +2775,36 @@ void SlowHFI(MESC_motor_typedef *_motor){
 			break;
 		}
 }
-void SlowHall(MESC_motor_typedef *_motor){
-	if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.hall_initialised)&&(_motor->hall.current_hall_state>0)&&(_motor->hall.current_hall_state<7)){
-			_motor->FOC.hall_start_now = 1;
-	}else if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f)||(_motor->hall.current_hall_state=0)||(_motor->hall.current_hall_state>6)){
+void SlowStartup(MESC_motor_typedef *_motor){
+	switch(_motor->SLStartupSensor){
+	case STARTUP_SENSOR_HALL:
+		if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.hall_initialised)&&(_motor->hall.current_hall_state>0)&&(_motor->hall.current_hall_state<7)){
+				_motor->FOC.hall_start_now = 1;
+		}else if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f)||(_motor->hall.current_hall_state=0)||(_motor->hall.current_hall_state>6)){
+			_motor->FOC.hall_start_now = 0;
+		}
+		break;
+	case STARTUP_SENSOR_PWM_ENCODER:
+		if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.encoder_OK)){
+				_motor->FOC.enc_start_now = 1;
+		}else if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f)||!(_motor->FOC.encoder_OK)){
+			_motor->FOC.enc_start_now = 0;
+		}
+		break;
+	case STARTUP_SENSOR_HFI:
+		SlowHFI(_motor);
+		break;
+	default: //We are not using a startup mechanism
 		_motor->FOC.hall_start_now = 0;
-	}
-	if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.encoder_OK)){
-			_motor->FOC.enc_start_now = 1;
-	}else if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f)||!(_motor->FOC.encoder_OK)){
 		_motor->FOC.enc_start_now = 0;
 	}
+
 }
 void ToggleHFI(MESC_motor_typedef *_motor){
 	if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > _motor->FOC.HFI_toggle_voltage)||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < -_motor->FOC.HFI_toggle_voltage)||(_motor->MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
 		_motor->FOC.inject = 0;
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
 	} else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < (_motor->FOC.HFI_toggle_voltage-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > -(_motor->FOC.HFI_toggle_voltage-1.0f)) &&(_motor->HFIType !=HFI_TYPE_NONE)){
-
 		_motor->FOC.HFI_int_err = _motor->FOC.PLL_int;
 		_motor->FOC.inject = 1;
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH*0.1f;
