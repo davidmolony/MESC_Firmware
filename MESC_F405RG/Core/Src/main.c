@@ -195,6 +195,7 @@ HAL_Delay(1);
   //Set motor timer
   mtr[0].mtimer = &htim1;
   mtr[0].stimer = &htim2;
+
   mtr[0].enctimer = &htim3;
   //mtr[0].encspi = &hspi3;
   motor_init( PROFILE_DEFAULT );
