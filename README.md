@@ -7,6 +7,24 @@ $ git branch -m More_measurement OW_running_on_bike
 $ git rev-parse --abbrev-ref HEAD
 $ git commit -am "incorporated latest from More_measurement"
 $ git push -f origin OW_running_on_bike
+```
+
+A safer thing to do is just run switch:
+```
+$ git switch OW_running_on_bike
+```
+...when possible. 
+
+NOTE: to set hall, HFI or PWM encoder, in Jen's term there's a variable in MESC_RTOS/MESC/MESCinterface.c:	
+```
+TERM_addVar(mtr[0].SLStartupSensor	, 0			, 30		, "SL_sensor"	, "0=OL, 1=Hall, 2=PWMENC, 3=HFI"		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+```
+
+General notes for standing up a new F405 pill / MP2 board
+* add 100nF to throttle input
+* clip the NC pin and fill that header hole with epoxy to prevent placing pill in wrong orientation
+* using IPP075N15N3G, David is concerned about 5nF input capacitance, consider changing the gate resistor to 10 to 15 ohm
+* on the topic of making the throttle safer: "So we swap in 1k-1.2k and set it up so that anything above 3.2V is it if range, error."
 
 ```
 MESC_Firmware/MESC_F405RG/Core/Inc/MP2_V0_1.h
