@@ -11,6 +11,18 @@ $ git push -f origin OW_running_on_bike
 
 A safer thing to do is just run switch:
 ```
+$ git clone https://github.com/davidmolony/MESC_Firmware.git
+$ cd MESC_Firmware
+$ git switch OW_running_on_bike
+$ cp README.md ../.
+$ git checkout FW_ADC_sampling
+$ git merge -X ours OW_running_on_bike
+$ git rev-parse --abbrev-ref HEAD
+$ git switch OW_running_on_bike
+$ cp ../README.md .
+$ git add . 
+$ git rev-parse --abbrev-ref HEAD
+
 $ git switch OW_running_on_bike
 ```
 ...when possible. 
