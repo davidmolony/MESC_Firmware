@@ -8,15 +8,15 @@
 #ifndef INC_MP2_V0_1_H_
 #define INC_MP2_V0_1_H_
 //Pick a motor for default
-#define MCMASTER_70KV_8080//QS165//CA120//
+#define QS165
 #define PWM_FREQUENCY 20000
 #define CUSTOM_DEADTIME 800 //ns, MAX 1500ns! implementation in MESCInit().
 
 #define SHUNT_POLARITY -1.0f
 
 #define ABS_MAX_PHASE_CURRENT 400.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.
-#define ABS_MAX_BUS_VOLTAGE 50.0f
-#define ABS_MIN_BUS_VOLTAGE 38.0f
+#define ABS_MAX_BUS_VOLTAGE 200.0f
+#define ABS_MIN_BUS_VOLTAGE 80.0f
 #define R_SHUNT 0.00033f
 #define OPGAIN 10.5f
 
