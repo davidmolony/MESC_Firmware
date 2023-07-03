@@ -2077,7 +2077,7 @@ float  Square(float x){ return((x)*(x));}
 		///////////////////////Run the state machine//////////////////////////////////
 	switch(_motor->MotorState){
 		case MOTOR_STATE_TRACKING:
-			// ThrottleTemperature(_motor);
+			ThrottleTemperature(_motor);
 			_motor->FOC.was_last_tracking = 1;
 			//Seperate based on control mode. We NEED to have a fallthrough here in transition state!
 			//Does not seem possible to use nested switches due to fallthrough requirement :(
@@ -2122,7 +2122,7 @@ float  Square(float x){ return((x)*(x));}
 
 		case MOTOR_STATE_RUN:
 			calculatePower(_motor);
-			// ThrottleTemperature(_motor); //Gradually ramp down the Q current if motor or FETs are getting hot
+			ThrottleTemperature(_motor); //Gradually ramp down the Q current if motor or FETs are getting hot
 			RunMTPA(_motor);//Process MTPA
 			LimitFWCurrent(_motor);//Process FW -> Iq reduction
 			clampBatteryPower(_motor); //Prevent too much power being drawn from the battery
