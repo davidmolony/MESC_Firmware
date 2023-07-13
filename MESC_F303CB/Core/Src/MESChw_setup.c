@@ -138,7 +138,7 @@ void getRawADC(MESC_motor_typedef *_motor)
 
 	  GET_THROTTLE_INPUT; //Define a similar macro in the header file for your board that maps the throttle
 
-	  _motor->Raw.MOSu_T = hadc4.Instance->JDR1; //Temperature on PB1
+	  _motor->Raw.MOSu_T = 0.99f*_motor->Raw.MOSu_T +0.01f*hadc4.Instance->JDR1; //Temperature on PB1
   }
 
 

@@ -255,6 +255,12 @@ typedef struct {
   uint32_t encoder_pulse;
   uint32_t encoder_OK;
   uint16_t enc_angle;
+
+  uint16_t enc_period_count;//For PWM encoder interpolation
+  uint16_t last_enc_period;
+  uint16_t last_enc_angle;
+  int16_t enc_pwm_step;
+
   uint16_t enc_offset;
   float encsin;
   float enccos;
@@ -310,7 +316,6 @@ typedef struct {
   float Id_igain;
   float Iq_pgain;
   float Iq_igain;
-  float Vdqres_to_Vdq;
   float Vab_to_PWM;
   float Duty_scaler;
   float Voltage;

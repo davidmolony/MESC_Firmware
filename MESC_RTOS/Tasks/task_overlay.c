@@ -478,21 +478,21 @@ void log_fastloop(TERMINAL_HANDLE * handle){
 	int current_sample_pos = sampled_vars.current_sample;
 
 	ttprintf("\r\n{");
-	print_index(handle, "index", LOGLENGTH, mtr[0].FOC.pwm_period);
+	print_index(handle, "time", LOGLENGTH, mtr[0].FOC.pwm_period);
 	ttprintf(",");
-	print_array(handle, "Vbus", sampled_vars.Vbus, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	print_array(handle, "Vbus.V.y1", sampled_vars.Vbus, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
 	ttprintf(",");
-	print_array(handle, "Iu", sampled_vars.Iu, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	print_array(handle, "Iu.I_phase.y1", sampled_vars.Iu, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
 	ttprintf(",");
-	print_array(handle, "Iv", sampled_vars.Iv, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	print_array(handle, "Iv.I_phase.y1", sampled_vars.Iv, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
 	ttprintf(",");
-	print_array(handle, "Iw", sampled_vars.Iw, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	print_array(handle, "Iw.I_phase.y1", sampled_vars.Iw, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
 	ttprintf(",");
-	print_array(handle, "Vd", sampled_vars.Vd, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	print_array(handle, "Vd.V_dq.y1", sampled_vars.Vd, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
 	ttprintf(",");
-	print_array(handle, "Vq", sampled_vars.Vq, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	print_array(handle, "Vq.V_dq.y1", sampled_vars.Vq, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
 	ttprintf(",");
-	print_array(handle, "angle", sampled_vars.angle, LOGLENGTH, current_sample_pos, sizeof(uint16_t), TERM_VARIABLE_UINT_ARRAY);
+	print_array(handle, "angle.misc.y1", sampled_vars.angle, LOGLENGTH, current_sample_pos, sizeof(uint16_t), TERM_VARIABLE_UINT_ARRAY);
 	ttprintf("}\r\n");
 
 

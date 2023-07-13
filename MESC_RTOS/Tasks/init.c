@@ -111,7 +111,7 @@ void init_system(void){
 #endif
 
 	task_cli_init(&main_uart);
-
+	task_led_init();
 #ifdef HAL_CAN_MODULE_ENABLED
 	task_cli_init(&main_can);
 #endif

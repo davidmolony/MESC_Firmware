@@ -217,6 +217,18 @@ static float temp_calculate_SteinhartHart_Beta_r( float const R_T )
     return temp_profile->parameters.SH.Beta / logf( R_T / temp_profile->parameters.SH.r );
 }
 
+static float temp_calculate_KTY83_122_Linear( float const R_T )
+{
+    assert(temp_profile != NULL);
+    return 0.10168f*R_T + 202.0f; //Function linearised from 10-160degC with <6degC max error, 3.8degC in mid range.
+}
+
+static float temp_calculate_KTY84_130_Linear( float const R_T )
+{
+    assert(temp_profile != NULL);
+    return 0.14879f*R_T + 216.0f; //Function linearised from 10-240degC with <10degC max error.
+}
+
 /*
 API
 */
@@ -239,6 +251,16 @@ float temp_read( uint32_t const adc_raw )
         case TEMP_METHOD_STEINHART_HART_BETA_R:
         {
             T = temp_calculate_SteinhartHart_Beta_r( R_T );
+            break;
+        }
+        case TEMP_METHOD_KTY83_122_LINEAR:
+        {
+            T = temp_calculate_KTY83_122_Linear( R_T );
+            break;
+        }
+        case TEMP_METHOD_KTY84_130_LINEAR:
+        {
+            T = temp_calculate_KTY84_130_Linear( R_T );
             break;
         }
         default:
