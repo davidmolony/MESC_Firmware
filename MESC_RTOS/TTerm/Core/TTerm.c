@@ -46,7 +46,7 @@ TermCommandDescriptor TERM_defaultList = {.nextCmd = 0, .commandLength = 0};
 TermVariableDescriptor TERM_varList = {.nextVar = 0, .nameLength = 0};
 #endif
 
-unsigned TERM_baseCMDsAdded = 0;
+uint8_t TERM_baseCMDsAdded = 0;
 
 
 #define ESC_STR "\x1b"

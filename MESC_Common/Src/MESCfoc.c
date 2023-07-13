@@ -2826,6 +2826,16 @@ float detectHFI(MESC_motor_typedef *_motor){
 
 void collectInputs(MESC_motor_typedef *_motor){
 	  //Collect the requested throttle inputs
+
+	  //Check if remote ADC timeouts
+	  if(input_vars.remote_ADC_timeout > 0){
+		  input_vars.remote_ADC_timeout--;
+	  }else{
+		  input_vars.remote_ADC1_req = 0.0f;
+		  input_vars.remote_ADC2_req = 0.0f;
+	  }
+
+
 	  //UART input
 	  if(0 == (input_vars.input_options & 0b1000)){
 		  input_vars.UART_req = 0.0f;
@@ -2864,36 +2874,44 @@ void collectInputs(MESC_motor_typedef *_motor){
 		  }
 	  }
 
+	  //ADC2 input
 	  if(input_vars.input_options & 0b0010){
-		  //ADC2 input
-		  if(_motor->Raw.ADC_in_ext2>input_vars.adc2_MIN){
-			  input_vars.ADC2_req = ((float)_motor->Raw.ADC_in_ext2-(float)input_vars.adc2_MIN)*input_vars.adc1_gain[1]*input_vars.ADC2_polarity;
-			  if(_motor->Raw.ADC_in_ext2>input_vars.adc2_OOR){
-				  //input_vars.ADC2_req = 0.0f;
-				  handleError(_motor, ERROR_INPUT_OOR);
+		  if(input_vars.remote_ADC_can_id > 0){
+			  input_vars.ADC2_req = input_vars.remote_ADC2_req;
+		  }else{
+			  if(_motor->Raw.ADC_in_ext2>input_vars.adc2_MIN){
+				  input_vars.ADC2_req = ((float)_motor->Raw.ADC_in_ext2-(float)input_vars.adc2_MIN)*input_vars.adc1_gain[1]*input_vars.ADC2_polarity;
+				  if(_motor->Raw.ADC_in_ext2>input_vars.adc2_OOR){
+					  //input_vars.ADC2_req = 0.0f;
+					  handleError(_motor, ERROR_INPUT_OOR);
+				  }
+			  }
+			  else{
+				  input_vars.ADC2_req = 0.0f;
 			  }
 			  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
 			  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
-		  }
-		  else{
-			  input_vars.ADC2_req = 0.0f;
 		  }
 
 	  }
 	  //ADC1 input
 	  if(input_vars.input_options & 0b0001){
-		  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
-			  input_vars.ADC1_req = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
-			  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_OOR){
-				  //input_vars.ADC1_req = 0.0f;
-				  handleError(_motor, ERROR_INPUT_OOR);
+		  if(input_vars.remote_ADC_can_id > 0){
+			  input_vars.ADC1_req = input_vars.remote_ADC1_req;
+		  }else{
+			  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
+				  input_vars.ADC1_req = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
+				  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_OOR){
+					  //input_vars.ADC1_req = 0.0f;
+					  handleError(_motor, ERROR_INPUT_OOR);
+				  }
 			  }
-			  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
-			  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
+			  else{
+				  input_vars.ADC1_req = 0.0f;
+			  }
 		  }
-		  else{
-			  input_vars.ADC1_req = 0.0f;
-		  }
+		  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
+		  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
 	  }
 #ifdef KILLSWITCH_GPIO
 	  if(input_vars.input_options & 0b10000){//Killswitch

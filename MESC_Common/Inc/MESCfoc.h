@@ -583,6 +583,7 @@ typedef struct {
 	uint8_t remote_ADC_can_id;
 	float remote_ADC1_req;
 	float remote_ADC2_req;
+	int32_t remote_ADC_timeout;
 
 
 	uint16_t nKillswitch;

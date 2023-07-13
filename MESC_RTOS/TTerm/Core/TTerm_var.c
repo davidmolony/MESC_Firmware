@@ -684,7 +684,7 @@ static bool set_value(TermVariableDescriptor * var, char* value){
 
 	switch (var->type){
 	case TERM_VARIABLE_UINT:
-		u_temp_buffer = strtoul(value, NULL, 10);
+		u_temp_buffer = strtoul(value, NULL, 0);
 
 		if(u_temp_buffer < var->min_unsigned){
 			u_temp_buffer = var->min_unsigned;
@@ -707,7 +707,7 @@ static bool set_value(TermVariableDescriptor * var, char* value){
 		}
 		break;
 	case TERM_VARIABLE_INT:
-		i_temp_buffer = strtol(value, NULL, 10);
+		i_temp_buffer = strtol(value, NULL, 0);
 
 		if(i_temp_buffer < var->min_signed){
 			i_temp_buffer = var->min_signed;

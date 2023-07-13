@@ -469,7 +469,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].safe_start[1]				, 0			, 1000		, "safe_count"	, "Live count before allowing throttle"	, VAR_ACCESS_R	, NULL		, &TERM_varList);
 #ifdef HAL_CAN_MODULE_ENABLED
 	TERM_addVar(can1.node_id						, 1			, 254		, "node_id"	    , "Node ID"								, VAR_ACCESS_RW	, callback	, &TERM_varList);
-	TERM_addVar(input_vars.remote_ADC_can_id		, 1			, 254		, "can_adc"	    , "can ADC ID"							, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(input_vars.remote_ADC_can_id		, 0			, 254		, "can_adc"	    , "CAN ADC ID  0=disabled"				, VAR_ACCESS_RW	, callback	, &TERM_varList);
 #endif
 
 	TermVariableDescriptor * desc;
@@ -483,6 +483,9 @@ void populate_vars(){
 }
 
 #ifdef HAL_CAN_MODULE_ENABLED
+
+#define REMOTE_ADC_TIMEOUT 1000
+
 void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
 	MESC_motor_typedef * motor_curr = &mtr[0];
 
@@ -504,7 +507,8 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 			motor_curr->sample_no_auto_send = false;
 			break;
 		case CAN_ID_ADC1_2_REQ:{
-			if(sender == input_vars.remote_ADC_can_id){
+			if(sender == input_vars.remote_ADC_can_id && input_vars.remote_ADC_can_id > 0){
+				input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
 				input_vars.remote_ADC1_req = PACK_buf_to_float(data);
 				input_vars.remote_ADC2_req = PACK_buf_to_float(data+4);
 			}

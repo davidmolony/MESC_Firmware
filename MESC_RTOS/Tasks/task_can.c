@@ -330,6 +330,7 @@ void TASK_CAN_tx(void * argument){
 		if(xStreamBufferIsEmpty(port->tx_stream) && uxQueueMessagesWaiting(handle->tx_queue) == 0){
 			vTaskDelay(10);
 		}
+		vTaskDelay(1);
 	}
 }
 
