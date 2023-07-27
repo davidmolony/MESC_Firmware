@@ -40,7 +40,7 @@ General notes for standing up a new F405 pill / MP2 board
 * on the topic of making the throttle safer: "So we swap in 1k-1.2k and set it up so that anything above 3.2V is it if range, error."
 
 MESC_Firmware/MESC_F405RG/Core/Inc/MP2_V0_1.h
-note: ABS_MAX_PHASE_CURRENT overrules everythign. MAX_IQ_REQUEST can be overwritten by jens
+note: ABS_MAX_PHASE_CURRENT overrules everything. MAX_IQ_REQUEST can be overwritten by jens
 So you can step up amps using term
 ```
 #define ABS_MAX_PHASE_CURRENT 400.0f 
