@@ -1,25 +1,121 @@
 # davidmolony.github.io/MESC_Firmware/
 
-Documentation will be gradually created/migrated to github pages.
+Git commands
+THESE ARE WRONG. They break the branch
 
-View the book [here](https://davidmolony.github.io/MESC_Firmware/)
+```
+$ git branch -m More_measurement OW_running_on_bike
+$ git rev-parse --abbrev-ref HEAD
+$ git commit -am "incorporated latest from More_measurement"
+$ git push -f origin OW_running_on_bike
+```
 
-# MESC_Firmware
-MESC is a project for embedded BLDC FOC, serving a number of purposes
-1) Easy to follow and learn FOC
-2) Easy to port to other platforms
-3) High performance motor control offering all the FOC goodies: Sensorless, HFI, Encoder, Hall, (and combinations of), Field weakening, MTPA, Torque, Speed and Duty control.
-4) Permissive licensing making commercial use easy (Additional conditions attached to integration into other open source projects).
+A safer thing to do is just run switch:
+```
+$ git clone https://github.com/davidmolony/MESC_Firmware.git
+$ cd MESC_Firmware
+$ git switch OW_running_on_bike
+$ cp README.md ../.
+$ git checkout FW_ADC_sampling
+$ git merge -X ours OW_running_on_bike
+$ git rev-parse --abbrev-ref HEAD
+$ git switch OW_running_on_bike
+$ cp ../README.md .
+$ git add . 
+$ git rev-parse --abbrev-ref HEAD
 
-# Targets/Hardware
-MESC runs primarily on any STM32 target with an FPU. Tested with the targets in the repo, but easily portable to any other STM. Compatibility with other MCU brands TBC.
+$ git switch OW_running_on_bike
+```
+...when possible. 
 
-The reference hardware is now the [MP2 ESC](https://github.com/badgineer/MP2-ESC), since it allows testing with many targets by simply swapping the MCU pill. It also offers adequate performance for most light EV applications (high power scooters and ~10kW E-motorbikes.
+NOTE: to set hall, HFI or PWM encoder, in Jen's term there's a variable in MESC_RTOS/MESC/MESCinterface.c:	
+```
+TERM_addVar(mtr[0].SLStartupSensor	, 0			, 30		, "SL_sensor"	, "0=OL, 1=Hall, 2=PWMENC, 3=HFI"		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+```
 
-The original hardware based on F303 target [MESC_FOC_ESC](https://github.com/davidmolony/MESC_FOC_ESC) will be supported for some time, but not encouraged.
+General notes for standing up a new F405 pill / MP2 board
+* add 100nF to throttle input
+* clip the NC pin and fill that header hole with epoxy to prevent placing pill in wrong orientation
+* using IPP075N15N3G, David is concerned about 5nF input capacitance, consider changing the gate resistor to 10 to 15 ohm
+* on the topic of making the throttle safer: "So we swap in 1k-1.2k and set it up so that anything above 3.2V is it if range, error."
 
-All STM32F405RG hardware (AKA VESC compatible hardware e.g. Trampa, SHUL, Triforce, FSESC and many others) compatible with MESC_firmware.
+MESC_Firmware/MESC_F405RG/Core/Inc/MP2_V0_1.h
+```
+#define MAX_IQ_REQUEST 200.0f
+#define ABS_MAX_BUS_VOLTAGE 80.0f
 
-With thanks to all that have helped in the creation of MESC.
+#define QS165 // I think this no longer matters
+#define MIN_IQ_REQUEST 0
 
-Happy spinning!
+#define KILLSWITCH_GPIO GPIOB
+#define KILLSWITCH_PIN GPIO_PIN_3
+```
+MESC_Firmware/MESC_F405RG/Core/Inc/MESC_F405.h
+```
+#include "MP2_V0_1.h"
+```
+
+MESC_F405RG/MESC_F405RG.ioc
+* add UART1
+* PB3 to GPIO_input
+
+MESC_F405RG/Core/Inc/MESC_F405.h:
+```
+define HW_UART huart1
+```
+
+MESC_Common/Inc/MESCfoc.h
+```
+ int16_t ADC_in_ext1;
+ int16_t ADC_in_ext2;
+```
+
+MESC_Common/Src/MESCfoc.c
+```
+        // _motor->offset.Iu = ADC_OFFSET_DEFAULT;
+	// _motor->offset.Iv = ADC_OFFSET_DEFAULT;
+	// _motor->offset.Iw = ADC_OFFSET_DEFAULT;
+	
+	_motor->offset.Iu = 1978;
+	_motor->offset.Iv = 1940;
+	_motor->offset.Iw = 1949;
+```
+
+Temperature measurement is broken -- comment out this line
+there are TWO occurences in MESCfoc.c
+```
+ // ThrottleTemperature(_motor);
+```
+
+MESC_RTOS/Tasks/MESCinterface.c:
+
+```
+	TermVariableDescriptor * desc;
+        desc = TERM_addVar(mtr[0].Conv.Vbus                             , 0.0f          , HUGE_VAL  , "vbus"            , "Read input voltage"                                  , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+        TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+        desc = TERM_addVar(mtr[0].FOC.eHz                               , -HUGE_VAL , HUGE_VAL  , "ehz"                 , "Motor electrical hz"                                 , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+        TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+        desc = TERM_addVar(mtr[0].FOC.Idq_smoothed.d    , -HUGE_VAL , HUGE_VAL  , "idq_d"                       , "Phase Idq_d smoothed"                                        , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+        TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+        desc = TERM_addVar(mtr[0].FOC.Idq_smoothed.q    , -HUGE_VAL , HUGE_VAL  , "idq_q"                       , "Phase Idq_q smoothed"                                        , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+        TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+        desc = TERM_addVar(mtr[0].Raw.ADC_in_ext1               , 0 , 4096                      , "adc_ext1"            , "Raw ADC throttle"                                    , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+        TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+        desc = TERM_addVar(mtr[0].Conv.MOSu_T                   , 0 , 4096                      , "MOS_temp"            , "MOSFET temp, kelvin"                                 , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+        TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+        desc = TERM_addVar(mtr[0].Conv.Motor_T                  , 0 , 4096                      , "MOT_temp"            , "Motor temp, kelvin"                                  , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+        TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+        desc = TERM_addVar(MESC_errors                   , -HUGE_VAL , HUGE_VAL  , "error" , "System errors"       , VAR_ACCESS_TR  , NULL, &TERM_varList);
+	
+        TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+```
+
+This is NOT in kill switch mode:
+make sure input_opts is 9 to avoid reading the kill switch

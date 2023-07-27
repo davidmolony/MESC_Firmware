@@ -2122,7 +2122,6 @@ float  Square(float x){ return((x)*(x));}
 
 		case MOTOR_STATE_RUN:
 			calculatePower(_motor);
-			ThrottleTemperature(_motor); //Gradually ramp down the Q current if motor or FETs are getting hot
 			RunMTPA(_motor);//Process MTPA
 			LimitFWCurrent(_motor);//Process FW -> Iq reduction
 			clampBatteryPower(_motor); //Prevent too much power being drawn from the battery
