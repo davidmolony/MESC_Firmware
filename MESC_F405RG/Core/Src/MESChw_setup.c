@@ -75,6 +75,15 @@ void getRawADC(MESC_motor_typedef *_motor) {
   _motor->Raw.Iv = hadc2.Instance->JDR1;  // V Current
   _motor->Raw.Iw = hadc3.Instance->JDR1;  // W Current
   _motor->Raw.Vbus = hadc3.Instance->JDR3;  // DC Link Voltage
+#ifdef MISSING_UCURRSENSOR //Avoid errors due to useless readings of unconnected channel
+  _motor->Raw.Iu = 2048;  // U Current
+#endif
+#ifdef MISSING_VCURRSENSOR
+  _motor->Raw.Iv = 2048;  // V Current
+#endif
+#ifdef MISSING_WCURRSENSOR
+  _motor->Raw.Iw = 2048;  // W Current
+#endif
 
   GET_THROTTLE_INPUT; //Define a similar macro in the header file for your board that maps the throttle
 #ifdef GET_THROTTLE_INPUT2

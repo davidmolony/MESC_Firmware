@@ -91,13 +91,13 @@
 
 
 
-#elif defined(QS138)
-#define MAX_MOTOR_PHASE_CURRENT 400.0f //There seems to be no limit for these
-#define DEFAULT_MOTOR_POWER 4000.0f //Go on, change this to 20000...
-#define DEFAULT_FLUX_LINKAGE 0.01180f//Set this to the motor linkage in wB
-#define DEFAULT_MOTOR_Ld 0.000080f //Henries
-#define DEFAULT_MOTOR_Lq 0.000130f//Henries
-#define DEFAULT_MOTOR_R 0.0530f //Ohms
+#elif defined(QS138_90H)
+#define MAX_MOTOR_PHASE_CURRENT 700.0f //There seems to be no limit for these
+#define DEFAULT_MOTOR_POWER 15000.0f //Go on, change this to 20000...
+#define DEFAULT_FLUX_LINKAGE 0.0195f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000030f //Henries
+#define DEFAULT_MOTOR_Lq 0.000042f//Henries
+#define DEFAULT_MOTOR_R 0.0030f //Ohms
 #define DEFAULT_MOTOR_PP 5 //Pole Pairs
 
 #elif defined(VOILAMART1500W)
