@@ -462,7 +462,7 @@ void TASK_CAN_tx(void * argument){
 		}else{
 			//getvTaskDelay(2);
 		}
-
+		vTaskDelay(1);
 	}
 }
 
