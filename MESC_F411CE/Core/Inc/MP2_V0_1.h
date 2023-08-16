@@ -63,4 +63,9 @@
 
 //#define USE_SALIENT_OBSERVER //If not defined, it assumes that Ld and Lq are equal, which is fine usually.
 
+//LEDs
+#define SLOWLED GPIOC
+#define SLOWLEDIO GPIO_PIN_13
+#define SLOWLEDIONO 13
+
 #endif /* INC_MP2_V0_1_H_ */

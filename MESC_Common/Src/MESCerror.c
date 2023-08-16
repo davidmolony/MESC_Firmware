@@ -40,9 +40,13 @@ extern TIM_HandleTypeDef htim1;
 //Variables
  struct MESC_log_vars error_log;
  uint32_t MESC_errors; //This is a bitwise uint32_t representation of the errors that have occurred.
+ uint32_t MESC_all_errors; //All the errors since startup
 
 void handleError(MESC_motor_typedef *_motor, uint32_t error_code){
 	generateBreak(_motor); //Always generate a break when something bad happens
+	if(_motor->MotorState == MOTOR_STATE_INITIALISING){
+		MESC_errors|= (0b01<<(ERROR_STARTUP-1));
+	}
 	_motor->MotorState = MOTOR_STATE_ERROR;
 	//Log the nature of the fault
 	MESC_errors|= (0b01<<(error_code-1));
@@ -56,10 +60,12 @@ void handleError(MESC_motor_typedef *_motor, uint32_t error_code){
 	error_log.flux_b = _motor->FOC.flux_b;
 	}
 	error_log.count += 1;
+	MESC_all_errors |= MESC_errors;
 }
 
 void clearErrors(){
 	MESC_errors = 0;
+	error_log.count = 0;
 }
 
 //Observe caution when using this function, BRK hypothetically occurs after a disastrous error.

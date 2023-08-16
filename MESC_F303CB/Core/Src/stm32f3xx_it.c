@@ -242,12 +242,11 @@ void ADC1_2_IRQHandler(void)
 	if(__HAL_ADC_GET_FLAG(&hadc2,ADC_FLAG_AWD)){
 		handleError(&mtr[0], ERROR_ADC_OUT_OF_RANGE_IB);
 	}
-	    __HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_AWD | ADC_FLAG_JEOC));
+	MESC_ADC_IRQ_handler(&mtr[0]);
+	    __HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_AWD | ADC_FLAG_JEOC| ADC_FLAG_JEOS));
 	    __HAL_ADC_CLEAR_FLAG(&hadc2, (ADC_FLAG_AWD | ADC_FLAG_JEOC));
 
   /* USER CODE END ADC1_2_IRQn 0 */
-  HAL_ADC_IRQHandler(&hadc1);
-  HAL_ADC_IRQHandler(&hadc2);
   /* USER CODE BEGIN ADC1_2_IRQn 1 */
   /* USER CODE END ADC1_2_IRQn 1 */
 }

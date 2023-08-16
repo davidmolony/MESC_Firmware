@@ -1,8 +1,9 @@
 //First, include the header specific to your board, which includes hardware parameters like ABS MAX, shunts, potential divdiders
 //Ensure only one board's header file is uncommented!
-//#include "MP2_V0_1.h"
+#include "MP2_V0_1.h"
 //#include "CL700_V0_3.h"
-#include "MX_FOC_IMS.h"
+//#include "INDI-600.h"
+//#include "MX_FOC_IMS.h"
 //#include "MX_FOC_GaN.h"
 //#include "GIGAVESC.h"
 
@@ -37,10 +38,10 @@
 #define  ADC2MAX 4095
 
 #define ADC1_POLARITY 1.0f
-#define ADC2_POLARITY -1.0f
+#define ADC2_POLARITY 1.0f
 
 #ifndef DEFAULT_INPUT
-#define DEFAULT_INPUT	0b1001 //0b...wxyz where w is UART, x is RCPWM, y is ADC2 z is ADC1
+#define DEFAULT_INPUT	0b1000 //0b...wxyz where w is UART, x is RCPWM, y is ADC2 z is ADC1
 #endif
 
 //Use the Ebike Profile tool
@@ -48,6 +49,10 @@
 
 #ifndef FIELD_WEAKENING_CURRENT
 #define FIELD_WEAKENING_CURRENT 10.0f //This does not set whether FW is used, just the default current
+#endif
+
+#ifndef FIELD_WEAKENING_EHZ
+#define FIELD_WEAKENING_EHZ 6000 //This sets the max field weakening speed
 #endif
 
 #ifndef FIELD_WEAKENING_THRESHOLD
@@ -58,7 +63,7 @@
 
 /////////////////////Related to CIRCLE LIMITATION////////////////////////////////////////
 //#define USE_SQRT_CIRCLE_LIM //Use for high PWM frequency (less clock cycles) or try if stability issues seen with Vd favouring option (unlikely)
-#define USE_SQRT_CIRCLE_LIM_VD //Use for Field weakening
+#define USE_SQRT_CIRCLE_LIM_VD //Use for Field weakening and MTPA
 
 //#define USE_MTPA
 

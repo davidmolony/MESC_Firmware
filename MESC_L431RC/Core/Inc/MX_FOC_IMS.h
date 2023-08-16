@@ -9,14 +9,14 @@
 #define INC_MX_FOC_IMS_H_
 
 //Pick a motor for default
-#define MCMASTER_70KV_8080
+#define QS165V2//MCMASTER_70KV_8080
 
 #define PWM_FREQUENCY 25000
 #define CUSTOM_DEADTIME 700 //ns
 
 #define SHUNT_POLARITY -1.0f
 
-#define ABS_MAX_PHASE_CURRENT 50.0f
+#define ABS_MAX_PHASE_CURRENT 100.0f
 #define ABS_MAX_BUS_VOLTAGE 50.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
 #define R_SHUNT 0.00025f
@@ -25,7 +25,7 @@
 #define R_VBUS_BOTTOM 3300.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 100000.0f
 
-#define DEFAULT_INPUT	0b1001 //0b...wxyz where w is UART, x is RCPWM, y is ADC2 z is ADC1
+#define DEFAULT_INPUT	0b1010 //0b...wxyz where w is UART, x is RCPWM, y is ADC2 z is ADC1
 
 #define MAX_ID_REQUEST 2.0f
 #define MAX_IQ_REQUEST 20.0f

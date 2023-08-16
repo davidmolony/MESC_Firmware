@@ -182,7 +182,8 @@ void ADC_IRQHandler(void)
 		handleError(&mtr[0], ERROR_ADC_OUT_OF_RANGE_IC);
 		handleError(&mtr[0], ERROR_ADC_OUT_OF_RANGE_VBUS);
 	}
-	__HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_AWD));
+MESC_ADC_IRQ_handler(&mtr[0]);
+	__HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_AWD | ADC_FLAG_JEOC));
     //HAL_ADC_IRQHandler(&hadc1);
 
   /* USER CODE END ADC_IRQn 0 */
@@ -197,7 +198,7 @@ void ADC_IRQHandler(void)
 void TIM1_BRK_TIM9_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_BRK_TIM9_IRQn 0 */
-
+	handleError(&mtr[0], ERROR_BRK);
   /* USER CODE END TIM1_BRK_TIM9_IRQn 0 */
   HAL_TIM_IRQHandler(&htim1);
   HAL_TIM_IRQHandler(&htim9);

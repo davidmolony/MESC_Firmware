@@ -91,23 +91,23 @@ static void TASK_main(void *pvParameters){
             
 #ifndef DASH
             uint32_t sum_fastloop=0;
-            uint32_t sum_hyperloop=0;
+            uint32_t sum_pwmloop=0;
             uint32_t max_pwm=0;
 
             for(int i=0;i<NUM_MOTORS;i++){
             	sum_fastloop += mtr[i].FOC.cycles_fastloop;
-            	sum_hyperloop += mtr[i].FOC.cycles_hyperloop;
+            	sum_pwmloop += mtr[i].FOC.cycles_pwmloop;
             	if(max_pwm < mtr[i].FOC.pwm_frequency){
             		max_pwm = mtr[i].FOC.pwm_frequency;
             	}
             }
 
-            uint32_t max_cycles= sum_fastloop > sum_hyperloop ? sum_fastloop : sum_hyperloop;
+            uint32_t max_cycles= sum_fastloop > sum_pwmloop ? sum_fastloop : sum_pwmloop;
             uint32_t cycles_available = HAL_RCC_GetHCLKFreq() / max_pwm;
 
             uint32_t cycles_left = cycles_available - max_cycles;
             float foc_load = 100.0f / cycles_available * max_cycles;
-            ttprintf("%sFOC load %3.0f%% - Hyperloop: %5d Fastloop: %5d Cycles to overrun: %5d\r\n", TERM_getVT100Code(_VT100_ERASE_LINE_END, 0),foc_load , sum_hyperloop, sum_fastloop, cycles_left);
+            ttprintf("%sFOC load %3.0f%% - PWMloop: %5d Fastloop: %5d Cycles to overrun: %5d\r\n", TERM_getVT100Code(_VT100_ERASE_LINE_END, 0),foc_load , sum_pwmloop, sum_fastloop, cycles_left);
 #endif
             uint32_t heapRemaining = xPortGetFreeHeapSize();
             ttprintf("%sMem: \t%db total,\t %db free,\t %db used (%d%%)\r\n", TERM_getVT100Code(_VT100_ERASE_LINE_END, 0), configTOTAL_HEAP_SIZE, heapRemaining, configTOTAL_HEAP_SIZE - heapRemaining, ((configTOTAL_HEAP_SIZE - heapRemaining) * 100) / configTOTAL_HEAP_SIZE);

@@ -43,6 +43,7 @@
 #include "stm32fxxx_hal.h"
 #include "MESCmotor_state.h"
 #include "MESCmotor.h"
+#include "MESCtemp.h"
 #include "MESC_BLDC.h"
 
 //#include "MESCposition.h"
@@ -79,6 +80,10 @@
 #define MAX_MODULATION 0.95f //default is 0.95f, can allow higher or lower. up to
 							//1.1 stable with 5 sector switching,
 							//1.05 is advised as max for low side shunts
+#endif
+
+#ifndef MIN_HALL_FLUX_VOLTS
+#define MIN_HALL_FLUX_VOLTS 10.0f
 #endif
 
 #ifndef I_MEASURE
@@ -198,10 +203,13 @@ typedef struct {
 	int MOSv_T;
 	int MOSw_T;
 
-	int Motor_T;
+	TEMP MOS_temp;
 
-	int ADC_in_ext1;
-	int ADC_in_ext2;
+	int Motor_T;
+	TEMP Motor_temp;
+
+	int16_t ADC_in_ext1;
+	int16_t ADC_in_ext2;
 }MESC_raw_typedef;
 
 //extern MESC_raw_typedef motor1;
@@ -283,6 +291,7 @@ typedef struct {
 
   float inverterVoltage[3];
   MESCiq_s Idq_req;							//The input to the PI controller. Load this with the values you want.
+  MESCiq_s Idq_prereq2;
   MESCiq_s Idq_prereq; 						//Before we set the input to the current PI controller, we want to run a series of calcs (collect variables,
 										  	  //calculate MTPA... that needs to be done without it putting jitter onto the PI input.
   float T_rollback;							//Scale the input parameters by this amount when thermal throttling
@@ -303,7 +312,7 @@ typedef struct {
 
 
 //Hall start
-  int hall_initialised;
+  uint16_t hall_initialised;
   int hall_start_now;
 //Encoder start
   int enc_start_now;
@@ -333,6 +342,8 @@ typedef struct {
   float FW_threshold;
   float FW_multiplier;
   float FW_current;
+  float FW_ehz_max;
+  float FW_estep_max;
 
   float flux_a;
   float flux_b;
@@ -373,7 +384,7 @@ typedef struct {
 
   float IIR[2];
   uint32_t cycles_fastloop;
-  uint32_t cycles_hyperloop;
+  uint32_t cycles_pwmloop;
 } MESCfoc_s;
 
 extern MESCfoc_s foc_vars;
@@ -481,9 +492,11 @@ typedef struct{
 typedef struct{
 	TIM_HandleTypeDef *mtimer; //3 phase PWM timer
 	TIM_HandleTypeDef *stimer; //Timer that services the slowloop
+	TIM_HandleTypeDef *enctimer; //Timer devoted to taking incremental encoder inputs
 //problematic if there is no SPI allocated//	SPI_HandleTypeDef *encspi; //The SPI we have configured to talk to the encoder for this motor instance
 	motor_state_e MotorState;
 	motor_sensor_mode_e MotorSensorMode;
+	motor_startup_sensor_e SLStartupSensor;
 	motor_control_mode_e ControlMode;
 	motor_control_type_e MotorControlType;
 	HighPhase_e HighPhase;
@@ -629,8 +642,11 @@ void initialiseInverter(MESC_motor_typedef *_motor);
 
 void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor);
 							//Put this into the PWM interrupt,
-							//(or less optimally) ADC conversion complete interrupt
-							//If using ADC interrupt, may want to get ADC to convert on top and bottom of PWM
+void MESC_ADC_IRQ_handler(MESC_motor_typedef *_motor);
+							//Put this into the ADC interrupt
+							//Alternatively, the PWM and ADC IRQ handlers can be
+							//stacked in a single interrupt occurring once per period
+							//but HFI will be lost
 void fastLoop(MESC_motor_typedef *_motor);
 void hyperLoop(MESC_motor_typedef *_motor);
 void VICheck(MESC_motor_typedef *_motor);
@@ -699,6 +715,7 @@ void getDeadtime(MESC_motor_typedef *_motor);
 void LRObserver(MESC_motor_typedef *_motor);
 void LRObserverCollect(MESC_motor_typedef *_motor);
 void HallFluxMonitor(MESC_motor_typedef *_motor);
+void getIncEncAngle(MESC_motor_typedef *_motor);
 void logVars(MESC_motor_typedef *_motor);
 void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma);
 void RunHFI(MESC_motor_typedef *_motor);
