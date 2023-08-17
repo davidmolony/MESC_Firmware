@@ -5,7 +5,9 @@ Code base that blew up a MP2 with 150v FETs.
 Notes:
 
 * MP2 worked fine at 30v running a flipsky
-* Connected MP2 to QS205, with 100v psu, brought up throttle slowly - board stopped
+* Connected MP2 to QS205, with 100v psu, brought up throttle slowly
+* Throttle hit near adc1_min, board stopped
+* No sound. No parts smoked. 
 * Failure blew the pill, the DC-DC 12v
 * Performing continuity check from https://github.com/badgineer/MP2-ESC/blob/main/docs/PCB_ASSEMBLY_TESTING.md
 * Top and bottom FETs on phase V tested anonymously
