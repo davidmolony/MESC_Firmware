@@ -44,6 +44,14 @@
 #define DEFAULT_MOTOR_R 0.011f //Ohms
 #define DEFAULT_MOTOR_PP 14 //Pole Pairs
 
+#elif defined(FLIPSKY_6382_190KV) //Manually defined on bench, need checking
+#define MAX_MOTOR_PHASE_CURRENT 100.0f
+#define DEFAULT_MOTOR_POWER 50.0f
+#define DEFAULT_FLUX_LINKAGE 0.0045f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000015f //Henries
+#define DEFAULT_MOTOR_Lq 0.000022f//Henries
+#define DEFAULT_MOTOR_R 0.0160f //Ohms -- doesnt account for MOSFETs -- manufacturer said 0.050, wasnt close.
+#define DEFAULT_MOTOR_PP 14 //Pole Pairs
 
 #elif defined(CA120) //Reliable params
 #define MAX_MOTOR_PHASE_CURRENT 300.0f
@@ -59,15 +67,23 @@
 #define MAX_MOTOR_PHASE_CURRENT 50.0f
 #define DEFAULT_MOTOR_POWER 250.0f
 #define DEFAULT_FLUX_LINKAGE 0.016f//wB
-#define DEFAULT_MOTOR_Ld 0.000110f //Henries
-#define DEFAULT_MOTOR_Lq 0.000170f//Henries
+#define DEFAULT_MOTOR_Ld 0.00011f //Henries
+#define DEFAULT_MOTOR_Lq 0.00017f//Henries
 #define DEFAULT_MOTOR_R 0.070f //Ohms
 #define DEFAULT_MOTOR_PP 7 //Pole Pairs
-
 
 #elif defined(JENS_SERVO)
 
 #elif defined(SEM_HDM82A8_30S)
+
+#elif defined(QS205)
+#define MAX_MOTOR_PHASE_CURRENT 350.0f
+#define DEFAULT_MOTOR_POWER 5000.0f
+#define DEFAULT_FLUX_LINKAGE 0.0514f //motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.0000475f  //Henries
+#define DEFAULT_MOTOR_Lq 0.0000615f  //Henries
+#define DEFAULT_MOTOR_R 0.01445f     //Ohms
+#define DEFAULT_MOTOR_PP 16          //Pole Pairs
 
 #elif defined(QS165)
 #define MAX_MOTOR_PHASE_CURRENT 350.0f //350A seems like a reasonable upper limit for these
@@ -88,8 +104,6 @@
 #define DEFAULT_MOTOR_R 0.0060f //Ohms
 #define DEFAULT_MOTOR_PP 5 //Pole Pairs
 //This assumes a 5mohm QS165V2 and 1.5mohm of MOS and cable. With such low resistance, it becomes important
-
-
 
 #elif defined(QS138)
 #define MAX_MOTOR_PHASE_CURRENT 400.0f //There seems to be no limit for these
