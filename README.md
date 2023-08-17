@@ -8,7 +8,9 @@ Notes:
 * Connected MP2 to QS205, with 100v psu, brought up throttle slowly
 * Throttle hit near adc1_min, board stopped
 * No sound. No parts smoked. 
-* The pill is toasted. The 12V DC-DC shorted out
+* The pill is toasted.
+* 12V to ground shorted out
+* Pin 4 of the NCP5183DR2G gate drivers (for phase V) shorts to ground
 * Performing continuity check from https://github.com/badgineer/MP2-ESC/blob/main/docs/PCB_ASSEMBLY_TESTING.md
 * Top and bottom FETs on phase V tested anonymously
 
