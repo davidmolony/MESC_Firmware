@@ -5,46 +5,44 @@
  *      Author: HPEnvy
  */
 
-#ifndef INC_MX_FOC_IMS_H_
-#define INC_MX_FOC_IMS_H_
+#ifndef INC_INDI_600_H_
+#define INC_INDI_600_H_
 
 //Pick a motor for default
-#define MCMASTER_70KV_8080
-//#define ANT_120_70_62KV
+#define QS138_90H
 
 #define SHUNT_POLARITY -1.0f
+#define MISSING_VCURRSENSOR
 
-#define ABS_MAX_PHASE_CURRENT 400.0f
-#define ABS_MAX_BUS_VOLTAGE 48.0f
+#define ABS_MAX_PHASE_CURRENT 1200.0f
+#define ABS_MAX_BUS_VOLTAGE 96.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
-#define R_SHUNT 0.00025f
-#define OPGAIN 20.0f*30.0f/(4.7f+4.7f+30.0f) //Control board v0.1 has a 4.7-30-4.7 divider onto the opamp input to enable some filtering
+#define R_SHUNT 0.0009f //This is 1800A measuring range???
+#define OPGAIN 1 //This is a phase hall sensor design
 
-#define R_VBUS_BOTTOM 2700.0f //Phase and Vbus voltage sensors
-#define R_VBUS_TOP 100000.0f
+#define R_VBUS_BOTTOM 2000.0f //Phase and Vbus voltage sensors
+#define R_VBUS_TOP 150000.0f
 
 
 
-#define MAX_ID_REQUEST 100.0f
-#define MAX_IQ_REQUEST 100.0f
+#define MAX_ID_REQUEST 2.0f
+#define MAX_IQ_REQUEST 100.0f //Can overwrite this from the terminal
 
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
 #define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
-#define DEADTIME_COMP_V 10
-//#define MAX_MODULATION 1.02f
-#define CUSTOM_DEADTIME 800 //ns
+#define DEADTIME_COMP_V 15
+//#define MAX_MODULATION 1.00f //Normally 0.95 used
+#define CUSTOM_DEADTIME 1000 //ns
 
 #define USE_FIELD_WEAKENINGV2
-#define USE_HIGHHOPES_PHASE_BALANCING
+//#define USE_HIGHHOPES_PHASE_BALANCING
 
-#define GET_THROTTLE_INPUT  _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR3;  // Throttle for IMS board
+#define GET_THROTTLE_INPUT  _motor->Raw.ADC_in_ext1 = hadc1.Instance->JDR4;  // Throttle for IMS board
 #define GET_THROTTLE_INPUT2  _motor->Raw.ADC_in_ext2 = ADC1_buffer[3];  // Throttle for IMS board
 
 
-#define GET_FETU_T _motor->Raw.MOSu_T = ADC1_buffer[0] //Temperature on PA3
-#define GET_FETV_T _motor->Raw.MOSv_T = ADC2_buffer[2] //Temperature on PB0
-#define GET_FETW_T _motor->Raw.MOSw_T = ADC2_buffer[3] //Temperature on PB1
-#define GET_MOTOR_T _motor->Raw.Motor_T = ADC2_buffer[0]
+#define GET_FETU_T _motor->Raw.MOSu_T = ADC1_buffer[0]; //Temperature on PA3
+#define GET_MOTOR_T _motor->Raw.Motor_T = hadc2.Instance->JDR3;
 //#define USE_LR_OBSERVER
 
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
@@ -77,11 +75,11 @@
 
 //GPIOs for LEDs
 #define FASTLED GPIOB
-#define FASTLEDIO GPIO_PIN_5
-#define FASTLEDIONO 5
+#define FASTLEDIO GPIO_PIN_0
+#define FASTLEDIONO 0
 #define SLOWLED GPIOB
-#define SLOWLEDIO GPIO_PIN_7
-#define SLOWLEDIONO 7
+#define SLOWLEDIO GPIO_PIN_1
+#define SLOWLEDIONO 1
 
 
 //GPIO for IC timer //These actually have to be timer compatible pins and
@@ -94,10 +92,18 @@
 //#define IC_TIMER_RCPWM
 #define IC_TIMER_ENCODER
 
-#define KILLSWITCH_GPIO GPIOD
-#define KILLSWITCH_PIN GPIO_PIN_2
-#define KILLSWITCH_IONO 2
+//#define KILLSWITCH_GPIO GPIOD
+//#define KILLSWITCH_PIN GPIO_PIN_2
+//#define KILLSWITCH_IONO 2
+#define BRAKE_DIGITAL_GPIO GPIOB
+#define BRAKE_DIGITAL_PIN GPIO_PIN_2
+#define BRAKE_DIGITAL_IONO 2
+#define BRAKE_DIGITAL_CURRENT 50 //Default amps of on-off brake
+
+#define HILL_HOLD_GPIO GPIOB
+#define HILL_HOLD_PIN GPIO_PIN_2
+#define HILL_HOLD_IONO 2
 
 #define LOGLENGTH 1500
 
-#endif /* INC_MX_FOC_IMS_H_ */
+#endif /* INC_INDI_600_H_ */

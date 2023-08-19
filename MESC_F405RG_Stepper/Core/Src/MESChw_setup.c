@@ -225,10 +225,6 @@ void mesc_init_3( MESC_motor_typedef *_motor )
     HAL_ADCEx_InjectedStart( &hadc1 );
     HAL_ADCEx_InjectedStart( &hadc2 );
     HAL_ADCEx_InjectedStart( &hadc3 );
-//For inverting the ADC trigger polarity, intended for BLDC, not sure it works...
-//    hadc1.Instance->CR2|=ADC_CR2_JEXTEN;
-//    hadc2.Instance->CR2|=ADC_CR2_JEXTEN;
-//    hadc3.Instance->CR2|=ADC_CR2_JEXTEN;
 
 
     HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_4 );
@@ -247,4 +243,7 @@ void mesc_init_3( MESC_motor_typedef *_motor )
     HAL_Delay(50); //Need to let the ADC start before we enable the fastloop interrupt, otherwise it returns 0 and errors.
 
     __HAL_TIM_ENABLE_IT(_motor->mtimer, TIM_IT_UPDATE);
+    __HAL_ADC_ENABLE_IT(&hadc1,ADC_IT_JEOC);
+    __HAL_ADC_ENABLE_IT(&hadc2,ADC_IT_EOC);
+
 }

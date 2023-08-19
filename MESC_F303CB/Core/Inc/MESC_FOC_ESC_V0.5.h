@@ -8,14 +8,14 @@
 #ifndef INC_MESC_FOC_ESC_V0_5_H_
 #define INC_MESC_FOC_ESC_V0_5_H_
 //Pick a motor for default
-#define VOILAMART1500W
+#define G30//VOILAMART1500W
 #define PWM_FREQUENCY 20000 //This is half the VESC zero vector frequency; i.e. 20k is equivalent to VESC 40k
 //#define CUSTOM_DEADTIME 600 //ns
 
 #define SHUNT_POLARITY -1.0
 
-#define ABS_MAX_PHASE_CURRENT 140.0f
-#define ABS_MAX_BUS_VOLTAGE 87.0f
+#define ABS_MAX_PHASE_CURRENT 100.0f
+#define ABS_MAX_BUS_VOLTAGE 40.0f
 #define ABS_MIN_BUS_VOLTAGE 24.0f
 #define R_SHUNT 0.0005f
 //ToDo need to define using a discrete opamp with resistors to set gain vs using one with a specified gain
@@ -28,7 +28,7 @@
 #define ADC_OFFSET_DEFAULT 1870.0f;
 
 #define MAX_ID_REQUEST 10.0f
-#define MAX_IQ_REQUEST 100.0f
+#define MAX_IQ_REQUEST 30.0f
 
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
 //#define DEADTIME_COMP
@@ -68,9 +68,12 @@
 //#define DEFAULT_HFI_TYPE HFI_TYPE_45
 //#define DEFAULT_HFI_TYPE HFI_TYPE_D
 //#define DEFAULT_HFI_TYPE HFI_TYPE_SPECIAL
+#define MAX_MODULATION 0.5f
 
-//#define USE_HALL_START
+#define USE_HALL_START
 #define HALL_VOLTAGE_THRESHOLD 1.5f
+#define MIN_HALL_FLUX_VOLTS 5.0f
+
 
 //#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
 #define POLE_PAIRS 10

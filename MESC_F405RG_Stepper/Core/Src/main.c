@@ -201,7 +201,7 @@ HAL_Delay(1);
 
   mtr[1].mtimer = &htim8;
   mtr[1].stimer = &htim2;
-  MESCInit(&mtr[1]);
+  //MESCInit(&mtr[1]);
   __HAL_TIM_ENABLE_IT(&htim2, TIM_IT_UPDATE);
 
 
@@ -418,7 +418,7 @@ static void MX_ADC1_Init(void)
   sConfigInjected.InjectedRank = 1;
   sConfigInjected.InjectedNbrOfConversion = 4;
   sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_15CYCLES;
-  sConfigInjected.ExternalTrigInjecConvEdge = ADC_EXTERNALTRIGINJECCONVEDGE_FALLING;
+  sConfigInjected.ExternalTrigInjecConvEdge = ADC_EXTERNALTRIGINJECCONVEDGE_RISING;
   sConfigInjected.ExternalTrigInjecConv = ADC_EXTERNALTRIGINJECCONV_T1_TRGO;
   sConfigInjected.AutoInjectedConv = DISABLE;
   sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;

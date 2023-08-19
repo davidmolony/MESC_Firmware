@@ -1,5 +1,5 @@
 /*
-* Copyright 2021-2022 cod3b453
+* Copyright 2021-2023 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -607,9 +607,8 @@ ProfileStatus profile_get_entry(
     return ret;
 }
 
-ProfileStatus profile_check_entry(
-    char const * name, uint32_t const signature,
-    void * const buffer, uint32_t * const length)
+static ProfileStatus profile_check_entry(
+    char const * name, uint32_t const signature )
 {
     ProfileStatus ret = PROFILE_STATUS_ERROR_NAME;
     uint32_t blk = 0;
@@ -786,7 +785,7 @@ ProfileStatus profile_put_entry(
 {
     profile_status_storage = PROFILE_STATUS_UNKNOWN;
     profile_status_header  = PROFILE_STATUS_UNKNOWN;
-    profile_status_entry   = profile_check_entry( name, signature, buffer, length);
+    profile_status_entry   = profile_check_entry( name, signature );
     profile_status_other   = PROFILE_STATUS_UNKNOWN;
 
     if (profile_status_entry != PROFILE_STATUS_SUCCESS)

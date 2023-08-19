@@ -449,7 +449,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].m.R							, 0.0f		, 10.0f		, "r_phase"		, "Phase resistance"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].m.L_D						, 0.0f		, 10.0f		, "ld_phase"	, "Phase inductance"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].m.L_Q						, 0.0f		, 10.0f		, "lq_phase"	, "Phase inductance"					, VAR_ACCESS_RW	, callback  , &TERM_varList);
-	TERM_addVar(mtr[0].HFIType						, 0			, 3			, "hfi"			, "HFI type [0=None, 1=45deg, 2=d axis]", VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].HFIType						, 0			, 3			, "hfi_type"	, "HFI type [0=None, 1=45deg, 2=d axis]", VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.hfi_voltage				, 0.0f		, 50.0f		, "hfi_volt"	, "HFI voltage"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.HFI45_mod_didq			, 0.0f		, 2.0f		, "hfi_mod_didq", "HFI mod didq"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.HFI_Gain					, 0.0f		, 5000.0f	, "hfi_gain"	, "HFI gain"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
@@ -464,13 +464,23 @@ void populate_vars(){
 	TERM_addVar(input_vars.min_request_Idq.q		, -300.0f	, 0.0f		, "curr_min"	, "Min motor current"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.pwm_frequency			, 0.0f		, 100000.0f	, "pwm_freq"	, "PWM frequency"						, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(input_vars.UART_req					, -1000.0f	, 1000.0f	, "uart_req"	, "Uart input"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(input_vars.UART_dreq				, -1000.0f	, 1000.0f	, "uart_dreq"	, "Uart input"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.input_options			, 0			, 16		, "input_opt"	, "Inputs [1=ADC1 2=ADC2 4=PPM 8=UART]"	, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].safe_start[0]				, 0			, 1000		, "safe_start"	, "Countdown before allowing throttle"	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].safe_start[1]				, 0			, 1000		, "safe_count"	, "Live count before allowing throttle"	, VAR_ACCESS_R	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.enc_offset				, 0			, 65535		, "enc_offset"	, "Encoder alignment angle"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.FOCAngle					, 0			, 65535		, "FOC_angle"	, "FOC angle now"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.enc_angle				, 0			, 65535		, "enc_angle"	, "Encoder angle now"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.enc_counts					, 0			, 65535		, "enc_counts"	, "Encoder ABI PPR"						, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.encoder_polarity_invert	, 0			, 1			, "enc_polarity", "Encoder polarity"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].m.pole_pairs					, 0			, 30		, "motor_pp"	, "Number of motor pole PAIRS"			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].MotorSensorMode				, 0			, 30		, "motor_sensor", "0=SL, 1=Hall, 2=OL, 3=ENC, 4=HFI"	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].MotorSensorMode				, 0			, 30		, "motor_sensor", "0=SL, 1=Hall, 2=OL, 3=ABSENC, 4=INC_ENC, 5=HFI"	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].SLStartupSensor				, 0			, 30		, "SL_sensor"	, "0=OL, 1=Hall, 2=PWMENC, 3=HFI"		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.openloop_step			, 0.0f		, 6000.0f	, "ol_step"		, "Angle per PWM period openloop"		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.FW_ehz_max				, 0.0f		, 6000.0f	, "fw_ehz"		, "max eHz under field weakenning"		, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(MESC_all_errors						, -HUGE_VAL	, HUGE_VAL	, "error_all"	, "All errors encountered"				, VAR_ACCESS_R	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.hall_initialised			, 0		, 1	, "Hall_initialised"		, "hall start flag"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVarArrayFloat(mtr[0].m.hall_flux, sizeof(mtr[0].m.hall_flux),  -10.0f, 10.0f, "Hall_flux", "hall start table", VAR_ACCESS_RW, NULL, &TERM_varList);
 
 
 	#ifdef HAL_CAN_MODULE_ENABLED
@@ -479,12 +489,38 @@ void populate_vars(){
 #endif
 
 	TermVariableDescriptor * desc;
-	desc = TERM_addVar(MESC_errors						,INT32_MIN 	, INT32_MAX , "error"		, "System errors"						, VAR_ACCESS_TR  , NULL		, &TERM_varList);
-	desc = TERM_addVar(mtr[0].Conv.Vbus					, 0.0f		, HUGE_VALF , "vbus"		, "Read input voltage"					, VAR_ACCESS_TR  , NULL		, &TERM_varList);
-	TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+		desc = TERM_addVar(mtr[0].Conv.Vbus         , 0.0f      , HUGE_VAL  , "vbus"        , "Read input voltage"                  , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
 
-	desc = TERM_addVar(mtr[0].FOC.eHz					    , -HUGE_VALF , HUGE_VALF  , "ehz"			, "Motor electrical hz"					, VAR_ACCESS_TR  , NULL		, &TERM_varList);
-	TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+		desc = TERM_addVar(mtr[0].FOC.eHz           , -HUGE_VAL , HUGE_VAL  , "ehz"         , "Motor electrical hz"                 , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].FOC.Idq_smoothed.d , -HUGE_VAL , HUGE_VAL  , "id"      , "Phase Idq_d smoothed"                   , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].FOC.Idq_smoothed.q , -HUGE_VAL , HUGE_VAL  , "iq"      , "Phase Idq_q smoothed"                   , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].Raw.ADC_in_ext1    , 0		, 4096       , "adc1"   , "Raw ADC throttle"                    	, VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].Conv.MOSu_T        , 0.0f		, 4096.0f    , "TMOS"   , "MOSFET temp, kelvin"                     , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].Conv.Motor_T       , 0.0f 	, 4096.0f    , "TMOT"   , "Motor temp, kelvin"                      , VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(MESC_errors          	, -HUGE_VAL , HUGE_VAL  , "error" 	, "System errors now"       					, VAR_ACCESS_TR  , NULL			, &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].FOC.Vdq.q     	, -4096.0f , 4096.0f  	, "Vq"    	, "FOC_Vdq_q"     							, VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].FOC.Vdq.d     	, -4096.0f , 4096.0f  	, "Vd"    , "FOC_Vdq_d"     							, VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
+
+		desc = TERM_addVar(mtr[0].FOC.Idq_req.q 	, -4096.0f , 4096.0f  	, "iqreq" , "mtr[0].FOC.Idq_req.q"     					, VAR_ACCESS_TR  , NULL         , &TERM_varList);
+		TERM_setFlag(desc, FLAG_TELEMETRY_ON);
 
 }
 
@@ -544,7 +580,7 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 
 	TASK_CAN_add_float(handle	, CAN_ID_TEMP_MOT_MOS1	, CAN_BROADCAST, motor_curr->Conv.Motor_T			, motor_curr->Conv.MOSu_T			, 0);
 	TASK_CAN_add_float(handle	, CAN_ID_TEMP_MOS2_MOS3	, CAN_BROADCAST, motor_curr->Conv.MOSv_T			, motor_curr->Conv.MOSw_T			, 0);
-	TASK_CAN_add_uint32(handle	, CAN_ID_FOC_HYPER		, CAN_BROADCAST, motor_curr->FOC.cycles_fastloop	, motor_curr->FOC.cycles_hyperloop	, 0);
+	TASK_CAN_add_uint32(handle	, CAN_ID_FOC_HYPER		, CAN_BROADCAST, motor_curr->FOC.cycles_fastloop	, motor_curr->FOC.cycles_pwmloop	, 0);
 
 }
 

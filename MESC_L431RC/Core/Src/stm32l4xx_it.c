@@ -229,8 +229,9 @@ void ADC1_IRQHandler(void)
 		handleError(&mtr[0], ERROR_ADC_OUT_OF_RANGE_IC);
 		handleError(&mtr[0], ERROR_ADC_OUT_OF_RANGE_VBUS);
 	}
+	MESC_ADC_IRQ_handler(&mtr[0]);
+	__HAL_ADC_CLEAR_FLAG(&hadc1, ADC_FLAG_JEOC|ADC_FLAG_AWD);
   /* USER CODE END ADC1_IRQn 0 */
-  HAL_ADC_IRQHandler(&hadc1);
   /* USER CODE BEGIN ADC1_IRQn 1 */
 
   /* USER CODE END ADC1_IRQn 1 */

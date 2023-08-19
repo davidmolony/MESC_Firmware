@@ -1,5 +1,5 @@
 /*
-* Copyright 2021-2022 cod3b453
+* Copyright 2021-2023 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -32,14 +32,15 @@
 #include "MESCcli.h"
 #include "MESCprofile.h"
 
+#include "MESC_MOTOR_DEFAULTS.h"
+// DANGER - Apply defaults before overriding 
 #include "stm32fxxx_hal.h"
 #include "math.h"
 #include <stdint.h>
-#include "MESC_MOTOR_DEFAULTS.h"
 
-MOTORProfile  * motor_profile = NULL;
+MOTORProfile * motor_profile = NULL;
 
-void motor_init( MOTORProfile const * const profile )
+void motor_init( MOTORProfile * const profile )
 {
     if (profile == PROFILE_DEFAULT)
     {
@@ -74,4 +75,9 @@ void motor_init( MOTORProfile const * const profile )
     {
     	motor_profile = profile;
     }
+}
+
+void speed_motor_limiter( void )
+{
+	motor_profile->Pmax = 50.0f; // Watts
 }

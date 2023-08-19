@@ -222,7 +222,8 @@ void ADC_IRQHandler(void)
 		handleError(&mtr[0], ERROR_ADC_OUT_OF_RANGE_IC);
 		handleError(&mtr[0], ERROR_ADC_OUT_OF_RANGE_VBUS);
 	}
-	__HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_JSTRT | ADC_FLAG_AWD));
+	MESC_ADC_IRQ_handler(&mtr[0]);
+	__HAL_ADC_CLEAR_FLAG(&hadc1, (ADC_FLAG_AWD|ADC_FLAG_JEOC));
     //HAL_ADC_IRQHandler(&hadc1);
 
   /* USER CODE END ADC_IRQn 0 */
@@ -234,9 +235,6 @@ void ADC_IRQHandler(void)
 /**
   * @brief This function handles TIM1 update interrupt and TIM10 global interrupt.
   */
-
-int counterhtim1;
-
 void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
@@ -251,8 +249,6 @@ void TIM1_UP_TIM10_IRQHandler(void)
 /**
   * @brief This function handles TIM2 global interrupt.
   */
-
-int counterhtim2;
 void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */

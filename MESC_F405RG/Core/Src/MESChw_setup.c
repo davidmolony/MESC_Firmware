@@ -75,6 +75,15 @@ void getRawADC(MESC_motor_typedef *_motor) {
   _motor->Raw.Iv = hadc2.Instance->JDR1;  // V Current
   _motor->Raw.Iw = hadc3.Instance->JDR1;  // W Current
   _motor->Raw.Vbus = hadc3.Instance->JDR3;  // DC Link Voltage
+#ifdef MISSING_UCURRSENSOR //Avoid errors due to useless readings of unconnected channel
+  _motor->Raw.Iu = 2048;  // U Current
+#endif
+#ifdef MISSING_VCURRSENSOR
+  _motor->Raw.Iv = 2048;  // V Current
+#endif
+#ifdef MISSING_WCURRSENSOR
+  _motor->Raw.Iw = 2048;  // W Current
+#endif
 
   GET_THROTTLE_INPUT; //Define a similar macro in the header file for your board that maps the throttle
 #ifdef GET_THROTTLE_INPUT2
@@ -238,4 +247,5 @@ void mesc_init_3( MESC_motor_typedef *_motor )
     HAL_Delay(50); //Need to let the ADC start before we enable the fastloop interrupt, otherwise it returns 0 and errors.
 
     __HAL_TIM_ENABLE_IT(_motor->mtimer, TIM_IT_UPDATE);
+    __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_JEOC);
 }

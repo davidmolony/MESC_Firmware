@@ -1,5 +1,5 @@
 /*
-* Copyright 2021-2022 cod3b453
+* Copyright 2021-2023 cod3b453
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are met:
@@ -49,7 +49,6 @@ extern void bist_bat( void );
 extern void bist_cli( void );
 extern void i_cli( void );
 extern void bist_profile( void );
-extern void bist_speed( void );
 extern void bist_temp( void );
 
 static void flash_register_profile_io( void )
@@ -76,7 +75,6 @@ This code should mirror the implementation of main.c
     fprintf( stdout, "Initialise components\n" );
     bat_init( PROFILE_DEFAULT );
     speed_init( PROFILE_DEFAULT );
-    temp_init( PROFILE_DEFAULT );
     fprintf( stdout, "Initialise user Interface\n" );
     ui_init( PROFILE_DEFAULT );
 
@@ -392,7 +390,6 @@ int main( int argc, char * argv[] )
     bool en_bat     = en;
     bool en_cli     = en;
     bool en_profile = en;
-    bool en_speed   = en;
     bool en_temp    = en;
 
     for ( int a = 1; a < argc; ++a )
@@ -429,11 +426,6 @@ int main( int argc, char * argv[] )
             en_profile = true;
         }
 
-        if (strcmp( argv[a], "+speed" ) == 0)
-        {
-            en_speed = true;
-        }
-
         if (strcmp( argv[a], "+temp" ) == 0)
         {
             en_temp = true;
@@ -453,11 +445,6 @@ int main( int argc, char * argv[] )
     if (en_profile)
     {
         bist_profile();
-    }
-
-    if (en_speed)
-    {
-        bist_speed();
     }
 
     if (en_temp)

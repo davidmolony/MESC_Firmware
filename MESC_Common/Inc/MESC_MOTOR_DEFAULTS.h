@@ -17,6 +17,7 @@
 //#define JENS_SERVO
 //#define SEM_HDM82A8_30S
 //#define QS165
+//#define QS165V2
 //#define PROPDRIVE2830_1000KV
 //#define BR3536_1200KV
 //#define QS138_90H
@@ -78,13 +79,25 @@
 #define DEFAULT_MOTOR_PP 7 //Pole Pairs
 //This assumes a 6.5mohm QS165 and 1.5mohm of MOS and cable. With such low resistance, it becomes important
 
-#elif defined(QS138)
-#define MAX_MOTOR_PHASE_CURRENT 400.0f //There seems to be no limit for these
-#define DEFAULT_MOTOR_POWER 4000.0f //Go on, change this to 20000...
-#define DEFAULT_FLUX_LINKAGE 0.01180f//Set this to the motor linkage in wB
-#define DEFAULT_MOTOR_Ld 0.000080f //Henries
-#define DEFAULT_MOTOR_Lq 0.000130f//Henries
-#define DEFAULT_MOTOR_R 0.0530f //Ohms
+#elif defined(QS165V2)
+#define MAX_MOTOR_PHASE_CURRENT 450.0f //450A seems like a reasonable upper limit for these V2
+#define DEFAULT_MOTOR_POWER 12000.0f //Go on, change this to 15000
+#define DEFAULT_FLUX_LINKAGE 0.019f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000042f //Henries
+#define DEFAULT_MOTOR_Lq 0.000065f//Henries
+#define DEFAULT_MOTOR_R 0.0060f //Ohms
+#define DEFAULT_MOTOR_PP 5 //Pole Pairs
+//This assumes a 5mohm QS165V2 and 1.5mohm of MOS and cable. With such low resistance, it becomes important
+
+
+
+#elif defined(QS138_90H)
+#define MAX_MOTOR_PHASE_CURRENT 700.0f //There seems to be no limit for these
+#define DEFAULT_MOTOR_POWER 15000.0f //Go on, change this to 20000...
+#define DEFAULT_FLUX_LINKAGE 0.0195f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000030f //Henries
+#define DEFAULT_MOTOR_Lq 0.000042f//Henries
+#define DEFAULT_MOTOR_R 0.0030f //Ohms
 #define DEFAULT_MOTOR_PP 5 //Pole Pairs
 
 #elif defined(VOILAMART1500W)
@@ -114,6 +127,15 @@
 #define DEFAULT_MOTOR_R 0.20f //Ohms
 #define DEFAULT_MOTOR_PP 50 //Pole Pairs
 
+#elif defined(G30)
+#define MAX_MOTOR_PHASE_CURRENT 50.0f //
+#define DEFAULT_MOTOR_POWER 250.0f //...
+#define DEFAULT_FLUX_LINKAGE 0.0180f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.0000850f //Henries
+#define DEFAULT_MOTOR_Lq 0.000150f//Henries
+#define DEFAULT_MOTOR_R 0.0210f //Ohms
+#define DEFAULT_MOTOR_PP 17 //Pole Pairs - No idea, guess
+
 #elif defined(BR3536_1200KV)
 
 //#elif defined() //... Define your motor parameters here...//
@@ -126,6 +148,10 @@
 #define DEFAULT_MOTOR_Lq 0.000005f//Henries
 #define DEFAULT_MOTOR_R 0.0080f //Ohms Could be anything, but setting it lower means slower I term on the PID
 #define DEFAULT_MOTOR_PP 7 //Pole Pairs
+#define MIN_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE
+#define MAX_FLUX_LINKAGE DEFAULT_FLUX_LINKAGE
+#define FLUX_LINKAGE_GAIN (10.0f * sqrtf(DEFAULT_FLUX_LINKAGE))
+#define NON_LINEAR_CENTERING_GAIN 5000.0f
 
 #endif
 
