@@ -1,9 +1,9 @@
 //First, include the header specific to your board, which includes hardware parameters like ABS MAX, shunts, potential divdiders
 //Ensure only one board's header file is uncommented!
-#include "MP2_V0_1.h"
+//#include "MP2_V0_1.h"
 //#include "CL700_V0_3.h"
 //#include "INDI-600.h"
-//#include "MX_FOC_IMS.h"
+#include "MX_FOC_IMS.h"
 //#include "MX_FOC_GaN.h"
 //#include "GIGAVESC.h"
 

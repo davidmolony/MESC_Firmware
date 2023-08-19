@@ -158,6 +158,10 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	_motor->FOC.encoder_polarity_invert = DEFAULT_ENCODER_POLARITY;
 	_motor->FOC.enc_period_count = 1; //Avoid /0s
 
+	//ABI Incremental encoder
+	_motor->m.enc_counts = 4096;//Default to this, common for many motors. Avoid div0.
+	_motor->FOC.enc_ratio = 65536/_motor->m.enc_counts;
+
 
 	_motor->hall.hall_error = 0;
 	//Init the BLDC
@@ -396,7 +400,7 @@ void MESC_ADC_IRQ_handler(MESC_motor_typedef *_motor){
 // The first few clock cycles of the interrupt should not use the adc readings,
 // since the currents require approximately 1us = 144 clock cycles (f405) and 72
 // clock cycles (f303) to convert.
-
+int16_t diff;
 void fastLoop(MESC_motor_typedef *_motor) {
 	uint32_t cycles = CPU_CYCLES;
   // Call this directly from the TIM top IRQ
@@ -445,6 +449,7 @@ void fastLoop(MESC_motor_typedef *_motor) {
 //			writePWM(_motor);
     		break;
     	case MOTOR_SENSOR_MODE_OPENLOOP:
+    		getIncEncAngle(_motor); //Add this for setting up encoder
 			OLGenerateAngle(_motor);
 			MESCFOC(_motor);
 //			writePWM(_motor);
@@ -575,11 +580,53 @@ void fastLoop(MESC_motor_typedef *_motor) {
     	  generateBreak(_motor);
       }else{
     	  generateEnable(_motor);
-    	  htim1.Instance->CCR1 = 0;
-    	  htim1.Instance->CCR2 = 0;
-    	  htim1.Instance->CCR3 = 0;
+//    	  htim1.Instance->CCR1 = 0;
+//    	  htim1.Instance->CCR2 = 0;
+//    	  htim1.Instance->CCR3 = 0;
     	  //We use "0", since this corresponds to all high side FETs off, always, and all low side ones on, always.
     	  //This means that current measurement can continue on low side and phase shunts, so over current protection remains active.
+    	  if(_motor->MotorSensorMode ==MOTOR_SENSOR_MODE_INCREMENTAL_ENCODER){
+    		  getIncEncAngle(_motor);
+    		  _motor->FOC.FOCAngle = _motor->FOC.enc_angle;
+//     		  if((_motor->FOC.parkangle-_motor->FOC.FOCAngle)>16384){
+//     			  if((_motor->FOC.parkangle-_motor->FOC.FOCAngle)>32768){
+//    			  _motor->FOC.parkangle = _motor->FOC.FOCAngle+16384;
+//     			  }
+//    		  }
+//     		  if((_motor->FOC.FOCAngle-_motor->FOC.parkangle)>16384){
+//    			  if((_motor->FOC.FOCAngle-_motor->FOC.parkangle)<32767){
+//    				  _motor->FOC.parkangle = _motor->FOC.FOCAngle-16384;
+//    			  }
+//    		  }
+    		  diff =(int)(_motor->FOC.FOCAngle-_motor->FOC.parkangle);
+    		  if(abs(diff)>16384){
+    			  if(diff<0){
+    				  _motor->FOC.parkangle = _motor->FOC.FOCAngle+16000;
+    			  __NOP();
+    			  }else{
+    				  _motor->FOC.parkangle = _motor->FOC.FOCAngle-16000;
+        			  __NOP();
+    			  }
+    		  }
+    		  if(abs(diff)<8000){
+				  _motor->FOC.Vdq.q = 0.0f;
+				  _motor->FOC.Vdq.d = 0.0f;
+    		  }else{
+    			  _motor->FOC.Idq_req.q = -_motor->FOC.park_current*(float)diff/(float)8192;//Fill with some PID logic
+    			  _motor->FOC.Idq_req.d = 0;//
+    			  if(diff>0){
+    				  _motor->FOC.Idq_req.q = _motor->FOC.Idq_req.q + _motor->FOC.park_current;
+    			  }else{
+    				  _motor->FOC.Idq_req.q = _motor->FOC.Idq_req.q - _motor->FOC.park_current;
+    			  }
+    			  MESCFOC(_motor);
+    		  }
+    	  }else{
+			  _motor->FOC.Vdq.q = 0.0f;
+			  _motor->FOC.Vdq.d = 0.0f;
+    	  }
+
+
       }
     break;
     case MOTOR_STATE_RUN_BLDC:
@@ -2551,10 +2598,10 @@ uint16_t test_counts;
   }
 void getIncEncAngle(MESC_motor_typedef *_motor){
 	if(_motor->FOC.encoder_polarity_invert){
-		_motor->FOC.enc_angle = _motor->m.pole_pairs*(65536-(16*(uint16_t)_motor->enctimer->Instance->CNT-16*(uint16_t)_motor->enctimer->Instance->CCR3)) + _motor->FOC.enc_offset;
+		_motor->FOC.enc_angle = _motor->m.pole_pairs*(65536-(_motor->FOC.enc_ratio*(uint16_t)_motor->enctimer->Instance->CNT-_motor->FOC.enc_ratio*(uint16_t)_motor->enctimer->Instance->CCR3)) + _motor->FOC.enc_offset;
 
 	}else{
-		_motor->FOC.enc_angle = _motor->m.pole_pairs*((16*(uint16_t)_motor->enctimer->Instance->CNT-16*(uint16_t)_motor->enctimer->Instance->CCR3)) + _motor->FOC.enc_offset;
+		_motor->FOC.enc_angle = _motor->m.pole_pairs*((_motor->FOC.enc_ratio*(uint16_t)_motor->enctimer->Instance->CNT-_motor->FOC.enc_ratio*(uint16_t)_motor->enctimer->Instance->CCR3)) + _motor->FOC.enc_offset;
 	}
 }
 

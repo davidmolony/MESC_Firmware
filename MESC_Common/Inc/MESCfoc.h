@@ -265,6 +265,7 @@ typedef struct {
   uint16_t enc_angle;
 
   uint16_t enc_period_count;//For PWM encoder interpolation
+  uint16_t enc_ratio;//For ABI encoder PPR to uint16_t conversion
   uint16_t last_enc_period;
   uint16_t last_enc_angle;
   int16_t enc_pwm_step;
@@ -274,6 +275,8 @@ typedef struct {
   float enccos;
   uint16_t encoder_polarity_invert;
   int enc_obs_angle;
+  uint16_t parkangle;
+  float park_current;
   float FLAdiff;
   MESCsin_cos_s sincosangle;  // This variable carries the current sin and cosine of
                          	  // the angle being used for Park and Clark transforms,

@@ -54,6 +54,7 @@ struct MOTORProfile
     float       non_linear_centering_gain; //Weber/second
     float 		hall_flux[6][2]; //Weber
     uint16_t 	hall_table[6][4];  // Lookup table, populated by the getHallTable()
+    uint16_t 	enc_counts;
 };
 
 typedef struct MOTORProfile MOTORProfile;
