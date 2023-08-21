@@ -173,7 +173,7 @@ HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_1);
 HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_2);
 HAL_TIM_IC_Start(&htim3, TIM_CHANNEL_3);
 
-#ifdef USE_ENCODER
+#ifdef USE_SPI_ENCODER
   HAL_SPI_Init(&hspi3);
 #endif
 

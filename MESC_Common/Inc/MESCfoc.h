@@ -277,6 +277,8 @@ typedef struct {
   int enc_obs_angle;
   uint16_t parkangle;
   float park_current;
+  float park_current_now;
+
   float FLAdiff;
   MESCsin_cos_s sincosangle;  // This variable carries the current sin and cosine of
                          	  // the angle being used for Park and Clark transforms,

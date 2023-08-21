@@ -68,7 +68,7 @@
 #define USE_HALL_START
 #define HALL_VOLTAGE_THRESHOLD 1.5f
 
-//#define USE_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
+//#define USE_SPI_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...
 #define POLE_PAIRS 10
 #define ENCODER_E_OFFSET 25000
 #define POLE_ANGLE (65536/POLE_PAIRS)
@@ -97,6 +97,11 @@
 #define KILLSWITCH_GPIO GPIOD
 #define KILLSWITCH_PIN GPIO_PIN_2
 #define KILLSWITCH_IONO 2
+
+//HAndbrake assigned pin C10 clashes with SPI for encoder! Don't use both
+#define HANDBRAKE_GPIO GPIOC
+#define HANDBRAKE_PIN GPIO_PIN_10
+#define HANDBRAKE_IONO 10
 
 #define LOGLENGTH 1500
 
