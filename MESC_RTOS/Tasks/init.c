@@ -100,7 +100,8 @@ uint32_t null_printf(const char* format, ...) {
 
 
 TERMINAL_HANDLE null_handle = {
-		.print=null_printf
+		.print=null_printf,
+		.currPermissionLevel=0
 };
 
 

@@ -104,7 +104,7 @@ typedef enum {
 } TermVariableType;
 
 typedef enum {
-    FLAG_TELEMETRY_ON = 0x01,
+    FLAG_TELEMETRY_ON = 0x01,			//Bit 0
 } TermFlagType;
 
 #define TERM_addVar(var, min, max, name, description, rw, cb, listHandle) _Generic((var), \
@@ -242,6 +242,8 @@ struct __TERMINAL_HANDLE__{
     uint32_t autocompleteStart;    
     TermPrintHandler print;
     char * currUserName;
+    uint8_t userPermissionLevel;
+    uint8_t currPermissionLevel;
     char * historyBuffer[TERM_HISTORYSIZE];
     uint32_t currHistoryWritePosition;
     uint32_t currHistoryReadPosition;

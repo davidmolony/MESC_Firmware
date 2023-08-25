@@ -155,3 +155,24 @@ uint8_t CMD_cls(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     
     return TERM_CMD_EXIT_SUCCESS;
 }
+
+uint8_t CMD_su(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+
+	for(int i=0;i<argCount;i++){
+		if(strcmp(args[i], "-e")==0){
+			handle->currPermissionLevel = handle->userPermissionLevel;
+			ttprintf("You are back to normal\r\n");
+		}
+		if(strcmp(args[i], "-g")==0){
+			handle->currPermissionLevel = 0;
+			ttprintf("Godmode\r\n");
+		}
+		if(strcmp(args[i], "-?")==0){
+			ttprintf("Usage: su [flags]\r\n");
+			ttprintf("\t -e\t Exit to default permission\r\n");
+			ttprintf("\t -g\t Godmode\r\n");
+			return TERM_CMD_EXIT_SUCCESS;
+		}
+	}
+	return TERM_CMD_EXIT_SUCCESS;
+}

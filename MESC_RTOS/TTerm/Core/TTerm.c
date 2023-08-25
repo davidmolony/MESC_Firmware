@@ -63,6 +63,8 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
     
     newHandle->inputBuffer = pvPortMalloc(TERM_INPUTBUFFER_SIZE);
     newHandle->currUserName = pvPortMalloc(strlen(usr) + 1 + strlen(TERM_getVT100Code(_VT100_FOREGROUND_COLOR, _VT100_YELLOW)) + strlen(TERM_getVT100Code(_VT100_RESET_ATTRIB, 0)));
+    newHandle->userPermissionLevel = 15;
+    newHandle->currPermissionLevel = newHandle->userPermissionLevel;
     
     //initialise function pointers
     newHandle->print = printFunction;  
@@ -103,6 +105,7 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
         TERM_addCommand(CMD_help, "help", "Displays this help message", 0, &TERM_defaultList);
         TERM_addCommand(CMD_cls, "cls", "Clears the screen", 0, &TERM_defaultList);
         TERM_addCommand(CMD_reset, "reset", "resets the device", 0, &TERM_defaultList);
+        TERM_addCommand(CMD_su, "su", "Become superuser", 0, &TERM_defaultList);
         
         #if TERM_SUPPORT_CWD == 1
         TERM_addCommand(CMD_ls, "ls", "List directory", 0, &TERM_defaultList);

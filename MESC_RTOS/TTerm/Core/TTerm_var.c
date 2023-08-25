@@ -101,6 +101,7 @@ TermVariableHandle * TERM_VAR_init(TERMINAL_HANDLE * handle, void * nvm_address,
 
 
 void TERM_VAR_LIST_add(TermVariableDescriptor * item, TermVariableDescriptor * head){
+
     uint32_t currPos = 0;
     TermVariableDescriptor ** lastComp = &head->nextVar;
     TermVariableDescriptor * currComp = head->nextVar;
@@ -156,6 +157,24 @@ void TERM_setFlag(TermVariableDescriptor * desc, TermFlagType flag){
 
 void TERM_clearFlag(TermVariableDescriptor * desc, TermFlagType flag){
 	desc->flags &= ~flag;
+}
+
+bool TERM_check_protection(TermVariableDescriptor * desc, uint8_t level){
+
+	uint32_t shifted_flag = desc->flags >> 28;
+
+	if(level <= shifted_flag){
+		return true;
+	}else{
+		return false;
+	}
+
+}
+
+void TERM_set_protection(TermVariableDescriptor * desc, uint8_t level){
+	uint32_t level_shifted = level << 28;
+	desc->flags &= 0x0FFFFFFF;  //Clear all protection Flags
+	desc->flags |= level_shifted;
 }
 
 TermVariableDescriptor * TERM_addVarSigned(void* variable, uint16_t typeSize, int32_t min, int32_t max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head){
@@ -642,13 +661,14 @@ uint8_t CMD_varList(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	TermVariableDescriptor * head = handle->varHandle->varListHead;
 	TermVariableDescriptor * currVar = handle->varHandle->varListHead->nextVar;
     for(;currPos < head->nameLength; currPos++){
-
-    	if(argCount && args[0] != NULL){
-    		if(strstr(currVar->name, args[0])){
-    			print_var_helperfunc(handle, currVar, flag);
-    		}
-    	}else{
-    		print_var_helperfunc(handle, currVar, flag);
+    	if(TERM_check_protection(currVar, handle->currPermissionLevel)){
+			if(argCount && args[0] != NULL){
+				if(strstr(currVar->name, args[0])){
+					print_var_helperfunc(handle, currVar, flag);
+				}
+			}else{
+				print_var_helperfunc(handle, currVar, flag);
+			}
     	}
         currVar = currVar->nextVar;
     }
@@ -813,6 +833,11 @@ uint8_t CMD_varSet(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     for(;currPos < head->nameLength; currPos++){
     	if(strcmp(args[0], currVar->name)==0){
     		if(currVar->rw & VAR_ACCESS_W){
+    			if(TERM_check_protection(currVar, handle->currPermissionLevel) == false){
+    				ttprintf("No permission\r\n");
+    				return TERM_CMD_EXIT_SUCCESS;
+    			}
+
 				bool truncated = set_value(currVar, args[1]);
 				if(currVar->cb != NULL){
 					currVar->cb(currVar);
