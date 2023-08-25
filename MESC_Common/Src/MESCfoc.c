@@ -96,6 +96,7 @@ static void houseKeeping(MESC_motor_typedef *_motor);
 static void clampBatteryPower(MESC_motor_typedef *_motor);
 static void ThrottleTemperature(MESC_motor_typedef *_motor);
 static void FWRampDown(MESC_motor_typedef *_motor);
+static int isHandbrake();
 
 void MESCInit(MESC_motor_typedef *_motor) {
 #ifdef STM32L4 // For some reason, ST have decided to have a different name for the L4 timer DBG freeze...
@@ -116,6 +117,13 @@ void MESCInit(MESC_motor_typedef *_motor) {
 	KILLSWITCH_GPIO->MODER &= ~(0b11<<(2*KILLSWITCH_IONO));
 #endif
 
+#ifdef HANDBRAKE_GPIO
+	HANDBRAKE_GPIO->MODER &= ~(0b11<<(2*HANDBRAKE_IONO));
+#endif
+
+#ifdef BRAKE_DIGITAL_GPIO
+	BRAKE_DIGITAL_GPIO->MODER &= ~(0b11<<(2*BRAKE_DIGITAL_IONO));
+#endif
 
 #ifdef INV_ENABLE_M1
 	INV_ENABLE_M1->MODER |= 0x1<<(INV_ENABLE_M1_IONO*2);
@@ -263,7 +271,7 @@ while(_motor->MotorState == MOTOR_STATE_INITIALISING){
   lognow = 1;
 #endif
 
-#ifdef USE_ENCODER
+#ifdef USE_SPI_ENCODER
   _motor->FOC.enc_offset = ENCODER_E_OFFSET;
 #endif
 	//  __HAL_TIM_ENABLE_IT(_motor->stimer, TIM_IT_UPDATE);
@@ -619,19 +627,22 @@ void fastLoop(MESC_motor_typedef *_motor) {
     		  if(abs(diff)<8000){
 				  _motor->FOC.Vdq.q = 0.0f;
 				  _motor->FOC.Vdq.d = 0.0f;
+				  _motor->FOC.park_current_now = 0.0f;
     		  }else{
     			  _motor->FOC.Idq_req.q = -_motor->FOC.park_current*(float)diff/(float)8192;//Fill with some PID logic
-    			  _motor->FOC.Idq_req.d = 0;//
+    			  _motor->FOC.Idq_req.d = 0.0f;//
     			  if(diff>0){
     				  _motor->FOC.Idq_req.q = _motor->FOC.Idq_req.q + _motor->FOC.park_current;
     			  }else{
     				  _motor->FOC.Idq_req.q = _motor->FOC.Idq_req.q - _motor->FOC.park_current;
     			  }
     			  MESCFOC(_motor);
+    			  _motor->FOC.park_current_now = _motor->FOC.Idq_req.q;
     		  }
     	  }else{
 			  _motor->FOC.Vdq.q = 0.0f;
 			  _motor->FOC.Vdq.d = 0.0f;
+			  _motor->FOC.park_current_now = 0.0f;
     	  }
 
 
@@ -657,7 +668,7 @@ void fastLoop(MESC_motor_typedef *_motor) {
 #ifdef USE_LR_OBSERVER
       LRObserverCollect();
 #endif
-#ifdef USE_ENCODER
+#ifdef USE_SPI_ENCODER
       tle5012(_motor);
 #endif
 
@@ -2070,7 +2081,6 @@ float  Square(float x){ return((x)*(x));}
 			  //Clamp the Q component; d component is not directly requested
 				if(_motor->FOC.Idq_prereq.q>input_vars.max_request_Idq.q){_motor->FOC.Idq_prereq.q = input_vars.max_request_Idq.q;}
 				if(_motor->FOC.Idq_prereq.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_prereq.q = input_vars.min_request_Idq.q;}
-
 			  break;
 		  case MOTOR_CONTROL_MODE_POSITION:
 			  RunPosControl(_motor);
@@ -2115,6 +2125,23 @@ float  Square(float x){ return((x)*(x));}
 				_motor->MotorState = MOTOR_STATE_RUN;
 			}
 			  break;
+		  case MOTOR_CONTROL_MODE_HANDBRAKE:
+			  if((_motor->MotorState==MOTOR_STATE_RUN)||(_motor->MotorState==MOTOR_STATE_TRACKING)){
+				  if((fabsf(_motor->FOC.Vdq.q)<0.1f*_motor->Conv.Vbus)){//Check it is not error or spinning fast!
+					  _motor->MotorState = MOTOR_STATE_SLAMBRAKE;
+				  }else{//We are going fast, just disable PWM
+					  _motor->MotorState = MOTOR_STATE_TRACKING;
+						generateBreak(_motor);
+				  }
+			  }
+			  float req_now = (input_vars.UART_req + input_vars.max_request_Idq.q * (input_vars.ADC1_req + input_vars.ADC2_req + input_vars.RCPWM_req));
+
+			  _motor->FOC.Idq_prereq.q = req_now;
+			  if((req_now>(0.05f*input_vars.max_request_Idq.q))&&(req_now>_motor->FOC.park_current_now)&&(_motor->MotorState == MOTOR_STATE_SLAMBRAKE)){
+				  _motor->MotorState = MOTOR_STATE_TRACKING;
+				  _motor->ControlMode = MOTOR_CONTROL_MODE_TORQUE;
+			  }
+			  break;
 		  default:
 			  __NOP();
 			  break;
@@ -2134,23 +2161,24 @@ float  Square(float x){ return((x)*(x));}
 			//Seperate based on control mode. We NEED to have a fallthrough here in transition state!
 			//Does not seem possible to use nested switches due to fallthrough requirement :(
 			if(_motor->ControlMode == MOTOR_CONTROL_MODE_TORQUE){
-					if(fabsf(_motor->FOC.Idq_prereq.q)>0.2f){
-						#ifdef HAS_PHASE_SENSORS
-						if(_motor->MotorControlType == MOTOR_CONTROL_TYPE_FOC){
-							_motor->MotorState = MOTOR_STATE_RUN;
-						}else if(_motor->MotorControlType == MOTOR_CONTROL_TYPE_BLDC){
-							_motor->MotorState = MOTOR_STATE_RUN_BLDC;
+				if(isHandbrake()){_motor->ControlMode = MOTOR_CONTROL_MODE_HANDBRAKE;}
+				if(fabsf(_motor->FOC.Idq_prereq.q)>0.2f){
+					#ifdef HAS_PHASE_SENSORS
+					if(_motor->MotorControlType == MOTOR_CONTROL_TYPE_FOC){
+						_motor->MotorState = MOTOR_STATE_RUN;
+					}else if(_motor->MotorControlType == MOTOR_CONTROL_TYPE_BLDC){
+						_motor->MotorState = MOTOR_STATE_RUN_BLDC;
 
-						}
-						#else
-						_motor->MotorState = MOTOR_STATE_RECOVERING;
-						break;
-						#endif
-						//fallthrough to RUN, no break!
-					}else{
-						//Remain in tracking
-					break;
 					}
+					#else
+					_motor->MotorState = MOTOR_STATE_RECOVERING;
+					break;
+					#endif
+					//fallthrough to RUN, no break!
+				}else{
+					//Remain in tracking
+				break;
+				}
 			} else if(_motor->ControlMode == MOTOR_CONTROL_MODE_POSITION){
 				if(_motor->MotorState!=MOTOR_STATE_ERROR){
 					_motor->MotorState = MOTOR_STATE_RUN;
@@ -2196,6 +2224,7 @@ float  Square(float x){ return((x)*(x));}
 							FWRampDown(_motor);
 						}
 					}
+					if(isHandbrake()){_motor->ControlMode = MOTOR_CONTROL_MODE_HANDBRAKE;}
 					break;
 
 				case MOTOR_CONTROL_MODE_SPEED:
@@ -2228,6 +2257,8 @@ float  Square(float x){ return((x)*(x));}
 		case MOTOR_STATE_ERROR:
 				//add recovery stuff
 			switch(_motor->ControlMode){
+				case MOTOR_CONTROL_MODE_HANDBRAKE:
+					//fallthrough
 				case MOTOR_CONTROL_MODE_TORQUE:
 				if(fabsf(_motor->FOC.Idq_prereq.q)<0.1f){
 					_motor->MotorState = MOTOR_STATE_TRACKING;
@@ -2424,7 +2455,7 @@ float  Square(float x){ return((x)*(x));}
 
   void tle5012(MESC_motor_typedef *_motor)
   {
-#ifdef USE_ENCODER
+#ifdef USE_SPI_ENCODER
 	  uint16_t const len = sizeof(pkt) / sizeof(uint16_t);
 	  uint16_t reg = (UINT16_C(  1) << 15) /* RW=Read */
 	               | (UINT16_C(0x0) << 11) /* Lock */
@@ -3300,6 +3331,19 @@ void MESC_IC_IRQ_Handler(MESC_motor_typedef *_motor, uint32_t SR, uint32_t CCR1,
 		SRtemp3 = SR;
 		_motor->FOC.encoder_OK = 0;
 	}
+#endif
+}
+int handbrakenow;
+int isHandbrake(){
+#ifdef HANDBRAKE_GPIO
+	handbrakenow = HANDBRAKE_GPIO->IDR & (0x01<<HANDBRAKE_IONO);
+	if(HANDBRAKE_GPIO->IDR & (0x01<<HANDBRAKE_IONO)){
+		return 1;
+	}else{
+		return 0;
+	}
+#else
+return 0;
 #endif
 }
 
