@@ -12,7 +12,7 @@ Notes:
 * 12V to ground shorted out
 * Pin 4 of the NCP5183DR2G gate drivers (for phase V) shorts to ground
 * Performing continuity check from https://github.com/badgineer/MP2-ESC/blob/main/docs/PCB_ASSEMBLY_TESTING.md
-* Top and bottom FETs on phase V tested anonymously
+* Top and bottom FETs on phase V tested anomalously
 
 MESC_MOTOR_DEFAULTS.h
 ```
