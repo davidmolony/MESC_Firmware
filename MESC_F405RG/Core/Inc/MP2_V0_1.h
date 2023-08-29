@@ -8,6 +8,7 @@
 #ifndef INC_MP2_V0_1_H_
 #define INC_MP2_V0_1_H_
 //Pick a motor for default
+//#define FLIPSKY_6382_190KV
 #define QS205
 #define PWM_FREQUENCY 20000
 #define CUSTOM_DEADTIME 800 //ns, MAX 1500ns! implementation in MESCInit().
@@ -15,14 +16,14 @@
 #define SHUNT_POLARITY -1.0f
 
 #define ABS_MAX_PHASE_CURRENT 40.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.
-#define ABS_MAX_BUS_VOLTAGE 105.0f
-#define ABS_MIN_BUS_VOLTAGE 80.0f
+#define ABS_MAX_BUS_VOLTAGE 80.0f
+#define ABS_MIN_BUS_VOLTAGE 28.0f
 #define R_SHUNT 0.00033f
 #define OPGAIN 10.5f
 
 //Vbus voltage sensors -- this setting is for 100v
 #define R_VBUS_BOTTOM 3300.0f
-#define R_VBUS_TOP 150000.0f
+#define R_VBUS_TOP 100000.0f
 
 //#define R_VBUS_BOTTOM 11626.0f
 //#define R_VBUS_TOP 270000.0f
