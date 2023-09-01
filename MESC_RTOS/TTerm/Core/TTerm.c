@@ -105,7 +105,6 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
         TERM_addCommand(CMD_help, "help", "Displays this help message", 0, &TERM_defaultList);
         TERM_addCommand(CMD_cls, "cls", "Clears the screen", 0, &TERM_defaultList);
         TERM_addCommand(CMD_reset, "reset", "resets the device", 0, &TERM_defaultList);
-        TERM_addCommand(CMD_su, "su", "Become superuser", 0, &TERM_defaultList);
         
         #if TERM_SUPPORT_CWD == 1
         TERM_addCommand(CMD_ls, "ls", "List directory", 0, &TERM_defaultList);
@@ -121,8 +120,15 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
         TERM_addCommandAC(varAC, TERM_varCompleter, newHandle->varHandle->varListHead);
         varAC = TERM_addCommand(CMD_varSet, "set", "Set variable", 0, &TERM_defaultList);
         TERM_addCommandAC(varAC, TERM_varCompleter, newHandle->varHandle->varListHead);
+
         TERM_addCommand(CMD_varSave, "save", "Save variables", 0, &TERM_defaultList);
+
         varAC = TERM_addCommand(CMD_varLoad, "load", "Load variables", 0, &TERM_defaultList);
+        TERM_addCommandAC(varAC, TERM_varCompleter, newHandle->varHandle->varListHead);
+
+        TERM_addCommand(CMD_su, "su", "Become superuser", 0, &TERM_defaultList);
+
+        varAC = TERM_addCommand(CMD_varChown, "chown", "Change owner", 0, &TERM_defaultList);
         TERM_addCommandAC(varAC, TERM_varCompleter, newHandle->varHandle->varListHead);
 
         CMD_varLoad(newHandle, 0, NULL);

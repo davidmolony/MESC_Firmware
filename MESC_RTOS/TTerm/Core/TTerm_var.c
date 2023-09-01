@@ -37,6 +37,9 @@
 
 const uint8_t null_data = 0;
 
+bool is_init = false;
+uint8_t password[16];
+
 
 uint16_t toLower(uint16_t c){
     if(c > 65 && c < 90){
@@ -94,6 +97,10 @@ TermVariableHandle * TERM_VAR_init(TERMINAL_HANDLE * handle, void * nvm_address,
 	var->nvm_end_write = nvm_end_write;
 	var->nvm_clear = nvm_clear;
 
+	if(is_init == false){
+		TERM_addVarString(password, sizeof(password), 0, 0, "password", "Password for SU", VAR_ACCESS_RW, NULL, &TERM_varList);
+		is_init = true;
+	}
 
 	return var;
 
@@ -860,7 +867,72 @@ uint8_t CMD_varSet(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
         currVar = currVar->nextVar;
     }
 
+	return TERM_CMD_EXIT_SUCCESS;
+}
 
+uint8_t CMD_varChown(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+
+	uint32_t currPos = 0;
+	if(argCount<2){
+		ttprintf("Usage: chown [name] [level]");
+		return TERM_CMD_EXIT_SUCCESS;
+	}
+
+	TermVariableDescriptor * head = handle->varHandle->varListHead;
+	TermVariableDescriptor * currVar = handle->varHandle->varListHead->nextVar;
+
+    for(;currPos < head->nameLength; currPos++){
+    	if(strcmp(args[0], currVar->name)==0){
+    			if(TERM_check_protection(currVar, handle->currPermissionLevel) == false){
+    				ttprintf(" No permission\r\n");
+    				return TERM_CMD_EXIT_SUCCESS;
+    			}
+    			uint8_t permission_level = strtoul(args[1], NULL, 0);
+    			if(permission_level>15){
+    				ttprintf(" Only permission levels <16 are allowed\r\n");
+    				return TERM_CMD_EXIT_SUCCESS;
+    			}
+    			TERM_set_protection(currVar, permission_level);
+    			ttprintf(" Changed permission to %u\r\n", permission_level);
+
+				return TERM_CMD_EXIT_SUCCESS;
+    	}
+
+        currVar = currVar->nextVar;
+    }
+
+	return TERM_CMD_EXIT_SUCCESS;
+}
+
+uint8_t CMD_su(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+
+	for(int i=0;i<argCount;i++){
+		if(strcmp(args[i], "-e")==0){
+			handle->currPermissionLevel = handle->userPermissionLevel;
+			ttprintf("You are back to normal\r\n");
+		}
+		if(strcmp(args[i], "-g")==0){
+			if(i+1 < argCount){
+				if(strcmp(args[i+1],(char*)password) == 0){
+					handle->currPermissionLevel = 0;
+					ttprintf(" Godmode\r\n");
+				}else{
+					ttprintf(" Password wrong\r\n");
+				}
+			}else{
+				if(password[0] == 0){
+					handle->currPermissionLevel = 0;
+					ttprintf(" Godmode\r\n");
+				}
+			}
+		}
+		if(strcmp(args[i], "-?")==0){
+			ttprintf("Usage: su [flags]\r\n");
+			ttprintf("\t -e\t Exit to default permission\r\n");
+			ttprintf("\t -g [password]\t Godmode\r\n");
+			return TERM_CMD_EXIT_SUCCESS;
+		}
+	}
 	return TERM_CMD_EXIT_SUCCESS;
 }
 
