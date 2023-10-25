@@ -26,7 +26,7 @@ MESC_Common/Inc/MESC_MOTOR_DEFAULTS.h
 #define ERROR_OVERCURRENT_PHB 2
 #define ERROR_OVERCURRENT_PHC 3
 #define ERROR_OVERVOLTAGE 4
-#define ERROR_UNDERVOLTAGE 5 // 16 = 10000 in binary -- the one means fifth error in list
+#define ERROR_UNDERVOLTAGE 5 // 16 = 10000 in binary -- the '1' represents the fifth error in list
 #define ERROR_BRK 6
 #define ERROR_OVERTEMPU 7
 #define ERROR_OVERTEMPV 8
