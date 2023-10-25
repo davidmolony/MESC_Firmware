@@ -6,11 +6,10 @@ These are variables to load up in the live expression viewer of STM32CubeIDE:
 + MESC_error
 + mtr[0]
 
-Notice that you can then expand these values to look at their associated data structures. These are the values we talked about in the tutorial:
+Some variables that are interesting
 + mtr[0].MotorState
 + mtr[0].Raw.ADC_in_ext1
 + mtr[0].Conv.VBus
-+ mtr[0].FOC.eHz
 
 ## Interpretting MESC_error values, example
 when we turned down the power supply mtr[0].Conv.VBus changed, and when it went below ABS_MIN_BUS_VOLTAGE, the debugger reported MESC_errors = 16

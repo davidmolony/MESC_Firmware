@@ -3,7 +3,7 @@
 
 Downloading MESC:
 + The latest build is https://github.com/davidmolony/MESC_Firmware
-+ The branch for this video is BLAH_BLAH_BLAH
++ The branch for this video is FLASH_TUTORIAL_2023
 + There are lots of git tools for pulling branches
 + Or you can do it on the command line with:
 ```
