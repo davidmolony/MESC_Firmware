@@ -1,5 +1,5 @@
 # MESC Firmware and documentation
-## see this [MESC tutorial to flash firmware on to the MP2-ESC](https://www.youtube.com/watch?v=nHqouHzY8-Y)
+## see this [MESC tutorial to flash firmware on to the MP2-ESC](https://www.youtube.com/watch?v=ffT_TOowyAI)
 
 Downloading MESC:
 + The latest build is https://github.com/davidmolony/MESC_Firmware
@@ -7,7 +7,7 @@ Downloading MESC:
 + There are lots of git tools for pulling branches
 + Or you can do it on the command line with:
 ```
-$ git clone --branch BLAH_BLAH_BLAH https://github.com/davidmolony/MESC_Firmware.git
+$ git clone --branch FLASH_TUTORIAL_2023 https://github.com/davidmolony/MESC_Firmware.git
 ```
 
 Advice for loading MESC into STM32CubeIDE:
