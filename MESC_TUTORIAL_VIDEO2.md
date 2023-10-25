@@ -99,7 +99,11 @@ set uart_req 0
   uart_req    | 0.000000          | -1000.00 | 1000.00  | Uart input
 ```
 
-Make sure you're taking input from the UART:
+Remember when we set
+```
+#define DEFAULT_INPUT 0b0001 
+```
+...in the MESC code? now we're basically resetting that in the terminal to receive input from the terminal:
 ```
 set input_opt 8
 ```
