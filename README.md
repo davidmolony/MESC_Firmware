@@ -11,5 +11,5 @@ and
 
 [Using the STM32CubeIDE debugger with MP2-ESC](https://www.youtube.com/watch?v=OsqP2L_DqyM)
 
-[Documentation for Video1](MESC_TUTORIAL_VIDEO2.md)
+[Documentation for Video2](MESC_TUTORIAL_VIDEO2.md)
 
