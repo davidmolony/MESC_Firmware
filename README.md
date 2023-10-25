@@ -3,7 +3,7 @@
 
 ## Videos:
 
-[MESC tutorial to flash firmware on to the MP2-ESC](https://www.youtube.com/watch?v=nHqouHzY8-Y)
+[MESC tutorial to flash firmware on to the MP2-ESC](https://www.youtube.com/watch?v=ffT_TOowyAI)
 
 [Documentation for Video1](MESC_TUTORIAL_VIDEO1.md)
 
