@@ -58,6 +58,12 @@ $ screen /dev/cu.usbmodem3555356532321 9600
 ```
 to stop the screen command type: "Ctrl-a k (yes)"
 
+## A change needed in MESC_F405RG/Core/Inc/MESC_F405.h
+In order for the UART to be set to your throttle input, edit:
+```
+#define DEFAULT_INPUT 0b0001 
+```
+
 ## MESC terminal commands used during the tutorial
 
 You'll need to go through the tutorial to see how these are used, but here's a summary of MESC terminal commands.

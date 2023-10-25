@@ -53,6 +53,13 @@ Open MESC_F405.h and look at this code block:
 ```
 Notice that MP2_V0_1.h is uncommented, and out all the other potential header files are comment out. 
 
+THIS WAS NOT MENTIONED IN THE VIDEO. In the same file, change
+
+```
+#define DEFAULT_INPUT 0b0001 
+```
+in order for the UART to be set to your throttle input
+
 ## MESC_F405RG/Core/Inc/MP2_V0_1.h
 
 Remember we made a configuration for your motor? One of the first defines in this file requires you to describe your block in MESC_MOTOR_DEFAULTS.h:
