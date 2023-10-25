@@ -35,6 +35,28 @@
 #define DEFAULT_MOTOR_R 0.0530f //Ohms
 #define DEFAULT_MOTOR_PP 7 //Pole Pairs
 
+#elif defined(FLIPSKY_6382_190KV) //Manually defined on bench, need checking
+#define MAX_MOTOR_PHASE_CURRENT 100.0f
+#define DEFAULT_MOTOR_POWER 50.0f
+#define DEFAULT_FLUX_LINKAGE 0.0045f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000015f //Henries
+#define DEFAULT_MOTOR_Lq 0.000022f//Henries
+#define DEFAULT_MOTOR_R 0.0160f //Ohms -- doesnt account for MOSFETs -- manufacturer said 0.050, wasnt close.
+#define DEFAULT_MOTOR_PP 14 //Pole Pairs
+
+// Yay, I made this thing.
+#elif defined(TP128)
+#define MAX_MOTOR_PHASE_CURRENT 300.0f //350A seems like a reasonable upper limit for these
+#define DEFAULT_MOTOR_POWER 12000.0f   //Go on, change this to 15000
+#define DEFAULT_FLUX_LINKAGE 0.0167f   //Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000032f     //Henries
+#define DEFAULT_MOTOR_Lq 0.000046f     //Henries
+#define DEFAULT_MOTOR_R 0.0080f        //Ohms
+#define DEFAULT_MOTOR_PP 5             //Pole Pairs
+// This assumes a 6.5mohm motor
+// 1.5mohm of MOS and cable.
+// With such low resistance, it becomes important
+
 #elif defined(ANT_120_70_62KV) //Reliable params, but need checking
 #define MAX_MOTOR_PHASE_CURRENT 200.0f
 #define DEFAULT_MOTOR_POWER 250.0f
