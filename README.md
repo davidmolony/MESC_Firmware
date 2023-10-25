@@ -1,7 +1,5 @@
 # davidmolony.github.io/MESC_Firmware/
-## The branch for this video is FLASH_TUTORIAL_2023
-
-## Videos:
+## FLASH_TUTORIAL_2023 branch for these videos:
 
 [MESC tutorial to flash firmware on to the MP2-ESC](https://www.youtube.com/watch?v=ffT_TOowyAI)
 
