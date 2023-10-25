@@ -1,5 +1,5 @@
 # MESC Firmware and documentation
-## see this [Using the STM32CubeIDE debugger with MP2-ESC](https://www.youtube.com/watch?v=OsqP2L_DqyM)
+## see this [Using the STM32CubeIDE debugger with MP2-ESC](https://www.youtube.com/watch?v=NrY-XDAn1OE)
 
 ## Using the STM32CubeIDE debugger
 These are variables to load up in the live expression viewer of STM32CubeIDE:

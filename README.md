@@ -9,7 +9,7 @@
 
 and
 
-[Using the STM32CubeIDE debugger with MP2-ESC](https://www.youtube.com/watch?v=OsqP2L_DqyM)
+[Using the STM32CubeIDE debugger with MP2-ESC](https://www.youtube.com/watch?v=NrY-XDAn1OE)
 
 [Documentation for Video2](MESC_TUTORIAL_VIDEO2.md)
 
