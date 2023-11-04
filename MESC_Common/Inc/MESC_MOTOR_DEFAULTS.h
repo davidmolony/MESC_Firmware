@@ -43,6 +43,14 @@
 #define DEFAULT_MOTOR_R 0.011f //Ohms
 #define DEFAULT_MOTOR_PP 14 //Pole Pairs
 
+#elif defined(TP128) //
+#define MAX_MOTOR_PHASE_CURRENT 100.0f
+#define DEFAULT_MOTOR_POWER 5000.0f
+#define DEFAULT_FLUX_LINKAGE 0.0167f // Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000032f   // Henries
+#define DEFAULT_MOTOR_Lq 0.000046f   // Henries
+#define DEFAULT_MOTOR_R 0.0080f      // Ohms -- doesnt account for MOSFETs 
+#define DEFAULT_MOTOR_PP 5           // Pole Pairs
 
 #elif defined(CA120) //Reliable params
 #define MAX_MOTOR_PHASE_CURRENT 300.0f
