@@ -1,9 +1,9 @@
 //First, include the header specific to your board, which includes hardware parameters like ABS MAX, shunts, potential divdiders
 //Ensure only one board's header file is uncommented!
-//#include "MP2_V0_1.h"
+#include "MP2_V0_1.h"
 //#include "CL700_V0_3.h"
 //#include "INDI-600.h"
-#include "MX_FOC_IMS.h"
+//#include "MX_FOC_IMS.h"
 //#include "MX_FOC_GaN.h"
 //#include "GIGAVESC.h"
 
@@ -16,8 +16,6 @@
 //#define MISSING_UCURRSENSOR //You can run two current sensors ONLY if they are phase sensors.
 //#define MISSING_VCURRSENSOR //Running this with low side sensors may result in fire.
 //#define MISSING_WCURRSENSOR //Also requires that the third ADC is spoofed in the getRawADC(void) function in MESChw_setup.c to avoid trips
-
-
 
 ////////////////////USER DEFINES//////////////////
 	///////////////////RCPWM//////////////////////

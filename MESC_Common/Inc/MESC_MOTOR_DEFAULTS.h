@@ -22,7 +22,7 @@
 //#define BR3536_1200KV
 //#define QS138_90H
 //#define //... Define your motor name here...//
-
+// OWEN WAS HERE
 
 //////Motor parameters
 
@@ -89,7 +89,23 @@
 #define DEFAULT_MOTOR_PP 5 //Pole Pairs
 //This assumes a 5mohm QS165V2 and 1.5mohm of MOS and cable. With such low resistance, it becomes important
 
+#elif defined(FLIPSKY_6382_190KV) //Manually defined on bench, need checking
+#define MAX_MOTOR_PHASE_CURRENT 100.0f
+#define DEFAULT_MOTOR_POWER 50.0f
+#define DEFAULT_FLUX_LINKAGE 0.0045f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000015f //Henries
+#define DEFAULT_MOTOR_Lq 0.000022f//Henries
+#define DEFAULT_MOTOR_R 0.0160f //Ohms -- doesnt account for MOSFETs -- manufacturer said 0.050, wasnt close.
+#define DEFAULT_MOTOR_PP 14 //Pole Pairs
 
+#elif defined(TP128) //
+#define MAX_MOTOR_PHASE_CURRENT 500.0f
+#define DEFAULT_MOTOR_POWER 12000.0f
+#define DEFAULT_FLUX_LINKAGE 0.0167f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000032f //Henries
+#define DEFAULT_MOTOR_Lq 0.000046f//Henries
+#define DEFAULT_MOTOR_R 0.0080f //Ohms -- doesnt account for MOSFETs -- manufacturer said 0.050, wasnt close.
+#define DEFAULT_MOTOR_PP 5 //Pole Pairs
 
 #elif defined(QS138_90H)
 #define MAX_MOTOR_PHASE_CURRENT 700.0f //There seems to be no limit for these
