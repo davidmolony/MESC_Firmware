@@ -35,6 +35,15 @@
 #define DEFAULT_MOTOR_R 0.0530f //Ohms
 #define DEFAULT_MOTOR_PP 7 //Pole Pairs
 
+#elif defined(FLIPSKY_6382_190KV) //Manually defined on bench, need checking
+#define MAX_MOTOR_PHASE_CURRENT 100.0f
+#define DEFAULT_MOTOR_POWER 50.0f
+#define DEFAULT_FLUX_LINKAGE 0.0045f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000015f //Henries
+#define DEFAULT_MOTOR_Lq 0.000022f//Henries
+#define DEFAULT_MOTOR_R 0.0160f //Ohms -- doesnt account for MOSFETs -- manufacturer said 0.050, wasnt close.
+#define DEFAULT_MOTOR_PP 14 //Pole Pairs
+
 #elif defined(ANT_120_70_62KV) //Reliable params, but need checking
 #define MAX_MOTOR_PHASE_CURRENT 200.0f
 #define DEFAULT_MOTOR_POWER 250.0f
