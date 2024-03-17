@@ -1115,7 +1115,7 @@ float La_last, Lb_last;
   }
 
   void OLGenerateAngle(MESC_motor_typedef *_motor) {
-
+	//_motor->FOC.PLL_int = 0.5f*_motor->FOC.openloop_step;
     _motor->FOC.FOCAngle = _motor->FOC.FOCAngle + _motor->FOC.openloop_step;
     // ToDo
   }
@@ -2026,7 +2026,7 @@ __NOP();
         dp_counter++;
      }else if (dp_counter == (dp_periods-1)) { //W short second pulse
         htim1.Instance->CCR2 = 0;
-        htim1.Instance->CCR3 = 100;
+        htim1.Instance->CCR3 = 200;
         test_vals.dp_current_final[dp_counter] =
             _motor->Conv.Iv;
         dp_counter++;
@@ -2993,6 +2993,8 @@ void collectInputs(MESC_motor_typedef *_motor){
 		  else {//No pulse received flag
 			  input_vars.RCPWM_req = 0.0f;
 		  }
+	  }else{
+		  input_vars.RCPWM_req = 0.0f;
 	  }
 
 	  //ADC2 input
@@ -3023,14 +3025,13 @@ void collectInputs(MESC_motor_typedef *_motor){
 			  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
 				  input_vars.ADC1_req = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
 				  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_OOR){
-					  //input_vars.ADC1_req = 0.0f;
+					  //input_vars.ADC1_req = 0.0f;//If we set throttle to zero, it will immediately reset the error!
 					  handleError(_motor, ERROR_INPUT_OOR);
 				  }
 			  }
 			  else{
 				  input_vars.ADC1_req = 0.0f;
-			  }
-		  }
+
 		  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
 		  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
 	  }
