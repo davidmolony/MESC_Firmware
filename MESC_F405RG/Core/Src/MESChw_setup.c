@@ -244,6 +244,25 @@ void mesc_init_3( MESC_motor_typedef *_motor )
     HAL_TIMEx_PWMN_Start( _motor->mtimer, TIM_CHANNEL_3 );
     generateBreak(_motor);//We have started the timers, but we really do not want them PWMing yet
 
+    HAL_GPIO_LockPin(GPIOA, GPIO_PIN_8);//PWMH
+    HAL_GPIO_LockPin(GPIOA, GPIO_PIN_9);
+    HAL_GPIO_LockPin(GPIOA, GPIO_PIN_10);
+
+    HAL_GPIO_LockPin(GPIOB, GPIO_PIN_12);//TBC, this is BRK, might not be applicable to all//
+    HAL_GPIO_LockPin(GPIOB, GPIO_PIN_13);//PWML
+    HAL_GPIO_LockPin(GPIOB, GPIO_PIN_14);
+    HAL_GPIO_LockPin(GPIOB, GPIO_PIN_15);
+
+    HAL_GPIO_LockPin(GPIOC, GPIO_PIN_0);//ADC Current
+    HAL_GPIO_LockPin(GPIOC, GPIO_PIN_1);
+    HAL_GPIO_LockPin(GPIOC, GPIO_PIN_2);
+    HAL_GPIO_LockPin(GPIOC, GPIO_PIN_3);//ADC Vbus
+
+    HAL_GPIO_LockPin(GPIOA, GPIO_PIN_0);//ADC VPhase
+    HAL_GPIO_LockPin(GPIOA, GPIO_PIN_1);
+    HAL_GPIO_LockPin(GPIOA, GPIO_PIN_2);
+
+
     HAL_Delay(50); //Need to let the ADC start before we enable the fastloop interrupt, otherwise it returns 0 and errors.
 
     __HAL_TIM_ENABLE_IT(_motor->mtimer, TIM_IT_UPDATE);
