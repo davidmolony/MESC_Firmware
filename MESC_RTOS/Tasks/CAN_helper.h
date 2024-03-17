@@ -1,8 +1,8 @@
 /*
  **
  ******************************************************************************
- * @file           : init.c
- * @brief          : Bring up the system
+ * @file           : CAN_helper.h
+ * @brief          : Helper functions for CAN
  ******************************************************************************
  * @attention
  *
@@ -29,91 +29,33 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
-#include "init.h"
-#include "task_cli.h"
-#include "main.h"
-#include "stdarg.h"
+#ifndef CAN_HELPER_H_
+#define CAN_HELPER_H_
 
-#ifdef DASH
-#include "MESChw_setup.h"
-#include "fatfs.h"
-#endif
-
+#include "CAN_types.h"
+#include "can_ids.h"
 
 #ifdef HAL_CAN_MODULE_ENABLED
-extern CAN_HandleTypeDef hcan1;
-#endif
 
-#ifdef HW_UART
-extern UART_HandleTypeDef HW_UART;
-port_str main_uart = {	.hw = &HW_UART,
-						.hw_type = HW_TYPE_UART,
-					    .rx_buffer_size = 512,
-						.half_duplex = false,
-						.task_handle = NULL
-};
+bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, float n1, float n2, uint32_t timeout);
+bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint32_t n1, uint32_t n2, uint32_t timeout);
+bool TASK_CAN_add_sample(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint16_t row, uint8_t col, uint8_t flags, float value, uint32_t timeout);
 
 #endif
 
-#ifdef MESC_UART_USB
+float PACK_buf_to_float(uint8_t* buffer);
+uint32_t PACK_buf_to_u32(uint8_t* buffer);
+uint16_t PACK_buf_to_u16(uint8_t* buffer);
+uint8_t PACK_buf_to_u8(uint8_t* buffer);
 
-extern USBD_HandleTypeDef hUsbDeviceFS;
-
-port_str main_usb = {	.hw = &hUsbDeviceFS,
-						.hw_type = HW_TYPE_USB,
-					    .rx_buffer_size = 512,
-						.half_duplex = false,
-						.task_handle = NULL
-};
-
-#endif
-
-#ifdef HAL_CAN_MODULE_ENABLED
-TASK_CAN_handle can1 = { 	.hw = &hcan1,
-							.stream_dropped  = 0
-
-};
-port_str main_can = {	.hw = &can1,
-						.hw_type = HW_TYPE_CAN,
-					    .rx_buffer_size = 512,
-						.half_duplex = false,
-						.task_handle = NULL
-};
-#endif
+void PACK_u32_to_buf(uint8_t* buffer, uint32_t number);
+void PACK_u16_to_buf(uint8_t* buffer, uint16_t number);
+void PACK_u8_to_buf(uint8_t* buffer, uint8_t number);
+void PACK_float_to_buf(uint8_t* buffer, float number);
+void PACK_8b_char_to_buf(uint8_t* buffer, char * short_name);
 
 
-#if EXTENDED_PRINTF == 1
-uint32_t null_printf(void * port, const char* format, ...) {
-	va_list arg;
-	va_start (arg, format);
-	va_end (arg);
-	return 0;
-}
-#else
-uint32_t null_printf(const char* format, ...) {
-	va_list arg;
-	va_start (arg, format);
-	va_end (arg);
-	return 0;
-}
-#endif
+uint32_t generate_id(uint16_t id, uint8_t sender, uint8_t receiver);
+uint16_t extract_id(uint32_t ext_id, uint8_t * sender, uint8_t * receiver);
 
-
-TERMINAL_HANDLE null_handle = {
-		.print=null_printf,
-		.currPermissionLevel=0
-};
-
-
-void init_system(void){
-
-#ifdef MESC_UART_USB
-	task_cli_init(&main_usb);
-#endif
-
-	task_cli_init(&main_uart);
-	task_led_init();
-#ifdef HAL_CAN_MODULE_ENABLED
-	task_cli_init(&main_can);
-#endif
-}
+#endif /* CAN_HELPER_H_ */

@@ -43,11 +43,11 @@ extern UART_HandleTypeDef HW_UART;
 
 extern TIM_HandleTypeDef  htim1;
 
-static uint8_t UART_rx_buffer[2];
-
 extern uint8_t b_read_flash;
 
 #ifndef USE_TTERM
+
+static uint8_t UART_rx_buffer[2];
 
 #if MESC_UART_USB
 static void usb_ack( void )

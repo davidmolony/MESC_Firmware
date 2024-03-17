@@ -155,3 +155,5 @@ uint8_t CMD_cls(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
     
     return TERM_CMD_EXIT_SUCCESS;
 }
+
+

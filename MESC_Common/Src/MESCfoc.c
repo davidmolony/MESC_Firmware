@@ -45,11 +45,19 @@
 #include "MESCtemp.h"
 #include "MESCspeed.h"
 #include "MESCerror.h"
+#include "MESCposition.h"
+
+#ifdef MESC_UART_USB
+#include "usbd_cdc_if.h"
+#endif
 
 #include "conversions.h"
 
 #include <math.h>
 #include <stdlib.h>
+#ifdef LOGGING
+#include <stdio.h>
+#endif
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim4;
@@ -286,11 +294,11 @@ while(_motor->MotorState == MOTOR_STATE_INITIALISING){
   _motor->conf_is_valid = true;
 
   //Lock it in initialising while the offsets not completed
-	while(_motor->key_bits & UNINITIALISED_KEY){
-		_motor->MotorState = MOTOR_STATE_INITIALISING;
-		HAL_Delay(0);
-		generateBreakAll();
-	}
+//	while(_motor->key_bits & UNINITIALISED_KEY){
+//		_motor->MotorState = MOTOR_STATE_INITIALISING;
+//		HAL_Delay(0);
+//		generateBreakAll();
+//	}
 }
 
 void InputInit(){
@@ -2235,6 +2243,8 @@ float  Square(float x){ return((x)*(x));}
 					break;
 				case MOTOR_CONTROL_MODE_POSITION:
 					__NOP();
+				default:
+					break;
 			}//end of ControlMode switch
 
 			SlowStartup(_motor);
@@ -2267,6 +2277,8 @@ float  Square(float x){ return((x)*(x));}
 						_motor->MotorState = MOTOR_STATE_TRACKING;
 						VICheck(_motor); //Immediately return it to error state if there is still a critical fault condition active
 					}
+				default:
+					break;
 			}
 			break;
 		case MOTOR_STATE_SLAMBRAKE:
@@ -2655,7 +2667,7 @@ uint32_t start_ticks;
 extern DMA_HandleTypeDef hdma_usart3_tx;
 void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma){
 #ifdef LOGGING
-	char send_buffer[100];
+	uint8_t send_buffer[100];
 	uint16_t length;
 	if(print_samples_now){
 		print_samples_now = 0;
@@ -2674,13 +2686,13 @@ void printSamples(UART_HandleTypeDef *uart, DMA_HandleTypeDef *dma){
 					current_sample_pos = 0;	//Wrap
 				}
 
-				length = sprintf(send_buffer,"%.2f%.2f,%.2f,%.2f,%.2f,%.2f,%d;\r\n",
-						sampled_vars.Vbus[current_sample_pos],
-						sampled_vars.Iu[current_sample_pos],
-						sampled_vars.Iv[current_sample_pos],
-						sampled_vars.Iw[current_sample_pos],
-						sampled_vars.Vd[current_sample_pos],
-						sampled_vars.Vq[current_sample_pos],
+				length = snprintf((char*)send_buffer, sizeof(send_buffer) , "%.2f%.2f,%.2f,%.2f,%.2f,%.2f,%d;\r\n",
+						(double)sampled_vars.Vbus[current_sample_pos],
+						(double)sampled_vars.Iu[current_sample_pos],
+						(double)sampled_vars.Iv[current_sample_pos],
+						(double)sampled_vars.Iw[current_sample_pos],
+						(double)sampled_vars.Vd[current_sample_pos],
+						(double)sampled_vars.Vq[current_sample_pos],
 						sampled_vars.angle[current_sample_pos]);
 				if((HAL_GetTick()-start_ticks)>10000){
 				break;
@@ -2935,6 +2947,16 @@ float detectHFI(MESC_motor_typedef *_motor){
 
 void collectInputs(MESC_motor_typedef *_motor){
 	  //Collect the requested throttle inputs
+
+	  //Check if remote ADC timeouts
+	  if(input_vars.remote_ADC_timeout > 0){
+		  input_vars.remote_ADC_timeout--;
+	  }else{
+		  input_vars.remote_ADC1_req = 0.0f;
+		  input_vars.remote_ADC2_req = 0.0f;
+	  }
+
+
 	  //UART input
 	  if(0 == (input_vars.input_options & 0b1000)){
 		  input_vars.UART_req = 0.0f;
@@ -2975,36 +2997,43 @@ void collectInputs(MESC_motor_typedef *_motor){
 		  input_vars.RCPWM_req = 0.0f;
 	  }
 
+	  //ADC2 input
 	  if(input_vars.input_options & 0b0010){
-		  //ADC2 input
-		  if(_motor->Raw.ADC_in_ext2>input_vars.adc2_MIN){
-			  input_vars.ADC2_req = ((float)_motor->Raw.ADC_in_ext2-(float)input_vars.adc2_MIN)*input_vars.adc1_gain[1]*input_vars.ADC2_polarity;
-			  if(_motor->Raw.ADC_in_ext2>input_vars.adc2_OOR){
-				  //input_vars.ADC2_req = 0.0f;
-				  handleError(_motor, ERROR_INPUT_OOR);
+		  if(input_vars.remote_ADC_can_id > 0){
+			  input_vars.ADC2_req = input_vars.remote_ADC2_req;
+		  }else{
+			  if(_motor->Raw.ADC_in_ext2>input_vars.adc2_MIN){
+				  input_vars.ADC2_req = ((float)_motor->Raw.ADC_in_ext2-(float)input_vars.adc2_MIN)*input_vars.adc1_gain[1]*input_vars.ADC2_polarity;
+				  if(_motor->Raw.ADC_in_ext2>input_vars.adc2_OOR){
+					  //input_vars.ADC2_req = 0.0f;
+					  handleError(_motor, ERROR_INPUT_OOR);
+				  }
+			  }
+			  else{
+				  input_vars.ADC2_req = 0.0f;
 			  }
 			  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
 			  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
-		  }
-		  else{
-			  input_vars.ADC2_req = 0.0f;
 		  }
 
 	  }
 	  //ADC1 input
 	  if(input_vars.input_options & 0b0001){
-		  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
-			  input_vars.ADC1_req = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
-			  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_OOR){
-				  //input_vars.ADC1_req = 0.0f; //If we set throttle to zero, it will immediately reset the error!
-				  handleError(_motor, ERROR_INPUT_OOR);
+		  if(input_vars.remote_ADC_can_id > 0){
+			  input_vars.ADC1_req = input_vars.remote_ADC1_req;
+		  }else{
+			  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
+				  input_vars.ADC1_req = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
+				  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_OOR){
+					  //input_vars.ADC1_req = 0.0f;//If we set throttle to zero, it will immediately reset the error!
+					  handleError(_motor, ERROR_INPUT_OOR);
+				  }
 			  }
-			  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
-			  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
-		  }
-		  else{
-			  input_vars.ADC1_req = 0.0f;
-		  }
+			  else{
+				  input_vars.ADC1_req = 0.0f;
+
+		  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
+		  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
 	  }
 #ifdef KILLSWITCH_GPIO
 	  if(input_vars.input_options & 0b10000){//Killswitch

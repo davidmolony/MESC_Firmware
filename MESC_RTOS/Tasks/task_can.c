@@ -32,7 +32,7 @@
 #include "task_can.h"
 #include "task_cli.h"
 
-#include "can_ids.h"
+#include "CAN_helper.h"
 
 #include "cmsis_os.h"
 #include "string.h"
@@ -74,127 +74,6 @@ void TASK_CAN_init_can(TASK_CAN_handle * handle){
 	HAL_CAN_Start(handle->hw); //start CAN
 	HAL_CAN_ActivateNotification(handle->hw, CAN_IT_RX_FIFO0_MSG_PENDING);
 
-}
-
-void PACK_u32_to_buf(uint8_t* buffer, uint32_t number) {
-	*buffer = number >> 24;
-	buffer++;
-	*buffer = number >> 16;
-	buffer++;
-	*buffer = number >> 8;
-	buffer++;
-	*buffer = number;
-}
-
-void PACK_u16_to_buf(uint8_t* buffer, uint16_t number) {
-	*buffer = number >> 8;
-	buffer++;
-	*buffer = number;
-}
-
-void PACK_u8_to_buf(uint8_t* buffer, uint8_t number) {
-	*buffer = number;
-}
-
-void PACK_float_to_buf(uint8_t* buffer, float number) {
-	memcpy(buffer, &number, sizeof(float));
-}
-
-uint32_t PACK_buf_to_u32(uint8_t* buffer) {
-	uint32_t number;
-	number = (uint32_t)*buffer << 24;
-	buffer++;
-	number |= (uint32_t)*buffer << 16;
-	buffer++;
-	number |= (uint32_t)*buffer << 8;
-	buffer++;
-	number |= (uint32_t)*buffer;
-	return number;
-}
-
-uint16_t PACK_buf_to_u16(uint8_t* buffer) {
-	uint16_t number;
-	number = (uint16_t)*buffer << 8;
-	buffer++;
-	number |= (uint16_t)*buffer;
-	return number;
-}
-
-uint8_t PACK_buf_to_u8(uint8_t* buffer) {
-	uint8_t number;
-	number = *buffer;
-	return number;
-}
-
-float PACK_buf_to_float(uint8_t* buffer) {
-	float ret;
-	memcpy(&ret,buffer, sizeof(float));
-	return ret;
-}
-
-void PACK_8b_char_to_buf(uint8_t* buffer, char * short_name) {
-	memcpy(buffer, short_name, 8);
-}
-
-uint32_t generate_id(uint16_t id, uint8_t sender, uint8_t receiver){
-	uint32_t ret = (uint32_t)id << 16;
-	ret |= sender;
-	ret |= (uint32_t)receiver << 8;
-	return ret;
-}
-
-uint16_t extract_id(uint32_t ext_id, uint8_t * sender, uint8_t * receiver){
-	*sender = ext_id & 0xFF;
-	*receiver = (ext_id >> 8) & 0xFF;
-	return (ext_id >> 16);
-}
-
-
-typedef struct {
-	uint16_t message_id;
-	uint8_t sender;
-	uint8_t receiver;
-	uint8_t len;
-	uint8_t buffer[8];
-}TASK_CAN_packet;
-
-
-bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, float n1, float n2, uint32_t timeout){
-	TASK_CAN_packet packet;
-
-	packet.message_id = message_id;
-	packet.receiver = receiver;
-	packet.sender = handle->node_id;
-	packet.len = sizeof(float)*2;
-	memcpy(&packet.buffer[0], &n1, sizeof(float));
-	memcpy(&packet.buffer[4], &n2, sizeof(float));
-	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
-}
-
-bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint32_t n1, uint32_t n2, uint32_t timeout){
-	TASK_CAN_packet packet;
-
-	packet.message_id = message_id;
-	packet.receiver = receiver;
-	packet.sender = handle->node_id;
-	packet.len = sizeof(uint32_t)*2;
-	PACK_u32_to_buf(&packet.buffer[0], n1);
-	PACK_u32_to_buf(&packet.buffer[4], n2);
-	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
-}
-
-bool TASK_CAN_add_sample(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint16_t row, uint8_t col, uint8_t flags, float value, uint32_t timeout){
-	TASK_CAN_packet packet;
-
-	packet.message_id = message_id;
-	packet.receiver = receiver;
-	packet.sender = handle->node_id;
-	packet.len = 8; //Full 8 byte
-	PACK_u16_to_buf(&packet.buffer[0], row);
-	PACK_u8_to_buf(&packet.buffer[2], col);
-	PACK_u8_to_buf(&packet.buffer[3], flags);
-	PACK_float_to_buf(&packet.buffer[4], value);
-	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
 }
 
 
@@ -285,9 +164,6 @@ void TASK_CAN_packet_received(TASK_CAN_handle * handle, uint32_t id, uint8_t sen
 }
 
 #define ALLOWED_BLOCK_TIME 10
-
-
-
 
 
 void TASK_CAN_rx(void * argument){
@@ -393,8 +269,6 @@ TASK_CAN_node * TASK_CAN_get_node_from_id(uint8_t id){
 	}
 
 }
-volatile uint32_t tx_error=0;
-volatile uint32_t tx_error1=0;
 
 void TASK_CAN_tx(void * argument){
 
@@ -412,15 +286,11 @@ void TASK_CAN_tx(void * argument){
 
 
 	uint32_t last_ping = xTaskGetTickCount();
-	uint32_t last_stream = xTaskGetTickCount();
 
 	TASK_CAN_packet packet;
 
-
-
 	while(1){
-		if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)){//&& xTaskGetTickCount() > last_stream + 1){
-			last_stream = xTaskGetTickCount();
+		if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)){
 			uint8_t buffer[8];
 
 			uint8_t len = xStreamBufferReceive(port->tx_stream, buffer, sizeof(buffer), 0);
@@ -459,8 +329,6 @@ void TASK_CAN_tx(void * argument){
 
 		if(xStreamBufferIsEmpty(port->tx_stream) && uxQueueMessagesWaiting(handle->tx_queue) == 0){
 			vTaskDelay(10);
-		}else{
-			//getvTaskDelay(2);
 		}
 		vTaskDelay(1);
 	}
@@ -550,10 +418,12 @@ uint8_t CMD_nodes(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 }
 
 uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
-	uint32_t id;
+	uint32_t id = 0;
 	uint8_t receiver = CAN_BROADCAST;
-	float f_number[2];
+	float f_number[2] = {0.0f, 0.0f};
+	uint32_t u_number[2] = {0, 0};
 	bool b_float = false;
+	bool b_uint = false;
 
 
 	for(int i=0;i<argCount;i++){
@@ -566,7 +436,7 @@ uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 			if(i+1 < argCount){
 				b_float = true;
 				f_number[0] = strtof(args[i+1], NULL);
-				f_number[1] = 0;
+				f_number[1] = 0.0f;
 			}
 		}
 		if(strcmp(args[i], "-f2")==0){
@@ -574,6 +444,20 @@ uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 				b_float = true;
 				f_number[0] = strtof(args[i+1], NULL);
 				f_number[1] = strtof(args[i+2], NULL);
+			}
+		}
+		if(strcmp(args[i], "-u")==0){
+			if(i+1 < argCount){
+				b_uint = true;
+				u_number[0] = strtoul(args[i+1], NULL, 0);
+				u_number[1] = 0;
+			}
+		}
+		if(strcmp(args[i], "-u2")==0){
+			if(i+2 < argCount){
+				b_uint = true;
+				u_number[0] = strtoul(args[i+1], NULL, 0);
+				u_number[1] = strtoul(args[i+2], NULL, 0);
 			}
 		}
 		if(strcmp(args[i], "-r")==0){
@@ -588,6 +472,10 @@ uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	if(b_float){
 		TASK_CAN_add_float(&can1, id, receiver, f_number[0], f_number[1], 100);
+	}
+
+	if(b_uint){
+		TASK_CAN_add_uint32(&can1, id, receiver, u_number[0], u_number[1], 100);
 	}
 
 	return TERM_CMD_EXIT_SUCCESS;

@@ -39,6 +39,7 @@
 #include "MESCflash.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <math.h>
 #include <MESC/MESCinterface.h>
 
@@ -153,7 +154,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		}
 
 
-		ttprintf("R = %f %s\r\nLd = %f %s\r\nLq = %f %s\r\n\r\n", R, Runit, Ld, Lunit, Lq, Lunit);
+		ttprintf("R = %f %s\r\nLd = %f %s\r\nLq = %f %s\r\n\r\n", (double)R, Runit, (double)Ld, Lunit, (double)Lq, Lunit);
 		calculateGains(motor_curr);
 		vTaskDelay(1000);
 	}
@@ -173,7 +174,10 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 		ttprintf("Measuring resistance \r\nWaiting for result");
 		int a=200;
-		float Itop, Ibot, Vtop, Vbot;
+		float Itop = 0.0f;
+		float Ibot = 0.0f;
+		float Vtop = 0.0f;
+		float Vbot = 0.0f;
 		input_vars.UART_req = 0.45f*motor_curr->m.Imax;
 
 		while(a){
@@ -210,7 +214,6 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 		float R;
 		char* Runit;
-		char* Lunit;
 		if(motor_curr->m.R > 0){
 			R = motor_curr->m.R;
 			Runit = "Ohm";
@@ -220,7 +223,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		}
 
 
-		ttprintf("R = %f %s\r\n\r\n", R, Runit);
+		ttprintf("R = %f %s\r\n\r\n", (double)R, Runit);
 		motor_curr->m.L_D =old_L_D;
 		calculateGains(motor_curr);
 		vTaskDelay(1000);
@@ -231,8 +234,6 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 		ttprintf("Measuring Inductance\r\nWaiting for result");
 		int a=200;
-		float Itop, Ibot;
-		float offsetcurr = 20.0f; //We will apply D axis current to the rotor to lock it and see saturation
 		float Loffset[3];
 		float Lqoffset[3];
 
@@ -285,7 +286,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
 		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
-		ttprintf("D-Inductance = %f , %f , %f  H\r\n voltage was %f \r\n", Loffset[0],Loffset[1],Loffset[2], motor_curr->FOC.special_injectionVd);
+		ttprintf("D-Inductance = %f , %f , %f  H\r\n voltage was %f \r\n", (double)Loffset[0], (double)Loffset[1], (double)Loffset[2], (double)motor_curr->FOC.special_injectionVd);
 
 		//Now do Lq
 		motor_curr->FOC.special_injectionVq = motor_curr->FOC.special_injectionVd;
@@ -309,7 +310,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		Lqoffset[b] = motor_curr->FOC.pwm_period * motor_curr->FOC.special_injectionVq/Lqoffset[b];
 		}
 
-//Put things back to runable
+		//Put things back to runable
 		motor_curr->HFIType = HFI_TYPE_NONE;
 		motor_curr->MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
 		input_vars.UART_req = 0.0f; //Turn it off.
@@ -319,7 +320,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
 		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
-		ttprintf("Q-Inductance = %f , %f , %f  H\r\n voltage was %f \r\n", Lqoffset[0],Lqoffset[1],Lqoffset[2], motor_curr->FOC.special_injectionVq);
+		ttprintf("Q-Inductance = %f , %f , %f  H\r\n voltage was %f \r\n", (double)Lqoffset[0], (double)Lqoffset[1], (double)Lqoffset[2], (double)motor_curr->FOC.special_injectionVq);
 
 		motor_curr->FOC.special_injectionVd = 0.0f;
 		motor_curr->FOC.special_injectionVq = 0.0f;
@@ -344,7 +345,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
 		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
 
-		ttprintf("Flux linkage = %f mWb\r\n\r\n", motor_curr->m.flux_linkage * 1000.0);
+		ttprintf("Flux linkage = %f mWb\r\n\r\n", (double)(motor_curr->m.flux_linkage * 1000.0f));
 		vTaskDelay(2000);
 	}
 
@@ -387,7 +388,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
 		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
 
-		ttprintf("Flux linkage = %f mWb\r\n\r\n", motor_curr->m.flux_linkage * 1000.0);
+		ttprintf("Flux linkage = %f mWb\r\n\r\n", (double)(motor_curr->m.flux_linkage * 1000.0f));
 		ttprintf("Did the motor spin for >2seconds?");
 
 		vTaskDelay(200);
@@ -427,18 +428,12 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 }
 
 
-extern TIM_HandleTypeDef htim1;
-
-
 void callback(TermVariableDescriptor * var){
 	calculateFlux(&mtr[0]);
 	calculateGains(&mtr[0]);
 	calculateVoltageGain(&mtr[0]);
 	InputInit();
 }
-
-uint8_t adc_node;
-
 
 void populate_vars(){
 	//		   | Variable							| MIN		| MAX		| NAME			| DESCRIPTION							| RW			| CALLBACK	| VAR LIST HANDLE
@@ -491,7 +486,7 @@ void populate_vars(){
 
 	#ifdef HAL_CAN_MODULE_ENABLED
 	TERM_addVar(can1.node_id						, 1			, 254		, "node_id"	    , "Node ID"								, VAR_ACCESS_RW	, callback	, &TERM_varList);
-	TERM_addVar(adc_node							, 1			, 254		, "can_adc"	    , "can ADC ID"							, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(input_vars.remote_ADC_can_id		, 0			, 254		, "can_adc"	    , "CAN ADC ID  0=disabled"				, VAR_ACCESS_RW	, callback	, &TERM_varList);
 #endif
 
 	TermVariableDescriptor * desc;
@@ -531,6 +526,9 @@ void populate_vars(){
 }
 
 #ifdef HAL_CAN_MODULE_ENABLED
+
+#define REMOTE_ADC_TIMEOUT 1000
+
 void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
 	MESC_motor_typedef * motor_curr = &mtr[0];
 
@@ -552,9 +550,10 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 			motor_curr->sample_no_auto_send = false;
 			break;
 		case CAN_ID_ADC1_2_REQ:{
-			if(sender == adc_node){
-				input_vars.REMOTE_ADC1_req = PACK_buf_to_float(data);
-				input_vars.REMOTE_ADC2_req = PACK_buf_to_float(data+4);
+			if(sender == input_vars.remote_ADC_can_id && input_vars.remote_ADC_can_id > 0){
+				input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
+				input_vars.remote_ADC1_req = PACK_buf_to_float(data);
+				input_vars.remote_ADC2_req = PACK_buf_to_float(data+4);
 			}
 			break;
 		}
@@ -652,17 +651,8 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 	calculateGains(&mtr[0]);
 	calculateVoltageGain(&mtr[0]);
+	calculateFlux(&mtr[0]);
 	InputInit();
-
-	motor_profile->L_QD = motor_profile->L_Q-motor_profile->L_D;
-	motor_profile->flux_linkage = mtr[0].m.flux_linkage;
-	motor_profile->flux_linkage_max = 1.3f*motor_profile->flux_linkage;
-	motor_profile->flux_linkage_min = 0.7f*motor_profile->flux_linkage;
-	motor_profile->flux_linkage_gain = 10.0f * sqrtf(motor_profile->flux_linkage);
-
-//	mtr[0].m.flux_linkage_max = motor_profile->flux_linkage_max;
-//	mtr[0].m.flux_linkage_min = motor_profile->flux_linkage_min;
-//	mtr[0].m.flux_linkage_gain = motor_profile->flux_linkage_gain;
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
 

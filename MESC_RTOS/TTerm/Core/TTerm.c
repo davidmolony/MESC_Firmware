@@ -46,7 +46,7 @@ TermCommandDescriptor TERM_defaultList = {.nextCmd = 0, .commandLength = 0};
 TermVariableDescriptor TERM_varList = {.nextVar = 0, .nameLength = 0};
 #endif
 
-unsigned TERM_baseCMDsAdded = 0;
+uint8_t TERM_baseCMDsAdded = 0;
 
 
 #define ESC_STR "\x1b"
@@ -63,6 +63,8 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
     
     newHandle->inputBuffer = pvPortMalloc(TERM_INPUTBUFFER_SIZE);
     newHandle->currUserName = pvPortMalloc(strlen(usr) + 1 + strlen(TERM_getVT100Code(_VT100_FOREGROUND_COLOR, _VT100_YELLOW)) + strlen(TERM_getVT100Code(_VT100_RESET_ATTRIB, 0)));
+    newHandle->userPermissionLevel = 15;
+    newHandle->currPermissionLevel = newHandle->userPermissionLevel;
     
     //initialise function pointers
     newHandle->print = printFunction;  
@@ -118,8 +120,15 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
         TERM_addCommandAC(varAC, TERM_varCompleter, newHandle->varHandle->varListHead);
         varAC = TERM_addCommand(CMD_varSet, "set", "Set variable", 0, &TERM_defaultList);
         TERM_addCommandAC(varAC, TERM_varCompleter, newHandle->varHandle->varListHead);
+
         TERM_addCommand(CMD_varSave, "save", "Save variables", 0, &TERM_defaultList);
+
         varAC = TERM_addCommand(CMD_varLoad, "load", "Load variables", 0, &TERM_defaultList);
+        TERM_addCommandAC(varAC, TERM_varCompleter, newHandle->varHandle->varListHead);
+
+        TERM_addCommand(CMD_su, "su", "Become superuser", 0, &TERM_defaultList);
+
+        varAC = TERM_addCommand(CMD_varChown, "chown", "Change owner", 0, &TERM_defaultList);
         TERM_addCommandAC(varAC, TERM_varCompleter, newHandle->varHandle->varListHead);
 
         CMD_varLoad(newHandle, 0, NULL);
@@ -303,6 +312,7 @@ uint8_t TERM_processBuffer(uint8_t * data, uint16_t length, TERMINAL_HANDLE * ha
 			}
     	}
     }
+    return length;
 }
 
 unsigned isACIILetter(char c){
@@ -526,7 +536,6 @@ uint8_t TERM_handleInput(uint16_t c, TERMINAL_HANDLE * handle){
             }else{
                 TERM_sendVT100Code(handle, _VT100_ERASE_LINE, 0);
                 unsigned printQuotationMarks = strchr(handle->autocompleteBuffer[handle->currAutocompleteCount - 1], ' ') != 0;
-                volatile TERMINAL_HANDLE * temp = handle;
                 
                 //workaround for inconsistent printf behaviour when using %.*s with length 0
                 if(handle->autocompleteStart == 0){
@@ -599,6 +608,7 @@ uint8_t TERM_handleInput(uint16_t c, TERMINAL_HANDLE * handle){
             TERM_printDebug(handle, "unknown code received: 0x%02x\r\n", c);
             break;
     }
+    return 1;
 }
 
 void TERM_checkForCopy(TERMINAL_HANDLE * handle, COPYCHECK_MODE mode){
@@ -745,7 +755,7 @@ uint8_t TERM_seperateArgs(char * data, uint16_t dataLength, char ** buff){
                 break;
         }
     }
-    if(quoteMark) TERM_ARGS_ERROR_STRING_LITERAL;
+    //if(quoteMark) TERM_ARGS_ERROR_STRING_LITERAL;
     return count;
 }
 
@@ -788,7 +798,7 @@ uint16_t TERM_countArgs(const char * data, uint16_t dataLength){
                 break;
         }
     }
-    if(quoteMark) TERM_ARGS_ERROR_STRING_LITERAL;
+    if(quoteMark) return TERM_ARGS_ERROR_STRING_LITERAL;
     return count;
 }
 
@@ -899,18 +909,18 @@ unsigned TERM_isSorted(TermCommandDescriptor * a, TermCommandDescriptor * b){
     }
 }
 
-char toLowerCase(char c){
+uint16_t toLowerCase(uint16_t c){
     if(c > 65 && c < 90){
         return c + 32;
     }
     
     switch(c){
-        case 'Ü':
-            return 'ü';
-        case 'Ä':
-            return 'ä';
-        case 'Ö':
-            return 'ö';
+        case 0xc39c: //Ü
+            return 0xc3bc;  //ü
+        case 0xc384: //Ä
+            return 0xc3a4;  //ä
+        case 0xc396:  //Ö
+            return 0xc3b6;  //ö
         default:
             return c;
     }

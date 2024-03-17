@@ -40,13 +40,15 @@ uint8_t CMD_varList(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 uint8_t CMD_varSet(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 uint8_t CMD_varSave(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 uint8_t CMD_varLoad(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+uint8_t CMD_su(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+uint8_t CMD_varChown(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 
 TermVariableDescriptor * TERM_addVarUnsigned(void* variable, uint16_t typeSize, uint32_t min, uint32_t max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
 TermVariableDescriptor * TERM_addVarSigned(void* variable, uint16_t typeSize, int32_t min, int32_t max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
-TermVariableDescriptor * TERM_addVarFloat(void* variable, float min, float max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
-TermVariableDescriptor * TERM_addVarString(void* variable, uint16_t typeSize, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
-TermVariableDescriptor * TERM_addVarChar(void* variable, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
-TermVariableDescriptor * TERM_addVarBool(void* variable, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
+TermVariableDescriptor * TERM_addVarFloat(void* variable, uint16_t typeSize, float min, float max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
+TermVariableDescriptor * TERM_addVarString(void* variable, uint16_t typeSize, uint32_t min, uint32_t max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
+TermVariableDescriptor * TERM_addVarChar(void* variable, uint16_t typeSize, uint32_t min, uint32_t max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
+TermVariableDescriptor * TERM_addVarBool(void* variable, uint16_t typeSize, uint32_t min, uint32_t max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
 TermVariableDescriptor * TERM_addVarArrayFloat(void* variable, uint32_t size,  float min, float max, const char * name, const char * description, uint8_t rw, term_var_cb cb, TermVariableDescriptor * head);
 
 void print_var_helperfunc(TERMINAL_HANDLE * handle, TermVariableDescriptor * var, HelperFlagType flag );

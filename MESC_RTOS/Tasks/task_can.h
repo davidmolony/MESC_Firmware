@@ -32,42 +32,11 @@
 #ifndef TASK_CAN_H_
 #define TASK_CAN_H_
 
-#include "FreeRTOS.h"
-#include "stream_buffer.h"
 #include "main.h"
-#include "task.h"
-#include "stdbool.h"
-#include "semphr.h"
-
 #include "task_cli.h"
-#include "can_ids.h"
+#include "CAN_helper.h"
 
 #ifdef HAL_CAN_MODULE_ENABLED
-typedef struct {
-	TaskHandle_t rx_task_handle;
-	TaskHandle_t tx_task_handle;
-	CAN_HandleTypeDef * hw;
-	uint16_t node_id;
-	uint16_t remote_node_id;
-	uint32_t stream_dropped;
-	char short_name[9];
-	QueueHandle_t rx_queue;
-	uint32_t rx_dropped;
-	QueueHandle_t tx_queue;
-}TASK_CAN_handle;
-
-
-typedef struct _CAN_NODES_{
-	uint32_t id;
-	char short_name[9];
-	uint32_t last_seen;
-	void * data;
-	node_type type;
-}TASK_CAN_node;
-
-
-
-#define TASK_CAN_TYPE_MESC 1
 
 
 #define NUM_NODES 64
@@ -83,15 +52,6 @@ uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 uint32_t TASK_CAN_connect(TASK_CAN_handle * handle, uint16_t remote, uint8_t connect);
 
 TASK_CAN_node * TASK_CAN_get_node_from_id(uint8_t id);
-
-bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, float n1, float n2, uint32_t timeout);
-bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint32_t n1, uint32_t n2, uint32_t timeout);
-bool TASK_CAN_add_sample(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint16_t row, uint8_t col, uint8_t flags, float value, uint32_t timeout);
-
-float PACK_buf_to_float(uint8_t* buffer);
-uint32_t PACK_buf_to_u32(uint8_t* buffer);
-uint16_t PACK_buf_to_u16(uint8_t* buffer);
-uint8_t PACK_buf_to_u8(uint8_t* buffer);
 
 
 #endif
