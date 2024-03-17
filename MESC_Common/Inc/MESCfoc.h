@@ -602,6 +602,8 @@ typedef struct {
 	float RCPWM_req;
 	float ADC1_req;
 	float ADC2_req;
+	float ADC12_diff_req;
+
 
 	uint8_t remote_ADC_can_id;
 	float remote_ADC1_req;
@@ -612,7 +614,14 @@ typedef struct {
 	uint16_t nKillswitch;
 	uint16_t invert_killswitch;
 
-	uint32_t input_options; //0b...wxyz where w is UART, x is RCPWM, y is ADC1 z is ADC2
+	uint32_t input_options; //	0b...tuvwxyz where
+							//	t is differential ADC,
+							//	u is ADC1 remote,
+							//	v is ADC2 remote
+							//	w is UART,
+							//	x is RCPWM,
+							//	y is ADC1
+							//	z is ADC2
 
 	MESCiq_s max_request_Idq;
 	MESCiq_s min_request_Idq;

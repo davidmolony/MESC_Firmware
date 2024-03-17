@@ -2077,7 +2077,12 @@ float  Square(float x){ return((x)*(x));}
 
 	  switch(_motor->ControlMode){
 		  case MOTOR_CONTROL_MODE_TORQUE:
-			  _motor->FOC.Idq_prereq.q = input_vars.UART_req + input_vars.max_request_Idq.q * (input_vars.ADC1_req + input_vars.ADC2_req + input_vars.RCPWM_req);
+			  //We just scale and sum the input current requests
+			  _motor->FOC.Idq_prereq.q = input_vars.UART_req +
+			  	  input_vars.max_request_Idq.q * (input_vars.ADC1_req + input_vars.ADC2_req +
+												  input_vars.RCPWM_req + input_vars.ADC12_diff_req +
+												  input_vars.remote_ADC1_req + input_vars.remote_ADC2_req );
+
 			  //Clamp the Q component; d component is not directly requested
 				if(_motor->FOC.Idq_prereq.q>input_vars.max_request_Idq.q){_motor->FOC.Idq_prereq.q = input_vars.max_request_Idq.q;}
 				if(_motor->FOC.Idq_prereq.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_prereq.q = input_vars.min_request_Idq.q;}
@@ -2091,7 +2096,10 @@ float  Square(float x){ return((x)*(x));}
 			  break;
 		  case MOTOR_CONTROL_MODE_DUTY:
 			  _motor->FOC.Idq_prereq = input_vars.max_request_Idq;
-			  float total_in = input_vars.ADC1_req + input_vars.ADC2_req + input_vars.RCPWM_req + input_vars.UART_req;
+			  //Sum the total duty request
+			  float total_in = 	input_vars.ADC1_req + input_vars.ADC2_req +
+					  	  	  	input_vars.RCPWM_req + input_vars.UART_req + input_vars.ADC12_diff_req +
+								input_vars.remote_ADC1_req + input_vars.remote_ADC2_req;
 			  if(fabsf(total_in)>0.01f){
 				  if(total_in > 1.0f){total_in = 1.0f;}
 				  if(total_in < -1.0f){total_in = -1.0f;}
@@ -2946,7 +2954,6 @@ float detectHFI(MESC_motor_typedef *_motor){
 }
 
 void collectInputs(MESC_motor_typedef *_motor){
-	  //Collect the requested throttle inputs
 
 	  //Check if remote ADC timeouts
 	  if(input_vars.remote_ADC_timeout > 0){
@@ -2956,6 +2963,29 @@ void collectInputs(MESC_motor_typedef *_motor){
 		  input_vars.remote_ADC2_req = 0.0f;
 	  }
 
+	  //Collect the requested throttle inputs
+
+	  //Remote ADC1 input
+	  if((input_vars.input_options & 0b100000)&&(input_vars.remote_ADC_can_id > 0)){
+		  	  //Do nothing. Already set
+	  }else{
+		  input_vars.remote_ADC1_req - 0.0f;//Set the input variable to zero
+	  }
+
+	  //Remote ADC2 input
+	  if((input_vars.input_options & 0b10000)&&(input_vars.remote_ADC_can_id > 0)){
+		  //Do nothing, already set
+	  }else{
+		  input_vars.remote_ADC2_req - 0.0f;//Set the input variable to zero
+	  }
+
+	  //Differential ADC12 input
+	  if((input_vars.input_options & 0b1000000)){
+		  //TBC, Math and logic required
+		  //To be filled, as signal = ext1-ext2 with error check based on ext1+ext2
+	  }else{
+		  input_vars.ADC12_diff_req = 0.0f; //Set the input variable to zero
+	  }
 
 	  //UART input
 	  if(0 == (input_vars.input_options & 0b1000)){
@@ -2981,27 +3011,22 @@ void collectInputs(MESC_motor_typedef *_motor){
 					  }
 					  if(input_vars.RCPWM_req>1.0f){input_vars.RCPWM_req=1.0f;}
 					  if(input_vars.RCPWM_req<-1.0f){input_vars.RCPWM_req=-1.0f;}
-				  }
-				  else{
+				  } else{
 					  input_vars.RCPWM_req = 0.0f;
 				  }
 			  }	else {//The duration of the IC was wrong; trap it and write no current request
 				  //Todo maybe want to implement a timeout on this, allowing spurious pulses to not wiggle the current?
 				  input_vars.RCPWM_req = 0.0f;
 			  }
-		  }
-		  else {//No pulse received flag
+		  } else {//No pulse received flag
 			  input_vars.RCPWM_req = 0.0f;
 		  }
-	  }else{
+	  } else{
 		  input_vars.RCPWM_req = 0.0f;
 	  }
 
 	  //ADC2 input
 	  if(input_vars.input_options & 0b0010){
-		  if(input_vars.remote_ADC_can_id > 0){
-			  input_vars.ADC2_req = input_vars.remote_ADC2_req;
-		  }else{
 			  if(_motor->Raw.ADC_in_ext2>input_vars.adc2_MIN){
 				  input_vars.ADC2_req = ((float)_motor->Raw.ADC_in_ext2-(float)input_vars.adc2_MIN)*input_vars.adc1_gain[1]*input_vars.ADC2_polarity;
 				  if(_motor->Raw.ADC_in_ext2>input_vars.adc2_OOR){
@@ -3012,16 +3037,12 @@ void collectInputs(MESC_motor_typedef *_motor){
 			  else{
 				  input_vars.ADC2_req = 0.0f;
 			  }
-			  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
-			  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
-		  }
-
+			  if(input_vars.ADC2_req>1.0f){input_vars.ADC2_req=1.0f;}
+			  if(input_vars.ADC2_req<-1.0f){input_vars.ADC2_req=-1.0f;}
 	  }
+
 	  //ADC1 input
 	  if(input_vars.input_options & 0b0001){
-		  if(input_vars.remote_ADC_can_id > 0){
-			  input_vars.ADC1_req = input_vars.remote_ADC1_req;
-		  }else{
 			  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
 				  input_vars.ADC1_req = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
 				  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_OOR){
@@ -3032,7 +3053,6 @@ void collectInputs(MESC_motor_typedef *_motor){
 			  else{
 				  input_vars.ADC1_req = 0.0f;
 			  }
-		  }
 		  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
 		  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
 	  }
