@@ -3083,13 +3083,13 @@ void RunMTPA(MESC_motor_typedef *_motor){
 	//Run MTPA (Field weakening seems to have to go in  the fast loop to be stable)
 	#ifdef USE_MTPA
 
-	    if(_motor->m.L_QD>0){
+	    if(_motor->m.L_QD>0.0f){
 	    	_motor->FOC.id_mtpa = _motor->m.flux_linkage/(4.0f*_motor->m.L_QD) - sqrtf((_motor->m.flux_linkage*_motor->m.flux_linkage/(16.0f*_motor->m.L_QD*_motor->m.L_QD))+_motor->FOC.Idq_prereq.q*_motor->FOC.Idq_prereq.q*0.5f);
 	    	if(fabsf(_motor->FOC.Idq_prereq.q)>fabsf(_motor->FOC.id_mtpa)){
 	    	_motor->FOC.iq_mtpa = sqrtf(_motor->FOC.Idq_prereq.q * _motor->FOC.Idq_prereq.q - _motor->FOC.id_mtpa * _motor->FOC.id_mtpa);
 	    	}
 	    	else{
-	    		_motor->FOC.iq_mtpa = 0;
+	    		_motor->FOC.iq_mtpa = 0.0f;
 	    	}
 	    _motor->FOC.Idq_prereq.d = _motor->FOC.id_mtpa;
 	    if(_motor->FOC.Idq_prereq.q>0.0f){
