@@ -3031,7 +3031,8 @@ void collectInputs(MESC_motor_typedef *_motor){
 			  }
 			  else{
 				  input_vars.ADC1_req = 0.0f;
-
+			  }
+		  }
 		  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
 		  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
 	  }
