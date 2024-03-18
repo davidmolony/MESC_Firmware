@@ -1136,6 +1136,9 @@ float La_last, Lb_last;
     }else{
     	Idq_err.d = (_motor->FOC.Idq_req.d - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
     }
+#else
+	Idq_err.d = (_motor->FOC.Idq_req.d - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
+	//if we do not use the field weakening controller, we still want to control the d axis current...
 #endif
 
     // Integral error
