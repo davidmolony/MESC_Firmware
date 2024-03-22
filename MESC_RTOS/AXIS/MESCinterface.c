@@ -391,6 +391,12 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 	if(is_init) return;
 	is_init=true;
 
+	axis_vars.check_pwm_vs_spi = true;
+	axis_vars.use_pwm = true;
+	axis_vars.use_spi = true;
+	axis_vars.error_latch = false;
+	axis_vars.error_count = 0;
+	axis_vars.current_rel = 0.0f;
 
 	if(CMD_varLoad(&null_handle, 0, NULL) == TERM_CMD_EXIT_ERROR){
 
