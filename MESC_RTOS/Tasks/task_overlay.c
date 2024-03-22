@@ -55,7 +55,7 @@
  */
 /* `#START USER_INCLUDE SECTION` */
 #include "TTerm/Core/include/TTerm.h"
-#ifndef DASH
+#ifdef MESC
 #include "MESCfoc.h"
 #include "MESCmotor_state.h"
 #endif
@@ -77,7 +77,7 @@
 
 
 void show_overlay(TERMINAL_HANDLE * handle){
-#ifndef DASH
+#ifdef MESC
 	MESC_motor_typedef * motor_curr = &mtr[0];
 
 	TERM_sendVT100Code(handle, _VT100_CURSOR_SAVE_POSITION,0);
@@ -466,7 +466,7 @@ void print_index(TERMINAL_HANDLE * handle, char * name, uint32_t count, float in
 }
 
 void log_fastloop(TERMINAL_HANDLE * handle){
-#ifndef DASH
+#ifdef MESC
 	lognow = 1;
 	vTaskDelay(100);
 

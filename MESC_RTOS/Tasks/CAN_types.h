@@ -53,5 +53,27 @@ typedef struct _CAN_NODES_{
 	node_type type;
 }TASK_CAN_node;
 
+
+typedef struct{
+	TASK_CAN_node * node;
+	float speed;
+	float adc1;
+	float adc2;
+	float bus_voltage;
+	float bus_current;
+	float motor_current;
+	float temp_motor;
+	float temp_mos1;
+	float temp_mos2;
+	float temp_mos3;
+	uint32_t status;
+	float Iq;
+	float Id;
+	float Vq;
+	float Vd;
+	uint32_t cycles_fastloop;
+	uint32_t cycles_hyperloop;
+} esc_data;
+
 #endif
 #endif /* CAN_TYPES_H_ */

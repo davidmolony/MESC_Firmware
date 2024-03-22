@@ -7,6 +7,9 @@
 #else
 #define TERM_SUPPORT_CWD 0
 #endif
+#ifdef STM32L432xx
+#define ALLIGNED_DOUBLE_WORD
+#endif
 #define TERM_SUPPORT_APPS 1
 #define TERM_DEBUG_UART 0
 #define TERM_SUPPORT_VARIABLES 1

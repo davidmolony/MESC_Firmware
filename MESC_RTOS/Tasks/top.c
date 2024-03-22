@@ -24,7 +24,7 @@
 #include "top.h"
 #include "string.h"
 
-#ifndef DASH
+#ifdef MESC
 #include "MESCfoc.h"
 #endif
 
@@ -89,7 +89,7 @@ static void TASK_main(void *pvParameters){
             uint32_t cpuLoad = SYS_getCPULoadFine(taskStats, taskCount, sysTime);
             ttprintf("%sbottom - %d\r\n%sTasks: \t%d\r\n%sCPU: \t%d,%d%%\r\n", TERM_getVT100Code(_VT100_ERASE_LINE_END, 0), xTaskGetTickCount(), TERM_getVT100Code(_VT100_ERASE_LINE_END, 0), taskCount, TERM_getVT100Code(_VT100_ERASE_LINE_END, 0), cpuLoad / 10, cpuLoad % 10);
             
-#ifndef DASH
+#ifdef MESC
             uint32_t sum_fastloop=0;
             uint32_t sum_pwmloop=0;
             uint32_t max_pwm=0;
