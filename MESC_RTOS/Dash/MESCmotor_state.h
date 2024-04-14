@@ -83,6 +83,7 @@ typedef enum {
   MOTOR_STATE_RUN_BLDC = 14,
   /*We are going to run, but using a BLDC controller, not FOC
    */
+  MOTOR_STATE_RUN_BLDC = 15
 
 } motor_state_e;
 

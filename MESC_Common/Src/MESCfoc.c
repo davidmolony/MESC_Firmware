@@ -2079,7 +2079,11 @@ float  Square(float x){ return((x)*(x));}
 	  collectInputs(_motor); //Get all the throttle inputs
 
 	  switch(_motor->ControlMode){
-		  case MOTOR_CONTROL_MODE_TORQUE:
+	  	  case MOTOR_STATE_NO_RECOVERY: // stay here, remain here, until user reboots
+			  _motor->FOC.Idq_prereq.q = 0.0f;
+			  _motor->FOC.Idq_prereq.d = 0.0f;
+			  break;
+	  	  case MOTOR_CONTROL_MODE_TORQUE:
 			  //We just scale and sum the input current requests
 			  _motor->FOC.Idq_prereq.q = input_vars.UART_req +
 			  	  input_vars.max_request_Idq.q * (input_vars.ADC1_req + input_vars.ADC2_req +
@@ -2296,10 +2300,7 @@ float  Square(float x){ return((x)*(x));}
 			__NOP();
 			//We might want to do something if there is a handbrake state? Like exiting this state?
 			break;
-		case MOTOR_STATE_NO_RECOVERY: // stay here, remain here, until user reboots
-			  _motor->FOC.Idq_prereq.q = 0.0f;
-			  _motor->FOC.Idq_prereq.d = 0.0f;
-			break;
+
 
 		default:
 			__NOP();

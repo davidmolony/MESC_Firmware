@@ -84,7 +84,7 @@ typedef enum {
   /*We are going to run, but using a BLDC controller, not FOC */
 
   // owen addition: in this state, simply stay in this state until the controller reboots
-  MOTOR_STATE_NO_RECOVERY = 15,
+  MOTOR_STATE_NO_RECOVERY = 15
 
 } motor_state_e;
 
