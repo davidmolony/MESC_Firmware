@@ -3121,29 +3121,27 @@ void collectInputs(MESC_motor_typedef *_motor){
 
 #endif
 
-
-
 #ifdef GET_EXT_ADC_FAILSAFE
 	  if(input_vars.input_options & 0b1000000){
 		  if ( _motor->Raw.ext_adc_killswitch > KILLSWITCH_ANALOG_CUTOFF ) {
 			  input_vars.kill_count++;
 		  }
 	  }
+
 #endif
 
 	  /*
-	     KILL_COUNT TEST BLOCK:
+	     KILL_COUNT BLOCK:
          I thought this is necessary because i assume only one bit reserved for killswitch
 		   activities in _motor->key_bits
 	   */
-
-		if (input_vars.kill_count != 0){
-			input_vars.nKillswitch = 0;
-			_motor->key_bits |= KILLSWITCH_KEY;
-		} else {
-			input_vars.nKillswitch = 1;
-			_motor->key_bits &= ~KILLSWITCH_KEY;
-		}
+	  if (input_vars.kill_count != 0){
+		  input_vars.nKillswitch = 0;
+		  _motor->key_bits |= KILLSWITCH_KEY;
+	  } else {
+		  input_vars.nKillswitch = 1;
+		  _motor->key_bits &= ~KILLSWITCH_KEY;
+	  }
 		// IMPORTANT: I did not understand the purpose of invert_killswitch, and this
 		//    did not get it right. maybe test invert_killswitch here?
 }

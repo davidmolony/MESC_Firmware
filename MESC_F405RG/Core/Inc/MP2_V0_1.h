@@ -43,7 +43,7 @@
 
 //Testing
 #define HIGH_ADC_SAFECOUNT 40
-#define HIGH_ADC_THRESHOLD 3800
+#define HIGH_ADC_THRESHOLD 1300
 
  // Throttle for MP2 with F405 pill
 #define GET_THROTTLE_INPUT 	_motor->Raw.ADC_in_ext1 = 0.99f*_motor->Raw.ADC_in_ext1 + 0.01f*hadc1.Instance->JDR3;
