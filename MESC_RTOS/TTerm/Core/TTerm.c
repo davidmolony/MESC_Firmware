@@ -63,7 +63,7 @@ TERMINAL_HANDLE * TERM_createNewHandle(TermPrintHandler printFunction, unsigned 
     
     newHandle->inputBuffer = pvPortMalloc(TERM_INPUTBUFFER_SIZE);
     newHandle->currUserName = pvPortMalloc(strlen(usr) + 1 + strlen(TERM_getVT100Code(_VT100_FOREGROUND_COLOR, _VT100_YELLOW)) + strlen(TERM_getVT100Code(_VT100_RESET_ATTRIB, 0)));
-    newHandle->userPermissionLevel = 15;
+    newHandle->userPermissionLevel = 0;
     newHandle->currPermissionLevel = newHandle->userPermissionLevel;
     
     //initialise function pointers

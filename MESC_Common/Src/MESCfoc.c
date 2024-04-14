@@ -2972,14 +2972,14 @@ void collectInputs(MESC_motor_typedef *_motor){
 	  if((input_vars.input_options & 0b100000)&&(input_vars.remote_ADC_can_id > 0)){
 		  	  //Do nothing. Already set
 	  }else{
-		  input_vars.remote_ADC1_req - 0.0f;//Set the input variable to zero
+		  input_vars.remote_ADC1_req = 0.0f;//Set the input variable to zero
 	  }
 
 	  //Remote ADC2 input
 	  if((input_vars.input_options & 0b10000)&&(input_vars.remote_ADC_can_id > 0)){
 		  //Do nothing, already set
 	  }else{
-		  input_vars.remote_ADC2_req - 0.0f;//Set the input variable to zero
+		  input_vars.remote_ADC2_req = 0.0f;//Set the input variable to zero
 	  }
 
 	  //Differential ADC12 input
@@ -3042,6 +3042,8 @@ void collectInputs(MESC_motor_typedef *_motor){
 			  }
 			  if(input_vars.ADC2_req>1.0f){input_vars.ADC2_req=1.0f;}
 			  if(input_vars.ADC2_req<-1.0f){input_vars.ADC2_req=-1.0f;}
+	  }else{
+		  input_vars.ADC2_req = 0.0f;
 	  }
 
 	  //ADC1 input
@@ -3058,7 +3060,10 @@ void collectInputs(MESC_motor_typedef *_motor){
 			  }
 		  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
 		  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
+	  }else{
+		  input_vars.ADC1_req = 0.0f;
 	  }
+
 #ifdef KILLSWITCH_GPIO
 	  if(input_vars.input_options & 0b10000){//Killswitch
 		if(KILLSWITCH_GPIO->IDR & (0x01<<KILLSWITCH_IONO)){

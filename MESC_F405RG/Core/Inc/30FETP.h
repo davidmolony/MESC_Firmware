@@ -10,15 +10,15 @@
 //Pick a motor for default
 #define QS165//MCMASTER_70KV_8080//QS165//CA120//
 #define PWM_FREQUENCY 20000
-#define CUSTOM_DEADTIME 800 //ns, MAX 1500ns! implementation in MESCInit().
+#define CUSTOM_DEADTIME 600 //ns, MAX 1500ns! implementation in MESCInit().
 
 #define SHUNT_POLARITY 1.0f
 
 #define ABS_MAX_PHASE_CURRENT 400.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.
-#define ABS_MAX_BUS_VOLTAGE 90.0f
+#define ABS_MAX_BUS_VOLTAGE 55.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
-#define R_SHUNT 1.0f//900A current sensors
-#define OPGAIN 0.00183f
+#define R_SHUNT 1.0f//1850A//900A current sensors (insertion vs ring)
+#define OPGAIN 0.00089f
 
 #define R_VBUS_BOTTOM 3300.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 150000.0f
