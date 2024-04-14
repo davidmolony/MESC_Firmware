@@ -3072,7 +3072,11 @@ void collectInputs(MESC_motor_typedef *_motor){
 #ifdef HIGH_ADC_SAFECOUNT
 		  if(_motor->Raw.ADC_in_ext1>HIGH_ADC_THRESHOLD){
 			  if (input_vars.remote_ADC_max_count > HIGH_ADC_SAFECOUNT) {
+				  // NOTE: I dont understand why this didnt work:
 				  _motor->MotorState = MOTOR_STATE_NO_RECOVERY;
+				  // so since it doesnt, I'm going with:
+				  input_vars.remote_ADC1_req = 0.0f;
+				  input_vars.remote_ADC2_req = 0.0f;
 			  }
 			  input_vars.remote_ADC_max_count++;
 		  }
@@ -3097,7 +3101,7 @@ void collectInputs(MESC_motor_typedef *_motor){
 	  _motor->key_bits &= ~KILLSWITCH_KEY;
 
 #ifdef KILLSWITCH_GPIO
-	  if(input_vars.input_options & 0b100000000){
+	  if(input_vars.input_options & 0b100000){
 		if(KILLSWITCH_GPIO->IDR & (0x01<<KILLSWITCH_IONO)){
 			// nothing happens
 			// input_vars.nKillswitch = 1;
@@ -3114,17 +3118,13 @@ void collectInputs(MESC_motor_typedef *_motor){
 	  }else{ // If we are not using the killswitch, then it should be "on"
 		     //   so do nothing, this gets handled in kill_count test
 	  }
-#else
-      // leaving this here for code review. Again, if youre here, do nothing
-	  ///   kill_count test takes will take care of it
-	  // input_vars.nKillswitch = 1;
-	  // _motor->key_bits &= ~KILLSWITCH_KEY;
+
 #endif
 
 
 
 #ifdef GET_EXT_ADC_FAILSAFE
-	  if(input_vars.input_options & 0b1000000000){
+	  if(input_vars.input_options & 0b1000000){
 		  if ( _motor->Raw.ext_adc_killswitch > KILLSWITCH_ANALOG_CUTOFF ) {
 			  input_vars.kill_count++;
 		  }

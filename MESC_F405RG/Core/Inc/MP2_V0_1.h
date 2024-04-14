@@ -15,7 +15,7 @@
 #define SHUNT_POLARITY -1.0f
 
 #define ABS_MAX_PHASE_CURRENT 400.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.
-#define ABS_MAX_BUS_VOLTAGE 90.0f
+#define ABS_MAX_BUS_VOLTAGE 104.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
 #define R_SHUNT 0.00033f
 #define OPGAIN 10.5f
@@ -43,7 +43,7 @@
 
 //Testing
 #define HIGH_ADC_SAFECOUNT 40
-#define HIGH_ADC_THRESHOLD 4000
+#define HIGH_ADC_THRESHOLD 3800
 
  // Throttle for MP2 with F405 pill
 #define GET_THROTTLE_INPUT 	_motor->Raw.ADC_in_ext1 = 0.99f*_motor->Raw.ADC_in_ext1 + 0.01f*hadc1.Instance->JDR3;

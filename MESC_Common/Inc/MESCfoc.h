@@ -612,7 +612,7 @@ typedef struct {
 	int32_t remote_ADC_timeout;
 	// owen additions
 	int16_t remote_ADC_max_count; // used for counting number of excessively high throttle
-	int8_t  kill_count;             // used by killswitch case statements
+	int16_t  kill_count;             // used by killswitch case statements
 
 	uint16_t nKillswitch;
 	uint16_t invert_killswitch;
