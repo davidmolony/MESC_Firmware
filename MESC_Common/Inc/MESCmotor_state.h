@@ -81,8 +81,10 @@ typedef enum {
   /*All PWM should be off state, nothing happening. Motor may be spinning freely
    */
   MOTOR_STATE_RUN_BLDC = 14,
-  /*We are going to run, but using a BLDC controller, not FOC
-   */
+  /*We are going to run, but using a BLDC controller, not FOC */
+
+  // owen addition: in this state, simply stay in this state until the controller reboots
+  MOTOR_STATE_NO_RECOVERY = 15,
 
 } motor_state_e;
 

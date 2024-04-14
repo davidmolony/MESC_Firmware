@@ -2296,6 +2296,11 @@ float  Square(float x){ return((x)*(x));}
 			__NOP();
 			//We might want to do something if there is a handbrake state? Like exiting this state?
 			break;
+		case MOTOR_STATE_NO_RECOVERY: // stay here, remain here, until user reboots
+			  _motor->FOC.Idq_prereq.q = 0.0f;
+			  _motor->FOC.Idq_prereq.d = 0.0f;
+			break;
+
 		default:
 			__NOP();
 			//This accounts for all the initialising, test, measuring... procedures.
@@ -3060,31 +3065,87 @@ void collectInputs(MESC_motor_typedef *_motor){
 			  }
 		  if(input_vars.ADC1_req>1.0f){input_vars.ADC1_req=1.0f;}
 		  if(input_vars.ADC1_req<-1.0f){input_vars.ADC1_req=-1.0f;}
+
+		  // if user has compiled in a safecount, test if adc1 exceeds that too
+		  //   many times. If it has, then go into a non-recoverable state
+		  //   the only way to get out is to reset the controller
+#ifdef HIGH_ADC_SAFECOUNT
+		  if(_motor->Raw.ADC_in_ext1>HIGH_ADC_THRESHOLD){
+			  if (input_vars.remote_ADC_max_count > HIGH_ADC_SAFECOUNT) {
+				  _motor->MotorState = MOTOR_STATE_NO_RECOVERY;
+			  }
+			  input_vars.remote_ADC_max_count++;
+		  }
+		  else {
+			  input_vars.remote_ADC_max_count = 0;
+		  }
+#endif
+
 	  }else{
 		  input_vars.ADC1_req = 0.0f;
 	  }
 
-#ifdef KILLSWITCH_GPIO
-	  if(input_vars.input_options & 0b10000){//Killswitch
-		if(KILLSWITCH_GPIO->IDR & (0x01<<KILLSWITCH_IONO)){
-			input_vars.nKillswitch = 1;
-			_motor->key_bits &= ~KILLSWITCH_KEY;
-		}else{
-			input_vars.nKillswitch = 0;
-			_motor->key_bits |= KILLSWITCH_KEY;
-		}
-		if(input_vars.invert_killswitch){
-			input_vars.nKillswitch = !input_vars.nKillswitch;
-			_motor->key_bits ^= KILLSWITCH_KEY;
-		}
-	  }else{//If we are not using the killswitch, then it should be "on"
-			input_vars.nKillswitch = 1;
-			_motor->key_bits &= ~KILLSWITCH_KEY;
-	  }
-#else
+	  /*
+	     KILLSWITCH BLOCK
+	     Notes: there are several occurrences of else statements becoming unneeded
+	       I left them there so DM can review and eventually cut out of the code
+         What happens is three subblocks test if there is a problem and give kill_count a bump
+	       if it is is non-zero at the end, it sets key_bits.
+	   */
+	  input_vars.kill_count = 0; // restart in each loop
 	  input_vars.nKillswitch = 1;
 	  _motor->key_bits &= ~KILLSWITCH_KEY;
+
+#ifdef KILLSWITCH_GPIO
+	  if(input_vars.input_options & 0b100000000){
+		if(KILLSWITCH_GPIO->IDR & (0x01<<KILLSWITCH_IONO)){
+			// nothing happens
+			// input_vars.nKillswitch = 1;
+			// _motor->key_bits &= ~KILLSWITCH_KEY;
+		}else{
+			input_vars.kill_count++;
+		}
+		if(input_vars.invert_killswitch){
+			// owen did not understand this, and it is therefor fucked up in the kill_count test
+			// commenting away
+			// input_vars.nKillswitch = !input_vars.nKillswitch;
+			// _motor->key_bits ^= KILLSWITCH_KEY;
+		}
+	  }else{ // If we are not using the killswitch, then it should be "on"
+		     //   so do nothing, this gets handled in kill_count test
+	  }
+#else
+      // leaving this here for code review. Again, if youre here, do nothing
+	  ///   kill_count test takes will take care of it
+	  // input_vars.nKillswitch = 1;
+	  // _motor->key_bits &= ~KILLSWITCH_KEY;
 #endif
+
+
+
+#ifdef GET_EXT_ADC_FAILSAFE
+	  if(input_vars.input_options & 0b1000000000){
+		  if ( _motor->Raw.ext_adc_killswitch > KILLSWITCH_ANALOG_CUTOFF ) {
+			  input_vars.kill_count++;
+		  }
+	  }
+#endif
+
+	  /*
+	     KILL_COUNT TEST BLOCK:
+         I thought this is necessary because i assume only one bit reserved for killswitch
+		   activities in _motor->key_bits
+	   */
+
+		if (input_vars.kill_count != 0){
+			input_vars.nKillswitch = 0;
+			_motor->key_bits |= KILLSWITCH_KEY;
+		} else {
+			input_vars.nKillswitch = 1;
+			_motor->key_bits &= ~KILLSWITCH_KEY;
+		}
+		// IMPORTANT: I did not understand the purpose of invert_killswitch, and this
+		//    did not get it right. maybe test invert_killswitch here?
 }
 
 void RunMTPA(MESC_motor_typedef *_motor){

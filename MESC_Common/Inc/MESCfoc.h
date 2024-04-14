@@ -210,6 +210,7 @@ typedef struct {
 
 	int16_t ADC_in_ext1;
 	int16_t ADC_in_ext2;
+	int16_t ext_adc_killswitch;
 }MESC_raw_typedef;
 
 //extern MESC_raw_typedef motor1;
@@ -609,20 +610,22 @@ typedef struct {
 	float remote_ADC1_req;
 	float remote_ADC2_req;
 	int32_t remote_ADC_timeout;
-
+	// owen additions
+	int16_t remote_ADC_max_count; // used for counting number of excessively high throttle
+	int8_t  kill_count;             // used by killswitch case statements
 
 	uint16_t nKillswitch;
 	uint16_t invert_killswitch;
 
-	uint32_t input_options; //	0b...tuvwxyz where
-							//	t is differential ADC,
-							//	u is ADC1 remote,
-							//	v is ADC2 remote
-							//	w is UART,
-							//	x is RCPWM,
-							//	y is ADC1
-							//	z is ADC2
-
+	uint32_t input_options; //	0b...rtuvwxyz where
+							//	r is differential ADC,
+							//	t is ADC1 remote,
+							//	u is ADC2 remote
+							//	v is UART,
+							//	w is RCPWM,
+							//	x is ADC1
+							//	y is ADC2
+                            //  z is safety mode
 	MESCiq_s max_request_Idq;
 	MESCiq_s min_request_Idq;
 } input_vars_t;

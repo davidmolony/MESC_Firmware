@@ -34,12 +34,25 @@
 #define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
 #define DEADTIME_COMP_V 10
 //#define MAX_MODULATION 1.05f //Use this with 5 sector modulation if you want extra speed
-//Inputs
-#define GET_THROTTLE_INPUT 	_motor->Raw.ADC_in_ext1 = 0.99f*_motor->Raw.ADC_in_ext1 + 0.01f*hadc1.Instance->JDR3;  // Throttle for MP2 with F405 pill
-//#define GET_THROTTLE_INPUT2 	_motor->Raw.ADC_in_ext2 = 0.99f*_motor->Raw.ADC_in_ext2 + 0.01f*hadc1.Instance->JDR3;  // Throttle for MP2 with F405 pill
 
-#define GET_FETU_T 			_motor->Raw.MOSu_T = 	0.99f * _motor->Raw.MOSu_T + 0.01f*ADC2_buffer[3] //Temperature on PB1
+//Inputs
+#define GET_FETU_T 	_motor->Raw.MOSu_T = 	0.99f * _motor->Raw.MOSu_T + 0.01f*ADC2_buffer[3] //Temperature on PB1
 #define GET_MOTOR_T _motor->Raw.Motor_T = ADC1_buffer[4]
+#define GET_EXT_ADC_FAILSAFE _motor->Raw.ext_adc_killswitch = ADC1_buffer[3] // PA06 on the F405 pill
+#define KILLSWITCH_ANALOG_CUTOFF 360 // arbitrary value due to voltage divider on PA06
+
+//Testing
+#define HIGH_ADC_SAFECOUNT 40
+#define HIGH_ADC_THRESHOLD 4000
+
+ // Throttle for MP2 with F405 pill
+#define GET_THROTTLE_INPUT 	_motor->Raw.ADC_in_ext1 = 0.99f*_motor->Raw.ADC_in_ext1 + 0.01f*hadc1.Instance->JDR3;
+
+#ifndef GET_EXT_ADC_FAILSAFE
+// You can NOT define this if
+//#define GET_THROTTLE_INPUT2 	_motor->Raw.ADC_in_ext2 = 0.99f*_motor->Raw.ADC_in_ext2 + 0.01f*hadc1.Instance->JDR3;
+#endif
+
 //#define USE_FIELD_WEAKENING
 #define USE_FIELD_WEAKENINGV2
 
