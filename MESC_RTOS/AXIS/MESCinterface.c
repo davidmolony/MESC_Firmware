@@ -66,6 +66,12 @@ void * TASK_CAN_free_node(TASK_CAN_handle * handle, TASK_CAN_node * node){
 
 
 
+const char TERM_startupText1[] = "\r\n";
+const char TERM_startupText2[] = "\r\n[A][X][I][S] - Throttle";
+const char TERM_startupText3[] = "\r\n";
+
+
+
 
 void populate_vars(){
 	can1.node_id = 255;
@@ -75,7 +81,7 @@ void populate_vars(){
 	TERM_addVar(axis_vars.encoder_error_limit		, 0			, 1000		, "enc_err_lim"	, "Encoder error limit"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(axis_vars.check_pwm_vs_spi			, 0			, 1			, "sanitycheck"	, "Check PWM vs SPI"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(axis_vars.use_spi					, 0			, 1			, "use_spi"		, "Retrieve angle via SPI"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(axis_vars.use_pwm					, 0			, 1			, "use_spi"		, "Retrieve angle via PWM"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(axis_vars.use_pwm					, 0			, 1			, "use_pwm"		, "Retrieve angle via PWM"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 }
 
 
@@ -390,6 +396,8 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 	static bool is_init=false;
 	if(is_init) return;
 	is_init=true;
+
+	populate_vars();
 
 	axis_vars.check_pwm_vs_spi = true;
 	axis_vars.use_pwm = true;

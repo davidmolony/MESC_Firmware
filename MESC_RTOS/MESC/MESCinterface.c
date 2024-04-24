@@ -45,6 +45,10 @@
 
 extern uint16_t deadtime_comp;
 
+const char TERM_startupText1[] = "\r\n";
+const char TERM_startupText2[] = "\r\n[M]olony [E]lectronic [S]peed [C]ontroller";
+const char TERM_startupText3[] = "\r\n";
+
 uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	MESC_motor_typedef * motor_curr = &mtr[0];
@@ -643,11 +647,11 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 	populate_vars();
 
-	if(CMD_varLoad(&null_handle, 0, NULL) == TERM_CMD_EXIT_ERROR){
+	/*if(CMD_varLoad(&null_handle, 0, NULL) == TERM_CMD_EXIT_ERROR){
 		for(int i = 0; i<NUM_MOTORS; i++){
 			mtr[i].conf_is_valid = false;
 		}
-	}
+	}*/
 
 	calculateGains(&mtr[0]);
 	calculateVoltageGain(&mtr[0]);

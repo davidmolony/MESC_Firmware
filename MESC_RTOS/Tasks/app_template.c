@@ -36,7 +36,7 @@ static void TASK_main(void *pvParameters);
 static uint8_t INPUT_handler(TERMINAL_HANDLE * handle, uint16_t c);
 
 //Name the function as your app
-uint8_t REGISTER_app_encoder(TermCommandDescriptor * desc){
+uint8_t REGISTER_app_template(TermCommandDescriptor * desc){
     TERM_addCommand(CMD_main, APP_NAME, APP_DESCRIPTION, 0, desc); 
     return pdTRUE;
 }

@@ -38,7 +38,7 @@ static void TASK_main(void *pvParameters);
 static uint8_t INPUT_handler(TERMINAL_HANDLE * handle, uint16_t c);
 
 //Name the function as your app
-uint8_t REGISTER_app_template(TermCommandDescriptor * desc){
+uint8_t REGISTER_app_encoder(TermCommandDescriptor * desc){
     TERM_addCommand(CMD_main, APP_NAME, APP_DESCRIPTION, 0, desc);
     return pdTRUE;
 }
@@ -82,7 +82,7 @@ static void bargraph(TERMINAL_HANDLE * handle, float min, float max, float val){
 		buffer[i+1] = i<norm? '#' : '_';
 	}
 	buffer[41]='|';
-	ttprintf("%s %10.0f ", buffer, (double)val);
+	ttprintf("%s %10.2f ", buffer, (double)val);
 
 }
 
@@ -122,13 +122,13 @@ static void TASK_main(void *pvParameters){
     	highlight(handle, "Encoder SPI:", 0, selected);
     	TERM_setCursorPos(handle, 2, 0);
     	bargraph(handle, -1, 1, axis_vars.ratioSPI);
-    	ttprintf("VAL: %1.0f", (double)axis_vars.ratioSPI);
+    	//ttprintf("VAL: %1.2f", (double)axis_vars.ratioSPI);
 
-    	TERM_setCursorPos(handle, 2, 0);
-    	highlight(handle, "Encoder PWM:", 0, selected);
     	TERM_setCursorPos(handle, 3, 0);
+    	highlight(handle, "Encoder PWM:", 0, selected);
+    	TERM_setCursorPos(handle, 4, 0);
     	bargraph(handle, -1, 1, axis_vars.ratioPWM);
-    	ttprintf("VAL: %1.0f", (double)axis_vars.ratioPWM);
+    	//ttprintf("VAL: %1.2f", (double)axis_vars.ratioPWM);
 
     	TERM_setCursorPos(handle, 5, 0);
     	ttprintf("RAW: %6d ERROR: %d CODE: %d", axis_vars.mt6816.angle, axis_vars.mt6816.error, axis_vars.mt6816.status);

@@ -97,6 +97,10 @@ TermVariableHandle * TERM_VAR_init(TERMINAL_HANDLE * handle, void * nvm_address,
 	var->nvm_end_write = nvm_end_write;
 	var->nvm_clear = nvm_clear;
 
+	if(password[0]==0){
+		handle->currPermissionLevel = 0;
+	}
+
 	if(is_init == false){
 		TERM_addVarString(password, sizeof(password), 0, 0, "password", "Password for SU", VAR_ACCESS_RW, NULL, &TERM_varList);
 		is_init = true;
@@ -1206,10 +1210,12 @@ uint8_t CMD_varSave(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 #endif
 
 		//written += var->nvm_write(currData, (uint8_t*)currVar->name, nameLengthWNull);
-		footer.crc = TTERM_fnv1a_process_data(footer.crc, currVar->name, nameLengthWNull);
-		footer.crc = TTERM_fnv1a_process_data(footer.crc, data_cpy + nameLengthWNull, currVar->typeSize);
+		footer.crc = TTERM_fnv1a_process_data(footer.crc, data_cpy, bytes_to_write);
+		//footer.crc = TTERM_fnv1a_process_data(footer.crc, data_cpy + nameLengthWNull, currVar->typeSize);
 
 		written += var->nvm_write(currData, data_cpy, bytes_to_write);
+
+		currData += bytes_to_write;
 
 		currVar = currVar->nextVar;
 	}
@@ -1368,7 +1374,6 @@ uint8_t CMD_varLoad(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 		currFlashVar = currFlashVar->nextVar;
 	}
-
 
 	return TERM_CMD_EXIT_SUCCESS;
 
