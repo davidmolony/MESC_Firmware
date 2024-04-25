@@ -133,7 +133,7 @@ static void TASK_main(void *pvParameters){
     	TERM_setCursorPos(handle, 5, 0);
     	ttprintf("RAW: %6d ERROR: %d CODE: %d", axis_vars.mt6816.angle, axis_vars.mt6816.error, axis_vars.mt6816.status);
     	TERM_setCursorPos(handle, 6, 0);
-    	ttprintf("ERROR COUNT: %6d ERROR LATCH: %d", axis_vars.error_count, axis_vars.error_latch);
+    	ttprintf("ERROR COUNT: %6d ACCUMULATED ERRORS: %d", axis_vars.error_count, axis_vars.accumulated_errors);
 
 		if(c==ARROW_DOWN){
 			selected++;

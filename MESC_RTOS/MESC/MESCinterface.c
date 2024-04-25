@@ -647,11 +647,11 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 	populate_vars();
 
-	/*if(CMD_varLoad(&null_handle, 0, NULL) == TERM_CMD_EXIT_ERROR){
+	if(CMD_varLoad(&null_handle, 0, NULL) == TERM_CMD_EXIT_ERROR){
 		for(int i = 0; i<NUM_MOTORS; i++){
 			mtr[i].conf_is_valid = false;
 		}
-	}*/
+	}
 
 	calculateGains(&mtr[0]);
 	calculateVoltageGain(&mtr[0]);

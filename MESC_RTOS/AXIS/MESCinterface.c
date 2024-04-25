@@ -50,35 +50,22 @@
 axis_vars_t axis_vars;
 
 
-void * TASK_CAN_allocate_node(TASK_CAN_handle * handle, TASK_CAN_node * node){
-	if(memcmp(node->short_name, "ESC", 3)==0){
-		node->type = NODE_TYPE_ESC;
-		node->data = pvPortMalloc(sizeof(esc_data));
-		((esc_data*)node->data)->node = node;
-	}
-	return NULL;
-}
-
-void * TASK_CAN_free_node(TASK_CAN_handle * handle, TASK_CAN_node * node){
-	vPortFree(node->data);
-	return NULL;
-}
-
-
 
 const char TERM_startupText1[] = "\r\n";
 const char TERM_startupText2[] = "\r\n[A][X][I][S] - Throttle";
 const char TERM_startupText3[] = "\r\n";
 
 
-
+void callback(TermVariableDescriptor * var){
+	axis_vars.error_count = 0;
+}
 
 void populate_vars(){
 	can1.node_id = 255;
 
 	//		   | Variable							| MIN		| MAX		| NAME			| DESCRIPTION							| RW			| CALLBACK	| VAR LIST HANDLE
 	TERM_addVar(can1.node_id						, 1			, 254		, "node_id"		, "Node ID"								, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(axis_vars.encoder_error_limit		, 0			, 1000		, "enc_err_lim"	, "Encoder error limit"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(axis_vars.encoder_error_limit		, 0			, 1000		, "enc_err_lim"	, "Encoder error limit"					, VAR_ACCESS_RW	, callback  , &TERM_varList);
 	TERM_addVar(axis_vars.check_pwm_vs_spi			, 0			, 1			, "sanitycheck"	, "Check PWM vs SPI"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(axis_vars.use_spi					, 0			, 1			, "use_spi"		, "Retrieve angle via SPI"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(axis_vars.use_pwm					, 0			, 1			, "use_pwm"		, "Retrieve angle via PWM"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
@@ -88,56 +75,10 @@ void populate_vars(){
 extern volatile TERMINAL_HANDLE * debug;
 uint32_t count=0;
 
-void TASK_CAN_packet_esc(esc_data * esc, uint32_t id, uint8_t* data, uint32_t len){
-	switch(id){
-		case CAN_ID_ADC1_2_REQ:
-			esc->adc1 = PACK_buf_to_float(data);
-			esc->adc2 = PACK_buf_to_float(data+4);
-			break;
-		case CAN_ID_SPEED:
-			esc->speed = PACK_buf_to_float(data);
-			break;
-		case CAN_ID_BUS_VOLT_CURR:
-			esc->bus_voltage = PACK_buf_to_float(data);
-			esc->bus_current = PACK_buf_to_float(data+4);
-			break;
-		case CAN_ID_TEMP_MOT_MOS1:
-			esc->temp_motor = PACK_buf_to_float(data);
-			esc->temp_mos1 = PACK_buf_to_float(data+4);
-			break;
-		case CAN_ID_TEMP_MOS2_MOS3:
-			esc->temp_mos2 = PACK_buf_to_float(data);
-			esc->temp_mos3 = PACK_buf_to_float(data+4);
-			break;
-		case CAN_ID_MOTOR_CURRENT:
-			esc->Iq = PACK_buf_to_float(data);
-			esc->Id = PACK_buf_to_float(data+4);
-			break;
-		case CAN_ID_MOTOR_VOLTAGE:
-			esc->Vq = PACK_buf_to_float(data);
-			esc->Vd = PACK_buf_to_float(data+4);
-			break;
-		case CAN_ID_STATUS:
-			esc->status = PACK_buf_to_u32(data);
-			break;
-		case CAN_ID_FOC_HYPER:
-			esc->cycles_fastloop = PACK_buf_to_u32(data);
-			esc->cycles_hyperloop = PACK_buf_to_u32(data+4);
-			break;
-	}
-
-}
 
 
 
 void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
-	TASK_CAN_node * node = TASK_CAN_get_node_from_id(sender);
-
-	if(node != NULL && node->type == NODE_TYPE_ESC && node->data != NULL){
-		esc_data * esc = node->data;
-		TASK_CAN_packet_esc(esc, id, data, len);  //Process ESC data
-		return;
-	}
 
 	switch(id){
 
@@ -145,8 +86,6 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 			break;
 	}
 }
-
-
 
 
 float pi = 3.1415;
@@ -209,14 +148,16 @@ mt6816_t read_encoder(){
 
 	uint8_t parity_bit = SPIRxData & 0b1;
 
+	ret.status = 0;
 	if(has_even_parity(ret.angle) == parity_bit){
 		ret.angle = 0;
 		ret.error = MT6816_ERROR;
-		ret.status = MT6816_PARITY_ERROR;
-	}else if(SPIRxData & 0b10){  //Check no magnet bit
+		ret.status |= MT6816_PARITY_ERROR;
+	}
+	if(SPIRxData & 0b10){  //Check no magnet bit
 		ret.angle = 0;
 		ret.error = MT6816_ERROR;
-		ret.status = MT6816_NO_MAG;
+		ret.status |= MT6816_NO_MAG;
 	}
 
 	return ret;
@@ -269,29 +210,43 @@ void task_encoder(void * argument){
 		}
 
 		//Use second source to verify accuracy
-		if(error_state || axis_vars.error_latch){
+		if(error_state){
 		  //Check the PWM and the SPI agree and that the magnet present bit is low
-			htim1.Instance->CCR1 = 0;
-			htim15.Instance->CCR1 = 0;
+			axis_vars.accumulated_errors++;
 
-			axis_vars.error_count++;
-			if(axis_vars.encoder_error_limit && axis_vars.error_count > axis_vars.encoder_error_limit){
-				axis_vars.error_latch = true;
+			if(axis_vars.encoder_error_limit && axis_vars.error_count >= axis_vars.encoder_error_limit){
 				axis_vars.current_rel = 0.0f;
+				htim1.Instance->CCR1 = 0;
+				htim15.Instance->CCR1 = 0;
+			}else{
+				axis_vars.error_count++;
 			}
 
 		}
 		else
 		{
-			htim1.Instance->CCR1 = (uint16_t)(axis_vars.ratioSPI*(float)htim1.Instance->ARR);
-			htim15.Instance->CCR1 = (uint16_t)(2000.0f+2000.0f*axis_vars.ratioSPI);
+			if(axis_vars.encoder_error_limit == 0){
+				axis_vars.error_count=0;
+			}
+			if(axis_vars.error_count){
+				axis_vars.error_count--;
+			}
 
-			if(axis_vars.use_spi && axis_vars.use_pwm){
-				axis_vars.current_rel = axis_vars.ratioSPI;
-			}else if(axis_vars.use_pwm == true && axis_vars.use_spi == false){
-				axis_vars.current_rel = axis_vars.ratioPWM;
-			}else if(axis_vars.use_pwm == false && axis_vars.use_spi == true){
-				axis_vars.current_rel = axis_vars.ratioSPI;
+			if(axis_vars.error_count == 0){
+				htim1.Instance->CCR1 = (uint16_t)(axis_vars.ratioSPI*(float)htim1.Instance->ARR);
+				htim15.Instance->CCR1 = (uint16_t)(2000.0f+2000.0f*axis_vars.ratioSPI);
+
+				if(axis_vars.use_spi && axis_vars.use_pwm){
+					axis_vars.current_rel = axis_vars.ratioSPI;
+				}else if(axis_vars.use_pwm == true && axis_vars.use_spi == false){
+					axis_vars.current_rel = axis_vars.ratioPWM;
+				}else if(axis_vars.use_pwm == false && axis_vars.use_spi == true){
+					axis_vars.current_rel = axis_vars.ratioSPI;
+				}
+			}else{
+				axis_vars.current_rel = 0.0f;
+				htim1.Instance->CCR1 = 0;
+				htim15.Instance->CCR1 = 0;
 			}
 
 		}
@@ -310,87 +265,8 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 
 }
 
-uint8_t CMD_esc_info(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
-	ttprintf("ESC detail info:\r\n");
-
-	for(uint32_t i=0;i<NUM_NODES;i++){
-		TASK_CAN_node * node = TASK_CAN_get_node_from_id(i);
-		if(node!=NULL && node != NODE_OVERRUN){
-			ttprintf("ID: %u\tType: %s\r\n", node->id, node->short_name);
-
-			if(node->data && node->type == NODE_TYPE_ESC){
-				esc_data * esc = node->data;
-				ttprintf("\tSpeed: %f\r\n", esc->speed, esc->motor_current);
-				ttprintf("\tIq: %f \tId: %f \tVq: %f Vd: %f\t\r\n", esc->Iq, esc->Id, esc->Vq, esc->Vd);
-				ttprintf("\tADC1: %f \tADC2: %f\r\n", esc->adc1, esc->adc2);
-				ttprintf("\tTemp Motor: %f \tTemp Mos1: %f \tTemp Mos2: %f \tTemp Mos3: %f\r\n", esc->temp_motor, esc->temp_mos1, esc->temp_mos2, esc->temp_mos3);
-				ttprintf("\tBus voltage: %f \tBus current: %f\r\n", esc->bus_voltage, esc->bus_current);
-				ttprintf("\tCycles fastloop: %u \tCycles hyperloop: %u\r\n", esc->cycles_fastloop, esc->cycles_hyperloop);
-
-				ttprintf("\tMESC status: ");
-
-				switch(esc->status){
-				case MOTOR_STATE_INITIALISING:
-					ttprintf("INITIALISING");
-					break;
-				case MOTOR_STATE_DETECTING:
-					ttprintf("DETECTING");
-					break;
-				case MOTOR_STATE_MEASURING:
-					ttprintf("MEASURING");
-					break;
-				case MOTOR_STATE_ALIGN:
-					ttprintf("ALIGN");
-					break;
-				case MOTOR_STATE_OPEN_LOOP_STARTUP:
-					ttprintf("OL STARTUP");
-					break;
-				case MOTOR_STATE_OPEN_LOOP_TRANSITION:
-					ttprintf("OL TRANSITION");
-					break;
-				case MOTOR_STATE_TRACKING:
-					ttprintf("TRACKING");
-					break;
-				case MOTOR_STATE_RUN:
-					ttprintf("RUN");
-					break;
-				case MOTOR_STATE_GET_KV:
-					ttprintf("GET KV");
-					break;
-				case MOTOR_STATE_TEST:
-					ttprintf("TEST");
-					break;
-				case MOTOR_STATE_ERROR:
-					ttprintf("ERROR");
-					break;
-				case MOTOR_STATE_RECOVERING:
-					ttprintf("RECOVERING");
-					break;
-				case MOTOR_STATE_IDLE:
-					ttprintf("IDLE");
-					break;
-				case MOTOR_STATE_SLAMBRAKE:
-					ttprintf("SLAMBRAKE");
-					break;
-				}
-				ttprintf("\r\n");
-
-			}
 
 
-		}
-	}
-
-	return TERM_CMD_EXIT_SUCCESS;
-
-}
-
-
-uint8_t CMD_clear_error(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
-	axis_vars.error_count = 0;
-	axis_vars.error_latch = false;
-	return TERM_CMD_EXIT_SUCCESS;
-}
 
 void MESCinterface_init(TERMINAL_HANDLE * handle){
 	static bool is_init=false;
@@ -402,7 +278,6 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 	axis_vars.check_pwm_vs_spi = true;
 	axis_vars.use_pwm = true;
 	axis_vars.use_spi = true;
-	axis_vars.error_latch = false;
 	axis_vars.error_count = 0;
 	axis_vars.current_rel = 0.0f;
 
@@ -411,12 +286,8 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 	}
 
-	TERM_addCommand(CMD_clear_error, "clear", "Clear errors", 0, &TERM_defaultList);
-
 	TERM_addCommand(CMD_nodes, "nodes", "Node info", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_can_send, "can_send", "Send CAN message", 0, &TERM_defaultList);
-
-	TERM_addCommand(CMD_esc_info, "esc", "ESC info", 0, &TERM_defaultList);
 
 	REGISTER_apps(&TERM_defaultList);
 

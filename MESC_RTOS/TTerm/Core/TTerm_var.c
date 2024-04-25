@@ -1024,6 +1024,13 @@ static uint8_t * print_headers(TERMINAL_HANDLE * handle, uint8_t * address, uint
 	return header_section - size_last;
 }
 
+uint32_t get_padding(uint32_t num, uint32_t allignement){
+
+	uint32_t remainder = num % allignement;
+	return allignement - remainder;
+
+}
+
 uint32_t validate(TERMINAL_HANDLE * handle, FlashHeader * header){
 	TermVariableHandle * var = handle->varHandle;
 
@@ -1045,20 +1052,19 @@ uint32_t validate(TERMINAL_HANDLE * handle, FlashHeader * header){
 
 	currFlashVar = FlashVar;
 	for(uint32_t currPos=0;currPos < header->num_entries; currPos++){
-		crc = TTERM_fnv1a_process_data(crc, currFlashVar->name, currFlashVar->nameLength+1);
-		crc = TTERM_fnv1a_process_data(crc, currFlashVar->variable, currFlashVar->typeSize);
+		uint32_t size = currFlashVar->nameLength + 1 + currFlashVar->typeSize;  //Include variable data which follows the name
+
+#ifdef ALLIGNED_DOUBLE_WORD
+		size += get_padding(size, 8);
+#endif
+		crc = TTERM_fnv1a_process_data(crc, currFlashVar->name, size);
 		currFlashVar = currFlashVar->nextVar;
 	}
 
 	return TTERM_fnv1a_process_data(crc, footer, sizeof(FlashFooter) - sizeof(uint32_t));
 }
 
-uint32_t get_padding(uint32_t num, uint32_t allignement){
 
-	uint32_t remainder = num % allignement;
-	return allignement - remainder;
-
-}
 
 uint8_t CMD_varSave(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 

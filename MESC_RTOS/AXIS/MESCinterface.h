@@ -37,7 +37,7 @@
 #include "Tasks/task_can.h"
 
 
-#define CAN_NAME "AXISL432"
+#define CAN_NAME "THR_AXIS"
 typedef struct{
 	uint16_t angle;
 	uint8_t status;
@@ -54,7 +54,7 @@ typedef struct{
 	float ratioSPI;
 	uint32_t encoder_error_limit;
 	uint32_t error_count;
-	bool error_latch;
+	uint32_t accumulated_errors;
 }axis_vars_t;
 
 
