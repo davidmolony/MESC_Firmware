@@ -28,8 +28,8 @@
 
 
 //**** Give the app a name, description and stack size ****
-#define APP_NAME "encoder"
-#define APP_DESCRIPTION "Encoder info"
+#define APP_NAME "calibrate"
+#define APP_DESCRIPTION "Encoder calibration"
 #define APP_STACK 400
 //*********************************************************
 
@@ -92,7 +92,7 @@ static void bargraph(TERMINAL_HANDLE * handle, float min, float max, float val){
 #define ARROW_LEFT 	0x1004
 #define ARROW_RIGHT 0x1003
 
-#define MAX_ITEMS	2
+#define MAX_ITEMS	3
 
 static void highlight(TERMINAL_HANDLE * handle, char * text ,int index, int count){
 	if(count==index){
@@ -112,27 +112,74 @@ static void TASK_main(void *pvParameters){
 
     int selected=0;
 
-    TERM_setCursorPos(handle, MAX_ITEMS*3+6, 0);
-    ttprintf("Keys: [UP/DOWN] Select item  Quit");
+    TERM_setCursorPos(handle, MAX_ITEMS*3+14, 0);
+    ttprintf("Keys: [UP/DOWN] Select item  [z] Zero [s] Span [o] Offset [q] Quit");
 
     //*** App loop **************************************************************************************
     do{
+
+
     	TERM_sendVT100Code(handle,_VT100_CURSOR_DISABLE, 0);
+
+
     	TERM_setCursorPos(handle, 1, 0);
-    	highlight(handle, "Encoder SPI:", 0, selected);
+    	highlight(handle, "Throttle calibrated:", 0, selected);
     	TERM_setCursorPos(handle, 2, 0);
-    	bargraph(handle, -1, 1, axis_vars.ratioSPI);
-    	//ttprintf("VAL: %1.2f", (double)axis_vars.ratioSPI);
+    	bargraph(handle, 0.0f, 1.0f, axis_vars.throttle_calibrated);
+
+
+		if(c=='z'){
+			axis_vars.throttle_start = axis_vars.throttle_raw;
+		}
+		if(c=='s'){
+			axis_vars.throttle_end = axis_vars.throttle_z_calib;
+		}
+
+		if(c=='+'){
+			axis_vars.throttle_raw += 0.1f;
+			if(axis_vars.throttle_raw > 1.0f){
+				axis_vars.throttle_raw = 0.0f;
+			}
+		}
+		if(c=='-'){
+			axis_vars.throttle_raw -= 0.1f;
+			if(axis_vars.throttle_raw < 0.0f){
+				axis_vars.throttle_raw = 1.0f;
+			}
+		}
+
 
     	TERM_setCursorPos(handle, 3, 0);
-    	highlight(handle, "Encoder PWM:", 0, selected);
+    	highlight(handle, "Throttle command to ESC:", 1, selected);
     	TERM_setCursorPos(handle, 4, 0);
-    	bargraph(handle, -1, 1, axis_vars.ratioPWM);
-    	//ttprintf("VAL: %1.2f", (double)axis_vars.ratioPWM);
+    	bargraph(handle, -1.0f, 1.0f, axis_vars.throttle_mapped);
+
+    	if(c=='o'){
+			axis_vars.throttle_offset = axis_vars.throttle_calibrated;
+		}
 
     	TERM_setCursorPos(handle, 5, 0);
+    	ttprintf("Zero: %1.2f Span: %1.2f Offset: %1.2f", axis_vars.throttle_start, axis_vars.throttle_end, axis_vars.throttle_offset);
+
+
+    	TERM_setCursorPos(handle, 8, 0);
+    	highlight(handle, "Encoder SPI:", 2, selected);
+    	TERM_setCursorPos(handle, 9, 0);
+    	bargraph(handle, 0.0f, 1.0f, axis_vars.ratioSPI);
+
+    	TERM_setCursorPos(handle, 10, 0);
+    	highlight(handle, "Encoder PWM:", 3, selected);
+    	TERM_setCursorPos(handle, 11, 0);
+    	bargraph(handle, 0.0f, 1.0f, axis_vars.ratioPWM);
+
+
+
+
+
+
+    	TERM_setCursorPos(handle, 12, 0);
     	ttprintf("RAW: %6d ERROR: %d CODE: %d", axis_vars.mt6816.angle, axis_vars.mt6816.error, axis_vars.mt6816.status);
-    	TERM_setCursorPos(handle, 6, 0);
+    	TERM_setCursorPos(handle, 13, 0);
     	ttprintf("ERROR COUNT: %6d ACCUMULATED ERRORS: %d", axis_vars.error_count, axis_vars.accumulated_errors);
 
 		if(c==ARROW_DOWN){

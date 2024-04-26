@@ -48,13 +48,21 @@ typedef struct{
 	bool check_pwm_vs_spi;
 	bool use_spi;
 	bool use_pwm;
-	float current_rel;
+
 	mt6816_t mt6816;
 	float ratioPWM;
 	float ratioSPI;
 	uint32_t encoder_error_limit;
 	uint32_t error_count;
 	uint32_t accumulated_errors;
+	float throttle_raw;
+	float throttle_z_calib;
+	float throttle_calibrated;
+	float throttle_start;
+	float throttle_end;
+	float throttle_offset;
+	float throttle_mapped;
+	float throttle_threshold;
 }axis_vars_t;
 
 

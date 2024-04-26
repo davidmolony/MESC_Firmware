@@ -66,9 +66,15 @@ void populate_vars(){
 	//		   | Variable							| MIN		| MAX		| NAME			| DESCRIPTION							| RW			| CALLBACK	| VAR LIST HANDLE
 	TERM_addVar(can1.node_id						, 1			, 254		, "node_id"		, "Node ID"								, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(axis_vars.encoder_error_limit		, 0			, 1000		, "enc_err_lim"	, "Encoder error limit"					, VAR_ACCESS_RW	, callback  , &TERM_varList);
-	TERM_addVar(axis_vars.check_pwm_vs_spi			, 0			, 1			, "sanitycheck"	, "Check PWM vs SPI"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(axis_vars.use_spi					, 0			, 1			, "use_spi"		, "Retrieve angle via SPI"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(axis_vars.use_pwm					, 0			, 1			, "use_pwm"		, "Retrieve angle via PWM"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	//TERM_addVar(axis_vars.check_pwm_vs_spi			, 0			, 1			, "sanitycheck"	, "Check PWM vs SPI"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	//TERM_addVar(axis_vars.use_spi					, 0			, 1			, "use_spi"		, "Retrieve angle via SPI"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	//TERM_addVar(axis_vars.use_pwm					, 0			, 1			, "use_pwm"		, "Retrieve angle via PWM"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(axis_vars.throttle_start			, 0.0f		, 1.0f		, "zero"		, "Throttle zero"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(axis_vars.throttle_end			    , 0.0f		, 1.0f		, "span"		, "Throttle span"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(axis_vars.throttle_offset		    , 0.0f		, 1.0f		, "offset"		, "Throttle offset"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(axis_vars.throttle_threshold	    , 0.0f		, 1.0f		, "threshold"	, "Throttle threshold"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+
+
 }
 
 
@@ -163,6 +169,28 @@ mt6816_t read_encoder(){
 	return ret;
 }
 
+
+float utils_map(float x, float in_min, float in_max, float out_min, float out_max) {
+	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+float utils_truncate_number(float number, float min, float max, float deadband) {
+	if (number > max) {
+		if(number > (max + deadband)){
+			return 0.0f;
+		}else{
+			return max;
+		}
+	} else if (number < min) {
+		if(number < (min - deadband)){
+			return 0.0f;
+		}else{
+			return min;
+		}
+	}
+	return number;
+}
+
 void task_encoder(void * argument){
 
 	//Init SPI to the encoder
@@ -208,14 +236,15 @@ void task_encoder(void * argument){
 				error_state = true;
 			}
 		}
-
+		bool kill = false;
 		//Use second source to verify accuracy
 		if(error_state){
 		  //Check the PWM and the SPI agree and that the magnet present bit is low
 			axis_vars.accumulated_errors++;
 
 			if(axis_vars.encoder_error_limit && axis_vars.error_count >= axis_vars.encoder_error_limit){
-				axis_vars.current_rel = 0.0f;
+				kill = true;
+				axis_vars.throttle_raw = 0.0f;
 				htim1.Instance->CCR1 = 0;
 				htim15.Instance->CCR1 = 0;
 			}else{
@@ -237,20 +266,42 @@ void task_encoder(void * argument){
 				htim15.Instance->CCR1 = (uint16_t)(2000.0f+2000.0f*axis_vars.ratioSPI);
 
 				if(axis_vars.use_spi && axis_vars.use_pwm){
-					axis_vars.current_rel = axis_vars.ratioSPI;
+					axis_vars.throttle_raw = axis_vars.ratioSPI;
 				}else if(axis_vars.use_pwm == true && axis_vars.use_spi == false){
-					axis_vars.current_rel = axis_vars.ratioPWM;
+					axis_vars.throttle_raw = axis_vars.ratioPWM;
 				}else if(axis_vars.use_pwm == false && axis_vars.use_spi == true){
-					axis_vars.current_rel = axis_vars.ratioSPI;
+					axis_vars.throttle_raw = axis_vars.ratioSPI;
 				}
 			}else{
-				axis_vars.current_rel = 0.0f;
+				kill = true;
+				axis_vars.throttle_raw = 0.0f;
 				htim1.Instance->CCR1 = 0;
 				htim15.Instance->CCR1 = 0;
 			}
 
 		}
 
+		float cal = axis_vars.throttle_raw - axis_vars.throttle_start;
+		if(cal < 0.0f){
+			cal += 1.0f;
+		}
+		axis_vars.throttle_z_calib = cal;
+
+		if(cal < axis_vars.throttle_threshold){
+			cal = 0.0f;
+		}
+
+		axis_vars.throttle_calibrated = utils_truncate_number(utils_map(cal, 0.0f, axis_vars.throttle_end, 0.0f, 1.0f), 0.0f, 1.0f, 0.1f);
+
+		if(kill==false){
+			if (axis_vars.throttle_calibrated < axis_vars.throttle_offset) {
+				axis_vars.throttle_mapped = utils_map(axis_vars.throttle_calibrated, 0.0f, axis_vars.throttle_offset, -1.0f, 0.0f);
+			} else {
+				axis_vars.throttle_mapped = utils_map(axis_vars.throttle_calibrated, axis_vars.throttle_offset,	1.0f, 0.0f, 1.0f);
+			}
+		}else{
+			axis_vars.throttle_mapped = 0.0f;
+		}
 
 	    vTaskDelay(10);
 	}
@@ -258,7 +309,8 @@ void task_encoder(void * argument){
 
 
 void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle){
-	TASK_CAN_add_float(handle	, CAN_ID_ADC1_2_REQ	  	, CAN_BROADCAST, axis_vars.current_rel	, 0.0f	, 0);
+
+	TASK_CAN_add_float(handle	, CAN_ID_ADC1_2_REQ	  	, CAN_BROADCAST, axis_vars.throttle_mapped	, 0.0f	, 0);
 }
 
 void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
@@ -279,7 +331,12 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 	axis_vars.use_pwm = true;
 	axis_vars.use_spi = true;
 	axis_vars.error_count = 0;
-	axis_vars.current_rel = 0.0f;
+
+	axis_vars.throttle_raw = 0.0f;
+	axis_vars.throttle_start = 0.0f;
+	axis_vars.throttle_end = 1.0f;
+	axis_vars.throttle_offset = 0.0f;
+	axis_vars.throttle_threshold = 0.1f;
 
 	if(CMD_varLoad(&null_handle, 0, NULL) == TERM_CMD_EXIT_ERROR){
 
