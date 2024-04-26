@@ -194,7 +194,7 @@ static void TASK_main(void *pvParameters){
 
         c=0;
         xStreamBufferReceive(handle->currProgram->inputStream,&c,sizeof(c),pdMS_TO_TICKS(100));
-    }while(c!=CTRL_C);
+    }while(c!=CTRL_C && c!='q');
     //***************************************************************************************************
     TERM_sendVT100Code(handle,_VT100_CURSOR_ENABLE, 0);		//Enable cursor
     TERM_killProgramm(handle);	//Kill program and free memory
