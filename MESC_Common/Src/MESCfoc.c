@@ -2976,14 +2976,14 @@ void collectInputs(MESC_motor_typedef *_motor){
 	  }
 
 	  //Remote ADC2 input
-	  if((input_vars.input_options & 0b10000)&&(input_vars.remote_ADC_can_id > 0)){
+	  if((input_vars.input_options & 0b1000000)&&(input_vars.remote_ADC_can_id > 0)){
 		  //Do nothing, already set
 	  }else{
 		  input_vars.remote_ADC2_req = 0.0f;//Set the input variable to zero
 	  }
 
 	  //Differential ADC12 input
-	  if((input_vars.input_options & 0b1000000)){
+	  if((input_vars.input_options & 0b10000000)){
 		  //TBC, Math and logic required
 		  //To be filled, as signal = ext1-ext2 with error check based on ext1+ext2
 	  }else{

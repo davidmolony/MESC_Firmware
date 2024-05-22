@@ -465,7 +465,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].FOC.pwm_frequency			, 0.0f		, 100000.0f	, "pwm_freq"	, "PWM frequency"						, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(input_vars.UART_req					, -1000.0f	, 1000.0f	, "uart_req"	, "Uart input"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.UART_dreq				, -1000.0f	, 1000.0f	, "uart_dreq"	, "Uart input"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(input_vars.input_options			, 0			, 128		, "input_opt"	, "Inputs [1=ADC1 2=ADC2 4=PPM 8=UART 16=CANADC1 32=CANADC2 64=ADC12DIFF]"	, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(input_vars.input_options			, 0			, 128		, "input_opt"	, "Inputs [1=ADC1 2=ADC2 4=PPM 8=UART 16=Killswitch 32=CANADC1 64=CANADC2 128=ADC12DIFF]"	, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].safe_start[0]				, 0			, 1000		, "safe_start"	, "Countdown before allowing throttle"	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].safe_start[1]				, 0			, 1000		, "safe_count"	, "Live count before allowing throttle"	, VAR_ACCESS_R	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.enc_offset				, 0			, 65535		, "enc_offset"	, "Encoder alignment angle"				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
