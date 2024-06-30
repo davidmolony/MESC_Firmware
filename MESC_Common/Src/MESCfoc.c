@@ -353,36 +353,13 @@ void InputInit(){
 
 void initialiseInverter(MESC_motor_typedef *_motor){
 static int Iuoff, Ivoff, Iwoff;
-      Iuoff += _motor->Raw.Iu;
-      Ivoff += _motor->Raw.Iv;
-      Iwoff += _motor->Raw.Iw;
 
-      static int initcycles = 0;
-      initcycles = initcycles + 1;
-      //Exit the initialisation after 1000cycles
-      if (initcycles == 1000) {
-        calculateGains(_motor);
-        calculateVoltageGain(_motor);
-        _motor->FOC.flux_b = 0.001f;
-        _motor->FOC.flux_a = 0.001f;
+	calculateGains(_motor);
+	calculateVoltageGain(_motor);
 
-        _motor->offset.Iu =  Iuoff/initcycles;
-        _motor->offset.Iv =  Ivoff/initcycles;
-        _motor->offset.Iw =  Iwoff/initcycles;
-        initcycles = 0;
-        Iuoff = 0;
-        Ivoff = 0;
-        Iwoff = 0;
-		if((_motor->offset.Iu>1500) &&(_motor->offset.Iu<2600)&&(_motor->offset.Iv>1500) &&(_motor->offset.Iv<2600)&&(_motor->offset.Iw>1500) &&(_motor->offset.Iw<2600)){
-			//ToDo, do we want some safety checks here like offsets being roughly correct?
-					_motor->MotorState = MOTOR_STATE_TRACKING;
-			        _motor->key_bits &= ~UNINITIALISED_KEY;
-					htim1.Instance->BDTR |= TIM_BDTR_MOE;
-		}else{
-			handleError(_motor, ERROR_STARTUP);
-			//Should just loop until this succeeds
-		}
-      }
+	_motor->MotorState = MOTOR_STATE_TRACKING;
+	generateBreak(_motor);
+	htim1.Instance->BDTR |= TIM_BDTR_MOE;
 }
 
 
@@ -747,11 +724,11 @@ uint16_t phasebalance;
     // hardware gain values to create volt and amp variables
     //Convert the currents to real amps in SI units
 	_motor->Conv.Iu =
-		(float)(_motor->Raw.Iu - _motor->offset.Iu) * g_hw_setup.Igain;
+		((float)_motor->Raw.Iu - _motor->offset.Iu) * g_hw_setup.Igain;
 	_motor->Conv.Iv =
-		(float)(_motor->Raw.Iv - _motor->offset.Iv) * g_hw_setup.Igain;
+		((float)_motor->Raw.Iv - _motor->offset.Iv) * g_hw_setup.Igain;
 	_motor->Conv.Iw =
-		(float)(_motor->Raw.Iw - _motor->offset.Iw) * g_hw_setup.Igain;
+		((float)_motor->Raw.Iw - _motor->offset.Iw) * g_hw_setup.Igain;
 	_motor->Conv.Vbus =
 		(float)_motor->Raw.Vbus * g_hw_setup.VBGain;  // Vbus
 
@@ -1928,7 +1905,17 @@ __NOP();
   }
 
   void calculateVoltageGain(MESC_motor_typedef *_motor) {
-    // We need a number to convert between Va Vb and raw PWM register values
+	 // Owen change.
+	 // Checks for healthy offsets
+	  if((_motor->offset.Iu>1500) &&(_motor->offset.Iu<2600)&&(_motor->offset.Iv>1500) &&(_motor->offset.Iv<2600)&&(_motor->offset.Iw>1500) &&(_motor->offset.Iw<2600)){
+		_motor->key_bits &= ~UNINITIALISED_KEY;
+
+	  }
+	  else{
+		  handleError(_motor, ERROR_OFFSET);
+		  //Should just loop until this succeeds
+	  }
+	  // We need a number to convert between Va Vb and raw PWM register values
     // This number should be the bus voltage divided by the ARR register
     _motor->FOC.Vab_to_PWM =
         _motor->mtimer->Instance->ARR / _motor->Conv.Vbus;
@@ -2312,6 +2299,12 @@ float  Square(float x){ return((x)*(x));}
     // here we are going to do the clark and park transform of the voltages to
     // get the VaVb and VdVq These can be handed later to the observers and used
     // to set the integral terms
+
+	  //Accumulate the current offsets while there is no current (tri-stated)
+_motor->offset.Iu = 0.9999f*_motor->offset.Iu +0.0001f*(float)_motor->Raw.Iu;
+_motor->offset.Iv = 0.9999f*_motor->offset.Iv +0.0001f*(float)_motor->Raw.Iv;
+_motor->offset.Iw = 0.9999f*_motor->offset.Iw +0.0001f*(float)_motor->Raw.Iw;
+
 
     // Clark transform
     _motor->FOC.Vab.a =
