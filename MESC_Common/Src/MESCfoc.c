@@ -356,36 +356,13 @@ void InputInit(){
 
 void initialiseInverter(MESC_motor_typedef *_motor){
 static int Iuoff, Ivoff, Iwoff;
-      Iuoff += _motor->Raw.Iu;
-      Ivoff += _motor->Raw.Iv;
-      Iwoff += _motor->Raw.Iw;
 
-      static int initcycles = 0;
-      initcycles = initcycles + 1;
-      //Exit the initialisation after 1000cycles
-      if (initcycles == 1000) {
-        calculateGains(_motor);
-        calculateVoltageGain(_motor);
-        _motor->FOC.flux_b = 0.001f;
-        _motor->FOC.flux_a = 0.001f;
+	calculateGains(_motor);
+	calculateVoltageGain(_motor);
 
-        _motor->offset.Iu =  Iuoff/initcycles;
-        _motor->offset.Iv =  Ivoff/initcycles;
-        _motor->offset.Iw =  Iwoff/initcycles;
-        initcycles = 0;
-        Iuoff = 0;
-        Ivoff = 0;
-        Iwoff = 0;
-		if((_motor->offset.Iu>1500) &&(_motor->offset.Iu<2600)&&(_motor->offset.Iv>1500) &&(_motor->offset.Iv<2600)&&(_motor->offset.Iw>1500) &&(_motor->offset.Iw<2600)){
-			//ToDo, do we want some safety checks here like offsets being roughly correct?
-					_motor->MotorState = MOTOR_STATE_TRACKING;
-			        _motor->key_bits &= ~UNINITIALISED_KEY;
-					htim1.Instance->BDTR |= TIM_BDTR_MOE;
-		}else{
-			handleError(_motor, ERROR_STARTUP);
-			//Should just loop until this succeeds
-		}
-      }
+	_motor->MotorState = MOTOR_STATE_TRACKING;
+	generateBreak(_motor);
+	htim1.Instance->BDTR |= TIM_BDTR_MOE;
 }
 
 
