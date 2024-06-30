@@ -15,7 +15,7 @@
 #define SHUNT_POLARITY -1.0f
 
 #define ABS_MAX_PHASE_CURRENT 400.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.
-#define ABS_MAX_BUS_VOLTAGE 90.0f
+#define ABS_MAX_BUS_VOLTAGE 104.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
 #define R_SHUNT 0.00033f
 #define OPGAIN 10.5f
@@ -40,6 +40,10 @@
 
 #define GET_FETU_T 			_motor->Raw.MOSu_T = 	0.99f * _motor->Raw.MOSu_T + 0.01f*ADC2_buffer[3] //Temperature on PB1
 #define GET_MOTOR_T _motor->Raw.Motor_T = ADC1_buffer[4]
+
+#define GET_GROUNDFAULT_ADC _motor->Raw.groundfault_failsafe = ADC1_buffer[3] // PA06 on the F405 pill
+
+
 //#define USE_FIELD_WEAKENING
 #define USE_FIELD_WEAKENINGV2
 

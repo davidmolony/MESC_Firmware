@@ -210,6 +210,7 @@ typedef struct {
 
 	int16_t ADC_in_ext1;
 	int16_t ADC_in_ext2;
+	int16_t groundfault_failsafe;
 }MESC_raw_typedef;
 
 //extern MESC_raw_typedef motor1;
@@ -614,6 +615,7 @@ typedef struct {
 	uint16_t nKillswitch;
 	uint16_t invert_killswitch;
 
+	uint32_t failsafe_options; // used so we are loading less stuff into input_options
 	uint32_t input_options; //	0b...tuvwxyz where
 							//	t is differential ADC,
 							//	u is ADC1 remote,

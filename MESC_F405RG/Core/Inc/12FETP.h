@@ -8,7 +8,7 @@
 #ifndef INC_MP2_V0_1_H_
 #define INC_MP2_V0_1_H_
 //Pick a motor for default
-#define QS165//MCMASTER_70KV_8080//QS165//CA120//
+#define FLIPSKY_6382_190KV
 #define PWM_FREQUENCY 20000
 #define CUSTOM_DEADTIME 800 //ns, MAX 1500ns! implementation in MESCInit().
 
@@ -39,7 +39,18 @@
 //#define GET_THROTTLE_INPUT2 	_motor->Raw.ADC_in_ext2 = 0.99f*_motor->Raw.ADC_in_ext2 + 0.01f*hadc1.Instance->JDR3;  // Throttle for MP2 with F405 pill
 
 #define GET_FETU_T 			_motor->Raw.MOSu_T = 	0.99f * _motor->Raw.MOSu_T + 0.01f*ADC2_buffer[3] //Temperature on PB1
-#define GET_MOTOR_T _motor->Raw.Motor_T = ADC1_buffer[4]
+// this is not set up properly so I'm just connecting to the FET
+// #define GET_MOTOR_T _motor->Raw.Motor_T = ADC1_buffer[4]
+#define GET_MOTOR_T _motor->Raw.Motor_T = 0.99f * _motor->Raw.MOSu_T + 0.01f*ADC2_buffer[3]
+
+// will be used to measure values for external ADC measurement (the hall sensor deadman's switch)
+// #define EXTADCFAILSAFE_GPIO _motor->Raw.ext_adc_failsafe = SOMETHING HERE
+// someday, failsafe and groundfault cutoffs could also be set through Jens terminal
+// #define EXTADCFAILSAFE_CUTOFF 360 // arbitrary value based on testing
+
+// used to test for ground fault detection
+#define GET_GROUNDFAULT_ADC _motor->Raw.groundfault_failsafe = ADC1_buffer[4] // PA07 on the X12
+
 //#define USE_FIELD_WEAKENING
 #define USE_FIELD_WEAKENINGV2
 
@@ -98,5 +109,7 @@
 #define KILLSWITCH_GPIO GPIOB
 #define KILLSWITCH_PIN GPIO_PIN_3
 #define KILLSWITCH_IONO 3
+
+
 
 #endif /* INC_MP2_V0_1_H_ */

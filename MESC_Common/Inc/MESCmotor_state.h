@@ -163,9 +163,23 @@ typedef enum {
   MOTOR_CONTROL_TYPE_BLDC
 } motor_control_type_e;
 
+// KEYBITS
+// masks applied to _motor->key_bits
 #define UNINITIALISED_KEY 1
 #define KILLSWITCH_KEY 2
 #define SAFESTART_KEY 4
+#define GROUNDFAULT_KEY 8
+#define EXTADCFAILSAFE_KEY 16
+
+// FAILSAFES
+// these masks applied to input_vars.failsafe_options and are used to....
+#define KILLSWITCH_MASK 1      // test the digital state of killswitch pin
+#define GROUNDFAULT_MASK 2     // test if an ADC pin is being held low, very useful in combination with 10k resistor pulling it high
+#define EXTADCFAILSAFE_MASK 4  // test if an ADC pin is above a threshold, very useful to use a hall sensor as a deadman's switch
+
+// these can come in from Jens term some day
+#define GROUNDFAULT_CUTOFF 100 // arbitrary value based on testing
+#define EXTADCFAILSAFE_CUTOFF 1000 // also arbitrary
 
 /* Function prototypes -----------------------------------------------*/
 

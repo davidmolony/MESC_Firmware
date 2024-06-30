@@ -343,6 +343,9 @@ void InputInit(){
 	if(!input_vars.input_options){
 	input_vars.input_options = DEFAULT_INPUT;
 	}
+	if(!input_vars.failsafe_options){
+		input_vars.failsafe_options = DEFAULT_FAILSAFE;
+	}
 
 	input_vars.UART_req = 0.0f;
 	input_vars.RCPWM_req = 0.0f;
@@ -3046,8 +3049,11 @@ void collectInputs(MESC_motor_typedef *_motor){
 		  input_vars.ADC2_req = 0.0f;
 	  }
 
-	  //ADC1 input
-	  if(input_vars.input_options & 0b0001){
+	  //ADC1 input, but do not enter if Owen's special bit is set
+	  if (input_vars.failsafe_options & EXTADCFAILSAFE_MASK) {
+		  input_vars.ADC1_req = 0.0f;
+	  }
+	  else if(input_vars.input_options & 0b0001) {
 			  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_MIN){
 				  input_vars.ADC1_req = ((float)_motor->Raw.ADC_in_ext1-(float)input_vars.adc1_MIN)*input_vars.adc1_gain[1]*input_vars.ADC1_polarity;
 				  if(_motor->Raw.ADC_in_ext1>input_vars.adc1_OOR){
@@ -3064,21 +3070,48 @@ void collectInputs(MESC_motor_typedef *_motor){
 		  input_vars.ADC1_req = 0.0f;
 	  }
 
-#ifdef KILLSWITCH_GPIO
+#ifdef GET_GROUNDFAULT_ADC
+	  _motor->key_bits |= GROUNDFAULT_KEY;
+	  if(input_vars.failsafe_options & GROUNDFAULT_MASK){
+		  if ( _motor->Raw.groundfault_failsafe < GROUNDFAULT_CUTOFF) {
+			  _motor->key_bits &= ~GROUNDFAULT_KEY;
+		  }else {
+			  // maybe do this some day.
+			  // handleError(_motor, NON_EXISTANT_ERROR_CODE);
+		  }
+	  }
+#endif
+
+      // owen hall-based killswitch which is NOT DMs killswitch_GPIO
+	  //   this throws key_bits to non-zero when Raw.ADC_in_ext1 is not low
+	  // This will only work if user requests input_opt = 32 + 1
+	  if(input_vars.failsafe_options & EXTADCFAILSAFE_MASK){
+		   _motor->key_bits |= EXTADCFAILSAFE_KEY;
+		  // _motor->key_bits &= ~EXTADCFAILSAFE_KEY;
+
+		  if (input_vars.input_options & 0b0001 ) {
+			  if (_motor->Raw.ADC_in_ext1 > 800 ) {
+				  _motor->key_bits &= ~EXTADCFAILSAFE_KEY;
+			  }
+		  }
+		  else {
+			  // maybe do this some day.
+			  // handleError(_motor, NON_EXISTANT_ERROR_CODE);
+		  }
+	  }
+
+
+	  #ifdef KILLSWITCH_GPIO
 	  if(input_vars.input_options & 0b10000){//Killswitch
 		if(KILLSWITCH_GPIO->IDR & (0x01<<KILLSWITCH_IONO)){
-			input_vars.nKillswitch = 1;
 			_motor->key_bits &= ~KILLSWITCH_KEY;
 		}else{
-			input_vars.nKillswitch = 0;
 			_motor->key_bits |= KILLSWITCH_KEY;
 		}
 		if(input_vars.invert_killswitch){
-			input_vars.nKillswitch = !input_vars.nKillswitch;
 			_motor->key_bits ^= KILLSWITCH_KEY;
 		}
 	  }else{//If we are not using the killswitch, then it should be "on"
-			input_vars.nKillswitch = 1;
 			_motor->key_bits &= ~KILLSWITCH_KEY;
 	  }
 #else
