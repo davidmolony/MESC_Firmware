@@ -1908,7 +1908,16 @@ __NOP();
   }
 
   void calculateVoltageGain(MESC_motor_typedef *_motor) {
-    // We need a number to convert between Va Vb and raw PWM register values
+	  if((_motor->offset.Iu>1500) &&(_motor->offset.Iu<2600)&&(_motor->offset.Iv>1500) &&(_motor->offset.Iv<2600)&&(_motor->offset.Iw>1500) &&(_motor->offset.Iw<2600)){
+		  _motor->key_bits &= ~UNINITIALISED_KEY;
+
+	  }
+	 else{
+		 handleError(_motor, ERROR_OFFSET);
+		 //Should just loop until this succeeds
+	 }
+
+	  // We need a number to convert between Va Vb and raw PWM register values
     // This number should be the bus voltage divided by the ARR register
     _motor->FOC.Vab_to_PWM =
         _motor->mtimer->Instance->ARR / _motor->Conv.Vbus;
@@ -2289,9 +2298,14 @@ float  Square(float x){ return((x)*(x));}
 
 
   void MESCTrack(MESC_motor_typedef *_motor) {
-    // here we are going to do the clark and park transform of the voltages to
-    // get the VaVb and VdVq These can be handed later to the observers and used
-    // to set the integral terms
+	  // here we are going to do the clark and park transform of the voltages to
+	  // get the VaVb and VdVq These can be handed later to the observers and used
+	  // to set the integral terms
+
+	  //Accumulate the current offsets while there is no current (tri-stated)
+	  _motor->offset.Iu = 0.9999f*_motor->offset.Iu +0.0001f*(float)_motor->Raw.Iu;
+	  _motor->offset.Iv = 0.9999f*_motor->offset.Iv +0.0001f*(float)_motor->Raw.Iv;
+	  _motor->offset.Iw = 0.9999f*_motor->offset.Iw +0.0001f*(float)_motor->Raw.Iw;
 
     // Clark transform
     _motor->FOC.Vab.a =
