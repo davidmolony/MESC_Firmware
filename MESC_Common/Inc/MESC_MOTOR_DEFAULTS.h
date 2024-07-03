@@ -97,8 +97,6 @@
 #define DEFAULT_MOTOR_PP 5 //Pole Pairs
 //This assumes a 5mohm QS165V2 and 1.5mohm of MOS and cable. With such low resistance, it becomes important
 
-
-
 #elif defined(QS138_90H)
 #define MAX_MOTOR_PHASE_CURRENT 700.0f //There seems to be no limit for these
 #define DEFAULT_MOTOR_POWER 15000.0f //Go on, change this to 20000...
