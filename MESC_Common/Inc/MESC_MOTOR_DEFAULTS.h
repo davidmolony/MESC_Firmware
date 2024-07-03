@@ -126,6 +126,15 @@
 #define DEFAULT_MOTOR_R 0.062f //Ohms
 #define DEFAULT_MOTOR_PP 6 //Pole Pairs
 
+#elif defined(X6215S_KV170) // has many aliases, "SunnySky XS!"
+#define MAX_MOTOR_PHASE_CURRENT 40.0f //
+#define DEFAULT_MOTOR_POWER 400.0f
+#define DEFAULT_FLUX_LINKAGE 0.004500 // wB
+#define DEFAULT_MOTOR_Ld 0.000043f    // Henries
+#define DEFAULT_MOTOR_Lq 0.000064f    // Henries
+#define DEFAULT_MOTOR_R 0.070f        // Ohms
+#define DEFAULT_MOTOR_PP 28           // Pole Pairs
+
 #elif defined(PKP246D23A2) //Can't remember, guessing.
 #define MAX_MOTOR_PHASE_CURRENT 2.3f //
 #define DEFAULT_MOTOR_POWER 40.0f
