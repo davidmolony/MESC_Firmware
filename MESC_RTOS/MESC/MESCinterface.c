@@ -50,8 +50,8 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	MESC_motor_typedef * motor_curr = &mtr[0];
 	port_str * port = handle->port;
 
-	motor.measure_current = I_MEASURE;
-	motor.measure_voltage = V_MEASURE;
+//	motor.measure_current = I_MEASURE;
+//	motor.measure_voltage = V_MEASURE;
 
 	bool measure_RL = false;
 	bool measure_res = false;
@@ -454,6 +454,8 @@ void populate_vars(){
 	TERM_addVar(mtr[0].FOC.HFI45_mod_didq			, 0.0f		, 2.0f		, "hfi_mod_didq", "HFI mod didq"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.HFI_Gain					, 0.0f		, 5000.0f	, "hfi_gain"	, "HFI gain"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.FW_curr_max				, 0.0f		, 300.0f	, "fw_curr"		, "Max field weakenning current"		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].meas.measure_current			, 0.5f		, 100.0f	, "meas_curr"	, "Measuring current"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].meas.measure_voltage			, 0.5f		, 100.0f	, "meas_volt"	, "Measuring voltage"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.adc1_MAX					, 0			, 4096		, "adc1_max"	, "ADC1 max val"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.adc1_MIN					, 0			, 4096		, "adc1_min"	, "ADC1 min val"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.ADC1_polarity			, -1.0f		, 1.0f		, "adc1_pol"	, "ADC1 polarity"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);

@@ -215,9 +215,9 @@ typedef struct {
 //extern MESC_raw_typedef motor1;
 
 typedef struct {
-	int Iu;
-	int Iv;
-	int Iw;
+	float Iu;
+	float Iv;
+	float Iw;
 }MESC_offset_typedef;
 
 typedef struct {

@@ -353,9 +353,9 @@ void InputInit(){
 
 void initialiseInverter(MESC_motor_typedef *_motor){
 static int Iuoff, Ivoff, Iwoff;
-      Iuoff += _motor->Raw.Iu;
-      Ivoff += _motor->Raw.Iv;
-      Iwoff += _motor->Raw.Iw;
+      Iuoff += (float)_motor->Raw.Iu;
+      Ivoff += (float)_motor->Raw.Iv;
+      Iwoff += (float)_motor->Raw.Iw;
 
       static int initcycles = 0;
       initcycles = initcycles + 1;
@@ -747,11 +747,11 @@ uint16_t phasebalance;
     // hardware gain values to create volt and amp variables
     //Convert the currents to real amps in SI units
 	_motor->Conv.Iu =
-		(float)(_motor->Raw.Iu - _motor->offset.Iu) * g_hw_setup.Igain;
+		((float)_motor->Raw.Iu - _motor->offset.Iu) * g_hw_setup.Igain;
 	_motor->Conv.Iv =
-		(float)(_motor->Raw.Iv - _motor->offset.Iv) * g_hw_setup.Igain;
+		((float)_motor->Raw.Iv - _motor->offset.Iv) * g_hw_setup.Igain;
 	_motor->Conv.Iw =
-		(float)(_motor->Raw.Iw - _motor->offset.Iw) * g_hw_setup.Igain;
+		((float)_motor->Raw.Iw - _motor->offset.Iw) * g_hw_setup.Igain;
 	_motor->Conv.Vbus =
 		(float)_motor->Raw.Vbus * g_hw_setup.VBGain;  // Vbus
 
@@ -2312,6 +2312,12 @@ float  Square(float x){ return((x)*(x));}
     // here we are going to do the clark and park transform of the voltages to
     // get the VaVb and VdVq These can be handed later to the observers and used
     // to set the integral terms
+
+	  //Accumulate the current offsets while there is no current (tri-stated)
+_motor->offset.Iu = 0.9999f*_motor->offset.Iu +0.0001f*(float)_motor->Raw.Iu;
+_motor->offset.Iv = 0.9999f*_motor->offset.Iv +0.0001f*(float)_motor->Raw.Iv;
+_motor->offset.Iw = 0.9999f*_motor->offset.Iw +0.0001f*(float)_motor->Raw.Iw;
+
 
     // Clark transform
     _motor->FOC.Vab.a =
