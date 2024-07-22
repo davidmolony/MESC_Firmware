@@ -158,6 +158,7 @@ void MESCInit(MESC_motor_typedef *_motor) {
 
 	_motor->meas.measure_current = I_MEASURE;
 	_motor->meas.measure_voltage = V_MEASURE;
+	_motor->meas.measure_closedloop_current = I_MEASURE_CLOSEDLOOP;
 	_motor->FOC.pwm_frequency =PWM_FREQUENCY;
 	_motor->meas.hfi_voltage = HFI_VOLTAGE;
 
@@ -1225,8 +1226,11 @@ float La_last, Lb_last;
 				  _motor->FOC.Idq_int_err.q = _motor->FOC.Vdq.q;
 			  }
     	  }
+      }
 #ifdef USE_FIELD_WEAKENINGV2
+      if(_motor->FOC.Voltage > 0.95f*_motor->FOC.Vmag_max){
     	  //Closed loop field weakenning that works by only applying D axis current in the case where there is no duty left.
+    	  //Added extra comparison statement to allow 5% excess duty which gives some headroom for the q axis PI control
     	  //Seems very effective at increasing speed with good stability and maintaining max torque.
     		  _motor->FOC.FW_current = 0.99f*_motor->FOC.FW_current -0.01f*_motor->FOC.FW_curr_max;
     	  //Exponentially tend towards the max FW current
@@ -1235,8 +1239,6 @@ float La_last, Lb_last;
       }//Exponentially diverge from the FW current. Note that this exponential implemented opposite to the ramp up!
       if(_motor->FOC.FW_current>_motor->FOC.Idq_req.d){_motor->FOC.FW_current = _motor->FOC.Idq_req.d;}
       if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current = -_motor->FOC.FW_curr_max;}
-#else
-  } //Just close the circle limiter bracket
 #endif
 #else
   	  //Fixed Vd and Vq limits.
@@ -1805,7 +1807,7 @@ __NOP();
     } else if (cycles < 128000) {
       count++;
       _motor->FOC.Idq_req.d = 0.0f;
-      _motor->FOC.Idq_req.q = IMEASURE_CLOSEDLOOP;
+      _motor->FOC.Idq_req.q = _motor->meas.measure_closedloop_current;
       MESCFOC(_motor);
     } else {
        generateBreak(_motor);

@@ -44,7 +44,10 @@
 #include <MESC/MESCinterface.h>
 
 extern uint16_t deadtime_comp;
-
+void handleEscape(TERMINAL_HANDLE *handle){
+	input_vars.UART_req = 0;
+	input_vars.UART_dreq = 0;
+}
 uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	MESC_motor_typedef * motor_curr = &mtr[0];
@@ -62,15 +65,15 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	bool measure_dt = false;
 
 	if(argCount==0){
-		measure_RL =true;
-		measure_linkage  =true;
+		measure_RL = true;
+		measure_linkage = true;
 		//measure_hfi =true;
 	}
 
 	for(int i=0;i<argCount;i++){
 		if(strcmp(args[i], "-a")==0){
-			measure_RL =true;
-			measure_linkage =true;
+			measure_RL = true;
+			measure_kv = true;
 			//measure_hfi =true;
 		}
 		if(strcmp(args[i], "-r")==0){
@@ -408,7 +411,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	if(measure_dt){
 		ttprintf("Measuring deadtime compensation\r\nWaiting for result");
-
+		motor_curr->MotorState = MOTOR_STATE_TEST;
 		while(motor_curr->MotorState == MOTOR_STATE_TEST){
 			xSemaphoreGive(port->term_block);
 			vTaskDelay(200);
@@ -455,6 +458,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].FOC.HFI_Gain					, 0.0f		, 5000.0f	, "hfi_gain"	, "HFI gain"							, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.FW_curr_max				, 0.0f		, 300.0f	, "fw_curr"		, "Max field weakenning current"		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.measure_current			, 0.5f		, 100.0f	, "meas_curr"	, "Measuring current"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].meas.measure_closedloop_current, 0.5f	, 100.0f	, "meas_cl_curr"		, "Measuring q closed loop current"		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.measure_voltage			, 0.5f		, 100.0f	, "meas_volt"	, "Measuring voltage"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.adc1_MAX					, 0			, 4096		, "adc1_max"	, "ADC1 max val"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(input_vars.adc1_MIN					, 0			, 4096		, "adc1_min"	, "ADC1 min val"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);

@@ -89,8 +89,8 @@
 #ifndef I_MEASURE
 #define I_MEASURE 20.0f //Higher setpoint for resistance measurement
 #endif
-#ifndef IMEASURE_CLOSEDLOOP
-#define IMEASURE_CLOSEDLOOP 8.5f 	//After spinning up openloop and getting an approximation,
+#ifndef I_MEASURE_CLOSEDLOOP
+#define I_MEASURE_CLOSEDLOOP 8.5f 	//After spinning up openloop and getting an approximation,
 									//this current is used to driver the motor and collect a refined flux linkage
 #endif
 #ifndef V_MEASURE
@@ -424,6 +424,7 @@ typedef struct {
 
 	float measure_current;
 	float measure_voltage;
+	float measure_closedloop_current;
 } MESCmeas_s;
 
 typedef struct {
