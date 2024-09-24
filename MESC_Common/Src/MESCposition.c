@@ -24,8 +24,8 @@ _motor->FOC.Idq_prereq.d = 2.0f;
 	_motor->pos.last_pll_pos = _motor->FOC.PLL_angle;
 	_motor->pos.d_error = -_motor->pos.Kd * _motor->pos.d_pos;
 //Clamp the integral
-	if(_motor->pos.int_error>input_vars.max_request_Idq.q){_motor->pos.int_error = input_vars.max_request_Idq.q;}
-	if(_motor->pos.int_error<input_vars.min_request_Idq.q){_motor->pos.int_error = input_vars.min_request_Idq.q;}
+	if(_motor->pos.int_error>_motor->input_vars.max_request_Idq.q){_motor->pos.int_error = _motor->input_vars.max_request_Idq.q;}
+	if(_motor->pos.int_error<_motor->input_vars.min_request_Idq.q){_motor->pos.int_error = _motor->input_vars.min_request_Idq.q;}
 //apply directional integral clamping
 //	if(_motor->pos.error>0.0f){
 //		if(_motor->pos.int_error<0.0f){
@@ -43,8 +43,8 @@ _motor->FOC.Idq_prereq.d = 2.0f;
 		_motor->FOC.Idq_prereq.q = _motor->pos.p_error + _motor->pos.int_error + _motor->pos.d_error;
 	}else{_motor->FOC.Idq_prereq.q = 0.0f;}
 //Clamp the output
-	if(_motor->FOC.Idq_prereq.q>input_vars.max_request_Idq.q){_motor->FOC.Idq_prereq.q = input_vars.max_request_Idq.q;}
-	if(_motor->FOC.Idq_prereq.q<input_vars.min_request_Idq.q){_motor->FOC.Idq_prereq.q = input_vars.min_request_Idq.q;}
+	if(_motor->FOC.Idq_prereq.q>_motor->input_vars.max_request_Idq.q){_motor->FOC.Idq_prereq.q = _motor->input_vars.max_request_Idq.q;}
+	if(_motor->FOC.Idq_prereq.q<_motor->input_vars.min_request_Idq.q){_motor->FOC.Idq_prereq.q = _motor->input_vars.min_request_Idq.q;}
 
 	__NOP();
 }

@@ -23,8 +23,15 @@ typedef enum{
 
 #ifdef HAL_CAN_MODULE_ENABLED
 
+typedef enum{
+	CANpacket_TYPE_MESC,
+	CANpacket_TYPE_STD,
+	CANpacket_TYPE_EXT,
+}CANpacket_type;
+
 typedef struct {
-	uint16_t message_id;
+	CANpacket_type type;
+	uint32_t message_id;
 	uint8_t sender;
 	uint8_t receiver;
 	uint8_t len;

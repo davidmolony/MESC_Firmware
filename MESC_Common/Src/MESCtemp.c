@@ -29,9 +29,6 @@
 
 #include "MESCtemp.h"
 
-#include "MESCcli.h"
-#include "MESCprofile.h"
-
 #include "stm32fxxx_hal.h"
 
 #include "conversions.h"

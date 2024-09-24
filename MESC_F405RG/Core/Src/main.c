@@ -24,19 +24,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "MESCbat.h"
-#include "MESCflash.h"
-#include "MESCprofile.h"
 #include "MESCmotor.h"
-#include "MESCspeed.h"
 #include "MESCtemp.h"
-#include "MESCuart.h"
-#include "MESCui.h"
 
 #include "MESCmotor_state.h"
-#include "MESC_Comms.h"
 #include "MPU6050.h"
-#include "Simple_coms.h"
 
 #include "Tasks/init.h"
 
@@ -90,7 +82,6 @@ I2C_HandleTypeDef hi2c2;
 uint16_t MPU_present, MPU_present2;
 MPU6050_data_t MPU_instance_1, MPU_instance_2;
 #define MPU6050_ADDR 0xD0
-COMS_data_t com1;
 
 
 /* USER CODE END PV */
@@ -182,11 +173,6 @@ HAL_TIM_IC_Start(&htim3, TIM_CHANNEL_3);
   Starting System Initialisation
   */
 
-  // Initialise components
-  bat_init( PROFILE_DEFAULT );
-  speed_init( PROFILE_DEFAULT );
-  // Initialise user Interface
-  //ui_init( PROFILE_DEFAULT );
 
   /*
   Finished System Initialisation
@@ -198,8 +184,8 @@ HAL_Delay(1);
 
   mtr[0].enctimer = &htim3;
   //mtr[0].encspi = &hspi3;
-  motor_init( PROFILE_DEFAULT );
-  MESCInit(&mtr[0]);
+  motor_init(&mtr[0]);
+  MESCfoc_Init(&mtr[0]);
 
   /* USER CODE END 2 */
 

@@ -36,6 +36,7 @@
 bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, float n1, float n2, uint32_t timeout){
 	TASK_CAN_packet packet;
 
+	packet.type = CANpacket_TYPE_MESC;
 	packet.message_id = message_id;
 	packet.receiver = receiver;
 	packet.sender = handle->node_id;
@@ -48,6 +49,7 @@ bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t r
 bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint32_t n1, uint32_t n2, uint32_t timeout){
 	TASK_CAN_packet packet;
 
+	packet.type = CANpacket_TYPE_MESC;
 	packet.message_id = message_id;
 	packet.receiver = receiver;
 	packet.sender = handle->node_id;
@@ -57,9 +59,38 @@ bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t 
 	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
 }
 
+bool TASK_CAN_add_rawSTD(TASK_CAN_handle * handle, uint32_t message_id, uint8_t * data, uint8_t len, uint32_t timeout){
+	if(len>8) return false;
+	if(data == NULL) return false;
+	if(message_id > 0x7FF) return false;
+
+	TASK_CAN_packet packet;
+
+	packet.type = CANpacket_TYPE_STD;
+	packet.message_id = message_id;
+	packet.len = len;
+	memcpy(packet.buffer, data, len);
+	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
+}
+
+bool TASK_CAN_add_rawEXT(TASK_CAN_handle * handle, uint32_t message_id, uint8_t * data, uint8_t len, uint32_t timeout){
+	if(len>8) return false;
+	if(data == NULL) return false;
+	if(message_id > 0x1FFFFFFF) return false;
+
+	TASK_CAN_packet packet;
+
+	packet.type = CANpacket_TYPE_EXT;
+	packet.message_id = message_id;
+	packet.len = len;
+	memcpy(packet.buffer, data, len);
+	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
+}
+
 bool TASK_CAN_add_sample(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint16_t row, uint8_t col, uint8_t flags, float value, uint32_t timeout){
 	TASK_CAN_packet packet;
 
+	packet.type = CANpacket_TYPE_MESC;
 	packet.message_id = message_id;
 	packet.receiver = receiver;
 	packet.sender = handle->node_id;

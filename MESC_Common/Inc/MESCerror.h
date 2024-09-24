@@ -83,5 +83,6 @@ struct MESC_log_vars
 #define ERROR_STARTUP 28
 
 void handleError(MESC_motor_typedef *_motor, uint32_t error_code);
+void clearErrors();
 
 #endif /* INC_MESCERROR_H_ */
