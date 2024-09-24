@@ -47,6 +47,11 @@ void handleEscape(TERMINAL_HANDLE *handle){
 	motor_curr->input_vars.UART_req = 0;
 	motor_curr->input_vars.UART_dreq = 0;
 }
+
+const char TERM_startupText1[] = "\r\n";
+const char TERM_startupText2[] = "\r\n[M]olony [E]lectronic [S]peed [C]ontroller";
+const char TERM_startupText3[] = "\r\n";
+
 uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	MESC_motor_typedef * motor_curr = &mtr[0];

@@ -39,6 +39,10 @@
 #include "fatfs.h"
 #endif
 
+#ifdef AXIS
+#include "MESChw_setup.h"
+#endif
+
 
 #ifdef HAL_CAN_MODULE_ENABLED
 extern CAN_HandleTypeDef hcan1;
@@ -112,7 +116,9 @@ void init_system(void){
 #endif
 
 	task_cli_init(&main_uart);
+#ifdef MESC
 	task_led_init();
+#endif
 #ifdef HAL_CAN_MODULE_ENABLED
 	task_cli_init(&main_can);
 #endif

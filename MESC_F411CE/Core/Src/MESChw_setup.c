@@ -25,8 +25,7 @@
 #include "MESChw_setup.h"
 
 #include "MESCfoc.h"
-
-#include "MESCflash.h"
+#include "MESCpwm.h"
 
 extern ADC_HandleTypeDef hadc1;
 
@@ -86,105 +85,6 @@ void getRawADCVph(MESC_motor_typedef *_motor){
 	  _motor->Raw.Vw = ADC_buffer[2];
 }
 
-static uint32_t const flash_sector_map[] = {
-    // 4 x  16k
-    FLASH_BASE + (0 * (16 << 10)),
-    FLASH_BASE + (1 * (16 << 10)),
-    FLASH_BASE + (2 * (16 << 10)),
-    FLASH_BASE + (3 * (16 << 10)),
-    // 1 x  64k
-    FLASH_BASE + (4 * (16 << 10)),
-    // 3 x 128k
-    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (0 * (128 << 10)),
-    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (1 * (128 << 10)),
-    FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (2 * (128 << 10)),
-	// END
-	FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (3 * (128 << 10)),
-};
-
-static uint32_t getFlashSectorAddress( uint32_t const index )
-{
-    return flash_sector_map[index];
-}
-
-static uint32_t getFlashSectorIndex(uint32_t const address)
-{
-    for (uint32_t i = 0; i < ((sizeof(flash_sector_map) / sizeof(*flash_sector_map)) - 1); i++)
-    {
-        if ((flash_sector_map[i] <= address) && (address < flash_sector_map[i + 1]))
-        {
-            return i;
-        }
-    }
-
-    // error
-    return UINT32_MAX;
-}
-
-uint32_t getFlashBaseAddress( void )
-{
-/*
-The base address is FLASH_BASE = 0x08000000 but this is shared with program
-memory and so a suitable offset should be used
-*/
-    return getFlashSectorAddress( FLASH_STORAGE_PAGE );
-}
-
-uint32_t getFlashBaseSize( void )
-{
-    return getFlashSectorAddress( FLASH_STORAGE_PAGE + 1) - getFlashSectorAddress( FLASH_STORAGE_PAGE );
-}
-
-ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
-{
-	__HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_PGPERR);
-	__HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_PGSERR);
-    // Disallow zero length (could ignore)
-    if (length == 0)
-    {
-        return PROFILE_STATUS_ERROR_DATA_LENGTH;
-    }
-
-    uint32_t const saddr = address;
-    uint32_t const eaddr = saddr + length - 1;
-
-    uint32_t const ssector = getFlashSectorIndex( saddr );
-    uint32_t const esector = getFlashSectorIndex( eaddr );
-
-    // Limit erasure to a single sector
-    if (ssector != esector)
-    {
-        return PROFILE_STATUS_ERROR_DATA_LENGTH;
-    }
-
-    FLASH_EraseInitTypeDef sector_erase;
-
-    sector_erase.TypeErase = FLASH_TYPEERASE_SECTORS;
-    sector_erase.Banks     = FLASH_BANK_1; // (ignored)
-    sector_erase.Sector    = ssector;
-    sector_erase.NbSectors = (esector - ssector + 1);
-#ifdef STM32F411xE
-    sector_erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-#else
-    sector_erase.VoltageRange = FLASH_VOLTAGE_RANGE_4;
-#endif
-
-    uint32_t bad_sector = 0;
-
-    HAL_StatusTypeDef const sts = HAL_FLASHEx_Erase( &sector_erase, &bad_sector );
-
-    switch (sts)
-    {
-        case HAL_OK:
-            return PROFILE_STATUS_SUCCESS;
-        case HAL_ERROR:
-            return PROFILE_STATUS_ERROR_STORAGE_WRITE;
-        case HAL_BUSY:
-        case HAL_TIMEOUT:
-        default:
-            return PROFILE_STATUS_UNKNOWN;
-    }
-}
 
 
 void mesc_init_1( MESC_motor_typedef *_motor )
@@ -213,7 +113,7 @@ void mesc_init_3( MESC_motor_typedef *_motor )
 	
 	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start(_motor->mtimer, TIM_CHANNEL_3);
-	generateBreak(_motor); //avoid a spurious pulse on startup
+	MESCpwm_generateBreak(_motor); //avoid a spurious pulse on startup
 	HAL_Delay(10); //Delay enabling interrupt to avoid spurious error on startup due to ADC not being ready
 
 	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD); //ToDo, how do I put this into the whole shabang with multiple motors?...

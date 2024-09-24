@@ -33,10 +33,14 @@
 #include <stdarg.h>
 #include <string.h>
 
-#ifndef DASH
-#include "MESC/MESCinterface.h"
-#else
+#ifdef DASH
 #include "DASH/MESCinterface.h"
+#endif
+#ifdef MESC
+#include "MESC/MESCinterface.h"
+#endif
+#ifdef AXIS
+#include "AXIS/MESCinterface.h"
 #endif
 
 #include "Common/RTOS_flash.h"
@@ -63,7 +67,7 @@ void putbuffer_uart(unsigned char *buf, unsigned int len, port_str * port){
 	HAL_UART_Transmit_DMA(uart_handle, buf, len);
 	//vTaskDelay(1);
 	while(uart_handle->gState == HAL_UART_STATE_BUSY_TX){
-		vTaskDelay(0);
+		vTaskDelay(1);
 	}
 
 	if(port->half_duplex) uart_handle->Instance->CR1 |= USART_CR1_RE;

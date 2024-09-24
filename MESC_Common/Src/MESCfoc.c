@@ -72,6 +72,8 @@ float two_on_sqrt3 = 1.15470f;
 
 MESC_motor_typedef mtr[NUM_MOTORS];
 
+extern ADC_HandleTypeDef hadc1;
+
 
 //Debug
 #define DEMCR_TRCENA    0x01000000

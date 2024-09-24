@@ -24,8 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "MESCmotor.h"
-#include "MESCprofile.h"
-#include "MESCuart.h"
+#include "MESCfoc.h"
 
 #include "Tasks/init.h"
 /* USER CODE END Includes */
@@ -141,7 +140,8 @@ int main(void)
     mtr[0].stimer = &htim2;
 motor_init(NULL);
 	//Initialise MESC
-	MESCInit(&mtr[0]);
+	motor_init(&mtr[0]);
+	MESCfoc_Init(&mtr[0]);
 	//motor.Rphase = motor_profile->R;
 	//motor.Lphase = motor_profile->L_D;
 	//motor.Lqphase = motor_profile->L_Q;
