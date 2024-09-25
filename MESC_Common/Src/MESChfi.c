@@ -39,52 +39,52 @@ static volatile float magnitude45;
 static MESCiq_s intdidq;
 
 void MESChfi_Toggle(MESC_motor_typedef *_motor){
-	if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > _motor->FOC.HFI_toggle_voltage)||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < -_motor->FOC.HFI_toggle_voltage)||(_motor->MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
-		_motor->FOC.inject = 0;
+	if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > _motor->HFI.toggle_voltage)||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < -_motor->HFI.toggle_voltage)||(_motor->MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
+		_motor->HFI.inject = 0;
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
-	} else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < (_motor->FOC.HFI_toggle_voltage-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > -(_motor->FOC.HFI_toggle_voltage-1.0f)) &&(_motor->HFIType !=HFI_TYPE_NONE)){
-		_motor->FOC.HFI_int_err = _motor->FOC.PLL_int;
-		_motor->FOC.inject = 1;
+	} else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < (_motor->HFI.toggle_voltage-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > -(_motor->HFI.toggle_voltage-1.0f)) &&(_motor->HFI.Type !=HFI_TYPE_NONE)){
+		_motor->HFI.int_err = _motor->FOC.PLL_int;
+		_motor->HFI.inject = 1;
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH*0.1f;
 	}
 }
 
 void MESChfi_Run(MESC_motor_typedef *_motor){
-  if ((_motor->FOC.inject)&&(_motor->MotorState != MOTOR_STATE_TRACKING)) {
+  if ((_motor->HFI.inject)&&(_motor->MotorState != MOTOR_STATE_TRACKING)) {
 	int Idqreq_dir=0;
-	if (_motor->FOC.inject_high_low_now == 0){//First we create the toggle
-		_motor->FOC.inject_high_low_now = 1;
+	if (_motor->HFI.inject_high_low_now == 0){//First we create the toggle
+		_motor->HFI.inject_high_low_now = 1;
 		  Idq[0].d = _motor->FOC.Idq.d;
 		  Idq[0].q = _motor->FOC.Idq.q;
 	}else{
-		_motor->FOC.inject_high_low_now = 0;
+		_motor->HFI.inject_high_low_now = 0;
 		  Idq[1].d = _motor->FOC.Idq.d;
 		  Idq[1].q = _motor->FOC.Idq.q;
 	  }
 	_motor->FOC.didq.d = (Idq[0].d - Idq[1].d); //Calculate the changing current levels
 	_motor->FOC.didq.q = (Idq[0].q - Idq[1].q);
 
-	switch(_motor->HFIType){
+	switch(_motor->HFI.Type){
 		case HFI_TYPE_NONE:
 		__NOP();
 		break;
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		case HFI_TYPE_45:
-			if(_motor->FOC.inject_high_low_now ==1){
-				_motor->FOC.Vd_injectionV = +_motor->meas.hfi_voltage;
+			if(_motor->HFI.inject_high_low_now ==1){
+				_motor->HFI.Vd_injectionV = +_motor->meas.hfi_voltage;
 				if(_motor->FOC.Idq_req.q>0.0f){
 					Idqreq_dir = 1;
-					_motor->FOC.Vq_injectionV = +_motor->meas.hfi_voltage;
+					_motor->HFI.Vq_injectionV = +_motor->meas.hfi_voltage;
 				}else{
-					_motor->FOC.Vq_injectionV = -_motor->meas.hfi_voltage;
+					_motor->HFI.Vq_injectionV = -_motor->meas.hfi_voltage;
 					Idqreq_dir = -1;
 				}
 			}else{
-				_motor->FOC.Vd_injectionV = -_motor->meas.hfi_voltage;
+				_motor->HFI.Vd_injectionV = -_motor->meas.hfi_voltage;
 				if(_motor->FOC.Idq_req.q>0.0f){
-					_motor->FOC.Vq_injectionV = -_motor->meas.hfi_voltage;
+					_motor->HFI.Vq_injectionV = -_motor->meas.hfi_voltage;
 				}else{
-					_motor->FOC.Vq_injectionV = +_motor->meas.hfi_voltage;
+					_motor->HFI.Vq_injectionV = +_motor->meas.hfi_voltage;
 				}
 			}
 			//Run the PLL
@@ -94,18 +94,18 @@ void MESChfi_Run(MESC_motor_typedef *_motor){
 
 				float error;
 				//Estimate the angle error, the gain to be determined in the HFI detection and setup based on the HFI current and the max iteration allowable
-				error = _motor->FOC.HFI_Gain*(magnitude45-_motor->FOC.HFI45_mod_didq);
+				error = _motor->HFI.Gain*(magnitude45-_motor->HFI.mod_didq);
 				if(error>500.0f){error = 500.0f;}
 				if(error<-500.0f){error = -500.0f;}
-				_motor->FOC.HFI_int_err = _motor->FOC.HFI_int_err +0.05f*error;
-				if(_motor->FOC.HFI_int_err>1000.0f){_motor->FOC.HFI_int_err = 1000.0f;}
-				if(_motor->FOC.HFI_int_err<-1000.0f){_motor->FOC.HFI_int_err = -1000.0f;}
-				_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (int)(error + _motor->FOC.HFI_int_err)*Idqreq_dir;
+				_motor->HFI.int_err = _motor->HFI.int_err +0.05f*error;
+				if(_motor->HFI.int_err>1000.0f){_motor->HFI.int_err = 1000.0f;}
+				if(_motor->HFI.int_err<-1000.0f){_motor->HFI.int_err = -1000.0f;}
+				_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (int)(error + _motor->HFI.int_err)*Idqreq_dir;
 
 			}else{
-				_motor->FOC.FOCAngle += _motor->FOC.HFI_test_increment;
-				_motor->FOC.HFI_accu += magnitude45;
-				_motor->FOC.HFI_count += 1;
+				_motor->FOC.FOCAngle += _motor->HFI.test_increment;
+				_motor->HFI.accu += magnitude45;
+				_motor->HFI.count += 1;
 			}
 			#if 0 //Sometimes for investigation we want to just lock the angle, this is an easy bodge
 							_motor->FOC.FOCAngle = 62000;
@@ -113,10 +113,10 @@ void MESChfi_Run(MESC_motor_typedef *_motor){
 				break;
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		case HFI_TYPE_D:
-			if(_motor->FOC.inject_high_low_now ==1){
-			  _motor->FOC.Vd_injectionV = +_motor->meas.hfi_voltage;
+			if(_motor->HFI.inject_high_low_now ==1){
+			  _motor->HFI.Vd_injectionV = +_motor->meas.hfi_voltage;
 			}else{
-			  _motor->FOC.Vd_injectionV = -_motor->meas.hfi_voltage;
+			  _motor->HFI.Vd_injectionV = -_motor->meas.hfi_voltage;
 			}
 			if(_motor->FOC.didq.q>1.0f){_motor->FOC.didq.q = 1.0f;}
 			if(_motor->FOC.didq.q<-1.0f){_motor->FOC.didq.q = -1.0f;}
@@ -127,69 +127,69 @@ void MESChfi_Run(MESC_motor_typedef *_motor){
 		break;
 		case HFI_TYPE_SPECIAL:
 			__NOP();
-			if(_motor->FOC.inject_high_low_now ==1){
-			  _motor->FOC.Vd_injectionV = _motor->FOC.special_injectionVd;
-			  _motor->FOC.Vq_injectionV = _motor->FOC.special_injectionVq;
+			if(_motor->HFI.inject_high_low_now ==1){
+			  _motor->HFI.Vd_injectionV = _motor->HFI.special_injectionVd;
+			  _motor->HFI.Vq_injectionV = _motor->HFI.special_injectionVq;
 			}else{
-				_motor->FOC.Vd_injectionV = -_motor->FOC.special_injectionVd;
-				_motor->FOC.Vq_injectionV = -_motor->FOC.special_injectionVq;			}
+				_motor->HFI.Vd_injectionV = -_motor->HFI.special_injectionVd;
+				_motor->HFI.Vq_injectionV = -_motor->HFI.special_injectionVq;			}
 		break;
 	}
   }else {
-	  _motor->FOC.Vd_injectionV = 0.0f;
-	  _motor->FOC.Vq_injectionV = 0.0f;
+	  _motor->HFI.Vd_injectionV = 0.0f;
+	  _motor->HFI.Vq_injectionV = 0.0f;
   }
 }
 
 void MESChfi_Slow(MESC_motor_typedef *_motor){
 	/////////////Set and reset the HFI////////////////////////
-		switch(_motor->HFIType){
+		switch(_motor->HFI.Type){
 			case HFI_TYPE_45:
 			MESChfi_Toggle(_motor);
-				if(_motor->FOC.inject==1){
+				if(_motor->HFI.inject==1){
 					//static int no_q;
 					if(_motor->FOC.was_last_tracking==1){
-						if(_motor->FOC.HFI_countdown>1){
-							_motor->FOC.HFI45_mod_didq = _motor->FOC.HFI_accu / _motor->FOC.HFI_count;
-							_motor->FOC.HFI_Gain = 5000.0f/_motor->FOC.HFI45_mod_didq;
+						if(_motor->HFI.countdown>1){
+							_motor->HFI.mod_didq = _motor->HFI.accu / _motor->HFI.count;
+							_motor->HFI.Gain = 5000.0f/_motor->HFI.mod_didq;
 							_motor->FOC.was_last_tracking = 0;
 						}else{
-							_motor->FOC.HFI_test_increment = 65536 * SLOW_LOOP_FREQUENCY / _motor->FOC.pwm_frequency;
-							_motor->FOC.HFI_countdown++;
+							_motor->HFI.test_increment = 65536 * SLOW_LOOP_FREQUENCY / _motor->FOC.pwm_frequency;
+							_motor->HFI.countdown++;
 						}
 					}else{
-						_motor->FOC.HFI_countdown = 0;
-						_motor->FOC.HFI_count = 0;
-						_motor->FOC.HFI_accu = 0.0f;
+						_motor->HFI.countdown = 0;
+						_motor->HFI.count = 0;
+						_motor->HFI.accu = 0.0f;
 					}
 				}
 			break;
 
 			case HFI_TYPE_D:
 				MESChfi_Toggle(_motor);
-				if(_motor->FOC.inject==1){
-					if(_motor->FOC.HFI_countdown==3){
+				if(_motor->HFI.inject==1){
+					if(_motor->HFI.countdown==3){
 						_motor->FOC.Idq_req.d = HFI_TEST_CURRENT;
 						_motor->FOC.Idq_req.q=0.0f;//Override the inputs to set Q current to zero
-					}else if(_motor->FOC.HFI_countdown==2){
+					}else if(_motor->HFI.countdown==2){
 						_motor->FOC.Ldq_now_dboost[0] = _motor->FOC.IIR[0]; //Find the effect of d-axis current
 						_motor->FOC.Idq_req.d = 1.0f;
 						_motor->FOC.Idq_req.q=0.0f;
-					}else if(_motor->FOC.HFI_countdown == 1){
+					}else if(_motor->HFI.countdown == 1){
 						_motor->FOC.Idq_req.d = -HFI_TEST_CURRENT;
 						_motor->FOC.Idq_req.q=0.0f;
-					}else if(_motor->FOC.HFI_countdown == 0){
-						_motor->FOC.Ldq_now[0] = _motor->FOC.IIR[0];//_motor->FOC.Vd_injectionV;
+					}else if(_motor->HFI.countdown == 0){
+						_motor->FOC.Ldq_now[0] = _motor->FOC.IIR[0];//_motor->HFI.Vd_injectionV;
 						_motor->FOC.Idq_req.d = 0.0f;
 					if(_motor->FOC.Ldq_now[0]>_motor->FOC.Ldq_now_dboost[0]){_motor->FOC.FOCAngle+=32768;}
-					_motor->FOC.HFI_countdown = 200;
+					_motor->HFI.countdown = 200;
 					}
-					_motor->FOC.HFI_countdown--;
+					_motor->HFI.countdown--;
 				}
 			break;
 
 			case HFI_TYPE_NONE:
-				_motor->FOC.inject = 0;
+				_motor->HFI.inject = 0;
 //				_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
 			break;
 			case HFI_TYPE_SPECIAL:

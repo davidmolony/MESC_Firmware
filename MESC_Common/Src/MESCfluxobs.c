@@ -147,7 +147,7 @@ void MESCfluxobs_run(MESC_motor_typedef *_motor) {
     	_motor->FOC.flux_b = -_motor->FOC.flux_observed;}
 #endif
 
-    if(_motor->FOC.inject==0){
+    if(_motor->HFI.inject==0){
     	_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_b, _motor->FOC.flux_a)) - 32768;
     }
 

@@ -73,14 +73,14 @@ void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor) {
 void MESCpwm_Write(MESC_motor_typedef *_motor) {
 	float Vd, Vq;
 
-	Vd = _motor->FOC.Vdq.d + _motor->FOC.Vd_injectionV;
-	Vq = _motor->FOC.Vdq.q + _motor->FOC.Vq_injectionV;
+	Vd = _motor->FOC.Vdq.d + _motor->HFI.Vd_injectionV;
+	Vq = _motor->FOC.Vdq.q + _motor->HFI.Vq_injectionV;
 
     // Now we update the sin and cos values, since when we do the inverse
     // transforms, we would like to use the most up to date versions(or even the
     // next predicted version...)
 #ifdef INTERPOLATE_V7_ANGLE
-if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->FOC.inject==0)){
+if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.inject==0)){
 	//Only run it when there is likely to be good speed measurement stability and
 	//actual utility in doing it. At low speed, there is minimal benefit, and
 	//unstable speed estimation could make it worse.

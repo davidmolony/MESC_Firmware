@@ -148,7 +148,7 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 	_motor->ControlMode = DEFAULT_CONTROL_MODE;
 
 	_motor->MotorSensorMode = DEFAULT_SENSOR_MODE;
-	_motor->HFIType = DEFAULT_HFI_TYPE;
+	_motor->HFI.Type = DEFAULT_HFI_TYPE;
 
 	_motor->meas.measure_current = I_MEASURE;
 	_motor->meas.measure_voltage = V_MEASURE;
@@ -385,7 +385,7 @@ void fastLoop(MESC_motor_typedef *_motor) {
 //			writePWM(_motor);
     		break;
     	case MOTOR_SENSOR_MODE_HALL:
-			_motor->FOC.inject = 0;
+			_motor->HFI.inject = 0;
 			hallAngleEstimator();
 			angleObserver(_motor);
 			MESCFOC(_motor);
@@ -1147,7 +1147,7 @@ void VICheck(MESC_motor_typedef *_motor) {  // Check currents, voltages are with
     _motor->FOC.FW_threshold = _motor->FOC.Vmag_max * FIELD_WEAKENING_THRESHOLD;
     _motor->FOC.FW_multiplier = 1.0f/(_motor->FOC.Vmag_max*(1.0f-FIELD_WEAKENING_THRESHOLD));
 
-    switch(_motor->HFIType){//When running HFI we want the bandwidth low, so we calculate it with each slow loop depending on whether we are HFIing or not
+    switch(_motor->HFI.Type){//When running HFI we want the bandwidth low, so we calculate it with each slow loop depending on whether we are HFIing or not
     case HFI_TYPE_NONE:
     	__NOP();
     case HFI_TYPE_45:
@@ -1164,10 +1164,10 @@ void VICheck(MESC_motor_typedef *_motor) {  // Check currents, voltages are with
 		//This is the expected current magnitude we would see based on the average inductance and the injected voltage. Not particularly reliable currently.
 		//_motor->FOC.HFI_Threshold = ((HFI_VOLTAGE*sqrt2*2.0f)*_motor->FOC.pwm_period)/((_motor->m.L_D+_motor->m.L_Q)*0.5f);
 		if(HFI_THRESHOLD==0.0f){
-		_motor->FOC.HFI_toggle_voltage = mtr->Conv.Vbus*0.05f;
-			if(_motor->FOC.HFI_toggle_voltage<3.0f){_motor->FOC.HFI_toggle_voltage = 3.0f;}
+		_motor->HFI.toggle_voltage = mtr->Conv.Vbus*0.05f;
+			if(_motor->HFI.toggle_voltage<3.0f){_motor->HFI.toggle_voltage = 3.0f;}
 		}else{
-		_motor->FOC.HFI_toggle_voltage = HFI_THRESHOLD;
+		_motor->HFI.toggle_voltage = HFI_THRESHOLD;
 		}
 		break;
     }
@@ -1254,7 +1254,7 @@ float  Square(float x){ return((x)*(x));}
 			  break;
 		  case MOTOR_CONTROL_MODE_MEASURING:
 			_motor->MotorSensorMode = MOTOR_SENSOR_MODE_OPENLOOP;
-			_motor->HFIType = HFI_TYPE_NONE;
+			_motor->HFI.Type = HFI_TYPE_NONE;
 			_motor->FOC.Id_pgain = 0.0f;
 			_motor->FOC.Iq_pgain = 0.0f;
 			_motor->FOC.Id_igain = 0.0f;

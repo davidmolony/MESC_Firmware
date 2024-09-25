@@ -37,7 +37,7 @@
 
  void MESCmeasure_RL(MESC_motor_typedef *_motor) {
     if (_motor->meas.PWM_cycles < 2) {
-    	_motor->meas.previous_HFI_type = _motor->HFIType;
+    	_motor->meas.previous_HFI_type = _motor->HFI.Type;
       uint16_t half_ARR = _motor->mtimer->Instance->ARR / 2;
       _motor->mtimer->Instance->CCR1 = half_ARR;
       _motor->mtimer->Instance->CCR2 = half_ARR;
@@ -54,7 +54,7 @@
       _motor->FOC.Idq_req.q = 0.0f;
       _motor->FOC.FOCAngle = 0;
 
-      _motor->FOC.inject = 0;  // flag to not inject at SVPWM top
+      _motor->HFI.inject = 0;  // flag to not inject at SVPWM top
 
       MESCFOC(_motor);
 
@@ -75,14 +75,14 @@
       _motor->FOC.Idq_req.d = _motor->meas.measure_current;
       _motor->FOC.Idq_req.q = 0.0f;
 
-      _motor->FOC.inject = 0;
+      _motor->HFI.inject = 0;
       MESCFOC(_motor);
 
     }
 
     else if (_motor->meas.PWM_cycles < 40000) {  // Lower setpoint
       _motor->FOC.Idq_req.d = 0.20f*_motor->meas.measure_current;
-      _motor->FOC.inject = 0;
+      _motor->HFI.inject = 0;
       MESCFOC(_motor);
 
       _motor->meas.bottom_V = _motor->meas.bottom_V + _motor->FOC.Vdq.d;
@@ -94,14 +94,14 @@
 
     else if (_motor->meas.PWM_cycles < 45000) {  // Upper setpoint stabilisation
       _motor->FOC.Idq_req.d = _motor->meas.measure_current;
-      _motor->FOC.inject = 0;
+      _motor->HFI.inject = 0;
       MESCFOC(_motor);
 
     }
 
     else if (_motor->meas.PWM_cycles < 50000) {  // Upper setpoint
       _motor->FOC.Idq_req.d = _motor->meas.measure_current;
-      _motor->FOC.inject = 0;
+      _motor->HFI.inject = 0;
       MESCFOC(_motor);
 
       _motor->meas.top_V = _motor->meas.top_V + _motor->FOC.Vdq.d;
@@ -129,19 +129,19 @@
 /////////////////////////// Collect Ld variable//////////////////////////
     else if (_motor->meas.PWM_cycles < 80001) {
       // generateBreak();
-	  _motor->HFIType = HFI_TYPE_SPECIAL;
-      _motor->FOC.inject = 1;  // flag to the SVPWM writer to inject at top
-      _motor->FOC.special_injectionVd = _motor->meas.measure_voltage;
-      _motor->FOC.special_injectionVq = 0.0f;
+	  _motor->HFI.Type = HFI_TYPE_SPECIAL;
+      _motor->HFI.inject = 1;  // flag to the SVPWM writer to inject at top
+      _motor->HFI.special_injectionVd = _motor->meas.measure_voltage;
+      _motor->HFI.special_injectionVq = 0.0f;
 
       _motor->FOC.Vdq.d = _motor->meas.Vd_temp;
       _motor->FOC.Vdq.q = 0.0f;
 
 
-      if (_motor->FOC.inject_high_low_now == 1) {
+      if (_motor->HFI.inject_high_low_now == 1) {
     	  _motor->meas.top_I_L = _motor->meas.top_I_L + _motor->FOC.Idq.d;
     	  _motor->meas.count_top++;
-      } else if (_motor->FOC.inject_high_low_now == 0) {
+      } else if (_motor->HFI.inject_high_low_now == 0) {
     	  _motor->meas.bottom_I_L = _motor->meas.bottom_I_L + _motor->FOC.Idq.d;
     	  _motor->meas.count_bottom++;
       }
@@ -150,7 +150,7 @@
     else if (_motor->meas.PWM_cycles < 80002) {
       MESCpwm_generateBreak(_motor);
       _motor->m.L_D =
-          fabsf((_motor->FOC.special_injectionVd) /
+          fabsf((_motor->HFI.special_injectionVd) /
           ((_motor->meas.top_I_L - _motor->meas.bottom_I_L) / (_motor->meas.count_top * _motor->FOC.pwm_period)));
       _motor->meas.top_I_Lq = 0.0f;
       _motor->meas.bottom_I_Lq = 0.0f;
@@ -165,17 +165,17 @@
 ////////////////////////// Collect Lq variable//////////////////////////////
     } else if (_motor->meas.PWM_cycles < 100003) {
       //			generateBreak();
-      _motor->FOC.special_injectionVd = 0.0f;
-      _motor->FOC.special_injectionVq = _motor->meas.measure_voltage;
-      _motor->FOC.inject = 1;  // flag to the SVPWM writer to update at top
+      _motor->HFI.special_injectionVd = 0.0f;
+      _motor->HFI.special_injectionVq = _motor->meas.measure_voltage;
+      _motor->HFI.inject = 1;  // flag to the SVPWM writer to update at top
       _motor->FOC.Vdq.d = _motor->meas.Vd_temp;  // Vd_temp to keep it aligned with D axis
       _motor->FOC.Vdq.q = 0.0f;
 
 
-      if (_motor->FOC.inject_high_low_now == 1) {
+      if (_motor->HFI.inject_high_low_now == 1) {
     	  _motor->meas.top_I_Lq = _motor->meas.top_I_Lq + _motor->FOC.Idq.q;
     	  _motor->meas.count_topq++;
-      } else if (_motor->FOC.inject_high_low_now == 0) {
+      } else if (_motor->HFI.inject_high_low_now == 0) {
     	  _motor->meas.bottom_I_Lq = _motor->meas.bottom_I_Lq + _motor->FOC.Idq.q;
         _motor->meas.count_bottomq++;
       }
@@ -183,18 +183,18 @@
 
     else {
       MESCpwm_generateBreak(_motor);
-      _motor->HFIType = _motor->meas.previous_HFI_type;
+      _motor->HFI.Type = _motor->meas.previous_HFI_type;
       _motor->m.L_Q =
-          fabsf((_motor->FOC.special_injectionVq) /
+          fabsf((_motor->HFI.special_injectionVq) /
           ((_motor->meas.top_I_Lq - _motor->meas.bottom_I_Lq) / (_motor->meas.count_top * _motor->FOC.pwm_period)));
 
       _motor->MotorState = MOTOR_STATE_IDLE;
 
-      _motor->FOC.inject = 0;  // flag to the SVPWM writer stop injecting at top
-      _motor->FOC.special_injectionVd = 0.0f;
-      _motor->FOC.special_injectionVq = 0.0f;
-      _motor->FOC.Vd_injectionV = 0.0f;
-      _motor->FOC.Vq_injectionV = 0.0f;
+      _motor->HFI.inject = 0;  // flag to the SVPWM writer stop injecting at top
+      _motor->HFI.special_injectionVd = 0.0f;
+      _motor->HFI.special_injectionVq = 0.0f;
+      _motor->HFI.Vd_injectionV = 0.0f;
+      _motor->HFI.Vq_injectionV = 0.0f;
       calculateGains(_motor);
       _motor->MotorState = MOTOR_STATE_TRACKING;
       _motor->meas.PWM_cycles = 0;
@@ -207,9 +207,9 @@
 
 
  void MESCmeasure_GetkV(MESC_motor_typedef *_motor) {
-	_motor->meas.previous_HFI_type = _motor->HFIType;
-	_motor->HFIType=HFI_TYPE_NONE;
- 	_motor->FOC.inject = 0;
+	_motor->meas.previous_HFI_type = _motor->HFI.Type;
+	_motor->HFI.Type=HFI_TYPE_NONE;
+ 	_motor->HFI.inject = 0;
 
    static int cycles = 0;
    static HFI_type_e old_HFI_type;
@@ -218,8 +218,8 @@
    	_motor->m.flux_linkage_min = 0.00001f;//Set really wide limits
    	_motor->FOC.openloop_step = 0;
    	_motor->FOC.flux_observed = _motor->m.flux_linkage_min;
-   	old_HFI_type = _motor->HFIType;
-   	_motor->HFIType = HFI_TYPE_NONE;
+   	old_HFI_type = _motor->HFI.Type;
+   	_motor->HFI.Type = HFI_TYPE_NONE;
        MESCpwm_phU_Enable(_motor);
        MESCpwm_phV_Enable(_motor);
        MESCpwm_phW_Enable(_motor);
@@ -258,9 +258,9 @@
       _motor->m.flux_linkage = _motor->FOC.flux_observed;
       calculateFlux(_motor);
      _motor->MotorState = MOTOR_STATE_TRACKING;
-     _motor->HFIType = old_HFI_type;
+     _motor->HFI.Type = old_HFI_type;
      cycles = 0;
-     _motor->HFIType = _motor->meas.previous_HFI_type;
+     _motor->HFI.Type = _motor->meas.previous_HFI_type;
      if (_motor->m.flux_linkage > 0.0001f && _motor->m.flux_linkage < 200.0f) {
    	_motor->MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
      } else {
@@ -280,40 +280,40 @@ float MESCmeasure_DetectHFI(MESC_motor_typedef *_motor){
  	  ///Try out a new detection routine
  #if 1
 
- 	_motor->meas.previous_HFI_type = _motor->HFIType;
- 	_motor->HFIType = HFI_TYPE_D;
+ 	_motor->meas.previous_HFI_type = _motor->HFI.Type;
+ 	_motor->HFI.Type = HFI_TYPE_D;
  	_motor->input_vars.UART_req = 0.25f;
  	int a = 0;
  	dinductance = 0;
  	qinductance = 0;
  	while(a<1000){
  		a++;
- 		_motor->HFIType = HFI_TYPE_D;
+ 		_motor->HFI.Type = HFI_TYPE_D;
  		dinductance = dinductance + _motor->FOC.didq.d;
  		HAL_Delay(0);
  		//input_vars.input_options = 0b
  	}
  	dinductance = dinductance/1000.0f;
- 	//dinductance = motor1.FOC.pwm_period*motor1.FOC.Vd_injectionV/(motor1.Conv.Vbus*dinductance);
+ 	//dinductance = motor1.FOC.pwm_period*motor1.HFI.Vd_injectionV/(motor1.Conv.Vbus*dinductance);
  	//Vdt/di = L
  	_motor->FOC.d_polarity = -1;
  	a=0;
  	while(a<1000){
  		a++;
- 		_motor->HFIType = HFI_TYPE_D;
+ 		_motor->HFI.Type = HFI_TYPE_D;
  		qinductance = qinductance + _motor->FOC.didq.d;
  		HAL_Delay(0);
  		//input_vars.input_options = 0b
  	}
  	qinductance = qinductance/1000.0f; //Note that this is not yet an inductance, but an inverse of inductance*voltage
- 	_motor->FOC.HFI45_mod_didq = sqrtf(qinductance*qinductance+dinductance*dinductance);
- 	_motor->FOC.HFI_Gain = 5000.0f/_motor->FOC.HFI45_mod_didq; //Magic numbers that seem to work
+ 	_motor->HFI.mod_didq = sqrtf(qinductance*qinductance+dinductance*dinductance);
+ 	_motor->HFI.Gain = 5000.0f/_motor->HFI.mod_didq; //Magic numbers that seem to work
  	_motor->input_vars.UART_req = 0.0f;
  	_motor->FOC.d_polarity = 1;
 
- 	_motor->HFIType = _motor->meas.previous_HFI_type;
+ 	_motor->HFI.Type = _motor->meas.previous_HFI_type;
 
- 	return _motor->FOC.HFI45_mod_didq;
+ 	return _motor->HFI.mod_didq;
 
  #endif
 }

@@ -18,7 +18,7 @@ void MESClrobs_Init(MESC_motor_typedef *_motor){
   //Original work to MESC project.
 
  void MESClrobs_Run(MESC_motor_typedef *_motor){
-	 if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->FOC.inject ==0)){
+	 if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.inject ==0)){
 
 		  _motor->lrobs.R_observer = (_motor->lrobs.Vd_obs_high_filt-_motor->lrobs.Vd_obs_low_filt)/(2.0f*LR_OBS_CURRENT);
 		  _motor->lrobs.L_observer = (_motor->lrobs.Vq_obs_high_filt-_motor->lrobs.Vq_obs_low_filt-6.28f*(_motor->FOC.eHz-_motor->lrobs.Last_eHz)*_motor->FOC.flux_observed)/(2.0f*LR_OBS_CURRENT*6.28f*_motor->FOC.eHz);
@@ -63,7 +63,7 @@ void MESClrobs_Init(MESC_motor_typedef *_motor){
 
 void MESClrobs_Collect(MESC_motor_typedef *_motor){
 	_motor->lrobs.LR_collect_count++;
-	if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->FOC.inject ==0)){
+	if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.inject ==0)){
 		if(_motor->lrobs.plusminus==1){
 			_motor->lrobs.Vd_obs_low = _motor->lrobs.Vd_obs_low + _motor->FOC.Vdq.d;
 			_motor->lrobs.Vq_obs_low = _motor->lrobs.Vq_obs_low + _motor->FOC.Vdq.q;

@@ -381,22 +381,7 @@ typedef struct {
   uint32_t IRQentry;
   uint32_t IRQexit;
 
-  //HFI
-  uint16_t inject;
-  uint16_t inject_high_low_now;
-  float Vd_injectionV;
-  float Vq_injectionV;
-  float special_injectionVd;
-  float special_injectionVq;
-  float HFI_toggle_voltage;
-  float HFI45_mod_didq;
-  float HFI_Gain;
-  float HFI_int_err;
-  float HFI_accu;
   MESCiq_s didq;
-  int32_t HFI_countdown;
-  uint32_t HFI_count;
-  uint32_t HFI_test_increment;
   int was_last_tracking;
   uint32_t FLrun, VFLrun;
   float PLL_error;
@@ -618,6 +603,24 @@ typedef struct {
 	  int plusminus;
 } MESClrobs_s;
 
+typedef struct {
+	HFI_type_e Type;
+	uint16_t inject;
+	uint16_t inject_high_low_now;
+	float Vd_injectionV;
+	float Vq_injectionV;
+	float special_injectionVd;
+	float special_injectionVq;
+	float toggle_voltage;
+	float mod_didq;
+	float Gain;
+	float int_err;
+	float accu;
+	int32_t countdown;
+	uint32_t count;
+	uint32_t test_increment;
+} MESChfi_s;
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////Main typedef for starting a motor instance////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -632,7 +635,7 @@ typedef struct{
 	motor_control_mode_e ControlMode;
 	motor_control_type_e MotorControlType;
 	HighPhase_e HighPhase;
-	HFI_type_e HFIType;
+	MESChfi_s HFI;
 	MESC_raw_typedef Raw;
 	MESC_Converted_typedef Conv;
 	MESC_offset_typedef offset;

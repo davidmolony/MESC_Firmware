@@ -243,9 +243,9 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		//set things up to do the L measurement
 		motor_curr->MotorState = MOTOR_STATE_RUN;
 		motor_curr->input_vars.UART_req = 0.25f; //Stop it going into tracking mode
-		motor_curr->HFIType = HFI_TYPE_SPECIAL;
-		motor_curr->FOC.special_injectionVd = 0.2f;
-		motor_curr->FOC.special_injectionVq = 0.0f;
+		motor_curr->HFI.Type = HFI_TYPE_SPECIAL;
+		motor_curr->HFI.special_injectionVd = 0.2f;
+		motor_curr->HFI.special_injectionVq = 0.0f;
 		motor_curr->MotorSensorMode = MOTOR_SENSOR_MODE_OPENLOOP;
 		motor_curr->FOC.openloop_step = 0;
 		motor_curr->FOC.FOCAngle = 0;
@@ -256,10 +256,10 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		//Determine the voltage required
 		while(a){
 			if(fabsf(motor_curr->FOC.didq.d)<5.0f){
-				motor_curr->FOC.special_injectionVd *=1.05f;
-				if(motor_curr->FOC.special_injectionVd > (0.5f * motor_curr->Conv.Vbus))
+				motor_curr->HFI.special_injectionVd *=1.05f;
+				if(motor_curr->HFI.special_injectionVd > (0.5f * motor_curr->Conv.Vbus))
 				{
-					motor_curr->FOC.special_injectionVd = 0.5f * motor_curr->Conv.Vbus;
+					motor_curr->HFI.special_injectionVd = 0.5f * motor_curr->Conv.Vbus;
 				}
 			}
 			xSemaphoreGive(port->term_block);
@@ -283,23 +283,23 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 				a--;
 			}
 		Loffset[b] = Loffset[b]/200;
-		Loffset[b] = motor_curr->FOC.pwm_period * motor_curr->FOC.special_injectionVd/Loffset[b];
+		Loffset[b] = motor_curr->FOC.pwm_period * motor_curr->HFI.special_injectionVd/Loffset[b];
 		}
 
 		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
 		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
-		ttprintf("D-Inductance = %f , %f , %f  H\r\n voltage was %f \r\n", (double)Loffset[0], (double)Loffset[1], (double)Loffset[2], (double)motor_curr->FOC.special_injectionVd);
+		ttprintf("D-Inductance = %f , %f , %f  H\r\n voltage was %f \r\n", (double)Loffset[0], (double)Loffset[1], (double)Loffset[2], (double)motor_curr->HFI.special_injectionVd);
 
 		//Now do Lq
-		motor_curr->FOC.special_injectionVq = motor_curr->FOC.special_injectionVd;
-		float c = motor_curr->FOC.special_injectionVq;
-		motor_curr->FOC.special_injectionVd = 0.0f;
+		motor_curr->HFI.special_injectionVq = motor_curr->HFI.special_injectionVd;
+		float c = motor_curr->HFI.special_injectionVq;
+		motor_curr->HFI.special_injectionVd = 0.0f;
 		for(b=0;b<3; b++){
 			Lqoffset[b] = 0.0f;
 			a=200;
 			motor_curr->input_vars.UART_dreq = -10.0f ;
-			motor_curr->FOC.special_injectionVq = c * (1+(float)b);
-			if(motor_curr->FOC.special_injectionVq > motor_curr->Conv.Vbus*0.5f){motor_curr->FOC.special_injectionVq = motor_curr->Conv.Vbus*0.5f;}
+			motor_curr->HFI.special_injectionVq = c * (1+(float)b);
+			if(motor_curr->HFI.special_injectionVq > motor_curr->Conv.Vbus*0.5f){motor_curr->HFI.special_injectionVq = motor_curr->Conv.Vbus*0.5f;}
 			while(a){
 				Lqoffset[b] = Lqoffset[b] + motor_curr->FOC.didq.q;
 				xSemaphoreGive(port->term_block);
@@ -309,11 +309,11 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 				a--;
 			}
 		Lqoffset[b] = Lqoffset[b]/200;
-		Lqoffset[b] = motor_curr->FOC.pwm_period * motor_curr->FOC.special_injectionVq/Lqoffset[b];
+		Lqoffset[b] = motor_curr->FOC.pwm_period * motor_curr->HFI.special_injectionVq/Lqoffset[b];
 		}
 
 		//Put things back to runable
-		motor_curr->HFIType = HFI_TYPE_NONE;
+		motor_curr->HFI.Type = HFI_TYPE_NONE;
 		motor_curr->MotorSensorMode = MOTOR_SENSOR_MODE_SENSORLESS;
 		motor_curr->input_vars.UART_req = 0.0f; //Turn it off.
 		motor_curr->input_vars.UART_dreq = 0.0f;
@@ -322,10 +322,10 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 		TERM_sendVT100Code(handle,_VT100_ERASE_LINE, 0);
 		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
-		ttprintf("Q-Inductance = %f , %f , %f  H\r\n voltage was %f \r\n", (double)Lqoffset[0], (double)Lqoffset[1], (double)Lqoffset[2], (double)motor_curr->FOC.special_injectionVq);
+		ttprintf("Q-Inductance = %f , %f , %f  H\r\n voltage was %f \r\n", (double)Lqoffset[0], (double)Lqoffset[1], (double)Lqoffset[2], (double)motor_curr->HFI.special_injectionVq);
 
-		motor_curr->FOC.special_injectionVd = 0.0f;
-		motor_curr->FOC.special_injectionVq = 0.0f;
+		motor_curr->HFI.special_injectionVd = 0.0f;
+		motor_curr->HFI.special_injectionVq = 0.0f;
 
 		vTaskDelay(200);
 	}
@@ -358,7 +358,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		motor_curr->m.flux_linkage_max = 0.1001f;//Start it low
 		motor_curr->m.flux_linkage_min = 0.00005f;//Start it low
 
-		motor_curr->HFIType = HFI_TYPE_NONE;
+		motor_curr->HFI.Type = HFI_TYPE_NONE;
 		motor_curr->FOC.FW_curr_max = 0.1f;
 		motor_curr->input_vars.UART_req = 10.0f; //Parametise later, closedloop current
 
@@ -451,10 +451,10 @@ void populate_vars(){
 	TERM_addVar(mtr[0].m.R							, 0.0f		, 10.0f		, "r_phase"		, "Phase resistance"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].m.L_D						, 0.0f		, 10.0f		, "ld_phase"	, "Phase inductance"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].m.L_Q						, 0.0f		, 10.0f		, "lq_phase"	, "Phase inductance"																		, VAR_ACCESS_RW	, callback  , &TERM_varList);
-	TERM_addVar(mtr[0].HFIType						, 0			, 3			, "hfi_type"	, "HFI type [0=None, 1=45deg, 2=d axis]"													, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].HFI.Type						, 0			, 3			, "hfi_type"	, "HFI type [0=None, 1=45deg, 2=d axis]"													, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.hfi_voltage				, 0.0f		, 50.0f		, "hfi_volt"	, "HFI voltage"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].FOC.HFI45_mod_didq			, 0.0f		, 2.0f		, "hfi_mod_didq", "HFI mod didq"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].FOC.HFI_Gain					, 0.0f		, 5000.0f	, "hfi_gain"	, "HFI gain"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].HFI.mod_didq					, 0.0f		, 2.0f		, "hfi_mod_didq", "HFI mod didq"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].HFI.Gain						, 0.0f		, 5000.0f	, "hfi_gain"	, "HFI gain"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.FW_curr_max				, 0.0f		, 300.0f	, "fw_curr"		, "Max field weakenning current"															, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.measure_current			, 0.5f		, 100.0f	, "meas_curr"	, "Measuring current"																		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.measure_closedloop_current, 0.5f	, 100.0f	, "meas_cl_curr", "Measuring q closed loop current"															, VAR_ACCESS_RW	, NULL		, &TERM_varList);
