@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <MESC/MESCinterface.h>
+#include "MESCmeasure.h"
 
 void handleEscape(TERMINAL_HANDLE *handle){
 	MESC_motor_typedef * motor_curr = &mtr[0];

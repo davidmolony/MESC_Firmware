@@ -33,6 +33,7 @@
 
 #include "MESCpwm.h"
 #include "MESChfi.h"
+#include "MESCsin_lut.h"
 
 static float mid_value = 0;
 float top_value;

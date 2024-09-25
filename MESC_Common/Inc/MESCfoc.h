@@ -621,6 +621,12 @@ typedef struct {
 	uint32_t test_increment;
 } MESChfi_s;
 
+typedef struct {
+	bool use_hall_start;
+	bool use_lr_observer;
+	bool use_MTPA;
+} MESCoptionFlags_s;
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////Main typedef for starting a motor instance////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -651,6 +657,7 @@ typedef struct{
 	MESCtest_s test_vals;
 	input_vars_t input_vars;
 	MESClrobs_s lrobs;
+	MESCoptionFlags_s options;
 	bool conf_is_valid;
 }MESC_motor_typedef;
 
@@ -738,7 +745,7 @@ void calculateGains(MESC_motor_typedef *_motor);
 void calculateVoltageGain(MESC_motor_typedef *_motor);
 void calculateFlux(MESC_motor_typedef *_motor);
 
-void MESCmeasure_DoublePulseTest(MESC_motor_typedef *_motor);
+//void MESCmeasure_DoublePulseTest(MESC_motor_typedef *_motor);
 
 void MESC_Slow_IRQ_handler(MESC_motor_typedef *_motor); 	//This loop should run off a slow timer e.g. timer 3,4... at 20-50Hz in reset mode
 														//Default setup is to use a 50Hz RCPWM input, which if the RCPWM is not present will run at 20Hz

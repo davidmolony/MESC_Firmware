@@ -38,8 +38,8 @@ void MESClrobs_Init(MESC_motor_typedef *_motor){
 				_motor->lrobs.Vd_obs_high = 0;
 				_motor->lrobs.Vq_obs_high = 0;
 		  }
-			_motor->lrobs.Last_eHz = _motor->FOC.eHz;
-			_motor->lrobs.LR_collect_count = 0; //Reset this after doing the calcs
+		_motor->lrobs.Last_eHz = _motor->FOC.eHz;
+		_motor->lrobs.LR_collect_count = 0; //Reset this after doing the calcs
 	  }
 #if 0
 	  	float Rerror = R_observer-_motor->m.R;

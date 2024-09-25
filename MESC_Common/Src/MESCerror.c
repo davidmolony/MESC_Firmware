@@ -32,6 +32,7 @@
 #include "MESCfoc.h"
 #include "MESCmotor_state.h"
 #include "MESChw_setup.h"
+#include "MESCpwm.h"
 
 
 //externs
