@@ -460,18 +460,18 @@ void populate_vars(){
 	TERM_addVar(mtr[0].meas.measure_current			, 0.5f		, 100.0f	, "meas_curr"	, "Measuring current"																		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.measure_closedloop_current, 0.5f	, 100.0f	, "meas_cl_curr", "Measuring q closed loop current"															, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.measure_voltage			, 0.5f		, 100.0f	, "meas_volt"	, "Measuring voltage"																		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.adc1_MAX					, 0			, 4096		, "adc1_max"	, "ADC1 max val"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.adc1_MIN					, 0			, 4096		, "adc1_min"	, "ADC1 min val"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.ADC1_polarity			, -1.0f		, 1.0f		, "adc1_pol"	, "ADC1 polarity"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.adc2_MAX					, 0			, 4096		, "adc2_max"	, "ADC2 max val"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.adc2_MIN					, 0			, 4096		, "adc2_min"	, "ADC2 min val"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.ADC2_polarity			, -1.0f		, 1.0f		, "adc2_pol"	, "ADC2 polarity"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.max_request_Idq.q		, 0.0f		, 300.0f	, "curr_max"	, "Max motor current"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.min_request_Idq.q		, -300.0f	, 0.0f		, "curr_min"	, "Min motor current"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.adc1_MAX			, 0			, 4096		, "adc1_max"	, "ADC1 max val"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.adc1_MIN			, 0			, 4096		, "adc1_min"	, "ADC1 min val"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.ADC1_polarity		, -1.0f		, 1.0f		, "adc1_pol"	, "ADC1 polarity"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.adc2_MAX			, 0			, 4096		, "adc2_max"	, "ADC2 max val"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.adc2_MIN			, 0			, 4096		, "adc2_min"	, "ADC2 min val"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.ADC2_polarity		, -1.0f		, 1.0f		, "adc2_pol"	, "ADC2 polarity"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.max_request_Idq.q	, 0.0f		, 300.0f	, "curr_max"	, "Max motor current"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.min_request_Idq.q	, -300.0f	, 0.0f		, "curr_min"	, "Min motor current"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.pwm_frequency			, 0.0f		, 100000.0f	, "pwm_freq"	, "PWM frequency"																			, VAR_ACCESS_RW	, callback	, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.UART_req					, -1000.0f	, 1000.0f	, "uart_req"	, "Uart input"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.UART_dreq				, -1000.0f	, 1000.0f	, "uart_dreq"	, "Uart input"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.input_options			, 0			, 128		, "input_opt"	, "Inputs [1=ADC1 2=ADC2 4=PPM 8=UART 16=Killswitch 32=CANADC1 64=CANADC2 128=ADC12DIFF]"	, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.UART_req			, -1000.0f	, 1000.0f	, "uart_req"	, "Uart input"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.UART_dreq			, -1000.0f	, 1000.0f	, "uart_dreq"	, "Uart input"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.input_options		, 0			, 128		, "input_opt"	, "Inputs [1=ADC1 2=ADC2 4=PPM 8=UART 16=Killswitch 32=CANADC1 64=CANADC2 128=ADC12DIFF]"	, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].safe_start[0]				, 0			, 1000		, "safe_start"	, "Countdown before allowing throttle"														, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].safe_start[1]				, 0			, 1000		, "safe_count"	, "Live count before allowing throttle"														, VAR_ACCESS_R	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.enc_offset				, 0			, 65535		, "enc_offset"	, "Encoder alignment angle"																	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
@@ -493,7 +493,7 @@ void populate_vars(){
 
 	#ifdef HAL_CAN_MODULE_ENABLED
 	TERM_addVar(can1.node_id						, 1			, 254		, "node_id"	    , "Node ID"																					, VAR_ACCESS_RW	, callback	, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.remote_ADC_can_id		, 0			, 254		, "can_adc"	    , "CAN ADC ID  0=disabled"																	, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.remote_ADC_can_id	, 0			, 254		, "can_adc"	    , "CAN ADC ID  0=disabled"																	, VAR_ACCESS_RW	, callback	, &TERM_varList);
 #endif
 
 	TermVariableDescriptor * desc;

@@ -57,7 +57,8 @@ void PACK_float_to_buf(uint8_t* buffer, float number);
 void PACK_8b_char_to_buf(uint8_t* buffer, char * short_name);
 
 
-uint32_t generate_id(uint16_t id, uint8_t sender, uint8_t receiver);
-uint16_t extract_id(uint32_t ext_id, uint8_t * sender, uint8_t * receiver);
+uint32_t CANhelper_packMESC_id(uint16_t id, uint8_t sender, uint8_t receiver);
+uint16_t CANhelper_unpackMESC_id(uint32_t ext_id, uint8_t * sender, uint8_t * receiver);
+uint32_t CANhelper_packJ1939_id(uint8_t priority, uint8_t data_page, uint8_t PDU_format, uint8_t PDU_specific, uint8_t source_address);
 
 #endif /* CAN_HELPER_H_ */

@@ -163,15 +163,24 @@ void PACK_8b_char_to_buf(uint8_t* buffer, char * short_name) {
 	memcpy(buffer, short_name, 8);
 }
 
-uint32_t generate_id(uint16_t id, uint8_t sender, uint8_t receiver){
+uint32_t CANhelper_packMESC_id(uint16_t id, uint8_t sender, uint8_t receiver){
 	uint32_t ret = (uint32_t)id << 16;
 	ret |= sender;
 	ret |= (uint32_t)receiver << 8;
 	return ret;
 }
 
-uint16_t extract_id(uint32_t ext_id, uint8_t * sender, uint8_t * receiver){
+uint16_t CANhelper_unpackMESC_id(uint32_t ext_id, uint8_t * sender, uint8_t * receiver){
 	*sender = ext_id & 0xFF;
 	*receiver = (ext_id >> 8) & 0xFF;
 	return (ext_id >> 16);
 }
+
+uint32_t CANhelper_packJ1939_id(uint8_t priority, uint8_t data_page, uint8_t PDU_format, uint8_t PDU_specific, uint8_t source_address){
+    uint32_t ret;
+
+    ret = ((priority & 0b111) << 26) | (data_page & 0b11) <<24 | PDU_format << 16 | PDU_specific << 8 | source_address;
+
+    return ret;
+}
+
