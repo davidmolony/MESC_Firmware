@@ -185,6 +185,13 @@
 #define ENCODER_E_OFFSET 0
 #endif
 
+
+#define clamp(value, min, max) (min < max           \
+  ? (value < min ? min : value > max ? max : value) \
+  : (value < max ? max : value > min ? min : value))
+
+
+
 typedef struct {
 	int Iu;
 	int Iv;
@@ -314,6 +321,7 @@ typedef struct {
   MESCiq_s Idq_int_err;
   float id_mtpa;
   float iq_mtpa;
+  float maxIgamma;
 
 
   float inverterVoltage[3];
@@ -621,10 +629,27 @@ typedef struct {
 	uint32_t test_increment;
 } MESChfi_s;
 
+enum FIELD_WEAKENING
+{
+	FIELD_WEAKENING_OFF = 0,
+	FIELD_WEAKENING_V1 = 1,
+	FIELD_WEAKENING_V2 = 2
+};
+
+enum SQRT_CIRC
+{
+	SQRT_CIRCLE_LIM_OFF = 0,
+	SQRT_CIRCLE_LIM_ON = 1,
+	SQRT_CIRCLE_LIM_VD = 2
+};
+
 typedef struct {
 	bool use_hall_start;
 	bool use_lr_observer;
 	bool use_MTPA;
+	bool use_phase_balancing;
+	uint8_t field_weakening;
+	uint8_t sqrt_circle_lim;
 } MESCoptionFlags_s;
 
 ///////////////////////////////////////////////////////////////////////////////////////////

@@ -486,7 +486,13 @@ void populate_vars(){
 	TERM_addVar(mtr[0].FOC.FW_ehz_max				, 0.0f		, 6000.0f	, "fw_ehz"		, "max eHz under field weakenning"															, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.park_current				, 0.0f		, 300.0f	, "park_curr"	, "max current for handbrake"																, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(MESC_all_errors						, -HUGE_VAL	, HUGE_VAL	, "error_all"	, "All errors encountered"																	, VAR_ACCESS_R	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].FOC.hall_initialised			, 0		, 1	, "Hall_initialised"		, "hall start flag"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.hall_initialised			, 0			, 1			, "Hall_initialised", "hall start flag"																		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].options.field_weakening		, 0			, 2			, "opt_fw"		, "Field weakening [0=OFF, 1=ON, 2=ON V2]"													, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].options.sqrt_circle_lim		, 0			, 2			, "opt_circ_lim", "Circle limiter [0=OFF, 1=ON, 2=ON Vd]"													, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].options.use_MTPA				, 0			, 1			, "opt_mtpa"	, "Use MTPA"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].options.use_hall_start		, 0			, 1			, "opt_hall_start", "Use hall start"																		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].options.use_phase_balancing	, 0			, 1			, "opt_phase_bal", "Use highhopes phase balancing"															, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].options.use_lr_observer		, 0			, 1			, "opt_lr_obs"  , "Use LR observer"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 
 	TERM_addVarArrayFloat(mtr[0].m.hall_flux, sizeof(mtr[0].m.hall_flux),  -10.0f, 10.0f, "Hall_flux", "hall start table", VAR_ACCESS_RW, NULL, &TERM_varList);
 
