@@ -1113,19 +1113,13 @@ void hallAngleEstimator(MESC_motor_typedef *_motor) {  // Implementation using t
           // cross coupling).
 
           // Bounding integral
-            if (_motor->FOC.Idq_int_err.d > _motor->FOC.Vdint_max){_motor->FOC.Idq_int_err.d = _motor->FOC.Vdint_max;}
-            if (_motor->FOC.Idq_int_err.d < -_motor->FOC.Vdint_max){_motor->FOC.Idq_int_err.d = -_motor->FOC.Vdint_max;}
-            if (_motor->FOC.Idq_int_err.q > _motor->FOC.Vqint_max){_motor->FOC.Idq_int_err.q = _motor->FOC.Vqint_max;}
-            if (_motor->FOC.Idq_int_err.q < -_motor->FOC.Vqint_max){_motor->FOC.Idq_int_err.q = -_motor->FOC.Vqint_max;}
+    	  _motor->FOC.Idq_int_err.d = clamp(_motor->FOC.Idq_int_err.d, -_motor->FOC.Vdint_max, _motor->FOC.Vdint_max);
+    	  _motor->FOC.Idq_int_err.q = clamp(_motor->FOC.Idq_int_err.q, -_motor->FOC.Vqint_max, _motor->FOC.Vqint_max);
+
           //Bounding output
-          if (_motor->FOC.Vdq.d > _motor->FOC.Vd_max)
-            (_motor->FOC.Vdq.d = _motor->FOC.Vd_max);
-          if (_motor->FOC.Vdq.d < -_motor->FOC.Vd_max)
-            (_motor->FOC.Vdq.d = -_motor->FOC.Vd_max);
-          if (_motor->FOC.Vdq.q > _motor->FOC.Vq_max)
-            (_motor->FOC.Vdq.q = _motor->FOC.Vq_max);
-          if (_motor->FOC.Vdq.q < -_motor->FOC.Vq_max)
-            (_motor->FOC.Vdq.q = -_motor->FOC.Vq_max);
+          _motor->FOC.Vdq.d = clamp(_motor->FOC.Vdq.d, -_motor->FOC.Vd_max, _motor->FOC.Vd_max);
+          _motor->FOC.Vdq.q = clamp(_motor->FOC.Vdq.q, -_motor->FOC.Vq_max, _motor->FOC.Vq_max);
+
       }
 
 
@@ -1293,8 +1287,8 @@ float  Square(float x){ return((x)*(x));}
 											_motor->input_vars.remote_ADC1_req + _motor->input_vars.remote_ADC2_req );
 
 			  //Clamp the Q component; d component is not directly requested
-				if(_motor->FOC.Idq_prereq.q>_motor->input_vars.max_request_Idq.q){_motor->FOC.Idq_prereq.q = _motor->input_vars.max_request_Idq.q;}
-				if(_motor->FOC.Idq_prereq.q<_motor->input_vars.min_request_Idq.q){_motor->FOC.Idq_prereq.q = _motor->input_vars.min_request_Idq.q;}
+			  _motor->FOC.Idq_prereq.q = clamp(_motor->FOC.Idq_prereq.q, _motor->input_vars.min_request_Idq.q, _motor->input_vars.max_request_Idq.q);
+
 			  break;
 		  case MOTOR_CONTROL_MODE_POSITION:
 			  RunPosControl(_motor);
@@ -1970,21 +1964,19 @@ void RunSpeedControl(MESC_motor_typedef *_motor){
 		speed_error = _motor->FOC.speed_kp*(_motor->FOC.speed_req - _motor->FOC.eHz);
 		//Bound the proportional term before we do anything with it
 		//We use the symetric terms here to allow fast PID ramps
-		if(speed_error > _motor->input_vars.max_request_Idq.q){speed_error = _motor->input_vars.max_request_Idq.q;}
-		if(speed_error < -_motor->input_vars.max_request_Idq.q){speed_error = -_motor->input_vars.max_request_Idq.q;}
+		speed_error = clamp(speed_error, -_motor->input_vars.max_request_Idq.q, _motor->input_vars.max_request_Idq.q);
 
 		_motor->FOC.speed_error_int = _motor->FOC.speed_error_int + speed_error * _motor->FOC.speed_ki;
 		//Bound the integral term...
 		//Again, using symmetric terms
-		if(_motor->FOC.speed_error_int > _motor->input_vars.max_request_Idq.q){_motor->FOC.speed_error_int = _motor->input_vars.max_request_Idq.q;}
-		if(_motor->FOC.speed_error_int < -_motor->input_vars.max_request_Idq.q){_motor->FOC.speed_error_int = -_motor->input_vars.max_request_Idq.q;}
+		_motor->FOC.speed_error_int = clamp(_motor->FOC.speed_error_int, -_motor->input_vars.max_request_Idq.q, _motor->input_vars.max_request_Idq.q);
 
 		//Apply the PID
 		_motor->FOC.Idq_prereq.q = _motor->FOC.speed_error_int + speed_error;
 		//Bound the overall...
 		//Now we use asymmetric terms to stop it regenerating too much
-		if(_motor->FOC.Idq_prereq.q > _motor->input_vars.max_request_Idq.q){_motor->FOC.Idq_prereq.q = _motor->input_vars.max_request_Idq.q;}
-		if(_motor->FOC.Idq_prereq.q < _motor->input_vars.min_request_Idq.q){_motor->FOC.Idq_prereq.q = _motor->input_vars.min_request_Idq.q;}
+		_motor->FOC.Idq_prereq.q = clamp(_motor->FOC.Idq_prereq.q, _motor->input_vars.min_request_Idq.q, _motor->input_vars.max_request_Idq.q);
+
 	  } else {
 		  //Set zero
 		  _motor->FOC.Idq_prereq.q = 0.0f;
