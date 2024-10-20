@@ -34,6 +34,73 @@
 #include "MESChw_setup.h"
 #include "MESCpwm.h"
 
+#define MAX_ERROR_BITS 32
+
+const char * error_string[32] = {
+		"Overcurrent phase A",
+		"Overcurrent phase B",
+		"Overcurrent phase C",
+		"Overvoltage",
+		"Undervoltage",
+		"Break Pin",
+		"Overtemperature Mosfet A",
+		"Overtemperature Mosfet B",
+		"Overtemperature Mosfet C",
+		"Overtemperature Motor",
+		"Hardfault",
+		"Busfault",
+		"NMI",
+		"Memfault",
+		"Usage",
+		"Out of Range ADC Phase A",
+		"Out of Range ADC Phase B",
+		"Out of Range ADC Phase C",
+		"Out of Range ADC Vbus",
+		"Watchdog",
+		"Unbalanced currents",
+		"Measurement fail",
+		"Detection fail",
+		"HALL Sensor [0]",
+		"HALL Sensor [7]",
+		"Math",
+		"Input",
+		"Startup",
+		"Not used",
+		"Not used",
+		"Not used",
+		"Not used"
+};
+
+
+#define ERROR_OVERCURRENT_PHA 1
+#define ERROR_OVERCURRENT_PHB 2
+#define ERROR_OVERCURRENT_PHC 3
+#define ERROR_OVERVOLTAGE 4
+#define ERROR_UNDERVOLTAGE 5
+#define ERROR_BRK 6
+#define ERROR_OVERTEMPU 7
+#define ERROR_OVERTEMPV 8
+#define ERROR_OVERTEMPW 9
+#define ERROR_OVERTEMP_MOTOR 10
+#define ERROR_HARDFAULT 11
+#define ERROR_BUSFAULT 12
+#define ERROR_NMI 13
+#define ERROR_MEMFAULT 14
+#define ERROR_USAGE 15
+#define ERROR_ADC_OUT_OF_RANGE_IA 16
+#define ERROR_ADC_OUT_OF_RANGE_IB 17
+#define ERROR_ADC_OUT_OF_RANGE_IC 18
+#define ERROR_ADC_OUT_OF_RANGE_VBUS 19
+#define ERROR_WDG 20
+#define ERROR_UNBALANCED_CURRENT 21
+#define ERROR_MEASUREMENT_FAIL 22
+#define ERROR_DETECTION_FAIL 23
+#define ERROR_HALL0 24
+#define ERROR_HALL7 25
+#define ERROR_MATH 26
+#define ERROR_INPUT_OOR 27
+#define ERROR_STARTUP 28
+
 
 //externs
 extern TIM_HandleTypeDef htim1;

@@ -37,6 +37,7 @@
 //Variables
 extern  uint32_t MESC_errors;
 extern  uint32_t MESC_all_errors;
+extern const char * error_string[32];
 
 struct MESC_log_vars
 {

@@ -53,6 +53,22 @@ const char TERM_startupText1[] = "\r\n";
 const char TERM_startupText2[] = "\r\n[M]olony [E]lectronic [S]peed [C]ontroller";
 const char TERM_startupText3[] = "\r\n";
 
+uint8_t CMD_error(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
+	bool has_error=false;
+	uint32_t mask = 0;
+	for(uint8_t i=0;i<32;i++){
+		mask = (1 << i);
+		if(MESC_errors & mask){
+			ttprintf("Error bit[%u]: %s\r\n", i+1, error_string[i]);
+			has_error = true;
+		}
+	}
+	if(has_error == false){
+		ttprintf("No errors :)\r\n");
+	}
+	return TERM_CMD_EXIT_SUCCESS;
+}
+
 uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	MESC_motor_typedef * motor_curr = &mtr[0];
@@ -669,6 +685,7 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 	MESCinput_Init(&mtr[0]);
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
+	TERM_addCommand(CMD_error, "error", "Show errors", 0, &TERM_defaultList);
 
 	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
 
