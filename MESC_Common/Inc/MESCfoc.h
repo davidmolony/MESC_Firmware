@@ -648,6 +648,7 @@ typedef struct {
 	bool use_lr_observer;
 	bool use_MTPA;
 	bool use_phase_balancing;
+	bool has_motor_temp_sensor;
 	uint8_t field_weakening;
 	uint8_t sqrt_circle_lim;
 } MESCoptionFlags_s;

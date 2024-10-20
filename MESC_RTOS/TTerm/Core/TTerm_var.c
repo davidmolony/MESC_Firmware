@@ -382,10 +382,10 @@ static bool var_system_is_init(TERMINAL_HANDLE * handle){
 
 
 #define COL_A 3
-#define COL_B 15
-#define COL_C 35
-#define COL_D 46
-#define COL_E 57
+#define COL_B 25
+#define COL_C 45
+#define COL_D 56
+#define COL_E 67
 
 static void print_var_header(TERMINAL_HANDLE * handle){
 	TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_A);
