@@ -118,7 +118,7 @@
 #endif
 
 #ifndef CURRENT_BANDWIDTH
-#define CURRENT_BANDWIDTH 0.25f*PWM_FREQUENCY //Note, current bandwidth in rads-1, PWMfrequency in Hz, so the default is about fPWM = 25xcurrent bandwidth.
+#define CURRENT_BANDWIDTH 0.15f*PWM_FREQUENCY //Note, current bandwidth in rads-1, PWMfrequency in Hz.
 #endif
 
 #ifndef DEFAULT_SPEED_KP

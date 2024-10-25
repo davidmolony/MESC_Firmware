@@ -156,6 +156,7 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 	_motor->FOC.pwm_frequency =PWM_FREQUENCY;
 	_motor->meas.hfi_voltage = HFI_VOLTAGE;
 
+
 	//Init Hall sensor
 	_motor->hall.dir = 1.0f;
 	_motor->hall.ticks_since_last_observer_change = 65535.0f;
@@ -262,8 +263,12 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 	_motor->Raw.Motor_temp.limit.Thot         = CVT_CELSIUS_TO_KELVIN_F(  80.0f );
 	_motor->Raw.Motor_temp.limit.Tmax         = CVT_CELSIUS_TO_KELVIN_F( 100.0f );
 
+	//Initialise the FOC parameters
 	//Init the FW
     _motor->FOC.FW_curr_max = FIELD_WEAKENING_CURRENT;  // test number, to be stored in user settings
+
+    //Init the current controller
+    _motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
 
     MESClrobs_Init(_motor);
 
@@ -1168,7 +1173,6 @@ void hallAngleEstimator(MESC_motor_typedef *_motor) {  // Implementation using t
 
     calculateFlux(_motor);
 
-    _motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
     //PID controller gains
     _motor->FOC.Id_pgain = _motor->FOC.Current_bandwidth * _motor->m.L_D;
     _motor->FOC.Id_igain = _motor->m.R / _motor->m.L_D;
