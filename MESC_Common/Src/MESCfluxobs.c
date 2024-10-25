@@ -158,28 +158,25 @@ case MXLEMMING:
 	break;
 
 case ORTEGA_ORIGINAL:
+//Seems that in the presence of hig salience, the Ortega observer stabilises better
+//This is becuase the application of the flux error adaptation is rotated by the L_ia and L_ib components
+//This results in a decreasing power factor with higher gain but remains stable.
+
 //Adapt inductance
 	float Lnow = _motor->m.L_D; + 0.5*(_motor->m.L_Q - _motor->m.L_D) * (_motor->FOC.Idq.q * _motor->FOC.Idq.q) / (_motor->FOC.Idq.q * _motor->FOC.Idq.q + _motor->FOC.Idq.d * _motor->FOC.Idq.d);
 
 	float L_ia = Lnow * _motor->FOC.Iab.a;
 	float L_ib = Lnow * _motor->FOC.Iab.b;
 
-//Ortega Error
-		float err = _motor->m.flux_linkage * _motor->m.flux_linkage
-				- (_motor->FOC.flux_a * _motor->FOC.flux_a + _motor->FOC.flux_b*_motor->FOC.flux_b);
-		if (err > 0.0f) {
-			err = 0.0f;
-		}
-
 //Flux rate of changes
 		float flux_a_dot =
 			  (_motor->FOC.Vab.a
-					  - _motor->m.R * _motor->FOC.Iab.a
-					  + _motor->FOC.ortega_gain * (_motor->FOC.flux_a - L_ia) * err);
+			  - _motor->m.R * _motor->FOC.Iab.a);
+//				+ _motor->FOC.ortega_gain * (_motor->FOC.flux_a - L_ia) * err);
 		float flux_b_dot =
 			  (_motor->FOC.Vab.b
-					  - _motor->m.R * _motor->FOC.Iab.b
-					  + _motor->FOC.ortega_gain * (_motor->FOC.flux_b - L_ib) * err);
+			  - _motor->m.R * _motor->FOC.Iab.b);
+//				+ _motor->FOC.ortega_gain * (_motor->FOC.flux_b - L_ib) * err);
 
 //Integrate
 		_motor->FOC.flux_a = _motor->FOC.flux_a
@@ -187,12 +184,19 @@ case ORTEGA_ORIGINAL:
 		_motor->FOC.flux_b = _motor->FOC.flux_b
 				+ flux_b_dot * _motor->FOC.pwm_period;
 
+//Ortega Error
+//Contrary to the usual implementation, do the integration before calculating the error for more up to date data.
+		float err = _motor->m.flux_linkage * _motor->m.flux_linkage
+				- (_motor->FOC.flux_a * _motor->FOC.flux_a + _motor->FOC.flux_b*_motor->FOC.flux_b);
+		if (err > 0.0f) {
+			err = 0.0f;
+				}
 
 //Apply error correction
-//		_motor->FOC.flux_a = _motor->FOC.flux_a
-//				+ _motor->FOC.ortega_gain * (_motor->FOC.flux_a - L_ia) * err * _motor->FOC.pwm_period;
-//		_motor->FOC.flux_b = _motor->FOC.flux_b
-//				+ _motor->FOC.ortega_gain * (_motor->FOC.flux_b - L_ib) * err * _motor->FOC.pwm_period;
+		_motor->FOC.flux_a = _motor->FOC.flux_a
+				+ _motor->FOC.ortega_gain * (_motor->FOC.flux_a - L_ia) * err * _motor->FOC.pwm_period;
+		_motor->FOC.flux_b = _motor->FOC.flux_b
+				+ _motor->FOC.ortega_gain * (_motor->FOC.flux_b - L_ib) * err * _motor->FOC.pwm_period;
 //Calculate the angle
 	    if(_motor->HFI.inject==0){
 	    	_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2((_motor->FOC.flux_b - L_ib), _motor->FOC.flux_a - L_ia)) - 32768;
