@@ -275,7 +275,7 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
     //Init the current controller
     _motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
 
-    _motor->FOC.ortega_gain = 100000.0f;
+    _motor->FOC.ortega_gain = 1000000.0f;
 
     MESClrobs_Init(_motor);
 
@@ -1013,128 +1013,124 @@ void hallAngleEstimator(MESC_motor_typedef *_motor) {  // Implementation using t
     		_motor->FOC.Idq_int_err.q + _motor->FOC.Iq_igain * Idq_err.q * _motor->FOC.pwm_period;
     // Apply the integral gain at this stage to enable bounding it
 
-
-        // Apply the PID, and potentially smooth the output for noise - sudden
-      // changes in VDVQ may be undesirable for some motors. Integral error is
-      // pre-bounded to avoid integral windup, proportional gain needs to have
-      // effect even at max integral to stabilise and avoid trips
+    // Apply the PID
       _motor->FOC.Vdq.d = Idq_err.d + _motor->FOC.Idq_int_err.d;
       _motor->FOC.Vdq.q = Idq_err.q + _motor->FOC.Idq_int_err.q;
 
       // Bounding final output
+      float Vmagnow2;
+switch(_motor->options.sqrt_circle_lim){
+case SQRT_CIRCLE_LIM_OFF:
+	  //Fixed Vd and Vq limits.
+    // These limits are experimental, but result in close to 100% modulation.
+    // Since Vd and Vq are orthogonal, limiting Vd is not especially helpful
+    // in reducing overall voltage magnitude, since the relation
+    // Vout=(Vd^2+Vq^2)^0.5 results in Vd having a small effect. Vd is
+    // primarily used to drive the resistive part of the field; there is no
+    // BEMF pushing against Vd and so it does not scale with RPM (except for
+    // cross coupling).
 
-      if(_motor->options.sqrt_circle_lim == SQRT_CIRCLE_LIM_ON){
-          float Vmagnow2 = _motor->FOC.Vdq.d*_motor->FOC.Vdq.d+_motor->FOC.Vdq.q*_motor->FOC.Vdq.q;
-          //Check if the vector length is greater than the available voltage
-          _motor->FOC.Voltage = sqrtf(Vmagnow2);
-          if(_motor->FOC.Voltage > _motor->FOC.Vmag_max){
-			  //float Vmagnow = sqrtf(Vmagnow2);
-			  float one_on_Vmagnow = 1.0f/_motor->FOC.Voltage;
-			  float one_on_VmagnowxVmagmax = _motor->FOC.Vmag_max*one_on_Vmagnow;
-			  _motor->FOC.Vdq.d = _motor->FOC.Vdq.d*one_on_VmagnowxVmagmax;
-			  _motor->FOC.Vdq.q = _motor->FOC.Vdq.q*one_on_VmagnowxVmagmax;
-			  _motor->FOC.Idq_int_err.d = _motor->FOC.Idq_int_err.d*one_on_VmagnowxVmagmax;
-			  _motor->FOC.Idq_int_err.q = _motor->FOC.Idq_int_err.q*one_on_VmagnowxVmagmax;
+    // Bounding integral
+	  _motor->FOC.Idq_int_err.d = clamp(_motor->FOC.Idq_int_err.d, -_motor->FOC.Vdint_max, _motor->FOC.Vdint_max);
+	  _motor->FOC.Idq_int_err.q = clamp(_motor->FOC.Idq_int_err.q, -_motor->FOC.Vqint_max, _motor->FOC.Vqint_max);
 
-			  if(_motor->options.field_weakening == FIELD_WEAKENING_V2){
-				  //Preferable to use FWV2 with the D axis circle limiter,
-				  //this allows the D current to ramp all the way to max, whereas
-				  //the linear sqrt circle limiter is overcome by large q axis voltage demands
-		    	  //Closed loop field weakenning that works by only applying D axis current in the case where there is no duty left.
-		    	  //Seems very effective at increasing speed with good stability and maintaining max torque.
-				  _motor->FOC.FW_current = 0.99f*_motor->FOC.FW_current -0.01f*_motor->FOC.FW_curr_max;
-		    	  //Exponentially tend towards the max FW current
-			  }
-
-          }else{
-        	  if(_motor->options.field_weakening == FIELD_WEAKENING_V2){
-        		  _motor->FOC.FW_current = 1.01f*_motor->FOC.FW_current + 0.0101f*_motor->FOC.FW_curr_max;
-        	  }
-          }
-
-          if(_motor->options.field_weakening == FIELD_WEAKENING_V2){
-        	  //Unroll the exponential ramp up, with a small extra term to ensure we do not saturate the float
-        	  if(_motor->FOC.FW_current>_motor->FOC.Idq_req.d){_motor->FOC.FW_current = _motor->FOC.Idq_req.d;}
-        	  if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current = -_motor->FOC.FW_curr_max;}
-          }
-
-
-      }else if(_motor->options.sqrt_circle_lim == SQRT_CIRCLE_LIM_VD){
-		 //Circle limiter that favours Vd, similar to used in VESC, and as an option in ST firmware.for torque
-		  //This method was primarily designed for induction motors, where the d axis is required to
-		  //make the magnetic field for torque. Nevertheless, this finds application at extreme currents and
-		  //during field weakening.
-		  //Latent concerns about the usual implementation that allows ALL the voltage to be
-		  //assigned to Vd becoming unstable as the angle relative to the rotor exceeds 45 degrees
-		  //due to rapidly collapsing q-axis voltage. Therefore, this option will be allowed, but
-		  // with a limit of voltage angle 60degrees (sin60 = 0.866) from the rotor.
-
-		  if(_motor->FOC.Vdq.d<-0.866f*_motor->FOC.Vmag_max){ //Negative values of Vd - Normally Vd is -ve since it is driving field advance
-			  _motor->FOC.Vdq.d = -0.866f*_motor->FOC.Vmag_max; //Hard clamp the Vd
-			  if(_motor->FOC.Idq_int_err.d<_motor->FOC.Vdq.d){
-				  _motor->FOC.Idq_int_err.d = _motor->FOC.Vdq.d; //Also clamp the integral to stop windup
-			  }
-		  } else if(_motor->FOC.Vdq.d>0.866f*_motor->FOC.Vmag_max){ //Positive values of Vd
-			  _motor->FOC.Vdq.d = 0.866f*_motor->FOC.Vmag_max; //Hard clamp the Vd
-			  if(_motor->FOC.Idq_int_err.d>_motor->FOC.Vdq.d){
-				  _motor->FOC.Idq_int_err.d = _motor->FOC.Vdq.d; //Also clamp the integral to stop windup
-			  }
-		  }
-
-		  //Now we take care of the overall length of the voltage vector
-		  float Vmagnow2 = _motor->FOC.Vdq.d*_motor->FOC.Vdq.d+_motor->FOC.Vdq.q*_motor->FOC.Vdq.q;
-		  _motor->FOC.Voltage = sqrtf(Vmagnow2);
-		  if(_motor->FOC.Voltage > _motor->FOC.Vmag_max){
-			  _motor->FOC.Voltage = _motor->FOC.Vmag_max;
-			  if(_motor->FOC.Vdq.q>0.0f){ //Positive Vq
-				  _motor->FOC.Vdq.q = sqrtf(_motor->FOC.Vmag_max2-_motor->FOC.Vdq.d*_motor->FOC.Vdq.d);
-				  if(_motor->FOC.Idq_int_err.q>_motor->FOC.Vdq.q){
-					  _motor->FOC.Idq_int_err.q = _motor->FOC.Vdq.q;
-				  }
-			  }
-			  else{ //Negative Vq
-				  _motor->FOC.Vdq.q = -sqrtf(_motor->FOC.Vmag_max2-_motor->FOC.Vdq.d*_motor->FOC.Vdq.d);
-				  if(_motor->FOC.Idq_int_err.q<_motor->FOC.Vdq.q){
-					  _motor->FOC.Idq_int_err.q = _motor->FOC.Vdq.q;
-				  }
-			  }
-		  }
+    //Bounding output
+    _motor->FOC.Vdq.d = clamp(_motor->FOC.Vdq.d, -_motor->FOC.Vd_max, _motor->FOC.Vd_max);
+    _motor->FOC.Vdq.q = clamp(_motor->FOC.Vdq.q, -_motor->FOC.Vq_max, _motor->FOC.Vq_max);
+	break;
+case SQRT_CIRCLE_LIM_ON:
+    Vmagnow2 = _motor->FOC.Vdq.d*_motor->FOC.Vdq.d+_motor->FOC.Vdq.q*_motor->FOC.Vdq.q;
+    //Check if the vector length is greater than the available voltage
+    _motor->FOC.Voltage = sqrtf(Vmagnow2);
+    if(_motor->FOC.Voltage > _motor->FOC.Vmag_max){
+		  //float Vmagnow = sqrtf(Vmagnow2);
+		  float one_on_Vmagnow = 1.0f/_motor->FOC.Voltage;
+		  float one_on_VmagnowxVmagmax = _motor->FOC.Vmag_max*one_on_Vmagnow;
+		  _motor->FOC.Vdq.d = _motor->FOC.Vdq.d*one_on_VmagnowxVmagmax;
+		  _motor->FOC.Vdq.q = _motor->FOC.Vdq.q*one_on_VmagnowxVmagmax;
+		  _motor->FOC.Idq_int_err.d = _motor->FOC.Idq_int_err.d*one_on_VmagnowxVmagmax;
+		  _motor->FOC.Idq_int_err.q = _motor->FOC.Idq_int_err.q*one_on_VmagnowxVmagmax;
 
 		  if(_motor->options.field_weakening == FIELD_WEAKENING_V2){
-		      if(_motor->FOC.Voltage > 0.95f*_motor->FOC.Vmag_max){
-		    	  //Closed loop field weakenning that works by only applying D axis current in the case where there is no duty left.
-		    	  //Added extra comparison statement to allow 5% excess duty which gives some headroom for the q axis PI control
-		    	  //Seems very effective at increasing speed with good stability and maintaining max torque.
-		    		  _motor->FOC.FW_current = 0.99f*_motor->FOC.FW_current -0.01f*_motor->FOC.FW_curr_max;
-		    	  //Exponentially tend towards the max FW current
-		      }else{
-				  _motor->FOC.FW_current = 1.01f*_motor->FOC.FW_current + 0.0101f*_motor->FOC.FW_curr_max;
-		      }//Exponentially diverge from the FW current. Note that this exponential implemented opposite to the ramp up!
-		      if(_motor->FOC.FW_current>_motor->FOC.Idq_req.d){_motor->FOC.FW_current = _motor->FOC.Idq_req.d;}
-		      if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current = -_motor->FOC.FW_curr_max;}
+			  //Preferable to use FWV2 with the D axis circle limiter,
+			  //this allows the D current to ramp all the way to max, whereas
+			  //the linear sqrt circle limiter is overcome by large q axis voltage demands
+	    	  //Closed loop field weakenning that works by only applying D axis current in the case where there is no duty left.
+	    	  //Seems very effective at increasing speed with good stability and maintaining max torque.
+			  _motor->FOC.FW_current = 0.99f*_motor->FOC.FW_current -0.01f*_motor->FOC.FW_curr_max;
+	    	  //Exponentially tend towards the max FW current
 		  }
 
+    }else{
+  	  if(_motor->options.field_weakening == FIELD_WEAKENING_V2){
+  		  _motor->FOC.FW_current = 1.01f*_motor->FOC.FW_current + 0.0101f*_motor->FOC.FW_curr_max;
+  	  }
+    }
 
-      }else{
-      	  //Fixed Vd and Vq limits.
-          // These limits are experimental, but result in close to 100% modulation.
-          // Since Vd and Vq are orthogonal, limiting Vd is not especially helpful
-          // in reducing overall voltage magnitude, since the relation
-          // Vout=(Vd^2+Vq^2)^0.5 results in Vd having a small effect. Vd is
-          // primarily used to drive the resistive part of the field; there is no
-          // BEMF pushing against Vd and so it does not scale with RPM (except for
-          // cross coupling).
+    if(_motor->options.field_weakening == FIELD_WEAKENING_V2){
+  	  //Unroll the exponential ramp up, with a small extra term to ensure we do not saturate the float
+  	  if(_motor->FOC.FW_current>_motor->FOC.Idq_req.d){_motor->FOC.FW_current = _motor->FOC.Idq_req.d;}
+  	  if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current = -_motor->FOC.FW_curr_max;}
+    }
 
-          // Bounding integral
-    	  _motor->FOC.Idq_int_err.d = clamp(_motor->FOC.Idq_int_err.d, -_motor->FOC.Vdint_max, _motor->FOC.Vdint_max);
-    	  _motor->FOC.Idq_int_err.q = clamp(_motor->FOC.Idq_int_err.q, -_motor->FOC.Vqint_max, _motor->FOC.Vqint_max);
+	break;
+case SQRT_CIRCLE_LIM_VD:
+	 //Circle limiter that favours Vd, similar to used in VESC, and as an option in ST firmware.for torque
+	  //This method was primarily designed for induction motors, where the d axis is required to
+	  //make the magnetic field for torque. Nevertheless, this finds application at extreme currents and
+	  //during field weakening.
+	  //Latent concerns about the usual implementation that allows ALL the voltage to be
+	  //assigned to Vd becoming unstable as the angle relative to the rotor exceeds 45 degrees
+	  //due to rapidly collapsing q-axis voltage. Therefore, this option will be allowed, but
+	  // with a limit of voltage angle 60degrees (sin60 = 0.866) from the rotor.
 
-          //Bounding output
-          _motor->FOC.Vdq.d = clamp(_motor->FOC.Vdq.d, -_motor->FOC.Vd_max, _motor->FOC.Vd_max);
-          _motor->FOC.Vdq.q = clamp(_motor->FOC.Vdq.q, -_motor->FOC.Vq_max, _motor->FOC.Vq_max);
+	  if(_motor->FOC.Vdq.d<-0.866f*_motor->FOC.Vmag_max){ //Negative values of Vd - Normally Vd is -ve since it is driving field advance
+		  _motor->FOC.Vdq.d = -0.866f*_motor->FOC.Vmag_max; //Hard clamp the Vd
+		  if(_motor->FOC.Idq_int_err.d<_motor->FOC.Vdq.d){
+			  _motor->FOC.Idq_int_err.d = _motor->FOC.Vdq.d; //Also clamp the integral to stop windup
+		  }
+	  } else if(_motor->FOC.Vdq.d>0.866f*_motor->FOC.Vmag_max){ //Positive values of Vd
+		  _motor->FOC.Vdq.d = 0.866f*_motor->FOC.Vmag_max; //Hard clamp the Vd
+		  if(_motor->FOC.Idq_int_err.d>_motor->FOC.Vdq.d){
+			  _motor->FOC.Idq_int_err.d = _motor->FOC.Vdq.d; //Also clamp the integral to stop windup
+		  }
+	  }
 
-      }
+	  //Now we take care of the overall length of the voltage vector
+	  Vmagnow2 = _motor->FOC.Vdq.d*_motor->FOC.Vdq.d+_motor->FOC.Vdq.q*_motor->FOC.Vdq.q;
+	  _motor->FOC.Voltage = sqrtf(Vmagnow2);
+	  if(_motor->FOC.Voltage > _motor->FOC.Vmag_max){
+		  _motor->FOC.Voltage = _motor->FOC.Vmag_max;
+		  if(_motor->FOC.Vdq.q>0.0f){ //Positive Vq
+			  _motor->FOC.Vdq.q = sqrtf(_motor->FOC.Vmag_max2-_motor->FOC.Vdq.d*_motor->FOC.Vdq.d);
+			  if(_motor->FOC.Idq_int_err.q>_motor->FOC.Vdq.q){
+				  _motor->FOC.Idq_int_err.q = _motor->FOC.Vdq.q;
+			  }
+		  }
+		  else{ //Negative Vq
+			  _motor->FOC.Vdq.q = -sqrtf(_motor->FOC.Vmag_max2-_motor->FOC.Vdq.d*_motor->FOC.Vdq.d);
+			  if(_motor->FOC.Idq_int_err.q<_motor->FOC.Vdq.q){
+				  _motor->FOC.Idq_int_err.q = _motor->FOC.Vdq.q;
+			  }
+		  }
+	  }
 
+	  if(_motor->options.field_weakening == FIELD_WEAKENING_V2){
+	      if(_motor->FOC.Voltage > 0.95f*_motor->FOC.Vmag_max){
+	    	  //Closed loop field weakenning that works by only applying D axis current in the case where there is no duty left.
+	    	  //Added extra comparison statement to allow 5% excess duty which gives some headroom for the q axis PI control
+	    	  //Seems very effective at increasing speed with good stability and maintaining max torque.
+	    		  _motor->FOC.FW_current = 0.99f*_motor->FOC.FW_current -0.01f*_motor->FOC.FW_curr_max;
+	    	  //Exponentially tend towards the max FW current
+	      }else{
+			  _motor->FOC.FW_current = 1.01f*_motor->FOC.FW_current + 0.0101f*_motor->FOC.FW_curr_max;
+	      }//Exponentially diverge from the FW current. Note that this exponential implemented opposite to the ramp up!
+	      if(_motor->FOC.FW_current>_motor->FOC.Idq_req.d){_motor->FOC.FW_current = _motor->FOC.Idq_req.d;}
+	      if(_motor->FOC.FW_current<-_motor->FOC.FW_curr_max){_motor->FOC.FW_current = -_motor->FOC.FW_curr_max;}
+	  }
+
+	break;
+}
 
 	if(_motor->options.field_weakening == FIELD_WEAKENING_V1){
 		  //Calculate the module of voltage applied,

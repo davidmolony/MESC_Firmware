@@ -466,7 +466,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].m.flux_linkage_gain			, 0.0f		, 100.0f	, "FOC_flux_gain"	, "Flux linkage gain"																	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].m.non_linear_centering_gain	, 0.0f		, 10000.0f	, "FOC_flux_nlin"	, "Flux centering gain"																	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].m.flux_linkage_gain			, 0.0f		, 100.0f	, "FOC_flux_gain"	, "Flux linkage gain"																	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].FOC.ortega_gain				, 0.0f		, 10000000.0f	, "FOC_ortega_gain"	, "Ortega gain"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.ortega_gain				, 1.0f		, 100000000.0f	, "FOC_ortega_gain"	, "Ortega gain, typically 1M"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.observer_type		, 0			, 3			, "FOC_obs_type", "Observer type, 0=None, 1=MXLEMMINGLambda, 2MXLEMMING, 3=OrtegaOrig"										, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].m.R							, 0.0f		, 10.0f		, "par_r"		, "Phase resistance"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].m.L_D						, 0.0f		, 10.0f		, "par_ld"		, "Phase inductance"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
