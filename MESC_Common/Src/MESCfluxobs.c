@@ -86,8 +86,10 @@ void MESCfluxobs_run(MESC_motor_typedef *_motor) {
 
     // With thanks to C0d3b453 for generally keeping this compiling and Elwin
     // for producing data comparing the output to a 16bit encoder.
-
-#ifndef DONT_USE_FLUX_LINKAGE_OBSERVER
+switch(_motor->options.observer_type){
+case NONE:
+	break;
+case MXLEMMING_LAMBDA:
 	  //Variant of the flux linkage observer created by/with Benjamin Vedder to
 	  //eliminate the need to accurately know the flux linked motor parameter.
 	  //This may be useful when approaching saturation; currently unclear but
@@ -99,7 +101,9 @@ void MESCfluxobs_run(MESC_motor_typedef *_motor) {
 	  _motor->FOC.flux_observed = _motor->FOC.flux_observed+ _motor->m.flux_linkage_gain*flux_err;
 	  if(_motor->FOC.flux_observed>_motor->m.flux_linkage_max){_motor->FOC.flux_observed = _motor->m.flux_linkage_max;}
 	  if(_motor->FOC.flux_observed<_motor->m.flux_linkage_min){_motor->FOC.flux_observed = _motor->m.flux_linkage_min;}
-#endif
+
+	//Fallthrough
+case MXLEMMING:
 	// This is the actual observer function.
 	// We are going to integrate Va-Ri and clamp it positively and negatively
 	// the angle is then the arctangent of the integrals shifted 180 degrees
@@ -146,10 +150,58 @@ void MESCfluxobs_run(MESC_motor_typedef *_motor) {
     if (_motor->FOC.flux_b < -_motor->FOC.flux_observed) {
     	_motor->FOC.flux_b = -_motor->FOC.flux_observed;}
 #endif
-
+    //Calculate the angle
     if(_motor->HFI.inject==0){
     	_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_b, _motor->FOC.flux_a)) - 32768;
     }
+
+	break;
+
+case ORTEGA_ORIGINAL:
+//Adapt inductance
+	float Lnow = _motor->m.L_D; + 0.5*(_motor->m.L_Q - _motor->m.L_D) * (_motor->FOC.Idq.q * _motor->FOC.Idq.q) / (_motor->FOC.Idq.q * _motor->FOC.Idq.q + _motor->FOC.Idq.d * _motor->FOC.Idq.d);
+
+	float L_ia = Lnow * _motor->FOC.Iab.a;
+	float L_ib = Lnow * _motor->FOC.Iab.b;
+
+//Ortega Error
+		float err = _motor->m.flux_linkage * _motor->m.flux_linkage
+				- (_motor->FOC.flux_a * _motor->FOC.flux_a + _motor->FOC.flux_b*_motor->FOC.flux_b);
+		if (err > 0.0f) {
+			err = 0.0f;
+		}
+
+//Flux rate of changes
+		float flux_a_dot =
+			  (_motor->FOC.Vab.a
+					  - _motor->m.R * _motor->FOC.Iab.a
+					  + _motor->FOC.ortega_gain * (_motor->FOC.flux_a - L_ia) * err);
+		float flux_b_dot =
+			  (_motor->FOC.Vab.b
+					  - _motor->m.R * _motor->FOC.Iab.b
+					  + _motor->FOC.ortega_gain * (_motor->FOC.flux_b - L_ib) * err);
+
+//Integrate
+		_motor->FOC.flux_a = _motor->FOC.flux_a
+				+ flux_a_dot * _motor->FOC.pwm_period;
+		_motor->FOC.flux_b = _motor->FOC.flux_b
+				+ flux_b_dot * _motor->FOC.pwm_period;
+
+
+//Apply error correction
+//		_motor->FOC.flux_a = _motor->FOC.flux_a
+//				+ _motor->FOC.ortega_gain * (_motor->FOC.flux_a - L_ia) * err * _motor->FOC.pwm_period;
+//		_motor->FOC.flux_b = _motor->FOC.flux_b
+//				+ _motor->FOC.ortega_gain * (_motor->FOC.flux_b - L_ib) * err * _motor->FOC.pwm_period;
+//Calculate the angle
+	    if(_motor->HFI.inject==0){
+	    	_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2((_motor->FOC.flux_b - L_ib), _motor->FOC.flux_a - L_ia)) - 32768;
+	    }
+
+	break;
+
+}//End of observer type switch
+
 
 
 #ifdef TRACK_ENCODER_OBSERVER_ERROR

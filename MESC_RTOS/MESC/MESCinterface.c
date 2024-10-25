@@ -115,6 +115,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		}
 		if(strcmp(args[i], "-?")==0){
 			ttprintf("Usage: measure [flags]\r\n");
+			ttprintf("Ensure you set the measure current and voltage below the max voltage\r\n");
 			ttprintf("\t -a\t Measure all\r\n");
 			ttprintf("\t -r\t Measure resistance and inductance\r\n");
 			ttprintf("\t -f\t Measure flux linkage\r\n");
@@ -464,6 +465,9 @@ void populate_vars(){
 	TERM_addVar(mtr[0].m.flux_linkage				, 0.0f		, 100.0f	, "par_flux"	, "Flux linkage"																			, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].m.flux_linkage_gain			, 0.0f		, 100.0f	, "FOC_flux_gain"	, "Flux linkage gain"																	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].m.non_linear_centering_gain	, 0.0f		, 10000.0f	, "FOC_flux_nlin"	, "Flux centering gain"																	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.flux_linkage_gain			, 0.0f		, 100.0f	, "FOC_flux_gain"	, "Flux linkage gain"																	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.ortega_gain				, 0.0f		, 10000000.0f	, "FOC_ortega_gain"	, "Ortega gain"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].options.observer_type		, 0			, 3			, "FOC_obs_type", "Observer type, 0=None, 1=MXLEMMINGLambda, 2MXLEMMING, 3=OrtegaOrig"										, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].m.R							, 0.0f		, 10.0f		, "par_r"		, "Phase resistance"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].m.L_D						, 0.0f		, 10.0f		, "par_ld"		, "Phase inductance"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].m.L_Q						, 0.0f		, 10.0f		, "par_lq"		, "Phase inductance"																		, VAR_ACCESS_RW	, callback  , &TERM_varList);

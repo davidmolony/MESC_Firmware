@@ -344,7 +344,10 @@ typedef struct {
   float Ib_last;
   float La_last;
   float Lb_last;
-
+  float flux_a;
+  float flux_b;
+  float flux_observed;
+  float ortega_gain;
 
 //Hall start
   uint16_t hall_initialised;
@@ -381,9 +384,7 @@ typedef struct {
   float FW_ehz_max;
   float FW_estep_max;
 
-  float flux_a;
-  float flux_b;
-  float flux_observed;
+
   uint16_t state[4];  // current state, last state, angle change occurred
   uint16_t hall_update;
   uint32_t IRQentry;
@@ -635,6 +636,13 @@ enum FIELD_WEAKENING
 	FIELD_WEAKENING_V1 = 1,
 	FIELD_WEAKENING_V2 = 2
 };
+enum OBSERVER_TYPE
+{
+	NONE = 0,
+	MXLEMMING_LAMBDA = 1,
+	MXLEMMING = 2,
+	ORTEGA_ORIGINAL = 3
+};
 
 enum SQRT_CIRC
 {
@@ -651,6 +659,7 @@ typedef struct {
 	bool has_motor_temp_sensor;
 	uint8_t field_weakening;
 	uint8_t sqrt_circle_lim;
+	uint8_t observer_type;
 } MESCoptionFlags_s;
 
 ///////////////////////////////////////////////////////////////////////////////////////////

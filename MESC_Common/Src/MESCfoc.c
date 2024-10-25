@@ -200,6 +200,11 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 	_motor->options.field_weakening = FIELD_WEAKENING_V2;
 #endif
 
+	_motor->options.observer_type = MXLEMMING_LAMBDA;
+#ifdef USE_ORTEGA_ORIGINAL
+	_motor->options.field_weakening = ORTEGA_ORIGINAL;
+#endif
+
 	_motor->options.sqrt_circle_lim = SQRT_CIRCLE_LIM_OFF;
 #ifdef USE_SQRT_CIRCLE_LIM
 	_motor->options.sqrt_circle_lim = SQRT_CIRCLE_LIM_ON;
@@ -269,6 +274,8 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 
     //Init the current controller
     _motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
+
+    _motor->FOC.ortega_gain = 100000.0f;
 
     MESClrobs_Init(_motor);
 
