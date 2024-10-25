@@ -107,6 +107,8 @@
       _motor->meas.top_V = _motor->meas.top_V + _motor->FOC.Vdq.d;
       _motor->meas.top_I = _motor->meas.top_I + _motor->FOC.Idq.d;
       _motor->meas.count_top++;
+      _motor->meas.Vd_temp = _motor->FOC.Vdq.d * 0.75f;  // Store the voltage required for the low setpoint, to
+                       	   	   	   	   	 // use as an offset for the inductance
     } else if (_motor->meas.PWM_cycles < 50001) {  // Calculate R
 
       MESCpwm_generateBreak(_motor);

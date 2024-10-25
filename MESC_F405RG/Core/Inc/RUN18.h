@@ -18,7 +18,7 @@
 #define ABS_MAX_BUS_VOLTAGE 110.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
 #define R_SHUNT 1.0f
-#define OPGAIN 0.0012f //Unsure so far
+#define OPGAIN 1.65f/340.0f //680 range measured //340A half range
 
 #define R_VBUS_BOTTOM 3300.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 150000.0f
@@ -27,7 +27,7 @@
 #define MAX_IQ_REQUEST 10.0f
 #define MIN_IQ_REQUEST -10
 #define DEFAULT_CONTROL_MODE MOTOR_CONTROL_MODE_TORQUE
-#define ADC1OOR 4094
+#define ADC1OOR 4090
 
 
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
@@ -35,11 +35,13 @@
 #define DEADTIME_COMP_V 10
 //#define MAX_MODULATION 1.05f //Use this with 5 sector modulation if you want extra speed
 //Inputs
-#define GET_THROTTLE_INPUT 	_motor->Raw.ADC_in_ext1 = 0.99f*_motor->Raw.ADC_in_ext1 + 0.01f*hadc1.Instance->JDR3;  // Throttle for MP2 with F405 pill
-//#define GET_THROTTLE_INPUT2 	_motor->Raw.ADC_in_ext2 = 0.99f*_motor->Raw.ADC_in_ext2 + 0.01f*hadc1.Instance->JDR3;  // Throttle for MP2 with F405 pill
+#define GET_THROTTLE_INPUT2 	_motor->Raw.ADC_in_ext1 = 0.99f*_motor->Raw.ADC_in_ext1 + 0.01f*hadc1.Instance->JDR3;  // Throttle2 for Run on Pa4
+#define GET_THROTTLE_INPUT 		_motor->Raw.ADC_in_ext2 = 0.9f*_motor->Raw.ADC_in_ext2 + 0.1f*ADC1_buffer[0];  // Throttle2 for Run on PA3
 
-#define GET_FETU_T 			_motor->Raw.MOSu_T = 	0.99f * _motor->Raw.MOSu_T + 0.01f*ADC2_buffer[3] //Temperature on PB1
-#define GET_MOTOR_T _motor->Raw.Motor_T = ADC1_buffer[4]
+#define GET_FETU_T 			_motor->Raw.MOSu_T = hadc2.Instance->JDR3; //Temperature on PC4, ADC14
+#define GET_FETV_T 			_motor->Raw.MOSv_T = hadc2.Instance->JDR4; //Temperature on PC5, ADC15
+
+#define GET_MOTOR_T _motor->Raw.Motor_T = ADC2_buffer[3]; //MotorT for Run on PB1, ADC2-9
 //#define USE_FIELD_WEAKENING
 #define USE_FIELD_WEAKENINGV2
 
@@ -63,7 +65,7 @@
 //#define DEFAULT_HFI_TYPE HFI_TYPE_D
 //#define DEFAULT_HFI_TYPE HFI_TYPE_SPECIAL
 
-#define USE_HALL_START
+//#define USE_HALL_START
 #define HALL_VOLTAGE_THRESHOLD 2.0f
 
 //#define USE_SPI_ENCODER //Only supports TLE5012B in SSC mode using onewire SPI on SPI3 F405...

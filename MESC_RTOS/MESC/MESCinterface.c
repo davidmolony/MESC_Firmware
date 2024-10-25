@@ -84,7 +84,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	if(argCount==0){
 		measure_RL = true;
-		measure_linkage = true;
+		measure_kv = true;
 	}
 
 	for(int i=0;i<argCount;i++){
@@ -141,6 +141,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		//Measure resistance and inductance
 		motor_curr->MotorState = MOTOR_STATE_MEASURING;
 		ttprintf("Measuring resistance and inductance\r\nWaiting for result");
+		mtr[0].meas.PWM_cycles = 0;
 
 		while(motor_curr->MotorState == MOTOR_STATE_MEASURING){
 			xSemaphoreGive(port->term_block);
