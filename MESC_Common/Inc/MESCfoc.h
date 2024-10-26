@@ -411,6 +411,20 @@ typedef struct {
 
 extern MESCfoc_s foc_vars;
 
+enum MEAS_ENUM
+{
+	MEAS_STATE_IDLE = 0,
+	MEAS_STATE_INIT,
+	MEAS_STATE_ALIGN,
+	MEAS_STATE_LOWER_SETPOINT,
+	MEAS_STATE_UPPER_SETPOINT_STABILISATION,
+	MEAS_STATE_UPPER_SETPOINT,
+	MEAS_STATE_INIT_LD,
+	MEAS_STATE_INIT_LQ,
+	MEAS_STATE_COLLECT_LD,
+	MEAS_STATE_COLLECT_LQ,
+};
+
 typedef struct {
 	//Measure resistance
 	float top_V;
@@ -442,6 +456,7 @@ typedef struct {
 	float measure_current;
 	float measure_voltage;
 	float measure_closedloop_current;
+	uint32_t state;
 } MESCmeas_s;
 
 typedef struct {

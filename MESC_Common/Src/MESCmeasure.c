@@ -36,175 +36,209 @@
 #include "MESCfluxobs.h"
 
  void MESCmeasure_RL(MESC_motor_typedef *_motor) {
-    if (_motor->meas.PWM_cycles < 2) {
-    	_motor->meas.previous_HFI_type = _motor->HFI.Type;
-      uint16_t half_ARR = _motor->mtimer->Instance->ARR / 2;
-      _motor->mtimer->Instance->CCR1 = half_ARR;
-      _motor->mtimer->Instance->CCR2 = half_ARR;
-      _motor->mtimer->Instance->CCR3 = half_ARR;
-      _motor->m.R = 0.001f;     // Initialise with a very low value 1mR
-      _motor->m.L_D = 0.000001f;  // Initialise with a very low value 1uH
-      _motor->m.L_Q = 0.000001f;
-      calculateVoltageGain(_motor);    // Set initial gains to enable MESCFOC to run
-      calculateGains(_motor);
-      MESCpwm_phU_Enable(_motor);
-      MESCpwm_phV_Enable(_motor);
-      MESCpwm_phW_Enable(_motor);
-      _motor->FOC.Idq_req.d = _motor->meas.measure_current;
-      _motor->FOC.Idq_req.q = 0.0f;
-      _motor->FOC.FOCAngle = 0;
+	 switch(_motor->meas.state) {
+	 	 case MEAS_STATE_IDLE:
+	 		_motor->meas.state = MEAS_STATE_INIT;
+	 		_motor->FOC.PLL_int = 0.0f;
+	 		_motor->FOC.PLL_angle = 0;
+	 		break;
+	 	 case MEAS_STATE_INIT:
+			_motor->meas.previous_HFI_type = _motor->HFI.Type;
+			uint16_t half_ARR = _motor->mtimer->Instance->ARR / 2;
+			_motor->mtimer->Instance->CCR1 = half_ARR;
+			_motor->mtimer->Instance->CCR2 = half_ARR;
+			_motor->mtimer->Instance->CCR3 = half_ARR;
+			_motor->m.R = 0.001f;     // Initialise with a very low value 1mR
+			_motor->m.L_D = 0.000001f;  // Initialise with a very low value 1uH
+			_motor->m.L_Q = 0.000001f;
+			calculateVoltageGain(_motor);    // Set initial gains to enable MESCFOC to run
+			calculateGains(_motor);
+			MESCpwm_phU_Enable(_motor);
+			MESCpwm_phV_Enable(_motor);
+			MESCpwm_phW_Enable(_motor);
+			_motor->FOC.Idq_req.d = _motor->meas.measure_current;
+			_motor->FOC.Idq_req.q = 0.0f;
+			_motor->FOC.FOCAngle = 0;
 
-      _motor->HFI.inject = 0;  // flag to not inject at SVPWM top
+			_motor->HFI.inject = 0;  // flag to not inject at SVPWM top
 
-      MESCFOC(_motor);
+			MESCFOC(_motor);
 
-      _motor->meas.top_V = 0;
-      _motor->meas.bottom_V = 0;
-      _motor->meas.top_I = 0;
-      _motor->meas.bottom_I = 0;
-      _motor->meas.top_I_L = 0;
-      _motor->meas.bottom_I_L = 0;
-      _motor->meas.top_I_Lq = 0;
-      _motor->meas.bottom_I_Lq = 0;
+			_motor->meas.top_V = 0;
+			_motor->meas.bottom_V = 0;
+			_motor->meas.top_I = 0;
+			_motor->meas.bottom_I = 0;
+			_motor->meas.top_I_L = 0;
+			_motor->meas.bottom_I_L = 0;
+			_motor->meas.top_I_Lq = 0;
+			_motor->meas.bottom_I_Lq = 0;
 
-      _motor->meas.count_top = 0.0f;
-      _motor->meas.count_bottom = 0.0f;
-    }
+			_motor->meas.count_top = 0.0f;
+			_motor->meas.count_bottom = 0.0f;
 
-    else if (_motor->meas.PWM_cycles < 35000) {  // Align the rotor for ~1 second
-      _motor->FOC.Idq_req.d = _motor->meas.measure_current;
-      _motor->FOC.Idq_req.q = 0.0f;
+			_motor->meas.PWM_cycles = 0;
 
-      _motor->HFI.inject = 0;
-      MESCFOC(_motor);
+			_motor->meas.state = MEAS_STATE_ALIGN; //Next Step
+	 		break;
+	 	 case MEAS_STATE_ALIGN:
+	 	      _motor->FOC.Idq_req.d = _motor->meas.measure_current;
+	 	      _motor->FOC.Idq_req.q = 0.0f;
 
-    }
+	 	      _motor->HFI.inject = 0;
+	 	      MESCFOC(_motor);
+	 	      if(_motor->meas.PWM_cycles > _motor->FOC.pwm_frequency){ // 1second
+	 	    	 _motor->meas.state = MEAS_STATE_LOWER_SETPOINT;
+	 	    	 _motor->meas.PWM_cycles = 0;
+	 	      }
+	 		 break;
+	 	 case MEAS_STATE_LOWER_SETPOINT:
+			_motor->FOC.Idq_req.d = 0.20f*_motor->meas.measure_current;
+			_motor->HFI.inject = 0;
+			MESCFOC(_motor);
 
-    else if (_motor->meas.PWM_cycles < 40000) {  // Lower setpoint
-      _motor->FOC.Idq_req.d = 0.20f*_motor->meas.measure_current;
-      _motor->HFI.inject = 0;
-      MESCFOC(_motor);
+			_motor->meas.bottom_V = _motor->meas.bottom_V + _motor->FOC.Vdq.d;
+			_motor->meas.bottom_I = _motor->meas.bottom_I + _motor->FOC.Idq.d;
+			_motor->meas.count_bottom++;
+			_motor->meas.Vd_temp = _motor->FOC.Vdq.d * 1.0f;  // Store the voltage required for the low setpoint, to
+											 // use as an offset for the inductance
+			if(_motor->meas.PWM_cycles > 5000){
+				_motor->meas.state = MEAS_STATE_UPPER_SETPOINT;
+				_motor->meas.PWM_cycles = 0;
+			}
+			break;
+	 	 case MEAS_STATE_UPPER_SETPOINT_STABILISATION:
+			_motor->FOC.Idq_req.d = _motor->meas.measure_current;
+			_motor->HFI.inject = 0;
+			MESCFOC(_motor);
+	 		if(_motor->meas.PWM_cycles > 5000){
+	 			_motor->meas.state = MEAS_STATE_UPPER_SETPOINT;
+				_motor->meas.PWM_cycles = 0;
+			}
+	 		break;
+	 	 case MEAS_STATE_UPPER_SETPOINT:
+			_motor->FOC.Idq_req.d = _motor->meas.measure_current;
+			_motor->HFI.inject = 0;
+			MESCFOC(_motor);
 
-      _motor->meas.bottom_V = _motor->meas.bottom_V + _motor->FOC.Vdq.d;
-      _motor->meas.bottom_I = _motor->meas.bottom_I + _motor->FOC.Idq.d;
-      _motor->meas.count_bottom++;
-      _motor->meas.Vd_temp = _motor->FOC.Vdq.d * 1.0f;  // Store the voltage required for the low setpoint, to
-                       	   	   	   	   	 // use as an offset for the inductance
-    }
+			_motor->meas.top_V = _motor->meas.top_V + _motor->FOC.Vdq.d;
+			_motor->meas.top_I = _motor->meas.top_I + _motor->FOC.Idq.d;
+			_motor->meas.count_top++;
+			_motor->meas.Vd_temp = _motor->FOC.Vdq.d * 0.75f;  // Store the voltage required for the low setpoint, to
+											 // use as an offset for the inductance
+			if(_motor->meas.PWM_cycles > 5000){
+				MESCpwm_generateBreak(_motor);
+				//Calculate R
+				_motor->m.R = (_motor->meas.top_V - _motor->meas.bottom_V) / (_motor->meas.top_I - _motor->meas.bottom_I);
 
-    else if (_motor->meas.PWM_cycles < 45000) {  // Upper setpoint stabilisation
-      _motor->FOC.Idq_req.d = _motor->meas.measure_current;
-      _motor->HFI.inject = 0;
-      MESCFOC(_motor);
+				_motor->meas.state = MEAS_STATE_INIT_LD;
+				_motor->meas.PWM_cycles = 0;
+			}
+			break;
+	 	 case MEAS_STATE_INIT_LD:
+			//Initialise the variables for the next measurement
+			//Vd_temp = _motor->FOC.Vdq.d * 1.0f;  // Store the voltage required for the high setpoint, to
+											 // use as an offset for the inductance
+			_motor->meas.Vq_temp = 0.0f;
+			_motor->FOC.Vdq.q = 0.0f;//
+			_motor->FOC.Idq_int_err.d = 0.0f;
+			_motor->FOC.Idq_int_err.q = 0.0f;
+			_motor->meas.count_top = 0.0f;
+			_motor->meas.count_bottom = 0.0f;
+			_motor->meas.top_I_L = 0.0f;
+			_motor->meas.bottom_I_L = 0.0f;
 
-    }
+			MESCpwm_generateEnable(_motor);
+			_motor->meas.state = MEAS_STATE_COLLECT_LD;
+			_motor->meas.PWM_cycles = 0;
+	 		break;
+	 	 case MEAS_STATE_COLLECT_LD:
+			_motor->HFI.Type = HFI_TYPE_SPECIAL;
+			_motor->HFI.inject = 1;  // flag to the SVPWM writer to inject at top
+			_motor->HFI.special_injectionVd = _motor->meas.measure_voltage;
+			_motor->HFI.special_injectionVq = 0.0f;
 
-    else if (_motor->meas.PWM_cycles < 50000) {  // Upper setpoint
-      _motor->FOC.Idq_req.d = _motor->meas.measure_current;
-      _motor->HFI.inject = 0;
-      MESCFOC(_motor);
-
-      _motor->meas.top_V = _motor->meas.top_V + _motor->FOC.Vdq.d;
-      _motor->meas.top_I = _motor->meas.top_I + _motor->FOC.Idq.d;
-      _motor->meas.count_top++;
-      _motor->meas.Vd_temp = _motor->FOC.Vdq.d * 0.75f;  // Store the voltage required for the low setpoint, to
-                       	   	   	   	   	 // use as an offset for the inductance
-    } else if (_motor->meas.PWM_cycles < 50001) {  // Calculate R
-
-      MESCpwm_generateBreak(_motor);
-      _motor->m.R = (_motor->meas.top_V - _motor->meas.bottom_V) / (_motor->meas.top_I - _motor->meas.bottom_I);
-
-      //Initialise the variables for the next measurement
-      //Vd_temp = _motor->FOC.Vdq.d * 1.0f;  // Store the voltage required for the high setpoint, to
-                       	   	   	   	   	 // use as an offset for the inductance
-      _motor->meas.Vq_temp = 0.0f;
-      _motor->FOC.Vdq.q = 0.0f;//
-      _motor->FOC.Idq_int_err.d = 0.0f;
-      _motor->FOC.Idq_int_err.q = 0.0f;
-      _motor->meas.count_top = 0.0f;
-      _motor->meas.count_bottom = 0.0f;
-      _motor->meas.top_I_L = 0.0f;
-      _motor->meas.bottom_I_L = 0.0f;
-
-      MESCpwm_generateEnable(_motor);
-    }
-/////////////////////////// Collect Ld variable//////////////////////////
-    else if (_motor->meas.PWM_cycles < 80001) {
-      // generateBreak();
-	  _motor->HFI.Type = HFI_TYPE_SPECIAL;
-      _motor->HFI.inject = 1;  // flag to the SVPWM writer to inject at top
-      _motor->HFI.special_injectionVd = _motor->meas.measure_voltage;
-      _motor->HFI.special_injectionVq = 0.0f;
-
-      _motor->FOC.Vdq.d = _motor->meas.Vd_temp;
-      _motor->FOC.Vdq.q = 0.0f;
-
-
-      if (_motor->HFI.inject_high_low_now == 1) {
-    	  _motor->meas.top_I_L = _motor->meas.top_I_L + _motor->FOC.Idq.d;
-    	  _motor->meas.count_top++;
-      } else if (_motor->HFI.inject_high_low_now == 0) {
-    	  _motor->meas.bottom_I_L = _motor->meas.bottom_I_L + _motor->FOC.Idq.d;
-    	  _motor->meas.count_bottom++;
-      }
-    }
-
-    else if (_motor->meas.PWM_cycles < 80002) {
-      MESCpwm_generateBreak(_motor);
-      _motor->m.L_D =
-          fabsf((_motor->HFI.special_injectionVd) /
-          ((_motor->meas.top_I_L - _motor->meas.bottom_I_L) / (_motor->meas.count_top * _motor->FOC.pwm_period)));
-      _motor->meas.top_I_Lq = 0.0f;
-      _motor->meas.bottom_I_Lq = 0.0f;
-      _motor->meas.count_topq = 0.0f;
-      _motor->meas.count_bottomq = 0.0f;
-      __NOP();  // Put a break point on it...
-    } else if (_motor->meas.PWM_cycles < 80003) {
-      MESCpwm_phU_Enable(_motor);
-      MESCpwm_phV_Enable(_motor);
-      MESCpwm_phW_Enable(_motor);
-
-////////////////////////// Collect Lq variable//////////////////////////////
-    } else if (_motor->meas.PWM_cycles < 100003) {
-      //			generateBreak();
-      _motor->HFI.special_injectionVd = 0.0f;
-      _motor->HFI.special_injectionVq = _motor->meas.measure_voltage;
-      _motor->HFI.inject = 1;  // flag to the SVPWM writer to update at top
-      _motor->FOC.Vdq.d = _motor->meas.Vd_temp;  // Vd_temp to keep it aligned with D axis
-      _motor->FOC.Vdq.q = 0.0f;
+			_motor->FOC.Vdq.d = _motor->meas.Vd_temp;
+			_motor->FOC.Vdq.q = 0.0f;
 
 
-      if (_motor->HFI.inject_high_low_now == 1) {
-    	  _motor->meas.top_I_Lq = _motor->meas.top_I_Lq + _motor->FOC.Idq.q;
-    	  _motor->meas.count_topq++;
-      } else if (_motor->HFI.inject_high_low_now == 0) {
-    	  _motor->meas.bottom_I_Lq = _motor->meas.bottom_I_Lq + _motor->FOC.Idq.q;
-        _motor->meas.count_bottomq++;
-      }
-    }
+			if (_motor->HFI.inject_high_low_now == 1) {
+			  _motor->meas.top_I_L = _motor->meas.top_I_L + _motor->FOC.Idq.d;
+			  _motor->meas.count_top++;
+			} else if (_motor->HFI.inject_high_low_now == 0) {
+			  _motor->meas.bottom_I_L = _motor->meas.bottom_I_L + _motor->FOC.Idq.d;
+			  _motor->meas.count_bottom++;
+			}
+			if(_motor->meas.PWM_cycles > _motor->FOC.pwm_frequency){ // 1second
+				_motor->meas.state = MEAS_STATE_INIT_LQ;
+				_motor->meas.PWM_cycles = 0;
+			}
+	 		break;
+	 	 case MEAS_STATE_INIT_LQ:
+	 		MESCpwm_generateBreak(_motor);
+			_motor->m.L_D =
+			  fabsf((_motor->HFI.special_injectionVd) /
+			  ((_motor->meas.top_I_L - _motor->meas.bottom_I_L) / (_motor->meas.count_top * _motor->FOC.pwm_period)));
+			_motor->meas.top_I_Lq = 0.0f;
+			_motor->meas.bottom_I_Lq = 0.0f;
+			_motor->meas.count_topq = 0.0f;
+			_motor->meas.count_bottomq = 0.0f;
+			if(_motor->meas.PWM_cycles > 2){ //Wait a bit
+				MESCpwm_phU_Enable(_motor);
+				MESCpwm_phV_Enable(_motor);
+				MESCpwm_phW_Enable(_motor);
+				_motor->meas.state = MEAS_STATE_COLLECT_LQ;
+				_motor->meas.PWM_cycles = 0;
+			}
+	 		break;
+	 	case MEAS_STATE_COLLECT_LQ:
+			_motor->HFI.special_injectionVd = 0.0f;
+			_motor->HFI.special_injectionVq = _motor->meas.measure_voltage;
+			_motor->HFI.inject = 1;  // flag to the SVPWM writer to update at top
+			_motor->FOC.Vdq.d = _motor->meas.Vd_temp;  // Vd_temp to keep it aligned with D axis
+			_motor->FOC.Vdq.q = 0.0f;
 
-    else {
-      MESCpwm_generateBreak(_motor);
-      _motor->HFI.Type = _motor->meas.previous_HFI_type;
-      _motor->m.L_Q =
-          fabsf((_motor->HFI.special_injectionVq) /
-          ((_motor->meas.top_I_Lq - _motor->meas.bottom_I_Lq) / (_motor->meas.count_top * _motor->FOC.pwm_period)));
 
-      _motor->MotorState = MOTOR_STATE_IDLE;
+			if (_motor->HFI.inject_high_low_now == 1) {
+			  _motor->meas.top_I_Lq = _motor->meas.top_I_Lq + _motor->FOC.Idq.q;
+			  _motor->meas.count_topq++;
+			} else if (_motor->HFI.inject_high_low_now == 0) {
+			  _motor->meas.bottom_I_Lq = _motor->meas.bottom_I_Lq + _motor->FOC.Idq.q;
+			_motor->meas.count_bottomq++;
+			}
 
-      _motor->HFI.inject = 0;  // flag to the SVPWM writer stop injecting at top
-      _motor->HFI.special_injectionVd = 0.0f;
-      _motor->HFI.special_injectionVq = 0.0f;
-      _motor->HFI.Vd_injectionV = 0.0f;
-      _motor->HFI.Vq_injectionV = 0.0f;
-      calculateGains(_motor);
-      _motor->MotorState = MOTOR_STATE_TRACKING;
-      _motor->meas.PWM_cycles = 0;
-      MESCpwm_phU_Enable(_motor);
-      MESCpwm_phV_Enable(_motor);
-      MESCpwm_phW_Enable(_motor);
-    }
-    _motor->meas.PWM_cycles++;
+			if(_motor->meas.PWM_cycles > _motor->FOC.pwm_frequency){ // 1second
+				MESCpwm_generateBreak(_motor);
+				_motor->m.L_Q =
+				  fabsf((_motor->HFI.special_injectionVq) /
+				  ((_motor->meas.top_I_Lq - _motor->meas.bottom_I_Lq) / (_motor->meas.count_top * _motor->FOC.pwm_period)));
+
+
+			      _motor->HFI.Type = _motor->meas.previous_HFI_type;
+			      _motor->MotorState = MOTOR_STATE_IDLE;
+
+			      _motor->HFI.inject = 0;  // flag to the SVPWM writer stop injecting at top
+			      _motor->HFI.special_injectionVd = 0.0f;
+			      _motor->HFI.special_injectionVq = 0.0f;
+			      _motor->HFI.Vd_injectionV = 0.0f;
+			      _motor->HFI.Vq_injectionV = 0.0f;
+			      calculateGains(_motor);
+			      _motor->MotorState = MOTOR_STATE_TRACKING;
+			      _motor->meas.PWM_cycles = 0;
+			      MESCpwm_phU_Enable(_motor);
+			      MESCpwm_phV_Enable(_motor);
+			      MESCpwm_phW_Enable(_motor);
+
+			      _motor->meas.state = MEAS_STATE_IDLE;
+			}
+
+	 		break;
+	 	 default:
+	 		_motor->meas.state = MEAS_STATE_IDLE;
+	 		 break;
+
+
+	 }
+	 _motor->meas.PWM_cycles++;
  }
 
 
