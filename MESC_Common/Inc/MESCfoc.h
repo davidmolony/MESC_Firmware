@@ -351,8 +351,11 @@ typedef struct {
 
 //Hall start
   uint16_t hall_initialised;
-  int hall_start_now;
-//Encoder start
+  int 			hall_start_now;
+  float 		hall_IIR; //decay constant for the hall start preload
+  float 		hall_IIRN;
+  float 		hall_transition_V; //transition voltage above which the hall sensors are not doing any preloading
+  //Encoder start
   int enc_start_now;
 
   float pwm_period;

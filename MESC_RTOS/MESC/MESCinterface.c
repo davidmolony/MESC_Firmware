@@ -466,8 +466,8 @@ void populate_vars(){
 	TERM_addVar(mtr[0].m.flux_linkage_gain			, 0.0f		, 100.0f	, "FOC_flux_gain"	, "Flux linkage gain"																	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].m.non_linear_centering_gain	, 0.0f		, 10000.0f	, "FOC_flux_nlin"	, "Flux centering gain"																	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].m.flux_linkage_gain			, 0.0f		, 100.0f	, "FOC_flux_gain"	, "Flux linkage gain"																	, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].FOC.ortega_gain				, 1.0f		, 100000000.0f	, "FOC_ortega_gain"	, "Ortega gain, typically 1M"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].options.observer_type		, 0			, 3			, "FOC_obs_type", "Observer type, 0=None, 1=MXLEMMINGLambda, 2MXLEMMING, 3=OrtegaOrig"										, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.ortega_gain				, 1.0f		, 100000000.0f	, "FOC_ortega_gain"	, "Ortega gain, typically 1M"														, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].options.observer_type		, 0			, 3			, "FOC_obs_type", "Observer type, 0=None, 1=MXLEMMINGLambda, 2MXLEMMING, 3=OrtegaOrig"						, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].m.R							, 0.0f		, 10.0f		, "par_r"		, "Phase resistance"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].m.L_D						, 0.0f		, 10.0f		, "par_ld"		, "Phase inductance"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].m.L_Q						, 0.0f		, 10.0f		, "par_lq"		, "Phase inductance"																		, VAR_ACCESS_RW	, callback  , &TERM_varList);
@@ -503,11 +503,13 @@ void populate_vars(){
 	TERM_addVar(mtr[0].FOC.openloop_step			, 0.0f		, 6000.0f	, "FOC_ol_step"	, "Angle per PWM period openloop (65535 per erev)"											, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.FW_ehz_max				, 0.0f		, 6000.0f	, "FOC_fw_ehz"	, "max eHz under field weakenning"															, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.park_current				, 0.0f		, 300.0f	, "par_i_park"	, "Max current for handbrake"																, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.hall_IIR					, 0.0f		, 1.0f		, "FOC_hall_iir", "Decay constant for hall preload (0-1.0)"													, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.hall_transition_V		, 0.0f		, 100.0f	, "FOC_hall_Vt"	, "Hall transition voltage"																	, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(MESC_all_errors						, -HUGE_VAL	, HUGE_VAL	, "error_all"	, "All errors encountered"																	, VAR_ACCESS_R	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.hall_initialised			, 0			, 1			, "Hall_initialised", "hall start flag"																		, VAR_ACCESS_R	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.field_weakening		, 0			, 2			, "opt_fw"		, "Field weakening [0=OFF, 1=ON, 2=ON V2]"													, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.sqrt_circle_lim		, 0			, 2			, "opt_circ_lim", "Circle limiter [0=OFF, 1=ON, 2=ON Vd]"													, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].options.pwm_type				, 0			, 3			, "opt_pwm_type", "Modulator [0=SVPWM, 1=sinusoidal, 2=Bottom clamp, 3=Sin/bottom combo]"													, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].options.pwm_type				, 0			, 3			, "opt_pwm_type", "Modulator [0=SVPWM, 1=sinusoidal, 2=Bottom clamp, 3=Sin/bottom combo]"					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.use_MTPA				, 0			, 1			, "opt_mtpa"	, "Use MTPA"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.use_hall_start		, 0			, 1			, "opt_hall_start", "Use hall start"																		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.use_phase_balancing	, 0			, 1			, "opt_phase_bal", "Use highhopes phase balancing"															, VAR_ACCESS_RW	, NULL		, &TERM_varList);
