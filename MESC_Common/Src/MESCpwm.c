@@ -174,11 +174,17 @@ if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.injec
 
 #endif
 #else //Use 5 sector, bottom clamp implementation
-//ToDo, threshold for turning on sinusoidal modulation
-    _motor->FOC.inverterVoltage[0] = _motor->FOC.inverterVoltage[0]-bottom_value;
-    _motor->FOC.inverterVoltage[1] = _motor->FOC.inverterVoltage[1]-bottom_value;
-    _motor->FOC.inverterVoltage[2] = _motor->FOC.inverterVoltage[2]-bottom_value;
-
+//Threshold for turning on sinusoidal modulation
+    if(_motor->FOC.Voltage < _motor->FOC.V_3Q_mag_max){//Sinusoidal
+		_motor->FOC.inverterVoltage[0] = _motor->FOC.inverterVoltage[0]+0.5*_motor->FOC.Vmag_max;
+		_motor->FOC.inverterVoltage[1] = _motor->FOC.inverterVoltage[1]+0.5*_motor->FOC.Vmag_max;
+		_motor->FOC.inverterVoltage[2] = _motor->FOC.inverterVoltage[2]+0.5*_motor->FOC.Vmag_max;
+    }else{//Bottom Clamp
+		_motor->FOC.inverterVoltage[0] = _motor->FOC.inverterVoltage[0]-bottom_value;
+		_motor->FOC.inverterVoltage[1] = _motor->FOC.inverterVoltage[1]-bottom_value;
+		_motor->FOC.inverterVoltage[2] = _motor->FOC.inverterVoltage[2]-bottom_value;
+    }
+    //Write the timer registers
     _motor->mtimer->Instance->CCR1 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[0]);
     _motor->mtimer->Instance->CCR2 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[1]);
     _motor->mtimer->Instance->CCR3 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[2]);
