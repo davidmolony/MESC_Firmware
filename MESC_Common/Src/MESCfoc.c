@@ -52,6 +52,7 @@
 #include "MESCfluxobs.h"
 #include "MESClrobs.h"
 #include "MESCBLDC.h"
+#include "MESCApp.h"
 
 #include "conversions.h"
 
@@ -218,6 +219,12 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 #ifdef SIN_BOTTOM
 	_motor->options.pwm_type = SIN_BOTTOM;
 #endif
+
+	_motor->options.app_type = APP_NONE;//Default to no app
+#ifdef APP_VEHICLE
+	_motor->options.app_type = APP_VEHICLE;
+#endif
+
 
 	//PWM Encoder
 	_motor->FOC.enc_offset = ENCODER_E_OFFSET;
@@ -1283,8 +1290,22 @@ float  Square(float x){ return((x)*(x));}
 // for battery voltage change
 ///Process buttons for direction
 
-	  houseKeeping(_motor);	//General dross that keeps things ticking over, like nudging the observer
-	  MESCinput_Collect(_motor); //Get all the throttle inputs
+		houseKeeping(_motor);	//General dross that keeps things ticking over, like nudging the observer
+		MESCinput_Collect(_motor); //Get all the throttle inputs
+		switch(_motor->options.app_type){
+			case APP_NONE:
+				_motor->key_bits &= ~APP_KEY;
+				break;
+			case APP_VEHICLE:
+				Vehicle_app(_motor);
+				break;
+			case APP_2:
+				break;
+			case APP_3:
+				break;
+
+		}
+
 
 	  switch(_motor->ControlMode){
 		  case MOTOR_CONTROL_MODE_TORQUE:

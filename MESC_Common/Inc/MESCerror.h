@@ -82,6 +82,8 @@ struct MESC_log_vars
 #define ERROR_MATH 26
 #define ERROR_INPUT_OOR 27
 #define ERROR_STARTUP 28
+#define ERROR_APP 29
+
 
 void handleError(MESC_motor_typedef *_motor, uint32_t error_code);
 void clearErrors();

@@ -672,6 +672,13 @@ enum PWM_TYPE
 	BOTTOM_CLAMP = 2,
 	SIN_BOTTOM = 3
 };
+enum APP_TYPE
+{
+	APP_NONE = 0,
+	APP_VEHICLE = 1,
+	APP_2,
+	APP_3
+};
 
 typedef struct {
 	bool use_hall_start;
@@ -683,6 +690,7 @@ typedef struct {
 	uint8_t sqrt_circle_lim;
 	uint8_t observer_type;
 	uint8_t pwm_type;
+	uint8_t app_type;
 } MESCoptionFlags_s;
 
 ///////////////////////////////////////////////////////////////////////////////////////////
