@@ -74,12 +74,12 @@
 
 //#define USE_SALIENT_OBSERVER //If not defined, it assumes that Ld and Lq are equal, which is fine usually.
 
-#define FASTLED GPIOB
-#define FASTLEDIO GPIO_PIN_2
-#define FASTLEDIONO 2
-#define SLOWLED GPIOC
-#define SLOWLEDIO GPIO_PIN_9
-#define SLOWLEDIONO 9
+#define FASTLED GPIOC
+#define FASTLEDIO GPIO_PIN_9
+#define FASTLEDIONO 9
+#define SLOWLED GPIOB
+#define SLOWLEDIO GPIO_PIN_2
+#define SLOWLEDIONO 2
 
 //#define SAFE_START_DEFAULT 0
 
