@@ -214,6 +214,11 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 	_motor->options.sqrt_circle_lim = SQRT_CIRCLE_LIM_VD;
 #endif
 
+	_motor->options.pwm_type = SVPWM;//Default to combined bottom clamp sinusoidal combinationPWM
+#ifdef SIN_BOTTOM
+	_motor->options.pwm_type = SIN_BOTTOM;
+#endif
+
 	//PWM Encoder
 	_motor->FOC.enc_offset = ENCODER_E_OFFSET;
 	_motor->FOC.encoder_polarity_invert = DEFAULT_ENCODER_POLARITY;
@@ -1273,16 +1278,11 @@ void MESC_Slow_IRQ_handler(MESC_motor_typedef *_motor){
 float  Square(float x){ return((x)*(x));}
 
   void slowLoop(MESC_motor_typedef *_motor) {
-    // In this loop, we will fetch the throttle values, and run functions that
-    // are critical, but do not need to be executed very often e.g. adjustment
-    // for battery voltage change
-	  ///Process buttons for direction
-//if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15) == 0){
-//	input_vars.ADC1_polarity = -1.0f;
-//}
-//if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == 0){
-//	input_vars.ADC1_polarity = 1.0f;
-//}
+// In this loop, we will fetch the throttle values, and run functions that
+// are critical, but do not need to be executed very often e.g. adjustment
+// for battery voltage change
+///Process buttons for direction
+
 	  houseKeeping(_motor);	//General dross that keeps things ticking over, like nudging the observer
 	  MESCinput_Collect(_motor); //Get all the throttle inputs
 

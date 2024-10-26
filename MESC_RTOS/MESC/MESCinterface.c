@@ -507,6 +507,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].FOC.hall_initialised			, 0			, 1			, "Hall_initialised", "hall start flag"																		, VAR_ACCESS_R	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.field_weakening		, 0			, 2			, "opt_fw"		, "Field weakening [0=OFF, 1=ON, 2=ON V2]"													, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.sqrt_circle_lim		, 0			, 2			, "opt_circ_lim", "Circle limiter [0=OFF, 1=ON, 2=ON Vd]"													, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].options.pwm_type				, 0			, 2			, "opt_pwm_type", "Modulator [0=SVPWM, 1=sinusoidal, 2=Bottom clamp, 3=Sin/bottom combo]"													, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.use_MTPA				, 0			, 1			, "opt_mtpa"	, "Use MTPA"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.use_hall_start		, 0			, 1			, "opt_hall_start", "Use hall start"																		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.use_phase_balancing	, 0			, 1			, "opt_phase_bal", "Use highhopes phase balancing"															, VAR_ACCESS_RW	, NULL		, &TERM_varList);

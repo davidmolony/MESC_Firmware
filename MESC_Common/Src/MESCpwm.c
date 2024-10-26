@@ -136,87 +136,96 @@ if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.injec
     if(_motor->FOC.Voltage < _motor->FOC.V_3Q_mag_max){
         _motor->HighPhase = N; //Trigger the full clark transform
     }
-#ifdef SEVEN_SECTOR
-    mid_value = _motor->FOC.PWMmid -
-                0.5f * _motor->FOC.Vab_to_PWM * (top_value + bottom_value);
+    switch(_motor->options.pwm_type){
+    case SVPWM:
+    	   mid_value = _motor->FOC.PWMmid -
+    	                0.5f * _motor->FOC.Vab_to_PWM * (top_value + bottom_value);
 
-    ////////////////////////////////////////////////////////
-    // Actually write the value to the timer registers
-    _motor->mtimer->Instance->CCR1 =
-    		(uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[0] + mid_value);
-    _motor->mtimer->Instance->CCR2 =
-    		(uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[1] + mid_value);
-    _motor->mtimer->Instance->CCR3 =
-    		(uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[2] + mid_value);
+    	    ////////////////////////////////////////////////////////
+    	    // Actually write the value to the timer registers
+    	    _motor->mtimer->Instance->CCR1 =
+    	    		(uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[0] + mid_value);
+    	    _motor->mtimer->Instance->CCR2 =
+    	    		(uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[1] + mid_value);
+    	    _motor->mtimer->Instance->CCR3 =
+    	    		(uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[2] + mid_value);
 
-    //Dead time compensation
-#ifdef DEADTIME_COMP
-    // LICENCE NOTE:
-    	  // This function deviates slightly from the BSD 3 clause licence.
-    	  // The work here is entirely original to the MESC FOC project, and not based
-    	  // on any appnotes, or borrowed from another project. This work is free to
-    	  // use, as granted in BSD 3 clause, with the exception that this note must
-    	  // be included in where this code is implemented/modified to use your
-    	  // variable names, structures containing variables or other minor
-    	  // rearrangements in place of the original names I have chosen, and credit
-    	  // to David Molony as the original author must be noted.
-    //The problem with dead time, is that it is essentially a voltage tie through the body diodes to VBus or ground, depending on the current direction.
-    //If we know the direction of current, and the effective dead time length we can remove this error, by writing the corrected voltage.
-    //This is observed to improve sinusoidalness of currents, but has a slight audible buzz
-    //When the current is approximately zero, it is hard to resolve the direction, and therefore the compensation is ineffective.
-    //However, no torque is generated when the current and voltage are close to zero, so no adverse performance except the buzz.
-    if(_motor->Conv.Iu < -0.030f){_motor->mtimer->Instance->CCR1 = _motor->mtimer->Instance->CCR1-_motor->FOC.deadtime_comp;}
-    if(_motor->Conv.Iv < -0.030f){_motor->mtimer->Instance->CCR2 = _motor->mtimer->Instance->CCR2-_motor->FOC.deadtime_comp;}
-    if(_motor->Conv.Iw < -0.030f){_motor->mtimer->Instance->CCR3 = _motor->mtimer->Instance->CCR3-_motor->FOC.deadtime_comp;}
-    if(_motor->Conv.Iu > -0.030f){_motor->mtimer->Instance->CCR1 = _motor->mtimer->Instance->CCR1+_motor->FOC.deadtime_comp;}
-    if(_motor->Conv.Iv > -0.030f){_motor->mtimer->Instance->CCR2 = _motor->mtimer->Instance->CCR2+_motor->FOC.deadtime_comp;}
-    if(_motor->Conv.Iw > -0.030f){_motor->mtimer->Instance->CCR3 = _motor->mtimer->Instance->CCR3+_motor->FOC.deadtime_comp;}
+    	    //Dead time compensation
+    	#ifdef DEADTIME_COMP
+    	    // LICENCE NOTE:
+    	    	  // This function deviates slightly from the BSD 3 clause licence.
+    	    	  // The work here is entirely original to the MESC FOC project, and not based
+    	    	  // on any appnotes, or borrowed from another project. This work is free to
+    	    	  // use, as granted in BSD 3 clause, with the exception that this note must
+    	    	  // be included in where this code is implemented/modified to use your
+    	    	  // variable names, structures containing variables or other minor
+    	    	  // rearrangements in place of the original names I have chosen, and credit
+    	    	  // to David Molony as the original author must be noted.
+    	    //The problem with dead time, is that it is essentially a voltage tie through the body diodes to VBus or ground, depending on the current direction.
+    	    //If we know the direction of current, and the effective dead time length we can remove this error, by writing the corrected voltage.
+    	    //This is observed to improve sinusoidalness of currents, but has a slight audible buzz
+    	    //When the current is approximately zero, it is hard to resolve the direction, and therefore the compensation is ineffective.
+    	    //However, no torque is generated when the current and voltage are close to zero, so no adverse performance except the buzz.
+    	    if(_motor->Conv.Iu < -0.030f){_motor->mtimer->Instance->CCR1 = _motor->mtimer->Instance->CCR1-_motor->FOC.deadtime_comp;}
+    	    if(_motor->Conv.Iv < -0.030f){_motor->mtimer->Instance->CCR2 = _motor->mtimer->Instance->CCR2-_motor->FOC.deadtime_comp;}
+    	    if(_motor->Conv.Iw < -0.030f){_motor->mtimer->Instance->CCR3 = _motor->mtimer->Instance->CCR3-_motor->FOC.deadtime_comp;}
+    	    if(_motor->Conv.Iu > -0.030f){_motor->mtimer->Instance->CCR1 = _motor->mtimer->Instance->CCR1+_motor->FOC.deadtime_comp;}
+    	    if(_motor->Conv.Iv > -0.030f){_motor->mtimer->Instance->CCR2 = _motor->mtimer->Instance->CCR2+_motor->FOC.deadtime_comp;}
+    	    if(_motor->Conv.Iw > -0.030f){_motor->mtimer->Instance->CCR3 = _motor->mtimer->Instance->CCR3+_motor->FOC.deadtime_comp;}
 
-#endif
-#else //Use 5 sector, bottom clamp implementation
-//Threshold for turning on sinusoidal modulation
-    if(_motor->FOC.Voltage < _motor->FOC.V_3Q_mag_max){//Sinusoidal
-		_motor->FOC.inverterVoltage[0] = _motor->FOC.inverterVoltage[0]+0.5*_motor->FOC.Vmag_max;
-		_motor->FOC.inverterVoltage[1] = _motor->FOC.inverterVoltage[1]+0.5*_motor->FOC.Vmag_max;
-		_motor->FOC.inverterVoltage[2] = _motor->FOC.inverterVoltage[2]+0.5*_motor->FOC.Vmag_max;
-    }else{//Bottom Clamp
-		_motor->FOC.inverterVoltage[0] = _motor->FOC.inverterVoltage[0]-bottom_value;
-		_motor->FOC.inverterVoltage[1] = _motor->FOC.inverterVoltage[1]-bottom_value;
-		_motor->FOC.inverterVoltage[2] = _motor->FOC.inverterVoltage[2]-bottom_value;
-    }
-    //Write the timer registers
-    _motor->mtimer->Instance->CCR1 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[0]);
-    _motor->mtimer->Instance->CCR2 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[1]);
-    _motor->mtimer->Instance->CCR3 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[2]);
-#ifdef OVERMOD_DT_COMP_THRESHOLD
-    //Concept here is that if we are close to the VBus max, we just do not turn the FET off.
-    //Set CCRx to ARR, record how much was added, then next cycle, remove it from the count.
-    //If the duty is still above the threshold, the CCR will still be set to ARR, until the duty request is sufficiently low...
-static int carryU, carryV, carryW;
+    	#endif
+    	break;
+    case SIN_PWM:
 
-	_motor->mtimer->Instance->CCR1 = 	_motor->mtimer->Instance->CCR1 - carryU;
-	_motor->mtimer->Instance->CCR2 = 	_motor->mtimer->Instance->CCR2 - carryV;
-	_motor->mtimer->Instance->CCR3 = 	_motor->mtimer->Instance->CCR3 - carryW;
-	carryU = 0;
-	carryV = 0;
-	carryW = 0;
+    	//Fallthrough FOR NOW
+    case BOTTOM_CLAMP:
 
-	if(_motor->mtimer->Instance->CCR1>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
-		carryU = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR1; //Save the amount we have overmodulated by
-		_motor->mtimer->Instance->CCR1 = _motor->mtimer->Instance->ARR;
-	}
-	if(_motor->mtimer->Instance->CCR2>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
-		carryV = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR2; //Save the amount we have overmodulated by
-		_motor->mtimer->Instance->CCR2 = _motor->mtimer->Instance->ARR;
-	}
-	if(_motor->mtimer->Instance->CCR3>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
-		carryW = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR3; //Save the amount we have overmodulated by
-		_motor->mtimer->Instance->CCR3 = _motor->mtimer->Instance->ARR;
-	}
-#endif
-#endif
+    	//Fallthrough FOR NOW
+    case SIN_BOTTOM:
+    	//Threshold for turning on sinusoidal modulation
+    	    if(_motor->FOC.Voltage < _motor->FOC.V_3Q_mag_max){//Sinusoidal
+    			_motor->FOC.inverterVoltage[0] = _motor->FOC.inverterVoltage[0]+0.5*_motor->FOC.Vmag_max;
+    			_motor->FOC.inverterVoltage[1] = _motor->FOC.inverterVoltage[1]+0.5*_motor->FOC.Vmag_max;
+    			_motor->FOC.inverterVoltage[2] = _motor->FOC.inverterVoltage[2]+0.5*_motor->FOC.Vmag_max;
+    	    }else{//Bottom Clamp
+    			_motor->FOC.inverterVoltage[0] = _motor->FOC.inverterVoltage[0]-bottom_value;
+    			_motor->FOC.inverterVoltage[1] = _motor->FOC.inverterVoltage[1]-bottom_value;
+    			_motor->FOC.inverterVoltage[2] = _motor->FOC.inverterVoltage[2]-bottom_value;
+    	    }
+    	    //Write the timer registers
+    	    _motor->mtimer->Instance->CCR1 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[0]);
+    	    _motor->mtimer->Instance->CCR2 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[1]);
+    	    _motor->mtimer->Instance->CCR3 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[2]);
+    	#ifdef OVERMOD_DT_COMP_THRESHOLD
+    	    //Concept here is that if we are close to the VBus max, we just do not turn the FET off.
+    	    //Set CCRx to ARR, record how much was added, then next cycle, remove it from the count.
+    	    //If the duty is still above the threshold, the CCR will still be set to ARR, until the duty request is sufficiently low...
+    	static int carryU, carryV, carryW;
+
+    		_motor->mtimer->Instance->CCR1 = 	_motor->mtimer->Instance->CCR1 - carryU;
+    		_motor->mtimer->Instance->CCR2 = 	_motor->mtimer->Instance->CCR2 - carryV;
+    		_motor->mtimer->Instance->CCR3 = 	_motor->mtimer->Instance->CCR3 - carryW;
+    		carryU = 0;
+    		carryV = 0;
+    		carryW = 0;
+
+    		if(_motor->mtimer->Instance->CCR1>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
+    			carryU = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR1; //Save the amount we have overmodulated by
+    			_motor->mtimer->Instance->CCR1 = _motor->mtimer->Instance->ARR;
+    		}
+    		if(_motor->mtimer->Instance->CCR2>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
+    			carryV = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR2; //Save the amount we have overmodulated by
+    			_motor->mtimer->Instance->CCR2 = _motor->mtimer->Instance->ARR;
+    		}
+    		if(_motor->mtimer->Instance->CCR3>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
+    			carryW = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR3; //Save the amount we have overmodulated by
+    			_motor->mtimer->Instance->CCR3 = _motor->mtimer->Instance->ARR;
+    		}
+    	#endif
+    	break;
+    }//end of pwm type switch
+
 #endif //End of #ifdef STEPPER_MOTOR
-
   }
 
 // Here we set all the PWMoutputs to LOW, without triggering the timerBRK,

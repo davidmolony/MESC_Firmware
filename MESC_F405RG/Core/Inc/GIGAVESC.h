@@ -33,7 +33,6 @@
 #define MAX_ID_REQUEST 2.0f
 #define MAX_IQ_REQUEST 50.0f
 
-#define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
 #define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
 #define DEADTIME_COMP_V 16
 //#define MAX_MODULATION 1.00f //Use this with 5 sector modulation if you want extra speed

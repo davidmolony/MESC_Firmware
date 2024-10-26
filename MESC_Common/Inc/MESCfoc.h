@@ -665,6 +665,13 @@ enum SQRT_CIRC
 	SQRT_CIRCLE_LIM_ON = 1,
 	SQRT_CIRCLE_LIM_VD = 2
 };
+enum PWM_TYPE
+{
+	SVPWM = 0,
+	SIN_PWM = 1,
+	BOTTOM_CLAMP = 2,
+	SIN_BOTTOM = 3
+};
 
 typedef struct {
 	bool use_hall_start;
@@ -675,6 +682,7 @@ typedef struct {
 	uint8_t field_weakening;
 	uint8_t sqrt_circle_lim;
 	uint8_t observer_type;
+	uint8_t pwm_type;
 } MESCoptionFlags_s;
 
 ///////////////////////////////////////////////////////////////////////////////////////////

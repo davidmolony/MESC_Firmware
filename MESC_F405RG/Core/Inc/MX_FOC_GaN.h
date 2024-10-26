@@ -31,7 +31,6 @@
 #define MAX_ID_REQUEST 2.0f
 #define MAX_IQ_REQUEST 30.0f
 
-#define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
 
 //#define USE_FIELD_WEAKENINGV2
 
