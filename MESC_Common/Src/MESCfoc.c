@@ -215,9 +215,9 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 	_motor->options.sqrt_circle_lim = SQRT_CIRCLE_LIM_VD;
 #endif
 
-	_motor->options.pwm_type = SVPWM;//Default to combined bottom clamp sinusoidal combinationPWM
+	_motor->options.pwm_type = PWM_SVPWM;//Default to combined bottom clamp sinusoidal combinationPWM
 #ifdef SIN_BOTTOM
-	_motor->options.pwm_type = SIN_BOTTOM;
+	_motor->options.pwm_type = PWM_SIN_BOTTOM;
 #endif
 
 	_motor->options.app_type = APP_NONE;//Default to no app
@@ -1822,6 +1822,7 @@ void SlowStartup(MESC_motor_typedef *_motor){
 	default: //We are not using a startup mechanism
 		_motor->FOC.hall_start_now = 0;
 		_motor->FOC.enc_start_now = 0;
+		_motor->HFI.inject = 0;
 	}
 
 }

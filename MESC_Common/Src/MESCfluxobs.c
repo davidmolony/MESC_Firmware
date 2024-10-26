@@ -86,6 +86,8 @@ void MESCfluxobs_run(MESC_motor_typedef *_motor) {
 
     // With thanks to C0d3b453 for generally keeping this compiling and Elwin
     // for producing data comparing the output to a 16bit encoder.
+	float flux_linked_norm;
+	float flux_err;
 switch(_motor->options.observer_type){
 case NONE:
 	break;
@@ -96,12 +98,11 @@ case MXLEMMING_LAMBDA:
 	  //definitely makes setup less critical.
 	  //It basically takes the normal of the flux linkage at any time and
 	  //changes the flux limits accordingly, ignoring using a sqrt for computational efficiency
-	  float flux_linked_norm = _motor->FOC.flux_a*_motor->FOC.flux_a+_motor->FOC.flux_b*_motor->FOC.flux_b;
-	  float flux_err = flux_linked_norm-_motor->FOC.flux_observed*_motor->FOC.flux_observed;
-	  _motor->FOC.flux_observed = _motor->FOC.flux_observed+ _motor->m.flux_linkage_gain*flux_err;
-	  if(_motor->FOC.flux_observed>_motor->m.flux_linkage_max){_motor->FOC.flux_observed = _motor->m.flux_linkage_max;}
-	  if(_motor->FOC.flux_observed<_motor->m.flux_linkage_min){_motor->FOC.flux_observed = _motor->m.flux_linkage_min;}
-
+		flux_linked_norm = _motor->FOC.flux_a*_motor->FOC.flux_a+_motor->FOC.flux_b*_motor->FOC.flux_b;
+		flux_err = flux_linked_norm-_motor->FOC.flux_observed*_motor->FOC.flux_observed;
+		_motor->FOC.flux_observed = _motor->FOC.flux_observed+ _motor->m.flux_linkage_gain*flux_err;
+		if(_motor->FOC.flux_observed>_motor->m.flux_linkage_max){_motor->FOC.flux_observed = _motor->m.flux_linkage_max;}
+		if(_motor->FOC.flux_observed<_motor->m.flux_linkage_min){_motor->FOC.flux_observed = _motor->m.flux_linkage_min;}
 	//Fallthrough
 case MXLEMMING:
 	// This is the actual observer function.
