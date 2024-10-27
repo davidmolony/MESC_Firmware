@@ -187,6 +187,10 @@ HAL_Delay(1);
   motor_init(&mtr[0]);
   MESCfoc_Init(&mtr[0]);
 
+#ifdef PULLUP_HALL
+ GPIO_
+#endif
+ GPIOC->PUPDR |= 0b010101000000000000;
   /* USER CODE END 2 */
 
   /* Init scheduler */

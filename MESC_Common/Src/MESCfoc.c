@@ -437,12 +437,12 @@ void fastLoop(MESC_motor_typedef *_motor) {
 					if(_motor->FOC.hall_start_now){
 						_motor->FOC.flux_a = (1.0f-_motor->FOC.hall_IIR)*_motor->FOC.flux_a + _motor->FOC.hall_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][0];
 						_motor->FOC.flux_b = (1.0f-_motor->FOC.hall_IIR)*_motor->FOC.flux_b + _motor->FOC.hall_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][1];
-						if(fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD){
+//						if(fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD){
 							MESCfluxobs_run(_motor); //For some reason, this does not seem to work well at stationary;
 							//it results in vibrations at standstill, although it smooths the transition. Therefore, start it a bit later.
-						}else{
+//						}else{
 							_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2(_motor->FOC.flux_b, _motor->FOC.flux_a)) - 32768;
-						}
+//						}
 					}else if(_motor->FOC.enc_start_now){
 						_motor->FOC.flux_a = 0.95f*_motor->FOC.flux_a + _motor->FOC.enccos * 0.05f * _motor->m.flux_linkage;
 						_motor->FOC.flux_b = 0.95f*_motor->FOC.flux_b + _motor->FOC.encsin * 0.05f * _motor->m.flux_linkage;
@@ -1807,16 +1807,16 @@ void  logVars(MESC_motor_typedef *_motor){
 void SlowStartup(MESC_motor_typedef *_motor){
 	switch(_motor->SLStartupSensor){
 	case STARTUP_SENSOR_HALL:
-		if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.hall_initialised)&&(_motor->hall.current_hall_state>0)&&(_motor->hall.current_hall_state<7)){
+		if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<_motor->FOC.hall_transition_V)&&(_motor->FOC.hall_initialised)&&(_motor->hall.current_hall_state>0)&&(_motor->hall.current_hall_state<7)){
 				_motor->FOC.hall_start_now = 1;
-		}else if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f)||(_motor->hall.current_hall_state<1)||(_motor->hall.current_hall_state>6)){
+		}else if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>_motor->FOC.hall_transition_V+2.0f)||(_motor->hall.current_hall_state<1)||(_motor->hall.current_hall_state>6)){
 			_motor->FOC.hall_start_now = 0;
 		}
 		break;
 	case STARTUP_SENSOR_PWM_ENCODER:
-		if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.encoder_OK)){
+		if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<_motor->FOC.hall_transition_V)&&(_motor->FOC.encoder_OK)){
 				_motor->FOC.enc_start_now = 1;
-		}else if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f)||!(_motor->FOC.encoder_OK)){
+		}else if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>_motor->FOC.hall_transition_V+2.0f)||!(_motor->FOC.encoder_OK)){
 			_motor->FOC.enc_start_now = 0;
 		}
 		break;
