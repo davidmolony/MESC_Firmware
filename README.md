@@ -23,3 +23,4 @@ All STM32F405RG hardware (AKA VESC compatible hardware e.g. Trampa, SHUL, Trifor
 With thanks to all that have helped in the creation of MESC.
 
 Happy spinning!
+(testpush)
