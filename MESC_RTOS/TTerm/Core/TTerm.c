@@ -1201,7 +1201,9 @@ void TERM_killProgramm(TERMINAL_HANDLE * handle){
 
 
 #ifdef TERM_ENABLE_STARTUP_TEXT
+#ifndef TERM_CUSTOM_STARTUP_TEXT
 const char TERM_startupText1[] = "\r\n";
 const char TERM_startupText2[] = "\r\n[M]olony [E]lectronic [S]peed [C]ontroller";
 const char TERM_startupText3[] = "\r\n";
+#endif
 #endif   

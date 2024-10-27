@@ -55,7 +55,7 @@
  */
 /* `#START USER_INCLUDE SECTION` */
 #include "TTerm/Core/include/TTerm.h"
-#ifndef DASH
+#ifdef MESC
 #include "MESCfoc.h"
 #include "MESCmotor_state.h"
 #endif
@@ -77,7 +77,7 @@
 
 
 void show_overlay(TERMINAL_HANDLE * handle){
-#ifndef DASH
+#ifdef MESC
 	MESC_motor_typedef * motor_curr = &mtr[0];
 
 	TERM_sendVT100Code(handle, _VT100_CURSOR_SAVE_POSITION,0);
@@ -466,37 +466,42 @@ void print_index(TERMINAL_HANDLE * handle, char * name, uint32_t count, float in
 }
 
 void log_fastloop(TERMINAL_HANDLE * handle){
-#ifndef DASH
-	lognow = 1;
+
+#ifdef MESC
+	MESC_motor_typedef * motor_curr = &mtr[0];
+
+	motor_curr->logging.lognow = 1;
+
 	vTaskDelay(100);
 
 
-	print_samples_now = 0;
-	lognow = 0;
+	motor_curr->logging.print_samples_now = 0;
+	motor_curr->logging.lognow = 0;
 	vTaskDelay(10);
 
-	int current_sample_pos = sampled_vars.current_sample;
+
+	int current_sample_pos = motor_curr->logging.current_sample;
 
 	ttprintf("\r\n{");
 	print_index(handle, "time", LOGLENGTH, mtr[0].FOC.pwm_period);
 	ttprintf(",");
-	print_array(handle, "Vbus.V.y1", sampled_vars.Vbus, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	print_array(handle, "Vbus.V.y1", motor_curr->logging.Vbus, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
 	ttprintf(",");
-	print_array(handle, "Iu.I_phase.y1", sampled_vars.Iu, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	print_array(handle, "Iu.I_phase.y1", motor_curr->logging.Iu, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
 	ttprintf(",");
-	print_array(handle, "Iv.I_phase.y1", sampled_vars.Iv, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	print_array(handle, "Iv.I_phase.y1", motor_curr->logging.Iv, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
 	ttprintf(",");
-	print_array(handle, "Iw.I_phase.y1", sampled_vars.Iw, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	print_array(handle, "Iw.I_phase.y1", motor_curr->logging.Iw, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
 	ttprintf(",");
-	print_array(handle, "Vd.V_dq.y1", sampled_vars.Vd, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	print_array(handle, "Vd.V_dq.y1", motor_curr->logging.Vd, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
 	ttprintf(",");
-	print_array(handle, "Vq.V_dq.y1", sampled_vars.Vq, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
+	print_array(handle, "Vq.V_dq.y1", motor_curr->logging.Vq, LOGLENGTH, current_sample_pos, sizeof(float), TERM_VARIABLE_FLOAT_ARRAY);
 	ttprintf(",");
-	print_array(handle, "angle.misc.y1", sampled_vars.angle, LOGLENGTH, current_sample_pos, sizeof(uint16_t), TERM_VARIABLE_UINT_ARRAY);
+	print_array(handle, "angle.misc.y1", motor_curr->logging.angle, LOGLENGTH, current_sample_pos, sizeof(uint16_t), TERM_VARIABLE_UINT_ARRAY);
 	ttprintf("}\r\n");
 
 
-	lognow = 1;
+	motor_curr->logging.lognow = 1;
 #endif
 }
 

@@ -86,7 +86,7 @@ void CAN1_RX0_IRQHandler(void)
 	HAL_CAN_GetRxMessage(can1.hw, CAN_RX_FIFO0, &pheader, packet.buffer);
 
 	packet.len = pheader.DLC;
-	packet.message_id = extract_id(pheader.ExtId, &packet.sender, &packet.receiver);
+	packet.message_id = CANhelper_unpackMESC_id(pheader.ExtId, &packet.sender, &packet.receiver);
 
 	if(packet.receiver == 0 || packet.receiver == can1.node_id){
 
@@ -200,7 +200,7 @@ void TASK_CAN_ping(TASK_CAN_handle * handle){
 		PACK_8b_char_to_buf(buffer, handle->short_name);
 
 		CAN_TxHeaderTypeDef TxHeader;
-		TxHeader.ExtId = generate_id(CAN_ID_PING, handle->node_id, TASK_CAN_BROADCAST);
+		TxHeader.ExtId = CANhelper_packMESC_id(CAN_ID_PING, handle->node_id, TASK_CAN_BROADCAST);
 		TxHeader.RTR = CAN_RTR_DATA;
 		TxHeader.IDE = CAN_ID_EXT;
 		TxHeader.DLC = 8;
@@ -247,7 +247,7 @@ uint32_t TASK_CAN_connect(TASK_CAN_handle * handle, uint16_t remote, uint8_t con
 		buffer[0] = connect;
 
 		CAN_TxHeaderTypeDef TxHeader;
-		TxHeader.ExtId = generate_id(CAN_ID_CONNECT, handle->node_id, remote);
+		TxHeader.ExtId = CANhelper_packMESC_id(CAN_ID_CONNECT, handle->node_id, remote);
 		TxHeader.RTR = CAN_RTR_DATA;
 		TxHeader.IDE = CAN_ID_EXT;
 		TxHeader.DLC = 1;
@@ -277,14 +277,6 @@ void TASK_CAN_tx(void * argument){
 
 	uint32_t TxMailbox;
 
-	CAN_TxHeaderTypeDef TxHeader;
-	TxHeader.ExtId = 0;
-	TxHeader.RTR = CAN_RTR_DATA;
-	TxHeader.IDE = CAN_ID_EXT;
-	TxHeader.DLC = 0;
-	TxHeader.TransmitGlobalTime = DISABLE;
-
-
 	uint32_t last_ping = xTaskGetTickCount();
 
 	TASK_CAN_packet packet;
@@ -296,9 +288,12 @@ void TASK_CAN_tx(void * argument){
 			uint8_t len = xStreamBufferReceive(port->tx_stream, buffer, sizeof(buffer), 0);
 
 			if(len){
-
-				TxHeader.ExtId = generate_id(CAN_ID_TERMINAL, handle->node_id, handle->remote_node_id);
+				CAN_TxHeaderTypeDef TxHeader;
+				TxHeader.ExtId = CANhelper_packMESC_id(CAN_ID_TERMINAL, handle->node_id, handle->remote_node_id);
 				TxHeader.DLC = len;
+				TxHeader.RTR = CAN_RTR_DATA;
+				TxHeader.IDE = CAN_ID_EXT;
+				TxHeader.TransmitGlobalTime = DISABLE;
 
 				HAL_CAN_AddTxMessage(handle->hw, &TxHeader, buffer, &TxMailbox);
 
@@ -310,13 +305,33 @@ void TASK_CAN_tx(void * argument){
 			if(xQueueReceive(handle->tx_queue, &packet, 0)){
 
 				CAN_TxHeaderTypeDef TxHeader;
-				TxHeader.ExtId = generate_id(packet.message_id , packet.sender, packet.receiver);
-				TxHeader.RTR = CAN_RTR_DATA;
-				TxHeader.IDE = CAN_ID_EXT;
-				TxHeader.DLC = packet.len;
-				TxHeader.TransmitGlobalTime = DISABLE;
+				bool error = false;
 
-				HAL_CAN_AddTxMessage(handle->hw, &TxHeader, packet.buffer, &TxMailbox);
+				switch(packet.type){
+				case CANpacket_TYPE_MESC:
+					TxHeader.ExtId = CANhelper_packMESC_id(packet.message_id , packet.sender, packet.receiver);
+					TxHeader.IDE = CAN_ID_EXT;
+					break;
+				case CANpacket_TYPE_STD:
+					TxHeader.StdId = packet.message_id;
+					TxHeader.IDE = CAN_ID_STD;
+					break;
+				case CANpacket_TYPE_EXT:
+					TxHeader.ExtId = packet.message_id;
+					TxHeader.IDE = CAN_ID_EXT;
+					break;
+				default:
+					error = true;
+					break;
+				}
+
+				if(error == false){
+					TxHeader.RTR = CAN_RTR_DATA;
+					TxHeader.DLC = packet.len;
+					TxHeader.TransmitGlobalTime = DISABLE;
+
+					HAL_CAN_AddTxMessage(handle->hw, &TxHeader, packet.buffer, &TxMailbox);
+				}
 
 			}
 		}

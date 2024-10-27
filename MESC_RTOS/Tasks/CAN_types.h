@@ -23,8 +23,15 @@ typedef enum{
 
 #ifdef HAL_CAN_MODULE_ENABLED
 
+typedef enum{
+	CANpacket_TYPE_MESC,
+	CANpacket_TYPE_STD,
+	CANpacket_TYPE_EXT,
+}CANpacket_type;
+
 typedef struct {
-	uint16_t message_id;
+	CANpacket_type type;
+	uint32_t message_id;
 	uint8_t sender;
 	uint8_t receiver;
 	uint8_t len;
@@ -52,6 +59,28 @@ typedef struct _CAN_NODES_{
 	void * data;
 	node_type type;
 }TASK_CAN_node;
+
+
+typedef struct{
+	TASK_CAN_node * node;
+	float speed;
+	float adc1;
+	float adc2;
+	float bus_voltage;
+	float bus_current;
+	float motor_current;
+	float temp_motor;
+	float temp_mos1;
+	float temp_mos2;
+	float temp_mos3;
+	uint32_t status;
+	float Iq;
+	float Id;
+	float Vq;
+	float Vd;
+	uint32_t cycles_fastloop;
+	uint32_t cycles_hyperloop;
+} esc_data;
 
 #endif
 #endif /* CAN_TYPES_H_ */

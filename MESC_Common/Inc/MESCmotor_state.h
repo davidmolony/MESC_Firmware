@@ -166,6 +166,8 @@ typedef enum {
 #define UNINITIALISED_KEY 1
 #define KILLSWITCH_KEY 2
 #define SAFESTART_KEY 4
+#define APP_KEY 8
+
 
 /* Function prototypes -----------------------------------------------*/
 

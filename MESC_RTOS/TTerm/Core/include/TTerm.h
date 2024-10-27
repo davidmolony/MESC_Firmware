@@ -63,7 +63,9 @@
 #if TERM_SUPPORT_CWD == 1
     #define TERM_DEVICE_NAME handle->cwdPath
 #else
+#ifndef TERM_DEVICE_NAME
     #define TERM_DEVICE_NAME "MESC"
+#endif
 #endif
 
 #ifdef TERM_ENABLE_STARTUP_TEXT

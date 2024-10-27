@@ -25,7 +25,7 @@
 
 uint8_t REGISTER_apps(TermCommandDescriptor * desc){
     REGISTER_top(desc);
-#ifndef DASH
+#ifdef MESC
     REGISTER_calibrate(desc);
     REGISTER_hfi(desc);
 #endif
@@ -33,5 +33,11 @@ uint8_t REGISTER_apps(TermCommandDescriptor * desc){
 #ifdef HAL_CAN_MODULE_ENABLED
     REGISTER_can(desc);
 #endif
+
+#ifdef AXIS
+    REGISTER_app_encoder(desc);
+#endif
+
+
     return pdTRUE;
 }

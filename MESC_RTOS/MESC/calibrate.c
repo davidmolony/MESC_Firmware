@@ -128,24 +128,24 @@ static void TASK_main(void *pvParameters){
     	highlight(handle, "ADC1:", 0, selected);
     	TERM_setCursorPos(handle, 2, 0);
     	bargraph(handle, 0, 4095, motor_curr->Raw.ADC_in_ext1);
-    	ttprintf("MIN: %6d MAX: %6d INV: %1.0f", (double)input_vars.adc1_MIN, (double)input_vars.adc1_MAX, (double)input_vars.ADC1_polarity);
+    	ttprintf("MIN: %6d MAX: %6d INV: %1.0f", (double)motor_curr->input_vars.adc1_MIN, (double)motor_curr->input_vars.adc1_MAX, (double)motor_curr->input_vars.ADC1_polarity);
     	TERM_setCursorPos(handle, 3, 0);
-    	bargraph(handle, 0.0f, input_vars.max_request_Idq.q, input_vars.ADC1_req);
-    	ttprintf("Request: %f", (double)input_vars.ADC1_req);
+    	bargraph(handle, 0.0f, motor_curr->input_vars.max_request_Idq.q, motor_curr->input_vars.ADC1_req);
+    	ttprintf("Request: %f", (double)motor_curr->input_vars.ADC1_req);
 
     	if(selected==0){
 			if(c=='r'){
-				input_vars.adc1_MIN=0;
-				input_vars.adc1_MAX=4095;
+				motor_curr->input_vars.adc1_MIN=0;
+				motor_curr->input_vars.adc1_MAX=4095;
 			}
 			if(c=='-'){
-				input_vars.adc1_MIN=motor_curr->Raw.ADC_in_ext1;
+				motor_curr->input_vars.adc1_MIN=motor_curr->Raw.ADC_in_ext1;
 			}
 			if(c=='+'){
-				input_vars.adc1_MAX=motor_curr->Raw.ADC_in_ext1;
+				motor_curr->input_vars.adc1_MAX=motor_curr->Raw.ADC_in_ext1;
 			}
 			if(c=='i'){
-				input_vars.ADC1_polarity *= -1.0f;
+				motor_curr->input_vars.ADC1_polarity *= -1.0f;
 			}
     	}
 
@@ -154,24 +154,24 @@ static void TASK_main(void *pvParameters){
     	highlight(handle, "ADC2:", 1, selected);
 		TERM_setCursorPos(handle, 5, 0);
 		bargraph(handle, 0, 4095, 0);
-		ttprintf("MIN: %6d MAX: %6d INV: %1.0f", (double)input_vars.adc2_MIN, (double)input_vars.adc2_MAX, (double)input_vars.ADC2_polarity);
+		ttprintf("MIN: %6d MAX: %6d INV: %1.0f", (double)motor_curr->input_vars.adc2_MIN, (double)motor_curr->input_vars.adc2_MAX, (double)motor_curr->input_vars.ADC2_polarity);
     	TERM_setCursorPos(handle, 6, 0);
-    	bargraph(handle, 0.0f, input_vars.max_request_Idq.q, input_vars.ADC1_req);
-    	ttprintf("Request: %f", (double)input_vars.ADC1_req);
+    	bargraph(handle, 0.0f, motor_curr->input_vars.max_request_Idq.q, motor_curr->input_vars.ADC1_req);
+    	ttprintf("Request: %f", (double)motor_curr->input_vars.ADC1_req);
 
 		if(selected==1){
 			if(c=='r'){
-				input_vars.adc2_MIN=0;
-				input_vars.adc2_MAX=4095;
+				motor_curr->input_vars.adc2_MIN=0;
+				motor_curr->input_vars.adc2_MAX=4095;
 			}
 			if(c=='-'){
-				input_vars.adc2_MIN=100;
+				motor_curr->input_vars.adc2_MIN=100;
 			}
 			if(c=='+'){
-				input_vars.adc2_MAX=100;
+				motor_curr->input_vars.adc2_MAX=100;
 			}
 			if(c=='i'){
-				input_vars.ADC2_polarity *= -1.0f;
+				motor_curr->input_vars.ADC2_polarity *= -1.0f;
 			}
 		}
 
@@ -179,14 +179,14 @@ static void TASK_main(void *pvParameters){
     	TERM_setCursorPos(handle, 7, 0);
     	highlight(handle, "Remote ADC1:", 2, selected);
 		TERM_setCursorPos(handle, 8, 0);
-    	bargraph(handle, 0.0f, 1.0f, input_vars.remote_ADC1_req);
-    	ttprintf("Request: %f", (double)input_vars.remote_ADC1_req);
+    	bargraph(handle, 0.0f, 1.0f, motor_curr->input_vars.remote_ADC1_req);
+    	ttprintf("Request: %f", (double)motor_curr->input_vars.remote_ADC1_req);
 
     	TERM_setCursorPos(handle, 9, 0);
     	highlight(handle, "Remote ADC2:", 2, selected);
 		TERM_setCursorPos(handle, 10, 0);
-    	bargraph(handle, 0.0f, 1.0f, input_vars.remote_ADC2_req);
-    	ttprintf("Request: %f", (double)input_vars.remote_ADC2_req);
+    	bargraph(handle, 0.0f, 1.0f, motor_curr->input_vars.remote_ADC2_req);
+    	ttprintf("Request: %f", (double)motor_curr->input_vars.remote_ADC2_req);
 
 		if(c==ARROW_DOWN){
 			selected++;

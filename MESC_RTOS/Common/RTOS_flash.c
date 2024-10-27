@@ -33,7 +33,7 @@
 #include "main.h"
 #include "MESChw_setup.h"
 
-
+#ifdef STM32F4
 static uint32_t const flash_sector_map[] = {
     // 4 x  16k
     FLASH_BASE + (0 * (16 << 10)),
@@ -54,6 +54,8 @@ static uint32_t const flash_sector_map[] = {
     FLASH_BASE + (4 * (16 << 10)) + (64 << 10) + (7 * (128 << 10)),
 };
 
+
+
 uint32_t RTOS_flash_sector_address(uint32_t const index){
     return flash_sector_map[index];
 }
@@ -69,66 +71,6 @@ uint32_t RTOS_flash_sector_index(uint32_t const address){
 
     // error
     return UINT32_MAX;
-}
-
-uint32_t RTOS_flash_base_address( void )
-{
-/*
-The base address is FLASH_BASE = 0x08000000 but this is shared with program
-memory and so a suitable offset should be used
-*/
-    return RTOS_flash_sector_address( 11 );
-}
-
-uint32_t RTOS_flash_base_size( void )
-{
-    return RTOS_flash_sector_address( FLASH_STORAGE_PAGE + 1) - RTOS_flash_sector_address( FLASH_STORAGE_PAGE );
-}
-
-uint32_t RTOS_flash_erase( uint32_t const address, uint32_t const length )
-{
-    // Disallow zero length (could ignore)
-    if (length == 0)
-    {
-        return 0;
-    }
-
-    uint32_t const saddr = address;
-    uint32_t const eaddr = saddr + length - 1;
-
-    uint32_t const ssector = RTOS_flash_sector_index( saddr );
-    uint32_t const esector = RTOS_flash_sector_index( eaddr );
-
-    // Limit erasure to a single sector
-    if (ssector != esector)
-    {
-        return 0;
-    }
-
-    FLASH_EraseInitTypeDef sector_erase;
-
-    sector_erase.TypeErase = FLASH_TYPEERASE_SECTORS;
-    sector_erase.Banks     = FLASH_BANK_1; // (ignored)
-    sector_erase.Sector    = ssector;
-    sector_erase.NbSectors = (esector - ssector + 1);
-
-    uint32_t bad_sector = 0;
-
-    HAL_StatusTypeDef const sts = HAL_FLASHEx_Erase( &sector_erase, &bad_sector );
-
-    return sts;
-
-}
-
-
-uint32_t RTOS_flash_clear(void * address, uint32_t len){
-	FLASH_WaitForLastOperation(500);
-	HAL_FLASH_Unlock();
-	FLASH_WaitForLastOperation(500);
-	RTOS_flash_erase((uint32_t)address, len);
-	HAL_FLASH_Lock();
-	FLASH_WaitForLastOperation(500);
-	return len;
 }
 
 uint32_t RTOS_flash_start_write(void * address, void * data, uint32_t len){
@@ -178,3 +120,153 @@ uint32_t RTOS_flash_end_write(void * address, void * data, uint32_t len){
 	FLASH_WaitForLastOperation(500);
 	return written;
 }
+
+#endif
+
+#ifdef STM32L4
+
+uint32_t RTOS_flash_sector_address(uint32_t const index){
+	return FLASH_BASE + (index * 2048);  //All Pages are 2k in size
+}
+
+uint32_t RTOS_flash_sector_index(uint32_t const address){
+	uint32_t ret = address - FLASH_BASE;
+	ret = ret / 2048;
+
+	if(ret > 255){
+		return UINT32_MAX; //Error
+	}else{
+		return ret;
+	}
+}
+
+uint32_t RTOS_flash_start_write(void * address, void * data, uint32_t len){
+	uint64_t * buffer = data;
+	FLASH_WaitForLastOperation(500);
+	HAL_FLASH_Unlock();
+	FLASH_WaitForLastOperation(500);
+	uint32_t written=0;
+
+	if(len<8) return 0;
+	if(len%8 != 0) return 0; //Sorry only 8 byte alligned writes possible
+
+	while(len){
+		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, (uint32_t)address, *buffer)==HAL_OK){
+			written++;
+		}
+		buffer++;
+		address+=8;
+		len-=8;
+	}
+	return written;
+}
+
+uint32_t RTOS_flash_write(void * address, void * data, uint32_t len){
+	uint64_t * buffer = data;
+	uint32_t written=0;
+
+	if(len<8) return 0;
+	if(len%8 != 0) return 0; //Sorry only 8 byte alligned writes possible
+
+	while(len){
+		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, (uint32_t)address,*buffer)==HAL_OK){
+			written++;
+		}
+		buffer++;
+		address+=8;
+		len-=8;
+	}
+	return written;
+}
+
+uint32_t RTOS_flash_end_write(void * address, void * data, uint32_t len){
+	uint64_t * buffer = data;
+	uint32_t written=0;
+
+	if(len<8) return 0;
+	if(len%8 != 0) return 0; //Sorry only 8 byte alligned writes possible
+
+	while(len){
+		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, (uint32_t)address, *buffer)==HAL_OK){
+			written++;
+		}
+		buffer++;
+		address+=8;
+		len-=8;
+	}
+	FLASH_WaitForLastOperation(500);
+	HAL_FLASH_Lock();
+	FLASH_WaitForLastOperation(500);
+	return written;
+}
+
+#endif
+
+uint32_t RTOS_flash_base_address( void )
+{
+/*
+The base address is FLASH_BASE = 0x08000000 but this is shared with program
+memory and so a suitable offset should be used
+*/
+    return RTOS_flash_sector_address( FLASH_STORAGE_PAGE );
+}
+
+uint32_t RTOS_flash_base_size( void )
+{
+    return RTOS_flash_sector_address( FLASH_STORAGE_PAGE + 1) - RTOS_flash_sector_address( FLASH_STORAGE_PAGE );
+}
+
+uint32_t RTOS_flash_erase( uint32_t const address, uint32_t const length )
+{
+    // Disallow zero length (could ignore)
+    if (length == 0)
+    {
+        return 0;
+    }
+
+    uint32_t const saddr = address;
+    uint32_t const eaddr = saddr + length - 1;
+
+    uint32_t const ssector = RTOS_flash_sector_index( saddr );
+    uint32_t const esector = RTOS_flash_sector_index( eaddr );
+
+    // Limit erasure to a single sector
+    if (ssector != esector)
+    {
+        return 0;
+    }
+
+    FLASH_EraseInitTypeDef sector_erase;
+#ifdef STM32F4
+    sector_erase.TypeErase = FLASH_TYPEERASE_SECTORS;
+    sector_erase.Banks     = FLASH_BANK_1; // (ignored)
+    sector_erase.Sector    = ssector;
+    sector_erase.NbSectors = (esector - ssector + 1);
+#endif
+#ifdef STM32L4
+    sector_erase.TypeErase = FLASH_TYPEERASE_PAGES;
+    sector_erase.Banks = FLASH_BANK_1; //Only one bank
+    sector_erase.Page    = ssector;
+    sector_erase.NbPages = (esector - ssector + 1);
+#endif
+    uint32_t bad_sector = 0;
+
+    HAL_StatusTypeDef const sts = HAL_FLASHEx_Erase( &sector_erase, &bad_sector );
+
+    return sts;
+
+}
+
+
+uint32_t RTOS_flash_clear(void * address, uint32_t len){
+	FLASH_WaitForLastOperation(500);
+	HAL_FLASH_Unlock();
+	FLASH_WaitForLastOperation(500);
+	RTOS_flash_erase((uint32_t)address, len);
+	HAL_FLASH_Lock();
+	FLASH_WaitForLastOperation(500);
+	return len;
+}
+
+
+

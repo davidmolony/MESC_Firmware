@@ -40,6 +40,8 @@
 bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, float n1, float n2, uint32_t timeout);
 bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint32_t n1, uint32_t n2, uint32_t timeout);
 bool TASK_CAN_add_sample(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint16_t row, uint8_t col, uint8_t flags, float value, uint32_t timeout);
+bool TASK_CAN_add_rawSTD(TASK_CAN_handle * handle, uint32_t message_id, uint8_t * data, uint8_t len, uint32_t timeout);
+bool TASK_CAN_add_rawEXT(TASK_CAN_handle * handle, uint32_t message_id, uint8_t * data, uint8_t len, uint32_t timeout);
 
 #endif
 
@@ -55,7 +57,8 @@ void PACK_float_to_buf(uint8_t* buffer, float number);
 void PACK_8b_char_to_buf(uint8_t* buffer, char * short_name);
 
 
-uint32_t generate_id(uint16_t id, uint8_t sender, uint8_t receiver);
-uint16_t extract_id(uint32_t ext_id, uint8_t * sender, uint8_t * receiver);
+uint32_t CANhelper_packMESC_id(uint16_t id, uint8_t sender, uint8_t receiver);
+uint16_t CANhelper_unpackMESC_id(uint32_t ext_id, uint8_t * sender, uint8_t * receiver);
+uint32_t CANhelper_packJ1939_id(uint8_t priority, uint8_t data_page, uint8_t PDU_format, uint8_t PDU_specific, uint8_t source_address);
 
 #endif /* CAN_HELPER_H_ */

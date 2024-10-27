@@ -97,6 +97,10 @@ TermVariableHandle * TERM_VAR_init(TERMINAL_HANDLE * handle, void * nvm_address,
 	var->nvm_end_write = nvm_end_write;
 	var->nvm_clear = nvm_clear;
 
+	if(password[0]==0){
+		handle->currPermissionLevel = 0;
+	}
+
 	if(is_init == false){
 		TERM_addVarString(password, sizeof(password), 0, 0, "password", "Password for SU", VAR_ACCESS_RW, NULL, &TERM_varList);
 		is_init = true;
@@ -378,10 +382,10 @@ static bool var_system_is_init(TERMINAL_HANDLE * handle){
 
 
 #define COL_A 3
-#define COL_B 15
-#define COL_C 35
-#define COL_D 46
-#define COL_E 57
+#define COL_B 25
+#define COL_C 45
+#define COL_D 56
+#define COL_E 67
 
 static void print_var_header(TERMINAL_HANDLE * handle){
 	TERM_sendVT100Code(handle, _VT100_CURSOR_SET_COLUMN, COL_A);
@@ -947,6 +951,9 @@ struct _FlashHeader_{
 	uint32_t size;
 	uint32_t version;
 	uint32_t revision;
+#ifdef ALLIGNED_DOUBLE_WORD
+	uint32_t padding;
+#endif
 } __attribute__((packed));
 
 struct _FlashFooter_{
@@ -962,6 +969,9 @@ struct _FlashVariable_{
     uint32_t nameLength;
     uint32_t flags;
     FlashVariable * nextVar;
+#ifdef ALLIGNED_DOUBLE_WORD
+	uint8_t padding;
+#endif
 } __attribute__((packed));
 
 
@@ -1014,6 +1024,13 @@ static uint8_t * print_headers(TERMINAL_HANDLE * handle, uint8_t * address, uint
 	return header_section - size_last;
 }
 
+uint32_t get_padding(uint32_t num, uint32_t allignement){
+
+	uint32_t remainder = num % allignement;
+	return allignement - remainder;
+
+}
+
 uint32_t validate(TERMINAL_HANDLE * handle, FlashHeader * header){
 	TermVariableHandle * var = handle->varHandle;
 
@@ -1035,13 +1052,19 @@ uint32_t validate(TERMINAL_HANDLE * handle, FlashHeader * header){
 
 	currFlashVar = FlashVar;
 	for(uint32_t currPos=0;currPos < header->num_entries; currPos++){
-		crc = TTERM_fnv1a_process_data(crc, currFlashVar->name, currFlashVar->nameLength+1);
-		crc = TTERM_fnv1a_process_data(crc, currFlashVar->variable, currFlashVar->typeSize);
+		uint32_t size = currFlashVar->nameLength + 1 + currFlashVar->typeSize;  //Include variable data which follows the name
+
+#ifdef ALLIGNED_DOUBLE_WORD
+		size += get_padding(size, 8);
+#endif
+		crc = TTERM_fnv1a_process_data(crc, currFlashVar->name, size);
 		currFlashVar = currFlashVar->nextVar;
 	}
 
 	return TTERM_fnv1a_process_data(crc, footer, sizeof(FlashFooter) - sizeof(uint32_t));
 }
+
+
 
 uint8_t CMD_varSave(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
@@ -1080,11 +1103,18 @@ uint8_t CMD_varSave(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	}
 
 	//Determine how much memory is needed
-	uint32_t n_bytes = sizeof(FlashHeader) + (sizeof(FlashVariable) * head->nameLength) + sizeof(FlashFooter);
+	uint32_t n_bytes = sizeof(FlashHeader) + (sizeof(FlashVariable) * head->nameLength) + sizeof(FlashFooter);  //nameLength is the number of vars here
 	for(;currPos < head->nameLength; currPos++){
-		n_bytes += (currVar->nameLength+1);
-		n_bytes += currVar->typeSize;
-		if(largest_data < currVar->typeSize) largest_data = currVar->typeSize;
+		uint32_t bytes = 0;
+		bytes += (currVar->nameLength+1);
+		bytes += currVar->typeSize;
+
+#ifdef ALLIGNED_DOUBLE_WORD
+		bytes += get_padding(bytes, 8);
+#endif
+		n_bytes += bytes;
+
+		if(largest_data < bytes) largest_data = bytes;
 		currVar = currVar->nextVar;
 	}
 
@@ -1148,8 +1178,12 @@ uint8_t CMD_varSave(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		footer.crc = TTERM_fnv1a_process_data(footer.crc, &temp, sizeof(FlashVariable));
 
 		//Calculate new data section pointers
-		currData += nameLengthWNull;
-		currData += currVar->typeSize;
+		uint32_t bytes = nameLengthWNull;
+		bytes += currVar->typeSize;
+#ifdef ALLIGNED_DOUBLE_WORD
+		bytes += get_padding(bytes, 8);
+#endif
+		currData += bytes;
 
 		var_section++;
 		currVar = currVar->nextVar;
@@ -1168,19 +1202,26 @@ uint8_t CMD_varSave(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 	}
 
 	for(;currPos < head->nameLength; currPos++){
+		memset(data_cpy,0,largest_data);
 
 		uint32_t nameLengthWNull = currVar->nameLength+1;
 
-		written += var->nvm_write(currData, (uint8_t*)currVar->name, nameLengthWNull);
-		footer.crc = TTERM_fnv1a_process_data(footer.crc, currVar->name, nameLengthWNull);
-		currData += nameLengthWNull;
+		memcpy(data_cpy, currVar->name, nameLengthWNull);
+		memcpy(data_cpy + nameLengthWNull, currVar->variable, currVar->typeSize);
 
-		memcpy(data_cpy, currVar->variable, currVar->typeSize);
+		uint32_t bytes_to_write = nameLengthWNull + currVar->typeSize;
 
-		written += var->nvm_write(currData, data_cpy, currVar->typeSize);
-		footer.crc = TTERM_fnv1a_process_data(footer.crc, data_cpy, currVar->typeSize);
+#ifdef ALLIGNED_DOUBLE_WORD
+		bytes_to_write += get_padding(bytes_to_write, 8);
+#endif
 
-		currData += currVar->typeSize;
+		//written += var->nvm_write(currData, (uint8_t*)currVar->name, nameLengthWNull);
+		footer.crc = TTERM_fnv1a_process_data(footer.crc, data_cpy, bytes_to_write);
+		//footer.crc = TTERM_fnv1a_process_data(footer.crc, data_cpy + nameLengthWNull, currVar->typeSize);
+
+		written += var->nvm_write(currData, data_cpy, bytes_to_write);
+
+		currData += bytes_to_write;
 
 		currVar = currVar->nextVar;
 	}
@@ -1339,7 +1380,6 @@ uint8_t CMD_varLoad(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 		currFlashVar = currFlashVar->nextVar;
 	}
-
 
 	return TERM_CMD_EXIT_SUCCESS;
 

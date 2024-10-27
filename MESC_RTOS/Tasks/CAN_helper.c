@@ -36,6 +36,7 @@
 bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, float n1, float n2, uint32_t timeout){
 	TASK_CAN_packet packet;
 
+	packet.type = CANpacket_TYPE_MESC;
 	packet.message_id = message_id;
 	packet.receiver = receiver;
 	packet.sender = handle->node_id;
@@ -48,6 +49,7 @@ bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t r
 bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint32_t n1, uint32_t n2, uint32_t timeout){
 	TASK_CAN_packet packet;
 
+	packet.type = CANpacket_TYPE_MESC;
 	packet.message_id = message_id;
 	packet.receiver = receiver;
 	packet.sender = handle->node_id;
@@ -57,9 +59,38 @@ bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t 
 	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
 }
 
+bool TASK_CAN_add_rawSTD(TASK_CAN_handle * handle, uint32_t message_id, uint8_t * data, uint8_t len, uint32_t timeout){
+	if(len>8) return false;
+	if(data == NULL) return false;
+	if(message_id > 0x7FF) return false;
+
+	TASK_CAN_packet packet;
+
+	packet.type = CANpacket_TYPE_STD;
+	packet.message_id = message_id;
+	packet.len = len;
+	memcpy(packet.buffer, data, len);
+	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
+}
+
+bool TASK_CAN_add_rawEXT(TASK_CAN_handle * handle, uint32_t message_id, uint8_t * data, uint8_t len, uint32_t timeout){
+	if(len>8) return false;
+	if(data == NULL) return false;
+	if(message_id > 0x1FFFFFFF) return false;
+
+	TASK_CAN_packet packet;
+
+	packet.type = CANpacket_TYPE_EXT;
+	packet.message_id = message_id;
+	packet.len = len;
+	memcpy(packet.buffer, data, len);
+	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
+}
+
 bool TASK_CAN_add_sample(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint16_t row, uint8_t col, uint8_t flags, float value, uint32_t timeout){
 	TASK_CAN_packet packet;
 
+	packet.type = CANpacket_TYPE_MESC;
 	packet.message_id = message_id;
 	packet.receiver = receiver;
 	packet.sender = handle->node_id;
@@ -132,15 +163,24 @@ void PACK_8b_char_to_buf(uint8_t* buffer, char * short_name) {
 	memcpy(buffer, short_name, 8);
 }
 
-uint32_t generate_id(uint16_t id, uint8_t sender, uint8_t receiver){
+uint32_t CANhelper_packMESC_id(uint16_t id, uint8_t sender, uint8_t receiver){
 	uint32_t ret = (uint32_t)id << 16;
 	ret |= sender;
 	ret |= (uint32_t)receiver << 8;
 	return ret;
 }
 
-uint16_t extract_id(uint32_t ext_id, uint8_t * sender, uint8_t * receiver){
+uint16_t CANhelper_unpackMESC_id(uint32_t ext_id, uint8_t * sender, uint8_t * receiver){
 	*sender = ext_id & 0xFF;
 	*receiver = (ext_id >> 8) & 0xFF;
 	return (ext_id >> 16);
 }
+
+uint32_t CANhelper_packJ1939_id(uint8_t priority, uint8_t data_page, uint8_t PDU_format, uint8_t PDU_specific, uint8_t source_address){
+    uint32_t ret;
+
+    ret = ((priority & 0b111) << 26) | (data_page & 0b11) <<24 | PDU_format << 16 | PDU_specific << 8 | source_address;
+
+    return ret;
+}
+

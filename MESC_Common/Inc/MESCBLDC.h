@@ -28,6 +28,8 @@
 
 #endif /* INC_MESCBLDC_H_ */
 
+#include "MESCfoc.h"
+
 #define FOC_CONV_CHANNELS          (4)
 #define FOC_TRANSFORMED_CHANNELS   (2)
 #define FOC_NUM_ADC                (4)
@@ -79,3 +81,5 @@ void BLDCCommuteHall();
 void BLDCCurrentController();
 void writeBLDC();
 int GetHallState();  // Self explanatory...
+void BLDCCommute(MESC_motor_typedef *_motor);
+void CalculateBLDCGains(MESC_motor_typedef *_motor);

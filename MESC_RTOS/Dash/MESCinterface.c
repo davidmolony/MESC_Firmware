@@ -53,6 +53,10 @@
 #include <stdio.h>
 
 
+const char TERM_startupText1[] = "\r\n";
+const char TERM_startupText2[] = "\r\n[D][A][S][H] - Dashboard";
+const char TERM_startupText3[] = "\r\n";
+
 dash_data dash;
 
 
