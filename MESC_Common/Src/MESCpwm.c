@@ -35,9 +35,7 @@
 #include "MESChfi.h"
 #include "MESCsin_lut.h"
 
-static float mid_value = 0;
-float top_value;
-float bottom_value;
+
 
 static const float sqrt3_on_2 = 0.866025f;
 
@@ -72,6 +70,10 @@ void MESC_PWM_IRQ_handler(MESC_motor_typedef *_motor) {
 }
 
 void MESCpwm_Write(MESC_motor_typedef *_motor) {
+	float mid_value = 0;
+	float top_value;
+	float bottom_value;
+
 	float Vd, Vq;
 
 	Vd = _motor->FOC.Vdq.d + _motor->HFI.Vd_injectionV;
@@ -136,8 +138,9 @@ if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.injec
     if(_motor->FOC.Voltage < _motor->FOC.V_3Q_mag_max){
         _motor->HighPhase = N; //Trigger the full clark transform
     }
+
     switch(_motor->options.pwm_type){
-    case SVPWM:
+    case PWM_SVPWM:
     	   mid_value = _motor->FOC.PWMmid -
     	                0.5f * _motor->FOC.Vab_to_PWM * (top_value + bottom_value);
 
@@ -175,52 +178,65 @@ if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.injec
 
     	#endif
     	break;
-    case SIN_PWM:
+    case PWM_SIN:
 
     	//Fallthrough FOR NOW
-    case BOTTOM_CLAMP:
+    case PWM_BOTTOM_CLAMP:
 
     	//Fallthrough FOR NOW
-    case SIN_BOTTOM:
+    case PWM_SIN_BOTTOM:
     	//Threshold for turning on sinusoidal modulation
     	    if(_motor->FOC.Voltage < _motor->FOC.V_3Q_mag_max){//Sinusoidal
-    			_motor->FOC.inverterVoltage[0] = _motor->FOC.inverterVoltage[0]+0.5*_motor->FOC.Vmag_max;
-    			_motor->FOC.inverterVoltage[1] = _motor->FOC.inverterVoltage[1]+0.5*_motor->FOC.Vmag_max;
-    			_motor->FOC.inverterVoltage[2] = _motor->FOC.inverterVoltage[2]+0.5*_motor->FOC.Vmag_max;
+    	    	   mid_value = _motor->FOC.PWMmid -
+    	    	                0.5f * _motor->FOC.Vab_to_PWM * (top_value + bottom_value);
+
+    	    	    ////////////////////////////////////////////////////////
+    	    	    // Actually write the value to the timer registers
+    	    	    _motor->mtimer->Instance->CCR1 =
+    	    	    		(uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[0] + mid_value);
+    	    	    _motor->mtimer->Instance->CCR2 =
+    	    	    		(uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[1] + mid_value);
+    	    	    _motor->mtimer->Instance->CCR3 =
+    	    	    		(uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[2] + mid_value);
+
+//    			_motor->FOC.inverterVoltage[0] = _motor->FOC.inverterVoltage[0]+ mid_value;//0.5*_motor->FOC.Vmag_max;
+//    			_motor->FOC.inverterVoltage[1] = _motor->FOC.inverterVoltage[1]+ mid_value;//0.5*_motor->FOC.Vmag_max;
+//    			_motor->FOC.inverterVoltage[2] = _motor->FOC.inverterVoltage[2]+ mid_value;//0.5*_motor->FOC.Vmag_max;
     	    }else{//Bottom Clamp
     			_motor->FOC.inverterVoltage[0] = _motor->FOC.inverterVoltage[0]-bottom_value;
     			_motor->FOC.inverterVoltage[1] = _motor->FOC.inverterVoltage[1]-bottom_value;
     			_motor->FOC.inverterVoltage[2] = _motor->FOC.inverterVoltage[2]-bottom_value;
+
+    			//Write the timer registers
+				_motor->mtimer->Instance->CCR1 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[0]);
+				_motor->mtimer->Instance->CCR2 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[1]);
+				_motor->mtimer->Instance->CCR3 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[2]);
     	    }
-    	    //Write the timer registers
-    	    _motor->mtimer->Instance->CCR1 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[0]);
-    	    _motor->mtimer->Instance->CCR2 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[1]);
-    	    _motor->mtimer->Instance->CCR3 = (uint16_t)(_motor->FOC.Vab_to_PWM * _motor->FOC.inverterVoltage[2]);
     	#ifdef OVERMOD_DT_COMP_THRESHOLD
     	    //Concept here is that if we are close to the VBus max, we just do not turn the FET off.
     	    //Set CCRx to ARR, record how much was added, then next cycle, remove it from the count.
     	    //If the duty is still above the threshold, the CCR will still be set to ARR, until the duty request is sufficiently low...
     	static int carryU, carryV, carryW;
 
-    		_motor->mtimer->Instance->CCR1 = 	_motor->mtimer->Instance->CCR1 - carryU;
-    		_motor->mtimer->Instance->CCR2 = 	_motor->mtimer->Instance->CCR2 - carryV;
-    		_motor->mtimer->Instance->CCR3 = 	_motor->mtimer->Instance->CCR3 - carryW;
-    		carryU = 0;
-    		carryV = 0;
-    		carryW = 0;
+//    		_motor->mtimer->Instance->CCR1 = 	_motor->mtimer->Instance->CCR1 - carryU;
+//    		_motor->mtimer->Instance->CCR2 = 	_motor->mtimer->Instance->CCR2 - carryV;
+//    		_motor->mtimer->Instance->CCR3 = 	_motor->mtimer->Instance->CCR3 - carryW;
+//    		carryU = 0;
+//    		carryV = 0;
+//    		carryW = 0;
 
-    		if(_motor->mtimer->Instance->CCR1>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
-    			carryU = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR1; //Save the amount we have overmodulated by
-    			_motor->mtimer->Instance->CCR1 = _motor->mtimer->Instance->ARR;
-    		}
-    		if(_motor->mtimer->Instance->CCR2>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
-    			carryV = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR2; //Save the amount we have overmodulated by
-    			_motor->mtimer->Instance->CCR2 = _motor->mtimer->Instance->ARR;
-    		}
-    		if(_motor->mtimer->Instance->CCR3>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
-    			carryW = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR3; //Save the amount we have overmodulated by
-    			_motor->mtimer->Instance->CCR3 = _motor->mtimer->Instance->ARR;
-    		}
+//    		if(_motor->mtimer->Instance->CCR1>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
+//    			carryU = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR1; //Save the amount we have overmodulated by
+//    			_motor->mtimer->Instance->CCR1 = _motor->mtimer->Instance->ARR;
+//    		}
+//    		if(_motor->mtimer->Instance->CCR2>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
+//    			carryV = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR2; //Save the amount we have overmodulated by
+//    			_motor->mtimer->Instance->CCR2 = _motor->mtimer->Instance->ARR;
+//    		}
+//    		if(_motor->mtimer->Instance->CCR3>(_motor->mtimer->Instance->ARR-OVERMOD_DT_COMP_THRESHOLD)){
+//    			carryW = _motor->mtimer->Instance->ARR-_motor->mtimer->Instance->CCR3; //Save the amount we have overmodulated by
+//    			_motor->mtimer->Instance->CCR3 = _motor->mtimer->Instance->ARR;
+//    		}
     	#endif
     	break;
     }//end of pwm type switch

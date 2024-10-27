@@ -167,12 +167,16 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 	_motor->hall.angle_step = 0.0f;
 
 	//options
-
+    //Initialise the hall start
 #ifdef USE_HALL_START
 	_motor->options.use_hall_start = true;
 #else
 	_motor->options.use_hall_start = false;
 #endif
+    _motor->FOC.hall_IIR = HALL_IIR; //decay constant for the hall start preload
+    _motor->FOC.hall_IIR = HALL_IIRN; //decay constant for the hall start preload
+    _motor->FOC.hall_transition_V = HALL_VOLTAGE_THRESHOLD; //transition voltage above which the hall sensors are not doing any preloading
+
 
 #ifdef USE_LR_OBSERVER
 	_motor->options.use_lr_observer = true;
@@ -215,9 +219,9 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 	_motor->options.sqrt_circle_lim = SQRT_CIRCLE_LIM_VD;
 #endif
 
-	_motor->options.pwm_type = SVPWM;//Default to combined bottom clamp sinusoidal combinationPWM
+	_motor->options.pwm_type = PWM_SVPWM;//Default to combined bottom clamp sinusoidal combinationPWM
 #ifdef SIN_BOTTOM
-	_motor->options.pwm_type = SIN_BOTTOM;
+	_motor->options.pwm_type = PWM_SIN_BOTTOM;
 #endif
 
 	_motor->options.app_type = APP_NONE;//Default to no app
@@ -431,8 +435,8 @@ void fastLoop(MESC_motor_typedef *_motor) {
 			case MOTOR_SENSOR_MODE_SENSORLESS:
 				if(_motor->options.use_hall_start){
 					if(_motor->FOC.hall_start_now){
-						_motor->FOC.flux_a = HALL_IIRN*_motor->FOC.flux_a + HALL_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][0];
-						_motor->FOC.flux_b = HALL_IIRN*_motor->FOC.flux_b + HALL_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][1];
+						_motor->FOC.flux_a = (1.0f-_motor->FOC.hall_IIR)*_motor->FOC.flux_a + _motor->FOC.hall_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][0];
+						_motor->FOC.flux_b = (1.0f-_motor->FOC.hall_IIR)*_motor->FOC.flux_b + _motor->FOC.hall_IIR*_motor->m.hall_flux[_motor->hall.current_hall_state-1][1];
 						if(fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD){
 							MESCfluxobs_run(_motor); //For some reason, this does not seem to work well at stationary;
 							//it results in vibrations at standstill, although it smooths the transition. Therefore, start it a bit later.
@@ -1805,7 +1809,7 @@ void SlowStartup(MESC_motor_typedef *_motor){
 	case STARTUP_SENSOR_HALL:
 		if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)<HALL_VOLTAGE_THRESHOLD)&&(_motor->FOC.hall_initialised)&&(_motor->hall.current_hall_state>0)&&(_motor->hall.current_hall_state<7)){
 				_motor->FOC.hall_start_now = 1;
-		}else if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f)||(_motor->hall.current_hall_state=0)||(_motor->hall.current_hall_state>6)){
+		}else if((fabsf(_motor->FOC.Vdq.q-_motor->m.R*_motor->FOC.Idq_smoothed.q)>HALL_VOLTAGE_THRESHOLD+2.0f)||(_motor->hall.current_hall_state<1)||(_motor->hall.current_hall_state>6)){
 			_motor->FOC.hall_start_now = 0;
 		}
 		break;
@@ -1822,6 +1826,7 @@ void SlowStartup(MESC_motor_typedef *_motor){
 	default: //We are not using a startup mechanism
 		_motor->FOC.hall_start_now = 0;
 		_motor->FOC.enc_start_now = 0;
+		_motor->HFI.inject = 0;
 	}
 
 }

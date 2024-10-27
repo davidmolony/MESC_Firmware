@@ -11,10 +11,11 @@
 #define QS165//MCMASTER_70KV_8080//QS165//CA120//
 #define PWM_FREQUENCY 20000
 #define CUSTOM_DEADTIME 400 //ns, MAX 1500ns! implementation in MESCInit().
+//#define MISSING_VCURRSENSOR
 
 #define SHUNT_POLARITY 1.0f
 
-#define ABS_MAX_PHASE_CURRENT 300.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.
+#define ABS_MAX_PHASE_CURRENT 50.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.
 #define ABS_MAX_BUS_VOLTAGE 110.0f
 #define ABS_MIN_BUS_VOLTAGE 38.0f
 #define R_SHUNT 1.0f
@@ -32,7 +33,7 @@
 
 #define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
 #define DEADTIME_COMP_V 10
-//#define MAX_MODULATION 1.05f //Use this with 5 sector modulation if you want extra speed
+//#define MAX_MODULATION 1.10f //Use this with 5 sector modulation if you want extra speed
 //Inputs
 #define GET_THROTTLE_INPUT2 	_motor->Raw.ADC_in_ext1 = 0.99f*_motor->Raw.ADC_in_ext1 + 0.01f*hadc1.Instance->JDR3;  // Throttle2 for Run on Pa4
 #define GET_THROTTLE_INPUT 		_motor->Raw.ADC_in_ext2 = 0.9f*_motor->Raw.ADC_in_ext2 + 0.1f*ADC1_buffer[0];  // Throttle2 for Run on PA3
