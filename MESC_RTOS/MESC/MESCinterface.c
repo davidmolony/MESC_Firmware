@@ -505,6 +505,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].FOC.park_current				, 0.0f		, 300.0f	, "par_i_park"	, "Max current for handbrake"																, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.hall_IIR					, 0.0f		, 1.0f		, "FOC_hall_iir", "Decay constant for hall preload (0-1.0)"													, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.hall_transition_V		, 0.0f		, 100.0f	, "FOC_hall_Vt"	, "Hall transition voltage"																	, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.hall_initialised			, 0			, 1			, "FOC_hall_array_ok"	, "Hall array OK flag (set to 0 to restart live hall cal process)"					, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(MESC_all_errors						, -HUGE_VAL	, HUGE_VAL	, "error_all"	, "All errors encountered"																	, VAR_ACCESS_R	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.hall_initialised			, 0			, 1			, "Hall_initialised", "hall start flag"																		, VAR_ACCESS_R	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.field_weakening		, 0			, 2			, "opt_fw"		, "Field weakening [0=OFF, 1=ON, 2=ON V2]"													, VAR_ACCESS_RW	, NULL		, &TERM_varList);
