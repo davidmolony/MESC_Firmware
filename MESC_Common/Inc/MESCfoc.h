@@ -683,10 +683,17 @@ enum APP_TYPE
 	APP_3
 };
 
+enum MTPA_MODE
+{
+	MTPA_NONE = 0,
+	MTPA_REQ = 1,
+	MTPA_MAG = 2,
+	MTPA_Q = 3
+};
 typedef struct {
 	bool use_hall_start;
 	bool use_lr_observer;
-	bool use_MTPA;
+	uint8_t MTPA_mode;
 	bool use_phase_balancing;
 	bool has_motor_temp_sensor;
 	uint8_t field_weakening;

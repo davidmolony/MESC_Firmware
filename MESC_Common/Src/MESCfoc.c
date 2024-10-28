@@ -185,9 +185,9 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 #endif
 
 #ifdef USE_MTPA
-	_motor->options.use_MTPA = true;
+	_motor->options.MTPA_mode = MTPA_MAG;
 #else
-	_motor->options.use_MTPA = false;
+	_motor->options.MTPA_mode = MTPA_NONE;
 #endif
 
 #ifdef USE_HIGHHOPES_PHASE_BALANCING
@@ -1439,7 +1439,7 @@ float  Square(float x){ return((x)*(x));}
 		case MOTOR_STATE_RUN:
 			calculatePower(_motor);
 			ThrottleTemperature(_motor); //Gradually ramp down the Q current if motor or FETs are getting hot
-			if(_motor->options.use_MTPA){
+			if(_motor->options.MTPA_mode){
 				RunMTPA(_motor);//Process MTPA
 			}
 
@@ -1827,21 +1827,48 @@ void SlowStartup(MESC_motor_typedef *_motor){
 
 void RunMTPA(MESC_motor_typedef *_motor){
 	//Run MTPA (Field weakening seems to have to go in  the fast loop to be stable)
+	float i_mag = 0;
 	if(_motor->m.L_QD>0.0f){
-		_motor->FOC.id_mtpa = _motor->m.flux_linkage/(4.0f*_motor->m.L_QD) - sqrtf((_motor->m.flux_linkage*_motor->m.flux_linkage/(16.0f*_motor->m.L_QD*_motor->m.L_QD))+_motor->FOC.Idq_prereq.q*_motor->FOC.Idq_prereq.q*0.5f);
+		switch(_motor->options.MTPA_mode){
+		case MTPA_NONE:
+			//Nothing
+			break;
+		case MTPA_REQ:
+			//MTPA equation
+			i_mag = _motor->FOC.Idq_prereq.q;
+//			_motor->FOC.id_mtpa = _motor->m.flux_linkage/(4.0f*_motor->m.L_QD) - sqrtf((_motor->m.flux_linkage*_motor->m.flux_linkage/(16.0f*_motor->m.L_QD*_motor->m.L_QD))+_motor->FOC.Idq_prereq.q*_motor->FOC.Idq_prereq.q*0.5f);
+			break;
+		case MTPA_MAG:
+			//Calculate magnitude of currents
+			i_mag = sqrtf(_motor->FOC.Idq_smoothed.q * _motor->FOC.Idq_smoothed.q+_motor->FOC.Idq_smoothed.d * _motor->FOC.Idq_smoothed.d);
+			break;
+
+		case MTPA_Q:
+			i_mag = _motor->FOC.Idq_smoothed.q;
+			break;
+		}//End of switch
+
+		//MTPA equation
+		_motor->FOC.id_mtpa = _motor->m.flux_linkage/(4.0f*_motor->m.L_QD) - sqrtf((_motor->m.flux_linkage*_motor->m.flux_linkage/(16.0f*_motor->m.L_QD*_motor->m.L_QD)) + (i_mag * i_mag) * 0.5f);
+		//Residual to Iq
 		if(fabsf(_motor->FOC.Idq_prereq.q)>fabsf(_motor->FOC.id_mtpa)){
 			_motor->FOC.iq_mtpa = sqrtf(_motor->FOC.Idq_prereq.q * _motor->FOC.Idq_prereq.q - _motor->FOC.id_mtpa * _motor->FOC.id_mtpa);
 		}
 		else{
 			_motor->FOC.iq_mtpa = 0.0f;
 		}
-	_motor->FOC.Idq_prereq.d = _motor->FOC.id_mtpa;
-	if(_motor->FOC.Idq_prereq.q>0.0f){
-		_motor->FOC.Idq_prereq.q = _motor->FOC.iq_mtpa;}
-	else{
-		_motor->FOC.Idq_prereq.q = -_motor->FOC.iq_mtpa;}
+		//Set Id_prereq
+		_motor->FOC.Idq_prereq.d = _motor->FOC.id_mtpa;
+		//Set Iq_prereq
+		if(_motor->FOC.Idq_prereq.q>0.0f){
+			_motor->FOC.Idq_prereq.q = _motor->FOC.iq_mtpa;
+		}
+		else{
+			_motor->FOC.Idq_prereq.q = -_motor->FOC.iq_mtpa;
+		}
 	}
 }
+
 void calculatePower(MESC_motor_typedef *_motor){
 ////// Calculate the current power
 		_motor->FOC.currentPower.d = 1.5f*(_motor->FOC.Vdq.d*_motor->FOC.Idq_smoothed.d);

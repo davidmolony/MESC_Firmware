@@ -76,9 +76,9 @@ void No_app(MESC_motor_typedef *_motor){
 	  //Clamp the Q component; d component is not directly requested
 	  _motor->FOC.Idq_prereq.q = clamp(_motor->FOC.Idq_prereq.q, _motor->input_vars.min_request_Idq.q, _motor->input_vars.max_request_Idq.q);
 	  vehicle.sidestandState = getSidestandState();
+#ifdef MOMENTARY_REV
 //	  vehicle.reverseState = getReverseState();
 	  vehicle.reverseState = debounce(vehicle.reverseState, getReverseState());
-	  vehicle.brakeState = getBrakeState();
 	  if((!vehicle.reverseState)&&(fabsf(_motor->FOC.Idq_prereq.q)<5.0f)){
 		  vehicle_direction = vehicle_direction+1;
 		  vehicle_direction = vehicle_direction & 0x1;
@@ -88,6 +88,14 @@ void No_app(MESC_motor_typedef *_motor){
 	  }else{
 		  _motor->FOC.Idq_prereq.q *= -1.0f;
 	  }
+#else
+	  vehicle.reverseState = getReverseState();
+	  if(vehicle.reverseState == 0){
+		  _motor->FOC.Idq_prereq.q *= -1.0f;
+	  }
+#endif
+	  vehicle.brakeState = getBrakeState();
+
 }
 
 void Vehicle_app(MESC_motor_typedef *_motor){
