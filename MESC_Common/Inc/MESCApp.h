@@ -49,7 +49,13 @@ enum VEHICLE_STATE
 	VEHICLE_y = 4,
 	VEHICLE_ERROR = 5
 };
+enum VEHICLE_DIRECTION
+{
+	VEHICLE_FORWARD = 0,
+	VEHICLE_REVERSE = 1,
+};
 
+void No_app(MESC_motor_typedef *_motor);
 void Vehicle_app(MESC_motor_typedef *_motor);
 
 #endif /* INC_MESCAPP_H_ */

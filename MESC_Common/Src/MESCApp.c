@@ -39,8 +39,49 @@
 #include "MESCfoc.h"
 #include "MESCmotor_state.h"
 #include "MESCerror.h"
+#include "stm32fxxx_hal.h"
 
-uint8_t vehicle_state = VEHICLE_IDLE;
+typedef struct {
+	uint32_t reverseState;
+	uint32_t sidestandState;
+	uint32_t brakeState;
+
+}Vehicle_s;
+
+Vehicle_s vehicle;
+#define getReverseState(...) ((REVERSE_GPIO->IDR >> (REVERSE_IONO)) & 0x1)
+#define getSidestandState(...) ((SIDESTAND_GPIO->IDR >> (SIDESTAND_IONO)) & 0x1)
+#define getBrakeState(...) ((BRAKE_GPIO->IDR >> (BRAKE_IONO)) & 0x1)
+
+uint32_t vehicle_state = VEHICLE_IDLE;
+uint32_t vehicle_direction = VEHICLE_FORWARD;
+//uint32_t debounce(uint32_t var, uint32_t input){
+//	if(var>0)
+//}
+void No_app(MESC_motor_typedef *_motor){
+	//Sum the inputs
+	  //We just scale and sum the input current requests
+	  _motor->FOC.Idq_prereq.q = 	_motor->input_vars.UART_req +
+	  	  	  	  	  	  	  	  	_motor->input_vars.max_request_Idq.q * (_motor->input_vars.ADC1_req + _motor->input_vars.ADC2_req +
+	  	  	  	  	  	  	  	  	_motor->input_vars.RCPWM_req + _motor->input_vars.ADC12_diff_req +
+									_motor->input_vars.remote_ADC1_req + _motor->input_vars.remote_ADC2_req );
+
+	  //Clamp the Q component; d component is not directly requested
+	  _motor->FOC.Idq_prereq.q = clamp(_motor->FOC.Idq_prereq.q, _motor->input_vars.min_request_Idq.q, _motor->input_vars.max_request_Idq.q);
+	  vehicle.sidestandState = getSidestandState();
+	  vehicle.reverseState = getReverseState();
+	  vehicle.brakeState = getBrakeState();
+	  if((!vehicle.reverseState)&&(fabsf(_motor->FOC.Idq_prereq.q)<5.0f)){
+		  vehicle_direction = vehicle_direction+1;
+		  vehicle_direction = vehicle_direction & 0x1;
+	  }
+	  if(vehicle_direction){
+		  //Nothing
+	  }else{
+		  _motor->FOC.Idq_prereq.q *= -1.0f;
+	  }
+}
+
 void Vehicle_app(MESC_motor_typedef *_motor){
 
 	switch(vehicle_state){

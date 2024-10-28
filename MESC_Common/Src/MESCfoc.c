@@ -1299,6 +1299,7 @@ float  Square(float x){ return((x)*(x));}
 		switch(_motor->options.app_type){
 			case APP_NONE:
 				_motor->key_bits &= ~APP_KEY;
+				No_app(_motor); //No_app just sums the inputs
 				break;
 			case APP_VEHICLE:
 				Vehicle_app(_motor);
@@ -1313,15 +1314,7 @@ float  Square(float x){ return((x)*(x));}
 
 	  switch(_motor->ControlMode){
 		  case MOTOR_CONTROL_MODE_TORQUE:
-			  //We just scale and sum the input current requests
-			  _motor->FOC.Idq_prereq.q = 	_motor->input_vars.UART_req +
-			  	  	  	  	  	  	  	  	_motor->input_vars.max_request_Idq.q * (_motor->input_vars.ADC1_req + _motor->input_vars.ADC2_req +
-			  	  	  	  	  	  	  	  	_motor->input_vars.RCPWM_req + _motor->input_vars.ADC12_diff_req +
-											_motor->input_vars.remote_ADC1_req + _motor->input_vars.remote_ADC2_req );
-
-			  //Clamp the Q component; d component is not directly requested
-			  _motor->FOC.Idq_prereq.q = clamp(_motor->FOC.Idq_prereq.q, _motor->input_vars.min_request_Idq.q, _motor->input_vars.max_request_Idq.q);
-
+//Dealt with in APP_NONE
 			  break;
 		  case MOTOR_CONTROL_MODE_POSITION:
 			  RunPosControl(_motor);
