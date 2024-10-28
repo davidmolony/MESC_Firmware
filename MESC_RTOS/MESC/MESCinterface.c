@@ -485,8 +485,8 @@ void populate_vars(){
 	TERM_addVar(mtr[0].input_vars.adc2_MAX			, 0			, 4096		, "adc2_max"	, "ADC2 max val"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].input_vars.adc2_MIN			, 0			, 4096		, "adc2_min"	, "ADC2 min val"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].input_vars.ADC2_polarity		, -1.0f		, 1.0f		, "adc2_pol"	, "ADC2 polarity"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.max_request_Idq.q	, 0.0f		, 300.0f	, "par_i_max"	, "Max motor current"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
-	TERM_addVar(mtr[0].input_vars.min_request_Idq.q	, -300.0f	, 0.0f		, "par_i_min"	, "Min motor current"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.max_request_Idq.q	, 0.0f		, 1000.0f	, "par_i_max"	, "Max motor current"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].input_vars.min_request_Idq.q	, -1000.0f	, 0.0f		, "par_i_min"	, "Min motor current"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.pwm_frequency			, 0.0f		, 100000.0f	, "FOC_fpwm"	, "PWM frequency"																			, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].input_vars.UART_req			, -1000.0f	, 1000.0f	, "uart_req"	, "Uart input"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].input_vars.UART_dreq			, -1000.0f	, 1000.0f	, "uart_dreq"	, "Uart input"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);

@@ -1199,7 +1199,7 @@ case SQRT_CIRCLE_LIM_VD:
     _motor->FOC.Iq_pgain = _motor->FOC.Id_pgain;
     _motor->FOC.Iq_igain = _motor->FOC.Id_igain;
 
-	  if(_motor->FOC.FW_curr_max>_motor->input_vars.max_request_Idq.q){
+	  if(_motor->FOC.FW_curr_max > 0.9f * _motor->input_vars.max_request_Idq.q){
 		  _motor->FOC.FW_curr_max = 0.9f * _motor->input_vars.max_request_Idq.q; //Limit the field weakenning to 90% of the max current to avoid math errors
 	  }
 	_motor->m.L_QD = _motor->m.L_Q-_motor->m.L_D;
