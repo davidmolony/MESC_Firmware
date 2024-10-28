@@ -55,9 +55,16 @@ Vehicle_s vehicle;
 
 uint32_t vehicle_state = VEHICLE_IDLE;
 uint32_t vehicle_direction = VEHICLE_FORWARD;
-//uint32_t debounce(uint32_t var, uint32_t input){
-//	if(var>0)
-//}
+uint32_t debounce(uint32_t var, uint32_t input){
+	if((var>0) && (!input)){
+		 var = var-1;
+	}else if(var == 0){
+		var = 100; //Reset it to far from the threshold
+	}else if((var<100)){
+		var = var+1;
+	}
+	return var;
+}
 void No_app(MESC_motor_typedef *_motor){
 	//Sum the inputs
 	  //We just scale and sum the input current requests
@@ -69,7 +76,8 @@ void No_app(MESC_motor_typedef *_motor){
 	  //Clamp the Q component; d component is not directly requested
 	  _motor->FOC.Idq_prereq.q = clamp(_motor->FOC.Idq_prereq.q, _motor->input_vars.min_request_Idq.q, _motor->input_vars.max_request_Idq.q);
 	  vehicle.sidestandState = getSidestandState();
-	  vehicle.reverseState = getReverseState();
+//	  vehicle.reverseState = getReverseState();
+	  vehicle.reverseState = debounce(vehicle.reverseState, getReverseState());
 	  vehicle.brakeState = getBrakeState();
 	  if((!vehicle.reverseState)&&(fabsf(_motor->FOC.Idq_prereq.q)<5.0f)){
 		  vehicle_direction = vehicle_direction+1;
