@@ -499,7 +499,8 @@ void log_fastloop(TERMINAL_HANDLE * handle){
 	ttprintf(",");
 	print_array(handle, "angle.misc.y1", motor_curr->logging.angle, LOGLENGTH, current_sample_pos, sizeof(uint16_t), TERM_VARIABLE_UINT_ARRAY);
 	ttprintf("}\r\n");
-
+	print_array(handle, "hall.misc.y1", motor_curr->logging.hallstate, LOGLENGTH, current_sample_pos, sizeof(uint16_t), TERM_VARIABLE_UINT_ARRAY);
+	ttprintf("}\r\n");
 
 	motor_curr->logging.lognow = 1;
 #endif

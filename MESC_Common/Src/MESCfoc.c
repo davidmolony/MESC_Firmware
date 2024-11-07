@@ -1786,6 +1786,8 @@ void  logVars(MESC_motor_typedef *_motor){
 	_motor->logging.Vd[_motor->logging.current_sample] = _motor->FOC.Vdq.d;
 	_motor->logging.Vq[_motor->logging.current_sample] = _motor->FOC.Vdq.q;
 	_motor->logging.angle[_motor->logging.current_sample] = _motor->FOC.FOCAngle;
+//	_motor->logging.angle[_motor->logging.current_sample] =	(uint16_t)_motor->hall.current_hall_state; //
+	_motor->logging.hallstate[_motor->logging.current_sample] = (uint16_t)_motor->hall.current_hall_state;
 	_motor->logging.current_sample++;
 	if(_motor->logging.current_sample>=LOGLENGTH){
 		_motor->logging.current_sample = 0;

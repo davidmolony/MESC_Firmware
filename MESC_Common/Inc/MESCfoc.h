@@ -540,6 +540,8 @@ typedef struct {
 	float Vd[LOGLENGTH];
 	float Vq[LOGLENGTH];
 	uint16_t angle[LOGLENGTH];
+	uint16_t hallstate[LOGLENGTH];
+
 	uint32_t current_sample;
 	bool sample_now;
 	bool sample_no_auto_send;
