@@ -190,7 +190,9 @@ HAL_Delay(1);
 #ifdef PULLUP_HALL
  GPIO_
 #endif
- GPIOC->PUPDR |= 0b010101000000000000;
+ GPIOC->PUPDR |= 0b010101000000000000; //Set hall sensor pullups
+// GPIOB->PUPDR |= 0b0101000000000000000000; //Set tx rx with pullups
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
