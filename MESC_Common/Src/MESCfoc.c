@@ -1901,12 +1901,17 @@ void LimitFWCurrent(MESC_motor_typedef *_motor){
 
 void clampBatteryPower(MESC_motor_typedef *_motor){
 /////// Clamp the max power taken from the battery
+/////// This assumes no MTPA and no FW active. There is no (simple) closed form for FOC with D axis current.
     _motor->FOC.reqPower = 1.5f*fabsf(_motor->FOC.Vdq.q * _motor->FOC.Idq_prereq.q);
-    if (_motor->FOC.reqPower > _motor->m.Pmax) {
+    float batt_power_max = _motor->m.IBatmax*_motor->Conv.Vbus; //Calculate the max battery power allowed at current voltage
+//    if(batt_power_max > _motor->m.Pmax){
+    	batt_power_max = _motor->m.Pmax;		//Replace batt_power with the lower power limit
+//    }
+    if (_motor->FOC.reqPower > batt_power_max) {
     	if(_motor->FOC.Idq_prereq.q > 0.0f){
-    		_motor->FOC.Idq_prereq.q = _motor->m.Pmax / (fabsf(_motor->FOC.Vdq.q)*1.5f);
+    		_motor->FOC.Idq_prereq.q = batt_power_max / (fabsf(_motor->FOC.Vdq.q)*1.5f);
     	}else{
-    		_motor->FOC.Idq_prereq.q = -_motor->m.Pmax / (fabsf(_motor->FOC.Vdq.q)*1.5f);
+    		_motor->FOC.Idq_prereq.q = -batt_power_max / (fabsf(_motor->FOC.Vdq.q)*1.5f);
     	}
     }
 }

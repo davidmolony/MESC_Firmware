@@ -262,6 +262,7 @@ typedef struct {
 typedef struct MOTORProfile
 {
     float       Imax;         // Amp
+    float 		IBatmax;	  // Battery Amps
     float       Vmax;         // Volt
     float       Pmax;         // Watt
     uint32_t    RPMmax;       // 1/minute
@@ -528,7 +529,7 @@ typedef struct{
 
 //Logging
 #ifndef LOGLENGTH
-#define LOGLENGTH 100
+#define LOGLENGTH 300
 #endif
 //We want to log primarily Ia Ib Ic, Vd,Vq, phase angle, which gives us a complete picture of the machine state
 //4 bytes per variable*6 variables*1000 = 24000bytes. Lowest spec target is F303CB with 48kB SRAM, so this is OK
