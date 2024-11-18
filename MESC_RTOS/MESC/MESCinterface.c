@@ -459,6 +459,7 @@ void callback(TermVariableDescriptor * var){
 void populate_vars(){
 	//		   | Variable							| MIN		| MAX		| NAME			| DESCRIPTION																				| RW			| CALLBACK	| VAR LIST HANDLE
 	TERM_addVar(mtr[0].m.Pmax						, 0.0f		, 50000.0f	, "par_p_max"	, "Max power"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].m.IBatmax					, 0.0f		, 1000.0f	, "par_ibat_max", "Max battery current power"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].m.direction					, 0			, 1			, "par_dir"		, "Motor direction"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].m.pole_pairs					, 0			, 255		, "par_pp"		, "Motor pole pairs"																		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].m.RPMmax						, 0			, 300000	, "par_rpm_max"	, "Max RPM"																					, VAR_ACCESS_RW	, NULL		, &TERM_varList);
@@ -488,6 +489,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].input_vars.max_request_Idq.q	, 0.0f		, 1000.0f	, "par_i_max"	, "Max motor current"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].input_vars.min_request_Idq.q	, -1000.0f	, 0.0f		, "par_i_min"	, "Min motor current"																		, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.pwm_frequency			, 0.0f		, 100000.0f	, "FOC_fpwm"	, "PWM frequency"																			, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.Modulation_max			, 0.1f		, 1.12f	, 	"FOC_Max_Mod"	, "Max modulation index; typically 0.95, can over modulate to 1.12"							, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].input_vars.UART_req			, -1000.0f	, 1000.0f	, "uart_req"	, "Uart input"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].input_vars.UART_dreq			, -1000.0f	, 1000.0f	, "uart_dreq"	, "Uart input"																				, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].input_vars.input_options		, 0			, 128		, "input_opt"	, "Inputs [1=ADC1 2=ADC2 4=PPM 8=UART 16=Killswitch 32=CANADC1 64=CANADC2 128=ADC12DIFF]"	, VAR_ACCESS_RW	, callback	, &TERM_varList);

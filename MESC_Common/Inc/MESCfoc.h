@@ -101,6 +101,10 @@
 #define MIN_IQ_REQUEST -0.1f
 #endif
 
+#ifndef DEFAULT_BATTERY_CURRENT
+#define DEFAULT_BATTERY_CURRENT 10.0f
+#endif
+
 #ifndef DEADSHORT_CURRENT
 #define DEADSHORT_CURRENT 30.0f
 #endif
@@ -369,6 +373,7 @@ typedef struct {
   float Iq_igain;
   float Vab_to_PWM;
   uint16_t deadtime_comp;
+  float Modulation_max;
   float Duty_scaler;
   float Voltage;
   float Vmag_max;

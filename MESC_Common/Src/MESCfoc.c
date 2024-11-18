@@ -220,6 +220,7 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 #endif
 
 	_motor->options.pwm_type = PWM_SVPWM;//Default to combined bottom clamp sinusoidal combinationPWM
+	_motor->FOC.Modulation_max = MAX_MODULATION;
 #ifdef SIN_BOTTOM
 	_motor->options.pwm_type = PWM_SIN_BOTTOM;
 #endif
@@ -1216,14 +1217,14 @@ case SQRT_CIRCLE_LIM_VD:
     // 0.5*Vbus*MAX_MODULATION*SVPWM_MULTIPLIER*Vd_MAX_PROPORTION
     if(_motor->ControlMode != MOTOR_CONTROL_MODE_DUTY){_motor->FOC.Duty_scaler = 1.0f;}
     _motor->FOC.Vmag_max = 0.5f * _motor->Conv.Vbus *
-            MAX_MODULATION * SVPWM_MULTIPLIER * _motor->FOC.Duty_scaler;
+    		_motor->FOC.Modulation_max * SVPWM_MULTIPLIER * _motor->FOC.Duty_scaler;
     _motor->FOC.V_3Q_mag_max =  _motor->FOC.Vmag_max * 0.75f;
 
     _motor->FOC.Vmag_max2 = _motor->FOC.Vmag_max*_motor->FOC.Vmag_max;
     _motor->FOC.Vd_max = 0.5f * _motor->Conv.Vbus *
-                      MAX_MODULATION * SVPWM_MULTIPLIER * Vd_MAX_PROPORTION;
+    		_motor->FOC.Modulation_max * SVPWM_MULTIPLIER * Vd_MAX_PROPORTION;
     _motor->FOC.Vq_max = 0.5f * _motor->Conv.Vbus *
-                      MAX_MODULATION * SVPWM_MULTIPLIER * Vq_MAX_PROPORTION;
+    		_motor->FOC.Modulation_max * SVPWM_MULTIPLIER * Vq_MAX_PROPORTION;
 
     _motor->FOC.Vdint_max = _motor->FOC.Vd_max * 0.9f; //Logic in this is to always ensure headroom for the P term
     _motor->FOC.Vqint_max = _motor->FOC.Vq_max * 0.9f;
@@ -1904,9 +1905,9 @@ void clampBatteryPower(MESC_motor_typedef *_motor){
 /////// This assumes no MTPA and no FW active. There is no (simple) closed form for FOC with D axis current.
     _motor->FOC.reqPower = 1.5f*fabsf(_motor->FOC.Vdq.q * _motor->FOC.Idq_prereq.q);
     float batt_power_max = _motor->m.IBatmax*_motor->Conv.Vbus; //Calculate the max battery power allowed at current voltage
-//    if(batt_power_max > _motor->m.Pmax){
+    if(batt_power_max > _motor->m.Pmax){
     	batt_power_max = _motor->m.Pmax;		//Replace batt_power with the lower power limit
-//    }
+    }
     if (_motor->FOC.reqPower > batt_power_max) {
     	if(_motor->FOC.Idq_prereq.q > 0.0f){
     		_motor->FOC.Idq_prereq.q = batt_power_max / (fabsf(_motor->FOC.Vdq.q)*1.5f);
