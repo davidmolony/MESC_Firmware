@@ -37,6 +37,7 @@ void motor_init( MESC_motor_typedef * motor )
 
 	motor->m.Imax = MAX_MOTOR_PHASE_CURRENT;
 	motor->m.Pmax = DEFAULT_MOTOR_POWER;
+	motor->m.IBatmax = DEFAULT_BATTERY_CURRENT;
 	motor->m.pole_pairs =  DEFAULT_MOTOR_PP;
 	motor->m.L_D = DEFAULT_MOTOR_Ld;
 	motor->m.L_Q = DEFAULT_MOTOR_Lq;

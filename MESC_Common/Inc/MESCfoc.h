@@ -101,6 +101,10 @@
 #define MIN_IQ_REQUEST -0.1f
 #endif
 
+#ifndef DEFAULT_BATTERY_CURRENT
+#define DEFAULT_BATTERY_CURRENT 10.0f
+#endif
+
 #ifndef DEADSHORT_CURRENT
 #define DEADSHORT_CURRENT 30.0f
 #endif
@@ -262,6 +266,7 @@ typedef struct {
 typedef struct MOTORProfile
 {
     float       Imax;         // Amp
+    float 		IBatmax;	  // Battery Amps
     float       Vmax;         // Volt
     float       Pmax;         // Watt
     uint32_t    RPMmax;       // 1/minute
@@ -368,6 +373,7 @@ typedef struct {
   float Iq_igain;
   float Vab_to_PWM;
   uint16_t deadtime_comp;
+  float Modulation_max;
   float Duty_scaler;
   float Voltage;
   float Vmag_max;
@@ -528,7 +534,7 @@ typedef struct{
 
 //Logging
 #ifndef LOGLENGTH
-#define LOGLENGTH 100
+#define LOGLENGTH 300
 #endif
 //We want to log primarily Ia Ib Ic, Vd,Vq, phase angle, which gives us a complete picture of the machine state
 //4 bytes per variable*6 variables*1000 = 24000bytes. Lowest spec target is F303CB with 48kB SRAM, so this is OK
