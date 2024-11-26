@@ -39,7 +39,10 @@ static volatile float magnitude45;
 static MESCiq_s intdidq;
 
 void MESChfi_Toggle(MESC_motor_typedef *_motor){
-	if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > _motor->HFI.toggle_voltage)||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < -_motor->HFI.toggle_voltage)||(_motor->MotorSensorMode==MOTOR_SENSOR_MODE_HALL)){
+	if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > _motor->HFI.toggle_voltage)
+			||((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < -_motor->HFI.toggle_voltage)
+			||(_motor->MotorSensorMode==MOTOR_SENSOR_MODE_HALL)
+			||((fabsf(_motor->FOC.eHz)>30.0f))){
 		_motor->HFI.inject = 0;
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
 	} else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < (_motor->HFI.toggle_voltage-1.0f))&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > -(_motor->HFI.toggle_voltage-1.0f)) &&(_motor->HFI.Type !=HFI_TYPE_NONE)){
