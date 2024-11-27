@@ -49,9 +49,25 @@ typedef struct {
 }Vehicle_s;
 
 Vehicle_s vehicle;
+
+/////Macros to read inputs
+#ifdef REVERSE_GPIO
 #define getReverseState(...) ((REVERSE_GPIO->IDR >> (REVERSE_IONO)) & 0x1)
+#else
+#define getReverseState(...) 0x1; //Default forward
+#endif
+
+#ifdef SIDESTAND_GPIO
 #define getSidestandState(...) ((SIDESTAND_GPIO->IDR >> (SIDESTAND_IONO)) & 0x1)
+#else
+#define getSidestandState(...) 0x1; //Default sidestand up, vehicle moves
+#endif
+
+#ifdef BRAKE_GPIO
 #define getBrakeState(...) ((BRAKE_GPIO->IDR >> (BRAKE_IONO)) & 0x1)
+#else
+#define getBrakeState(...) 0x1; //Default no brake, vehicle moves
+#endif
 
 uint32_t vehicle_state = VEHICLE_IDLE;
 uint32_t vehicle_direction = VEHICLE_FORWARD;
@@ -66,6 +82,18 @@ uint32_t debounce(uint32_t var, uint32_t input){
 	return var;
 }
 void No_app(MESC_motor_typedef *_motor){
+	//Sum the inputs
+	  //We just scale and sum the input current requests
+	  _motor->FOC.Idq_prereq.q = 	_motor->input_vars.UART_req +
+	  	  	  	  	  	  	  	  	_motor->input_vars.max_request_Idq.q * (_motor->input_vars.ADC1_req + _motor->input_vars.ADC2_req +
+	  	  	  	  	  	  	  	  	_motor->input_vars.RCPWM_req + _motor->input_vars.ADC12_diff_req +
+									_motor->input_vars.remote_ADC1_req + _motor->input_vars.remote_ADC2_req );
+
+	  //Clamp the Q component; d component is not directly requested
+	  _motor->FOC.Idq_prereq.q = clamp(_motor->FOC.Idq_prereq.q, _motor->input_vars.min_request_Idq.q, _motor->input_vars.max_request_Idq.q);
+}
+
+void Vehicle_app(MESC_motor_typedef *_motor){
 	//Sum the inputs
 	  //We just scale and sum the input current requests
 	  _motor->FOC.Idq_prereq.q = 	_motor->input_vars.UART_req +
@@ -96,13 +124,12 @@ void No_app(MESC_motor_typedef *_motor){
 #endif
 	  vehicle.brakeState = getBrakeState();
 
-}
-
-void Vehicle_app(MESC_motor_typedef *_motor){
-
+/////////////////////////////Vehicle State Machine
 	switch(vehicle_state){
 	case VEHICLE_IDLE:
 		_motor->key_bits |= APP_KEY; //Set the bit; lock the motor from current
+		//HACK
+		vehicle_state = VEHICLE_DRIVE; //Move direct to drive for testing, otherwise it will lock the vehicle...
 //Add state machine logics
 		break;
 	case VEHICLE_PARKED:

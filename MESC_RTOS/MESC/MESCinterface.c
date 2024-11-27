@@ -517,7 +517,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].options.use_phase_balancing	, 0			, 1			, "opt_phase_bal", "Use highhopes phase balancing"															, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.use_lr_observer		, 0			, 1			, "opt_lr_obs"  , "Use LR observer"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.has_motor_temp_sensor, 0			, 1			, "opt_motor_temp"  , "Motor has temperature sensor"														, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].options.app_type				, 0			, 3			, "opt_motor_temp"  , "Motor has temperature sensor"														, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].options.app_type				, 0			, 3			, "opt_app_type"  , "App type, 0=none, 1=Vehicle, 2,3 = undefined"											, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 
 	TERM_addVarArrayFloat(mtr[0].m.hall_flux, sizeof(mtr[0].m.hall_flux),  -10.0f, 10.0f, "Hall_flux", "hall start table", VAR_ACCESS_RW, NULL, &TERM_varList);
 

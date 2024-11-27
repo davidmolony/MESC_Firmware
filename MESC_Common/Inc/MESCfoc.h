@@ -271,6 +271,7 @@ typedef struct MOTORProfile
     float       Pmax;         // Watt
     uint32_t    RPMmax;       // 1/minute
     uint8_t     pole_pairs;
+    uint16_t 	pole_angle;
     uint8_t     direction;
     uint8_t     _[2];
     float       L_D;          // Henry

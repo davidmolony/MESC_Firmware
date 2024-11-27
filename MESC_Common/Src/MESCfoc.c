@@ -1190,7 +1190,7 @@ case SQRT_CIRCLE_LIM_VD:
     _motor->FOC.PWMmid = _motor->mtimer->Instance->ARR * 0.5f;
 
     _motor->FOC.ADC_duty_threshold = _motor->mtimer->Instance->ARR * 0.90f;
-
+    _motor->m.pole_angle = 65536/_motor->m.pole_pairs;
     calculateFlux(_motor);
 
     //PID controller gains
@@ -1743,9 +1743,9 @@ void MESCTrack(MESC_motor_typedef *_motor) {
 
       pkt.angle = pkt.angle & 0x7fff;
 #ifdef ENCODER_DIR_REVERSED
-      	  _motor->FOC.enc_angle = -POLE_PAIRS*((pkt.angle *2)%POLE_ANGLE)-_motor->FOC.enc_offset;
+      	  _motor->FOC.enc_angle = -_motor->m.pole_pairs*((pkt.angle *2)%_motor->m.pole_angle)-_motor->FOC.enc_offset;
 #else
-      _motor->FOC.enc_angle = POLE_PAIRS*((pkt.angle *2)%POLE_ANGLE)-_motor->FOC.enc_offset;
+      _motor->FOC.enc_angle = _motor->m.pole_pairs*((pkt.angle *2)%_motor->m.pole_angle)-_motor->FOC.enc_offset;
 #endif
       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
       pkt.revolutions = pkt.revolutions&0b0000000111111111;
