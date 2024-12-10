@@ -17,8 +17,8 @@
 #define ABS_MAX_PHASE_CURRENT 150.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.
 #define ABS_MAX_BUS_VOLTAGE 55.0f	//Limit is the 60V DCDCs
 #define ABS_MIN_BUS_VOLTAGE 12.0f	//DCDCs will not be able to create 12V line below this
-#define R_SHUNT 0.005f
-#define OPGAIN 50.0f
+#define R_SHUNT 0.0005f
+#define OPGAIN 20.0f
 
 #define R_VBUS_BOTTOM 2200.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 39000.0f
