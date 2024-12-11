@@ -45,7 +45,7 @@ void MESChfi_Toggle(MESC_motor_typedef *_motor){
 			||((fabsf(_motor->FOC.eHz)>30.0f))){
 		_motor->HFI.inject = 0;
 		_motor->FOC.Current_bandwidth = CURRENT_BANDWIDTH;
-	} else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < (_motor->HFI.toggle_voltage-1.0f))
+	} else if(((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) < (_motor->HFI.toggle_voltage-1.0f))//HFI hysteresis voltage hard coded as 1.0V
 			&&((_motor->FOC.Vdq.q-_motor->FOC.Idq_smoothed.q*_motor->m.R) > -(_motor->HFI.toggle_voltage-1.0f))
 			&&(_motor->HFI.Type !=HFI_TYPE_NONE)){
 		_motor->HFI.int_err = _motor->FOC.PLL_int;

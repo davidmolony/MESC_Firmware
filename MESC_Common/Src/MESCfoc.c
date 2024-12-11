@@ -1252,7 +1252,7 @@ case SQRT_CIRCLE_LIM_VD:
 		//_motor->FOC.HFI_Threshold = ((HFI_VOLTAGE*sqrt2*2.0f)*_motor->FOC.pwm_period)/((_motor->m.L_D+_motor->m.L_Q)*0.5f);
 		if(HFI_THRESHOLD==0.0f){
 		_motor->HFI.toggle_voltage = mtr->Conv.Vbus*0.05f;
-			if(_motor->HFI.toggle_voltage<1.0f){_motor->HFI.toggle_voltage = 1.0f;}
+			if(_motor->HFI.toggle_voltage<1.5f){_motor->HFI.toggle_voltage = 1.5f;} //Must be greater than HFI hysteresis
 		}else{
 		_motor->HFI.toggle_voltage = HFI_THRESHOLD;
 		}

@@ -125,6 +125,10 @@
 #define DEFAULT_HFI_TYPE HFI_TYPE_NONE
 #endif
 
+#ifndef DEFAULT_STARTUP_SENSOR
+#define DEFAULT_STARTUP_SENSOR STARTUP_SENSOR_OPENLOOP
+#endif
+
 #ifndef CURRENT_BANDWIDTH
 #define CURRENT_BANDWIDTH 0.15f*PWM_FREQUENCY //Note, current bandwidth in rads-1, PWMfrequency in Hz.
 #endif

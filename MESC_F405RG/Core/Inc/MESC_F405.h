@@ -11,8 +11,8 @@
 //#include "Squareboard.h"
 //#include "12FETP.h"
 //#include "30FETP.h"
-//#include "RUN18.h"
-#include "Q6F_minideskr1.h"
+#include "RUN18.h"
+//#include "Q6F_minideskr1.h"
 
 
 #define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!
