@@ -110,7 +110,7 @@
 #endif
 //HFI related
 #ifndef HFI_VOLTAGE
-#define HFI_VOLTAGE 4.0f
+#define HFI_VOLTAGE 2.0f
 #endif
 
 #ifndef HFI_TEST_CURRENT
@@ -119,6 +119,10 @@
 
 #ifndef HFI_THRESHOLD
 #define HFI_THRESHOLD 3.0f
+#endif
+
+#ifndef DEFAULT_HFI_TYPE
+#define DEFAULT_HFI_TYPE HFI_TYPE_NONE
 #endif
 
 #ifndef CURRENT_BANDWIDTH

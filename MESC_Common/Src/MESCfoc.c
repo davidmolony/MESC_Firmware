@@ -149,13 +149,15 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 	_motor->ControlMode = DEFAULT_CONTROL_MODE;
 
 	_motor->MotorSensorMode = DEFAULT_SENSOR_MODE;
+	_motor->SLStartupSensor = DEFAULT_STARTUP_SENSOR;
 	_motor->HFI.Type = DEFAULT_HFI_TYPE;
+	if(_motor->SLStartupSensor != STARTUP_SENSOR_HFI){_motor->HFI.Type = HFI_TYPE_NONE;}
+	_motor->meas.hfi_voltage = HFI_VOLTAGE;
 
 	_motor->meas.measure_current = I_MEASURE;
 	_motor->meas.measure_voltage = V_MEASURE;
 	_motor->meas.measure_closedloop_current = I_MEASURE_CLOSEDLOOP;
 	_motor->FOC.pwm_frequency =PWM_FREQUENCY;
-	_motor->meas.hfi_voltage = HFI_VOLTAGE;
 
 
 	//Init Hall sensor
