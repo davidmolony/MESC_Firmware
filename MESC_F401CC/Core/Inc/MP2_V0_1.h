@@ -65,4 +65,17 @@
 
 //#define USE_SALIENT_OBSERVER //If not defined, it assumes that Ld and Lq are equal, which is fine usually.
 
+
+#define REVERSE_GPIO GPIOB
+#define REVERSE_GPIO_PIN GPIO_PIN_11
+#define REVERSE_IONO 11
+
+#define SIDESTAND_GPIO GPIOB
+#define SIDESTAND_GPIO_PIN GPIO_PIN_10
+#define SIDESTAND_IONO 10
+
+#define BRAKE_GPIO GPIOA
+#define BRAKE_GPIO_PIN GPIO_PIN_5
+#define BRAKE_IONO 5
+
 #endif /* INC_MP2_V0_1_H_ */

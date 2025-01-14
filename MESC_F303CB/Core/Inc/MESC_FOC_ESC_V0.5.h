@@ -30,6 +30,19 @@
 #define MAX_ID_REQUEST 10.0f
 #define MAX_IQ_REQUEST 30.0f
 
+
+#define REVERSE_GPIO GPIOB
+#define REVERSE_GPIO_PIN GPIO_PIN_11
+#define REVERSE_IONO 11
+
+#define SIDESTAND_GPIO GPIOB
+#define SIDESTAND_GPIO_PIN GPIO_PIN_10
+#define SIDESTAND_IONO 10
+
+#define BRAKE_GPIO GPIOA
+#define BRAKE_GPIO_PIN GPIO_PIN_5
+#define BRAKE_IONO 5
+
 #define SEVEN_SECTOR		//Normal SVPWM implemented as midpoint clamp. If not defined, you will get 5 sector, bottom clamp
 //#define DEADTIME_COMP
 #define DEADTIME_COMP_V 5 	//Arbitrary value for now, needs parametising.

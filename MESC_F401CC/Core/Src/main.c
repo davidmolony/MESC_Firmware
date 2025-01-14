@@ -22,13 +22,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "MESCprofile.h"
+#include "MESCfoc.h"
 #include "MESCmotor.h"
 #include "MESCtemp.h"
-
-
-#include "MESCuart.h"
-#include "Simple_coms.h"
 
 /* USER CODE END Includes */
 
@@ -62,8 +58,6 @@ UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
-volatile uint32_t swvcounter;
-COMS_data_t com1;
 
 /* USER CODE END PV */
 
@@ -143,8 +137,8 @@ int main(void)
 
 
 //Initialise MESC
-motor_init(NULL);
-MESCInit(&mtr[0]);
+	motor_init(&mtr[0]);
+	MESCfoc_Init(&mtr[0]);
 
   /* USER CODE END 2 */
 
