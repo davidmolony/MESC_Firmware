@@ -30,7 +30,7 @@
  *warranties can reasonably be honoured.
  ******************************************************************************
  */
-
+#include <math.h>
 #include "MESCmeasure.h"
 #include "MESCpwm.h"
 #include "MESCfluxobs.h"

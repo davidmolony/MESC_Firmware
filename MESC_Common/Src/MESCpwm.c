@@ -216,7 +216,7 @@ if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.injec
     	    //Concept here is that if we are close to the VBus max, we just do not turn the FET off.
     	    //Set CCRx to ARR, record how much was added, then next cycle, remove it from the count.
     	    //If the duty is still above the threshold, the CCR will still be set to ARR, until the duty request is sufficiently low...
-    	static int carryU, carryV, carryW;
+    	//static int carryU, carryV, carryW;
 
 //    		_motor->mtimer->Instance->CCR1 = 	_motor->mtimer->Instance->CCR1 - carryU;
 //    		_motor->mtimer->Instance->CCR2 = 	_motor->mtimer->Instance->CCR2 - carryV;

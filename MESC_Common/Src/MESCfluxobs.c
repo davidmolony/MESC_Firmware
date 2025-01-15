@@ -164,7 +164,7 @@ case ORTEGA_ORIGINAL:
 //This results in a decreasing power factor with higher gain but remains stable.
 
 //Adapt inductance
-	float Lnow = _motor->m.L_D; + 0.5*(_motor->m.L_Q - _motor->m.L_D) * (_motor->FOC.Idq.q * _motor->FOC.Idq.q) / (_motor->FOC.Idq.q * _motor->FOC.Idq.q + _motor->FOC.Idq.d * _motor->FOC.Idq.d);
+	float Lnow = _motor->m.L_D + 0.5*(_motor->m.L_Q - _motor->m.L_D) * (_motor->FOC.Idq.q * _motor->FOC.Idq.q) / (_motor->FOC.Idq.q * _motor->FOC.Idq.q + _motor->FOC.Idq.d * _motor->FOC.Idq.d);
 
 	float L_ia = Lnow * _motor->FOC.Iab.a;
 	float L_ib = Lnow * _motor->FOC.Iab.b;

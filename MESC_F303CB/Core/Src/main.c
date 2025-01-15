@@ -191,7 +191,6 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-    uint32_t i = 0;
     while (1)
     {
 

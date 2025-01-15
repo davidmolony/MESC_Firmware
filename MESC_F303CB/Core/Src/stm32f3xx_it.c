@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "MESCerror.h"
+#include "MESCpwm.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

@@ -49,9 +49,23 @@ typedef struct {
 }Vehicle_s;
 
 Vehicle_s vehicle;
-#define getReverseState(...) ((REVERSE_GPIO->IDR >> (REVERSE_IONO)) & 0x1)
-#define getSidestandState(...) ((SIDESTAND_GPIO->IDR >> (SIDESTAND_IONO)) & 0x1)
-#define getBrakeState(...) ((BRAKE_GPIO->IDR >> (BRAKE_IONO)) & 0x1)
+#ifdef REVERSE_GPIO
+	#define getReverseState(...) ((REVERSE_GPIO->IDR >> (REVERSE_IONO)) & 0x1)
+#else
+	#define getReverseState(...) (1)
+#endif
+
+#ifdef SIDESTAND_GPIO
+	#define getSidestandState(...) ((SIDESTAND_GPIO->IDR >> (SIDESTAND_IONO)) & 0x1)
+#else
+	#define getSidestandState(...) (1)
+#endif
+
+#ifdef BRAKE_GPIO
+	#define getBrakeState(...) ((BRAKE_GPIO->IDR >> (BRAKE_IONO)) & 0x1)
+#else
+	#define getBrakeState(...) (1)
+#endif
 
 uint32_t vehicle_state = VEHICLE_IDLE;
 uint32_t vehicle_direction = VEHICLE_FORWARD;
