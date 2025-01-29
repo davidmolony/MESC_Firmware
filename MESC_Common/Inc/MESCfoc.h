@@ -110,7 +110,7 @@
 #endif
 //HFI related
 #ifndef HFI_VOLTAGE
-#define HFI_VOLTAGE 4.0f
+#define HFI_VOLTAGE 2.0f
 #endif
 
 #ifndef HFI_TEST_CURRENT
@@ -119,6 +119,14 @@
 
 #ifndef HFI_THRESHOLD
 #define HFI_THRESHOLD 3.0f
+#endif
+
+#ifndef DEFAULT_HFI_TYPE
+#define DEFAULT_HFI_TYPE HFI_TYPE_NONE
+#endif
+
+#ifndef DEFAULT_STARTUP_SENSOR
+#define DEFAULT_STARTUP_SENSOR STARTUP_SENSOR_OPENLOOP
 #endif
 
 #ifndef CURRENT_BANDWIDTH
@@ -271,6 +279,7 @@ typedef struct MOTORProfile
     float       Pmax;         // Watt
     uint32_t    RPMmax;       // 1/minute
     uint8_t     pole_pairs;
+    uint16_t 	pole_angle;
     uint8_t     direction;
     uint8_t     _[2];
     float       L_D;          // Henry
@@ -647,6 +656,7 @@ typedef struct {
 	float special_injectionVd;
 	float special_injectionVq;
 	float toggle_voltage;
+	float toggle_eHz;
 	float mod_didq;
 	float Gain;
 	float int_err;

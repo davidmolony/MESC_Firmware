@@ -71,7 +71,7 @@
 
 #elif defined(QS165)
 #define MAX_MOTOR_PHASE_CURRENT 350.0f //350A seems like a reasonable upper limit for these
-#define DEFAULT_MOTOR_POWER 5000.0f //Go on, change this to 15000
+#define DEFAULT_MOTOR_POWER 12000.0f //Go on, change this to 15000
 #define DEFAULT_FLUX_LINKAGE 0.0128f//Set this to the motor linkage in wB
 #define DEFAULT_MOTOR_Ld 0.000087f //Henries
 #define DEFAULT_MOTOR_Lq 0.000099f//Henries
@@ -79,17 +79,26 @@
 #define DEFAULT_MOTOR_PP 7 //Pole Pairs
 //This assumes a 6.5mohm QS165 and 1.5mohm of MOS and cable. With such low resistance, it becomes important
 
+
 #elif defined(QS165V2)
-#define MAX_MOTOR_PHASE_CURRENT 450.0f //450A seems like a reasonable upper limit for these V2
-#define DEFAULT_MOTOR_POWER 12000.0f //Go on, change this to 15000
+#define MAX_MOTOR_PHASE_CURRENT 600.0f //600A seems like a reasonable upper limit for these V2
+#define DEFAULT_MOTOR_POWER 12000.0f //
 #define DEFAULT_FLUX_LINKAGE 0.019f//Set this to the motor linkage in wB
 #define DEFAULT_MOTOR_Ld 0.000042f //Henries
 #define DEFAULT_MOTOR_Lq 0.000065f//Henries
 #define DEFAULT_MOTOR_R 0.0060f //Ohms
 #define DEFAULT_MOTOR_PP 5 //Pole Pairs
-//This assumes a 5mohm QS165V2 and 1.5mohm of MOS and cable. With such low resistance, it becomes important
+//This assumes a 4.5mohm QS165V2 and 1.5mohm of MOS and cable. With such low resistance, it becomes important
 
-
+#elif defined(QS165_50H)
+#define MAX_MOTOR_PHASE_CURRENT 800.0f //800A seems like a reasonable upper limit for these V2
+#define DEFAULT_MOTOR_POWER 20000.0f //
+#define DEFAULT_FLUX_LINKAGE 0.0126f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.0000125f //Henries
+#define DEFAULT_MOTOR_Lq 0.0000205f//Henries
+#define DEFAULT_MOTOR_R 0.0027f //Ohms
+#define DEFAULT_MOTOR_PP 5 //Pole Pairs
+//This assumes a 1.7mohm QS165V2 and 1.0mohm of MOS and cable. With such low resistance, it becomes important
 
 #elif defined(QS138_90H)
 #define MAX_MOTOR_PHASE_CURRENT 700.0f //There seems to be no limit for these
@@ -111,12 +120,30 @@
 
 #elif defined(PROPDRIVE2830_1000KV) //Can't remember, guessing.
 #define MAX_MOTOR_PHASE_CURRENT 20.0f //
-#define DEFAULT_MOTOR_POWER 400.0f //Go on, change this to 20000...
-#define DEFAULT_FLUX_LINKAGE 0.000098f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_POWER 400.0f //
+#define DEFAULT_FLUX_LINKAGE 0.00098f//Set this to the motor linkage in wB
 #define DEFAULT_MOTOR_Ld 0.000020f //Henries
 #define DEFAULT_MOTOR_Lq 0.000028f//Henries
 #define DEFAULT_MOTOR_R 0.062f //Ohms
 #define DEFAULT_MOTOR_PP 6 //Pole Pairs
+
+#elif defined(Q4120_700KV) //Nice little aliexp motor.
+#define MAX_MOTOR_PHASE_CURRENT 100.0f //
+#define DEFAULT_MOTOR_POWER 3000.0f //
+#define DEFAULT_FLUX_LINKAGE 0.00135f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.0000045f //Henries
+#define DEFAULT_MOTOR_Lq 0.0000065f//Henries
+#define DEFAULT_MOTOR_R 0.009f //Ohms
+#define DEFAULT_MOTOR_PP 7 //Pole Pairs
+
+#elif defined(Q3513_700KV) //Nice little aliexp motor.
+#define MAX_MOTOR_PHASE_CURRENT 50.0f //
+#define DEFAULT_MOTOR_POWER 1500.0f //
+#define DEFAULT_FLUX_LINKAGE 0.00140f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.000012f //Henries
+#define DEFAULT_MOTOR_Lq 0.000016f//Henries
+#define DEFAULT_MOTOR_R 0.021f //Ohms
+#define DEFAULT_MOTOR_PP 7 //Pole Pairs
 
 #elif defined(PKP246D23A2) //Can't remember, guessing.
 #define MAX_MOTOR_PHASE_CURRENT 2.3f //

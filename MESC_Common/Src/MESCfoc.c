@@ -149,13 +149,15 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 	_motor->ControlMode = DEFAULT_CONTROL_MODE;
 
 	_motor->MotorSensorMode = DEFAULT_SENSOR_MODE;
+	_motor->SLStartupSensor = DEFAULT_STARTUP_SENSOR;
 	_motor->HFI.Type = DEFAULT_HFI_TYPE;
+	if(_motor->SLStartupSensor != STARTUP_SENSOR_HFI){_motor->HFI.Type = HFI_TYPE_NONE;}
+	_motor->meas.hfi_voltage = HFI_VOLTAGE;
 
 	_motor->meas.measure_current = I_MEASURE;
 	_motor->meas.measure_voltage = V_MEASURE;
 	_motor->meas.measure_closedloop_current = I_MEASURE_CLOSEDLOOP;
 	_motor->FOC.pwm_frequency =PWM_FREQUENCY;
-	_motor->meas.hfi_voltage = HFI_VOLTAGE;
 
 
 	//Init Hall sensor
@@ -1190,7 +1192,7 @@ case SQRT_CIRCLE_LIM_VD:
     _motor->FOC.PWMmid = _motor->mtimer->Instance->ARR * 0.5f;
 
     _motor->FOC.ADC_duty_threshold = _motor->mtimer->Instance->ARR * 0.90f;
-
+    _motor->m.pole_angle = 65536/_motor->m.pole_pairs;
     calculateFlux(_motor);
 
     //PID controller gains
@@ -1250,7 +1252,7 @@ case SQRT_CIRCLE_LIM_VD:
 		//_motor->FOC.HFI_Threshold = ((HFI_VOLTAGE*sqrt2*2.0f)*_motor->FOC.pwm_period)/((_motor->m.L_D+_motor->m.L_Q)*0.5f);
 		if(HFI_THRESHOLD==0.0f){
 		_motor->HFI.toggle_voltage = mtr->Conv.Vbus*0.05f;
-			if(_motor->HFI.toggle_voltage<3.0f){_motor->HFI.toggle_voltage = 3.0f;}
+			if(_motor->HFI.toggle_voltage<1.5f){_motor->HFI.toggle_voltage = 1.5f;} //Must be greater than HFI hysteresis
 		}else{
 		_motor->HFI.toggle_voltage = HFI_THRESHOLD;
 		}
@@ -1743,9 +1745,9 @@ void MESCTrack(MESC_motor_typedef *_motor) {
 
       pkt.angle = pkt.angle & 0x7fff;
 #ifdef ENCODER_DIR_REVERSED
-      	  _motor->FOC.enc_angle = -POLE_PAIRS*((pkt.angle *2)%POLE_ANGLE)-_motor->FOC.enc_offset;
+      	  _motor->FOC.enc_angle = -_motor->m.pole_pairs*((pkt.angle *2)%_motor->m.pole_angle)-_motor->FOC.enc_offset;
 #else
-      _motor->FOC.enc_angle = POLE_PAIRS*((pkt.angle *2)%POLE_ANGLE)-_motor->FOC.enc_offset;
+      _motor->FOC.enc_angle = _motor->m.pole_pairs*((pkt.angle *2)%_motor->m.pole_angle)-_motor->FOC.enc_offset;
 #endif
       HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, GPIO_PIN_SET);
       pkt.revolutions = pkt.revolutions&0b0000000111111111;
