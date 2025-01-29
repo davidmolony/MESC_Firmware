@@ -475,7 +475,8 @@ void populate_vars(){
 	TERM_addVar(mtr[0].FOC.Current_bandwidth		, 200.0f	, 10000.0f	, "FOC_curr_BW"	, "Current Controller Bandwidth"															, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].HFI.Type						, 0			, 3			, "FOC_hfi_type"	, "HFI type [0=None, 1=45deg, 2=d axis]"												, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.hfi_voltage				, 0.0f		, 50.0f		, "FOC_hfi_volt"	, "HFI voltage"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
-	TERM_addVar(mtr[0].HFI.mod_didq					, 0.0f		, 2.0f		, "FOC_hfi_gain"	, "HFI gain"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	//TERM_addVar(mtr[0].HFI.mod_didq					, 0.0f		, 2.0f		, "FOC_hfi_gain"	, "HFI gain"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].HFI.toggle_eHz				, 0.0f		, 2000.0f	, "FOC_hfi_eHz"	, "HFI Max Frequency"																		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].FOC.FW_curr_max				, 0.0f		, 300.0f	, "par_fw_curr"		, "Max field weakenning current"														, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.measure_current			, 0.5f		, 100.0f	, "meas_curr"	, "Measuring current"																		, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].meas.measure_closedloop_current, 0.5f	, 100.0f	, "meas_cl_curr", "Measuring q closed loop current"															, VAR_ACCESS_RW	, NULL		, &TERM_varList);
@@ -518,6 +519,7 @@ void populate_vars(){
 	TERM_addVar(mtr[0].options.use_lr_observer		, 0			, 1			, "opt_lr_obs"  , "Use LR observer"																			, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.has_motor_temp_sensor, 0			, 1			, "opt_motor_temp"  , "Motor has temperature sensor"														, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.app_type				, 0			, 3			, "opt_app_type"  , "App type, 0=none, 1=Vehicle, 2,3 = undefined"											, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].ControlMode					, 0			, 4			, "opt_cont_type"  , "Cont type: 0=Torque, 1=Speed, 2=Duty, 3=Position, 4=Measuring, 5=Handbrake"											, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 
 	TERM_addVarArrayFloat(mtr[0].m.hall_flux, sizeof(mtr[0].m.hall_flux),  -10.0f, 10.0f, "Hall_flux", "hall start table", VAR_ACCESS_RW, NULL, &TERM_varList);
 

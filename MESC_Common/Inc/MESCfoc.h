@@ -656,6 +656,7 @@ typedef struct {
 	float special_injectionVd;
 	float special_injectionVq;
 	float toggle_voltage;
+	float toggle_eHz;
 	float mod_didq;
 	float Gain;
 	float int_err;
