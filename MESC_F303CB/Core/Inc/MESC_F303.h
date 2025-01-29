@@ -1,5 +1,6 @@
 //First, include the header specific to your board, which includes hardware parameters like ABS MAX, shunts, potential divdiders
 //Ensure only one board's header file is uncommented!
+#include <math.h>
 #include "MESC_FOC_ESC_V0.5.h"
 
 #define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!

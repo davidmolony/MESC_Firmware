@@ -27,7 +27,6 @@
 
 extern ADC_HandleTypeDef hadc1, hadc2, hadc3, hadc4;
 
-#include "MESCflash.h"
 #include "MESCfoc.h"
 
 extern OPAMP_HandleTypeDef hopamp1;
@@ -169,45 +168,7 @@ static uint32_t getFlashPageIndex( uint32_t const address )
     return (address / FLASH_PAGE_SIZE);
 }
 
-ProfileStatus eraseFlash( uint32_t const address, uint32_t const length )
-{
-    // Disallow zero length (could ignore)
-    if (length == 0)
-    {
-        return PROFILE_STATUS_ERROR_DATA_LENGTH;
-    }
 
-    uint32_t const spage = getFlashPageIndex( address              );
-    uint32_t const epage = getFlashPageIndex( address + length - 1 );
-
-    // Limit erasure to a single page
-    if (spage != epage)
-    {
-        return PROFILE_STATUS_ERROR_DATA_LENGTH;
-    }
-
-    FLASH_EraseInitTypeDef page_erase;
-
-    page_erase.TypeErase   = FLASH_TYPEERASE_PAGES;
-    page_erase.PageAddress = getFlashPageAddress( spage );
-    page_erase.NbPages     = (epage - spage + 1);
-
-    uint32_t result = 0;
-
-    HAL_FLASHEx_Erase( &page_erase, &result );
-
-    switch (result)
-    {
-        case HAL_OK:
-            return PROFILE_STATUS_SUCCESS;
-        case HAL_ERROR:
-            return PROFILE_STATUS_ERROR_STORAGE_WRITE;
-        case HAL_BUSY:
-        case HAL_TIMEOUT:
-        default:
-            return PROFILE_STATUS_UNKNOWN;
-    }
-}
 
 void mesc_init_1( MESC_motor_typedef *_motor ){
     HAL_ADCEx_Calibration_Start( &hadc1, ADC_SINGLE_ENDED );

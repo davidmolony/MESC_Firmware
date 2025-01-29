@@ -5,8 +5,8 @@
  *      Author: jkerrinnes
  */
 
+#include <math.h>
 #include "MESClrobs.h"
-
 
 void MESClrobs_Init(MESC_motor_typedef *_motor){
 	_motor->lrobs.plusminus = 1;

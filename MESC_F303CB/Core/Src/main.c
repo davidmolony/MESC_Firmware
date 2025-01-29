@@ -27,17 +27,9 @@
 //#include "usbd_cdc_if.c"
 //#include "usbd_cdc.h"
 
-#include "MESCbat.h"
-#include "MESCflash.h"
-#include "MESCprofile.h"
 #include "MESCmotor.h"
-#include "MESCspeed.h"
 #include "MESCtemp.h"
-#include "MESCuart.h"
-#include "MESCui.h"
-
-#include "ssd1306.h"
-#include "fonts.h"
+#include "MESCfoc.h"
 
 #include <stdio.h>
 
@@ -178,54 +170,18 @@ int main(void)
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
-	ssd1306_Init( &hi2c1 );
-	HAL_Delay( 1000 );
-	ssd1306_Fill( White );
-	ssd1306_UpdateScreen( &hi2c1 );
 
-    ssd1306_SetCursor(23,4);
-    ssd1306_WriteString("Hello!",Font_7x10,Black);
-    ssd1306_SetCursor(23,15);
-	ssd1306_WriteString("MESC!",Font_11x18,Black);
-    ssd1306_SetCursor(23,35);
-    ssd1306_WriteString("World!",Font_16x26,Black);
 
-	ssd1306_UpdateScreen( &hi2c1 );
-#if defined USE_PROFILE
-    /*
-    Starting System Initialisation
-    */
-
-    // Initialise UART CLI IO
-    uart_init();
-    // NOTE - CLI messages are available after this point
-    
-    // Attach flash IO to profile
-    flash_register_profile_io();
-    // Load stored profile
-    profile_init();
-
-    // Initialise components
-    bat_init( PROFILE_DEFAULT );
-    motor_init( PROFILE_DEFAULT );
-    speed_init( PROFILE_DEFAULT );
-    // Initialise user Interface
-    ui_init( PROFILE_DEFAULT );
-
-    //speed_register_vars( &motor1.FOC.eHz, &motor1.m.pole_pairs );
-    /*
-    Finished System Initialisation
-    */
-#else
 	motor_init(NULL);
-#endif
 
     // TODO: you might want to have a flag here to signify if valid dataset has been retrieved from flash.
 
     //Initialise MESC
 	mtr[0].mtimer = &htim1;
 	mtr[0].stimer = &htim3;
-    MESCInit(&mtr[0]);
+
+	motor_init(&mtr[0]);
+	MESCfoc_Init(&mtr[0]);
 
     char message[20];
     int length = sprintf( message, "%s", "startup!!\r\n" );
@@ -235,7 +191,6 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-    uint32_t i = 0;
     while (1)
     {
 

@@ -25,8 +25,7 @@
 #include "MESChw_setup.h"
 
 #include "MESCfoc.h"
-
-#include "MESCflash.h"
+#include "MESCpwm.h"
 
 extern ADC_HandleTypeDef hadc1;
 
@@ -207,7 +206,7 @@ void mesc_init_3( MESC_motor_typedef *_motor )
 	
 	HAL_TIM_PWM_Start(_motor->mtimer, TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start(_motor->mtimer, TIM_CHANNEL_3);
-	generateBreak(_motor); //avoid a spurious pulse on startup
+	MESCpwm_generateBreak(_motor);//We have started the timers, but we really do not want them PWMing yet
 	HAL_Delay(10); //Delay enabling interrupt to avoid spurious error on startup due to ADC not being ready
 
 	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_AWD); //ToDo, how do I put this into the whole shabang with multiple motors?...

@@ -35,7 +35,7 @@
  *      Author: David Molony
  */
 
-#include "MESCApp.h""
+#include "MESCApp.h"
 #include "MESCfoc.h"
 #include "MESCmotor_state.h"
 #include "MESCerror.h"
@@ -51,22 +51,23 @@ typedef struct {
 Vehicle_s vehicle;
 
 /////Macros to read inputs
+
 #ifdef REVERSE_GPIO
-#define getReverseState(...) ((REVERSE_GPIO->IDR >> (REVERSE_IONO)) & 0x1)
+	#define getReverseState(...) ((REVERSE_GPIO->IDR >> (REVERSE_IONO)) & 0x1)
 #else
-#define getReverseState(...) 0x1; //Default forward
+	#define getReverseState(...) (1) //Default forward
 #endif
 
 #ifdef SIDESTAND_GPIO
-#define getSidestandState(...) ((SIDESTAND_GPIO->IDR >> (SIDESTAND_IONO)) & 0x1)
+	#define getSidestandState(...) ((SIDESTAND_GPIO->IDR >> (SIDESTAND_IONO)) & 0x1)
 #else
-#define getSidestandState(...) 0x1; //Default sidestand up, vehicle moves
+	#define getSidestandState(...) (1) //Default sidestand up, vehicle moves
 #endif
 
 #ifdef BRAKE_GPIO
-#define getBrakeState(...) ((BRAKE_GPIO->IDR >> (BRAKE_IONO)) & 0x1)
+	#define getBrakeState(...) ((BRAKE_GPIO->IDR >> (BRAKE_IONO)) & 0x1)
 #else
-#define getBrakeState(...) 0x1; //Default no brake, vehicle moves
+	#define getBrakeState(...) (1) //Default no brake, vehicle moves
 #endif
 
 uint32_t vehicle_state = VEHICLE_IDLE;

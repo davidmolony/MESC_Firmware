@@ -30,7 +30,7 @@
  *warranties can reasonably be honoured.
  ******************************************************************************
  */
-
+#include <math.h>
 #include "MESChfi.h"
 
 static MESCiq_s Idq[2] = {{.d = 0.0f, .q = 0.0f}, {.d = 0.0f, .q = 0.0f}};
