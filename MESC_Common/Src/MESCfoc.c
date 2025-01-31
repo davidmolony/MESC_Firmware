@@ -107,6 +107,12 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 	SLOWLED->MODER &= ~(0x2<<(SLOWLEDIONO*2));
 #endif
 
+#ifdef ENABLE_PIN
+	ENABLE_PIN->MODER |= 0x1<<(ENABLE_PINIONO*2);
+	ENABLE_PIN->MODER &= ~(0x2<<(ENABLE_PINIONO*2));
+	SLOWLED->BSRR = ENABLE_PINIO;
+#endif
+
 #ifdef KILLSWITCH_GPIO
 	KILLSWITCH_GPIO->MODER &= ~(0b11<<(2*KILLSWITCH_IONO));
 #endif
