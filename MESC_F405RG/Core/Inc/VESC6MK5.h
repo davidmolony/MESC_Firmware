@@ -18,8 +18,8 @@
 #define ABS_MAX_PHASE_CURRENT 160.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.
 #define ABS_MAX_BUS_VOLTAGE 55.0f
 #define ABS_MIN_BUS_VOLTAGE 12.0f
-#define R_SHUNT 1.0f
-#define OPGAIN (2.22e-3 * (4.7 / (4.7 + 2.2)))
+#define R_SHUNT 0.0005f
+#define OPGAIN 20.0f
 
 #define R_VBUS_BOTTOM 2200.0f //Phase and Vbus voltage sensors
 #define R_VBUS_TOP 39000.0f
