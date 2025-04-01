@@ -306,6 +306,7 @@ typedef struct {
   uint32_t encoder_pulse;
   uint32_t encoder_OK;
   uint16_t enc_angle;
+  float FOC_advance;
 
   uint16_t enc_period_count;//For PWM encoder interpolation
   uint16_t enc_ratio;//For ABI encoder PPR to uint16_t conversion
@@ -362,6 +363,9 @@ typedef struct {
   float flux_b;
   float flux_observed;
   float ortega_gain;
+  float BEMFd;
+  float BEMFq;
+  float BEMFdq_angle;
 
 //Hall start
   uint16_t hall_initialised;
@@ -677,7 +681,8 @@ enum OBSERVER_TYPE
 	NONE = 0,
 	MXLEMMING_LAMBDA = 1,
 	MXLEMMING = 2,
-	ORTEGA_ORIGINAL = 3
+	ORTEGA_ORIGINAL = 3,
+	PLL_OBS = 4
 };
 
 enum SQRT_CIRC

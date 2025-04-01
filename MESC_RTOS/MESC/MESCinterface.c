@@ -520,6 +520,10 @@ void populate_vars(){
 	TERM_addVar(mtr[0].options.has_motor_temp_sensor, 0			, 1			, "opt_motor_temp"  , "Motor has temperature sensor"														, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].options.app_type				, 0			, 3			, "opt_app_type"  , "App type, 0=none, 1=Vehicle, 2,3 = undefined"											, VAR_ACCESS_RW	, NULL		, &TERM_varList);
 	TERM_addVar(mtr[0].ControlMode					, 0			, 4			, "opt_cont_type"  , "Cont type: 0=Torque, 1=Speed, 2=Duty, 3=Position, 4=Measuring, 5=Handbrake"											, VAR_ACCESS_RW	, NULL		, &TERM_varList);
+	TERM_addVar(mtr[0].FOC.FOC_advance				, -10.0f	, 10.0f		, "FOC_Advance"	, "FOC advance, proportion of 1 PWM cycle"																	, VAR_ACCESS_RW	, callback	, &TERM_varList);
+
+
+//	_motor->FOC.FOC_advance
 
 	TERM_addVarArrayFloat(mtr[0].m.hall_flux, sizeof(mtr[0].m.hall_flux),  -10.0f, 10.0f, "Hall_flux", "hall start table", VAR_ACCESS_RW, NULL, &TERM_varList);
 

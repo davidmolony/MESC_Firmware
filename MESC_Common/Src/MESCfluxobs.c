@@ -159,7 +159,7 @@ case MXLEMMING:
 	break;
 
 case ORTEGA_ORIGINAL:
-//Seems that in the presence of hig salience, the Ortega observer stabilises better
+//Seems that in the presence of high salience, the Ortega observer stabilises better
 //This is becuase the application of the flux error adaptation is rotated by the L_ia and L_ib components
 //This results in a decreasing power factor with higher gain but remains stable.
 
@@ -200,12 +200,28 @@ case ORTEGA_ORIGINAL:
 				+ _motor->FOC.ortega_gain * (_motor->FOC.flux_b - L_ib) * err * _motor->FOC.pwm_period;
 //Calculate the angle
 	    if(_motor->HFI.inject==0){
-	    	_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2((_motor->FOC.flux_b - L_ib), _motor->FOC.flux_a - L_ia)) - 32768;
+	    	//_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2((_motor->FOC.flux_b - L_ib), _motor->FOC.flux_a - L_ia)) - 32768;
+	    	_motor->FOC.FOCAngle = (_motor->FOC.FOC_advance * _motor->FOC.PLL_int) + (uint16_t)(32768.0f + 10430.0f * fast_atan2((_motor->FOC.flux_b - L_ib), _motor->FOC.flux_a - L_ia)) - 32768;
+
 	    }
 
 	break;
+case PLL_OBS:
+//TBC
+//We are going to create an observer where the BEMFd and BEMFq are derrived from Vd and Vq, the cross coupling and the resistive losses
+//Error in the d axis voltage can be assumed to be because of the angle misalignment and fed into a PLL that will search for zero
+//Error in the q axis voltage assumed to be caused by incorrect lambda estimate so can be fed to the lambda feedback
+//Alternatively, the Atan of the BEMF produces an angle representing the voltage alignment error?
+//This could also be fed into a PLL...
+	_motor->FOC.BEMFd = _motor->FOC.Vdq.d - _motor->FOC.Idq.d * _motor->m.R - _motor->FOC.eHz * 6.28f *_motor->m.L_Q * _motor->FOC.Idq.q;
+	_motor->FOC.BEMFq = _motor->FOC.Vdq.q - _motor->FOC.Idq.q * _motor->m.R - _motor->FOC.eHz * 6.28f * (_motor->m.L_D * _motor->FOC.Idq.d + _motor->m.flux_linkage);
+//	Aside: atan of the BEMF should result in a fixed angle, complete with noise... This angle should represent the flux integration error...
+	_motor->FOC.BEMFdq_angle = fast_atan2(_motor->FOC.BEMFd, _motor->FOC.BEMFq);
+//_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + 10430.0f * _motor->FOC.BEMFdq_angle;
 
+	break;
 }//End of observer type switch
+
 
 
 

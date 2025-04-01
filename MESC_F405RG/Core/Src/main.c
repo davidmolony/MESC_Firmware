@@ -82,6 +82,9 @@ I2C_HandleTypeDef hi2c2;
 uint16_t MPU_present, MPU_present2;
 MPU6050_data_t MPU_instance_1, MPU_instance_2;
 #define MPU6050_ADDR 0xD0
+#define DAC_MEMORY_ADDRESS 0x40007400
+#define DAC_VALUE_ADDRESS 0x40007408
+
 
 
 /* USER CODE END PV */
@@ -156,6 +159,15 @@ int main(void)
   MX_CAN1_Init();
   /* USER CODE BEGIN 2 */
   //MX_I2C2_Init();
+
+//
+#ifdef DAC_REF
+  RCC->APB1ENR |= (0x01<<29);
+  volatile uint32_t* dacaddr = (volatile  uint32_t*)DAC_MEMORY_ADDRESS;
+ *dacaddr = 1;
+ volatile uint32_t* dacvaladdr = (volatile  uint32_t*)DAC_VALUE_ADDRESS;
+ *dacvaladdr = 2048;
+#endif
 
 #ifdef IC_TIMER
   MESC_IC_Init(IC_TIMER);
