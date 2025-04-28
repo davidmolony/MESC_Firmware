@@ -163,7 +163,15 @@
 #define DEFAULT_MOTOR_R 0.0210f //Ohms
 #define DEFAULT_MOTOR_PP 17 //Pole Pairs - No idea, guess
 
-#elif defined(BR3536_1200KV)
+#elif defined(BSM_AXIAL) //
+#define MAX_MOTOR_PHASE_CURRENT 60.0f
+#define DEFAULT_MOTOR_POWER 500.0f
+#define DEFAULT_FLUX_LINKAGE 0.0240f//Set this to the motor linkage in wB
+#define DEFAULT_MOTOR_Ld 0.00005f //Henries
+#define DEFAULT_MOTOR_Lq 0.000055f//Henries
+#define DEFAULT_MOTOR_R 0.0530f //Ohms
+#define DEFAULT_MOTOR_PP 7 //Pole Pairs
+#endif /* INC_MESC_MOTOR_DEFAULTS_H_ */
 
 //#elif defined() //... Define your motor parameters here...//
 
@@ -182,4 +190,4 @@
 
 #endif
 
-#endif /* INC_MESC_MOTOR_DEFAULTS_H_ */
+
