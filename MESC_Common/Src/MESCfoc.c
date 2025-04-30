@@ -572,6 +572,18 @@ void fastLoop(MESC_motor_typedef *_motor) {
     case MOTOR_STATE_ERROR:
       MESCpwm_generateBreak(_motor);  // Generate a break state (software disabling all PWM)
                         // Now panic and freak out
+      //Get the encoder angle still; we would like to continue tracking angle, there is no harm in it...
+	  getIncEncAngle(_motor);
+	  if(_motor->MotorSensorMode == MOTOR_SENSOR_MODE_INCREMENTAL_ENCODER){
+		  _motor->FOC.FOCAngle = _motor->FOC.enc_angle;
+	  }else{
+	  //Do the same for the flux observer...
+	  getRawADCVph(_motor);
+	  ADCPhaseConversion(_motor);
+	  MESCTrack(_motor);
+	  MESCfluxobs_run(_motor);
+	  }
+
       break;
 
     case MOTOR_STATE_ALIGN:
@@ -1795,8 +1807,10 @@ void  logVars(MESC_motor_typedef *_motor){
 	_motor->logging.Vd[_motor->logging.current_sample] = _motor->FOC.Vdq.d;
 	_motor->logging.Vq[_motor->logging.current_sample] = _motor->FOC.Vdq.q;
 	_motor->logging.angle[_motor->logging.current_sample] = _motor->FOC.FOCAngle;
-//	_motor->logging.angle[_motor->logging.current_sample] =	(uint16_t)_motor->hall.current_hall_state; //
 	_motor->logging.hallstate[_motor->logging.current_sample] = (uint16_t)_motor->hall.current_hall_state;
+	if(_motor->MotorSensorMode == MOTOR_SENSOR_MODE_INCREMENTAL_ENCODER){
+		_motor->logging.hallstate[_motor->logging.current_sample] = (uint16_t)_motor->enctimer->Instance->CCR3;
+	}
 	_motor->logging.current_sample++;
 	if(_motor->logging.current_sample>=LOGLENGTH){
 		_motor->logging.current_sample = 0;
