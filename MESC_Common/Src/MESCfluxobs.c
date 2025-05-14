@@ -227,7 +227,7 @@ case PLL_OBS:
 	_motor->FOC.BEMF_error = _motor->FOC.BEMF_kp * _motor->FOC.BEMFd/(_motor->FOC.eHz * 6.28f*_motor->m.flux_linkage);
 	_motor->FOC.BEMF_integral = _motor->FOC.BEMF_integral + _motor->FOC.BEMF_ki * _motor->FOC.BEMF_error;
     if(_motor->HFI.inject==0){
-    	_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + _motor->FOC.BEMF_error + _motor->FOC.BEMF_integral;
+    	_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (int)(10430.69f * (_motor->FOC.BEMF_error + _motor->FOC.BEMF_integral));
     }
 	break;
 }//End of observer type switch
