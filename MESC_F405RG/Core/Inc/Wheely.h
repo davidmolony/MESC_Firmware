@@ -55,7 +55,7 @@
 #define USE_FIELD_WEAKENINGV2
 
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
-#define INTERPOLATE_V7_ANGLE
+//#define INTERPOLATE_V7_ANGLE
 #define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_SENSORLESS
 //#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_HALL
 //#define DEFAULT_SENSOR_MODE MOTOR_SENSOR_MODE_OPENLOOP
@@ -105,15 +105,3 @@
 
 
 #endif /* INC_WHEELY_H_ */
-=======
-//#define KILLSWITCH_GPIO GPIOB
-//#define KILLSWITCH_PIN GPIO_PIN_3
-//#define KILLSWITCH_IONO 3
-
-
-//#define BRAKE_GPIO GPIOA
-//#define BRAKE_GPIO_PIN GPIO_PIN_5
-//#define BRAKE_IONO 5
-
-#endif /* INC_RUN18_H_ */
-

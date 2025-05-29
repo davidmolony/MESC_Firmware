@@ -214,7 +214,7 @@ case PLL_OBS:
 //Alternatively, the Atan of the BEMF produces an angle representing the voltage alignment error?
 //This could also be fed into a PLL...
 	_motor->FOC.BEMFd = _motor->FOC.Vdq.d - _motor->FOC.Idq.d * _motor->m.R - _motor->FOC.eHz * 6.28f *_motor->m.L_Q * _motor->FOC.Idq.q;
-	_motor->FOC.BEMFq = _motor->FOC.Vdq.q - _motor->FOC.Idq.q * _motor->m.R - _motor->FOC.eHz * 6.28f * (_motor->m.L_D * _motor->FOC.Idq.d + _motor->m.flux_linkage);
+	_motor->FOC.BEMFq = _motor->FOC.Vdq.q - _motor->FOC.Idq.q * _motor->m.R - _motor->FOC.eHz * 6.28f * (_motor->m.L_D * _motor->FOC.Idq.d);// + _motor->m.flux_linkage);
 //	Aside: atan of the BEMF should result in a fixed angle, complete with noise... This angle should represent the flux integration error...
 	_motor->FOC.BEMFdq_angle = fast_atan2(_motor->FOC.BEMFd, _motor->FOC.BEMFq);
 //_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + 10430.0f * _motor->FOC.BEMFdq_angle;
@@ -225,7 +225,7 @@ case PLL_OBS:
 
 
 	_motor->FOC.BEMF_error = _motor->FOC.BEMF_kp * _motor->FOC.BEMFd/(_motor->FOC.eHz * 6.28f*_motor->m.flux_linkage);
-	_motor->FOC.BEMF_integral = _motor->FOC.BEMF_integral + _motor->FOC.BEMF_ki * _motor->FOC.BEMF_error;
+	_motor->FOC.BEMF_integral = 0.9995*_motor->FOC.BEMF_integral + _motor->FOC.BEMF_ki * _motor->FOC.BEMF_error;
     if(_motor->HFI.inject==0){
     	_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (int)(10430.69f * (_motor->FOC.BEMF_error + _motor->FOC.BEMF_integral));
     }

@@ -266,6 +266,11 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 	_motor->pos.Kp = POS_KP;
 	_motor->pos.Ki = POS_KI;
 	_motor->pos.Kd = POS_KD;
+
+	//init the PLL observer
+	_motor->FOC.BEMF_kp = -0.25;
+	_motor->FOC.BEMF_ki = 0.001;
+
 	//
 	_motor->Raw.MOS_temp.V                  = 3.3f;
 	_motor->Raw.MOS_temp.R_F                = MESC_TEMP_MOS_R_F;
