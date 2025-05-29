@@ -34,6 +34,13 @@
 #define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
 #define DEADTIME_COMP_V 5
 //#define MAX_MODULATION 1.10f //Use this with 5 sector modulation if you want extra speed
+
+//Swap the Vsense
+#define GET_V_U	  _motor->Raw.Vu = hadc3.Instance->JDR2; //PhaseU Voltage
+#define GET_V_V	  _motor->Raw.Vv = hadc2.Instance->JDR2; //PhaseV Voltage
+#define GET_V_W	  _motor->Raw.Vw = hadc1.Instance->JDR2; //PhaseW Voltage
+
+
 //Inputs
 #define GET_THROTTLE_INPUT 		_motor->Raw.ADC_in_ext2 = 0.9f*_motor->Raw.ADC_in_ext2 + 0.1f*ADC1_buffer[0];  // Throttle for Wheely on PA3
 #define GET_THROTTLE_INPUT2 	0 //There is no second throttle input
