@@ -1,12 +1,14 @@
 /*
- * Run18-24s
+ * Wheely PCB
+
  *
  *  Created on: Aug 2024
  *      Author: HPEnvy
  */
 
-#ifndef INC_RUN18_H_
-#define INC_RUN18_H_
+#ifndef INC_WHEELY_H_
+#define INC_WHEELY_H_
+
 //Pick a motor for default
 #define Q4120_700KV//Q3513_700KV//MCMASTER_70KV_8080//QS165//CA120//
 #define PWM_FREQUENCY 20000
@@ -34,13 +36,22 @@
 #define DEADTIME_COMP		//This injects extra PWM duty onto the timer which effectively removes the dead time.
 #define DEADTIME_COMP_V 5
 //#define MAX_MODULATION 1.10f //Use this with 5 sector modulation if you want extra speed
+
+//Swap the Vsense
+#define GET_V_U	  _motor->Raw.Vu = hadc3.Instance->JDR2; //PhaseU Voltage
+#define GET_V_V	  _motor->Raw.Vv = hadc2.Instance->JDR2; //PhaseV Voltage
+#define GET_V_W	  _motor->Raw.Vw = hadc1.Instance->JDR2; //PhaseW Voltage
+
+
 //Inputs
 #define GET_THROTTLE_INPUT 		_motor->Raw.ADC_in_ext2 = 0.9f*_motor->Raw.ADC_in_ext2 + 0.1f*ADC1_buffer[0];  // Throttle for Wheely on PA3
 #define GET_THROTTLE_INPUT2 	0 //There is no second throttle input
 
 #define GET_FETU_T 			_motor->Raw.MOSu_T = hadc2.Instance->JDR4; //Temperature on PC5, ADC15
 
+
 #define GET_MOTOR_T _motor->Raw.Motor_T = ADC2_buffer[3]; //MotorT for Run on PB1, ADC2-9
+
 #define USE_FIELD_WEAKENINGV2
 
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
@@ -91,20 +102,18 @@
 #define IC_TIMER_RCPWM
 //#define IC_TIMER_ENCODER
 
+
+
+#endif /* INC_WHEELY_H_ */
+=======
 //#define KILLSWITCH_GPIO GPIOB
 //#define KILLSWITCH_PIN GPIO_PIN_3
 //#define KILLSWITCH_IONO 3
 
-#define REVERSE_GPIO GPIOB
-#define REVERSE_GPIO_PIN GPIO_PIN_11
-#define REVERSE_IONO 11
-
-#define SIDESTAND_GPIO GPIOB
-#define SIDESTAND_GPIO_PIN GPIO_PIN_10
-#define SIDESTAND_IONO 10
 
 //#define BRAKE_GPIO GPIOA
 //#define BRAKE_GPIO_PIN GPIO_PIN_5
 //#define BRAKE_IONO 5
 
 #endif /* INC_RUN18_H_ */
+

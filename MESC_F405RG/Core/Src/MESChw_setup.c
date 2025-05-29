@@ -104,9 +104,16 @@ void getRawADC(MESC_motor_typedef *_motor) {
 
 void getRawADCVph(MESC_motor_typedef *_motor){
 	//Voltage sense
+#ifndef GET_V_U
 	  _motor->Raw.Vu = hadc1.Instance->JDR2; //PhaseU Voltage
 	  _motor->Raw.Vv = hadc2.Instance->JDR2; //PhaseV Voltage
 	  _motor->Raw.Vw = hadc3.Instance->JDR2; //PhaseW Voltage
+#else
+	  GET_V_U
+	  GET_V_V
+	  GET_V_W
+#endif
+
 }
 
 
