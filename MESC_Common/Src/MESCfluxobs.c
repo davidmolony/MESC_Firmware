@@ -208,7 +208,7 @@ case ORTEGA_ORIGINAL:
 	break;
 case PLL_OBS:
 //TBC
-//We are going to create an observer where the BEMFd and BEMFq are derrived from Vd and Vq, the cross coupling and the resistive losses
+//We are going to create an observer where the BEMFd and BEMFq are derived from Vd and Vq, the cross coupling and the resistive losses
 //Error in the d axis voltage can be assumed to be because of the angle misalignment and fed into a PLL that will search for zero
 //Error in the q axis voltage assumed to be caused by incorrect lambda estimate so can be fed to the lambda feedback
 //Alternatively, the Atan of the BEMF produces an angle representing the voltage alignment error?
@@ -219,6 +219,16 @@ case PLL_OBS:
 	_motor->FOC.BEMFdq_angle = fast_atan2(_motor->FOC.BEMFd, _motor->FOC.BEMFq);
 //_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + 10430.0f * _motor->FOC.BEMFdq_angle;
 
+
+	//The angle error can be assessed as Vderr = w*lambda*sin(theta), where we can approximate sin(theta) = theta
+	//There is also an inductance misalignment factor, TBC...
+
+
+	_motor->FOC.BEMF_error = _motor->FOC.BEMF_kp * _motor->FOC.BEMFd/(_motor->FOC.eHz * 6.28f*_motor->m.flux_linkage);
+	_motor->FOC.BEMF_integral = _motor->FOC.BEMF_integral + _motor->FOC.BEMF_ki * _motor->FOC.BEMF_error;
+    if(_motor->HFI.inject==0){
+    	_motor->FOC.FOCAngle = _motor->FOC.FOCAngle + (int)(10430.69f * (_motor->FOC.BEMF_error + _motor->FOC.BEMF_integral));
+    }
 	break;
 }//End of observer type switch
 

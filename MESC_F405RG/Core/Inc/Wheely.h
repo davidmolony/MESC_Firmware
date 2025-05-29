@@ -1,5 +1,6 @@
 /*
  * Wheely PCB
+
  *
  *  Created on: Aug 2024
  *      Author: HPEnvy
@@ -7,6 +8,7 @@
 
 #ifndef INC_WHEELY_H_
 #define INC_WHEELY_H_
+
 //Pick a motor for default
 #define Q4120_700KV//Q3513_700KV//MCMASTER_70KV_8080//QS165//CA120//
 #define PWM_FREQUENCY 20000
@@ -47,7 +49,9 @@
 
 #define GET_FETU_T 			_motor->Raw.MOSu_T = hadc2.Instance->JDR4; //Temperature on PC5, ADC15
 
-#define GET_MOTOR_T _motor->Raw.Motor_T = ADC2_buffer[3]; //MotorT for WHEELY on PB1
+
+#define GET_MOTOR_T _motor->Raw.Motor_T = ADC2_buffer[3]; //MotorT for Run on PB1, ADC2-9
+
 #define USE_FIELD_WEAKENINGV2
 
 /////////////////////Related to ANGLE ESTIMATION////////////////////////////////////////
@@ -99,4 +103,17 @@
 //#define IC_TIMER_ENCODER
 
 
+
 #endif /* INC_WHEELY_H_ */
+=======
+//#define KILLSWITCH_GPIO GPIOB
+//#define KILLSWITCH_PIN GPIO_PIN_3
+//#define KILLSWITCH_IONO 3
+
+
+//#define BRAKE_GPIO GPIOA
+//#define BRAKE_GPIO_PIN GPIO_PIN_5
+//#define BRAKE_IONO 5
+
+#endif /* INC_RUN18_H_ */
+

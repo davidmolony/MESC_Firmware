@@ -366,6 +366,10 @@ typedef struct {
   float BEMFd;
   float BEMFq;
   float BEMFdq_angle;
+  float BEMF_kp;
+  float BEMF_ki;
+  float BEMF_error;
+  float BEMF_integral;
 
 //Hall start
   uint16_t hall_initialised;

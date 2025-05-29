@@ -1028,19 +1028,30 @@ void hallAngleEstimator(MESC_motor_typedef *_motor) {  // Implementation using t
     // Here we are going to do a PID loop to control the dq currents, converting
     // Idq into Vdq Calculate the errors
     static MESCiq_s Idq_err;
-    Idq_err.q = (_motor->FOC.Idq_req.q - _motor->FOC.Idq.q) * _motor->FOC.Iq_pgain;
+    static MESCiq_s Idq_last;
+
+    //We average the current and the last reading since this cancels the HFI injection
+    Idq_err.q = (_motor->FOC.Idq_req.q - 0.5f *(_motor->FOC.Idq.q + Idq_last.q)) * _motor->FOC.Iq_pgain;
+    Idq_last.q = _motor->FOC.Idq_req.q;
+    //    Idq_err.q = (_motor->FOC.Idq_req.q - _motor->FOC.Idq.q) * _motor->FOC.Iq_pgain;
 
 
     if(_motor->options.field_weakening != FIELD_WEAKENING_OFF){
 		if((_motor->FOC.FW_current<_motor->FOC.Idq_req.d)&&(_motor->MotorState==MOTOR_STATE_RUN)){//Field weakenning is -ve, but there may already be d-axis from the MTPA
-			Idq_err.d = (_motor->FOC.FW_current - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
+//			Idq_err.d = (_motor->FOC.FW_current - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
+		    Idq_err.d = (_motor->FOC.FW_current - 0.5f *(_motor->FOC.Idq.d + Idq_last.d)) * _motor->FOC.Id_pgain;
+
 		}else{
-			Idq_err.d = (_motor->FOC.Idq_req.d - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
+//			Idq_err.d = (_motor->FOC.Idq_req.d - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
+		    Idq_err.d = (_motor->FOC.Idq_req.d - 0.5f *(_motor->FOC.Idq.d + Idq_last.d)) * _motor->FOC.Id_pgain;
 		}
     }else{
-    	Idq_err.d = (_motor->FOC.Idq_req.d - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
+//    	Idq_err.d = (_motor->FOC.Idq_req.d - _motor->FOC.Idq.d) * _motor->FOC.Id_pgain;
+	    Idq_err.d = (_motor->FOC.Idq_req.d - 0.5f *(_motor->FOC.Idq.d + Idq_last.d)) * _motor->FOC.Id_pgain;
+
     	//if we do not use the field weakening controller, we still want to control the d axis current...
     }
+    Idq_last.d = _motor->FOC.Idq_req.d;
 
 
     // Integral error

@@ -10,7 +10,7 @@
 //Pick a motor for default
 #define Q4120_700KV//Q3513_700KV//MCMASTER_70KV_8080//QS165//CA120//
 #define PWM_FREQUENCY 20000
-#define CUSTOM_DEADTIME 500 //ns, MAX 1500ns! implementation in MESCInit().
+#define CUSTOM_DEADTIME 360 //ns, MAX 1500ns! implementation in MESCInit().
 //#define MISSING_VCURRSENSOR
 
 #define SHUNT_POLARITY 1.0f
