@@ -44,7 +44,7 @@
 
 
 //Inputs
-#define GET_THROTTLE_INPUT 		_motor->Raw.ADC_in_ext2 = 0.9f*_motor->Raw.ADC_in_ext2 + 0.1f*ADC1_buffer[0];  // Throttle for Wheely on PA3
+#define GET_THROTTLE_INPUT 		_motor->Raw.ADC_in_ext1 = 0.9f*_motor->Raw.ADC_in_ext1 + 0.1f*ADC1_buffer[0];  // Throttle for Wheely on PA3
 #define GET_THROTTLE_INPUT2 	0 //There is no second throttle input
 
 #define GET_FETU_T 			_motor->Raw.MOSu_T = hadc2.Instance->JDR4; //Temperature on PC5, ADC15
