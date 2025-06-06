@@ -1037,7 +1037,7 @@ void hallAngleEstimator(MESC_motor_typedef *_motor) {  // Implementation using t
 
     //We average the current and the last reading since this cancels the HFI injection
     Idq_err.q = (_motor->FOC.Idq_req.q - 0.5f *(_motor->FOC.Idq.q + Idq_last.q)) * _motor->FOC.Iq_pgain;
-    Idq_last.q = _motor->FOC.Idq_req.q;
+    Idq_last.q = _motor->FOC.Idq.q;
     //    Idq_err.q = (_motor->FOC.Idq_req.q - _motor->FOC.Idq.q) * _motor->FOC.Iq_pgain;
 
 
@@ -1056,7 +1056,7 @@ void hallAngleEstimator(MESC_motor_typedef *_motor) {  // Implementation using t
 
     	//if we do not use the field weakening controller, we still want to control the d axis current...
     }
-    Idq_last.d = _motor->FOC.Idq_req.d;
+    Idq_last.d = _motor->FOC.Idq.d;
 
 
     // Integral error
