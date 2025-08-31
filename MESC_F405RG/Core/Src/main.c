@@ -46,6 +46,11 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#ifdef POSVEL_PLANE
+#define JIT_PORT      GPIOB
+#define JIT_PIN_N     3U
+#define JIT_PIN_MASK  (1U << JIT_PIN_N)
+#endif
 
 /* USER CODE END PM */
 
@@ -1195,6 +1200,8 @@ static void MX_I2C2_Init(void)
 
 }
 /* USER CODE END 4 */
+
+
 
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**

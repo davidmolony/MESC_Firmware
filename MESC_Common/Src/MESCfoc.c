@@ -53,6 +53,7 @@
 #include "MESClrobs.h"
 #include "MESCBLDC.h"
 #include "MESCApp.h"
+#include "MESC_jitter.h"
 
 #include "conversions.h"
 
@@ -731,6 +732,12 @@ void fastLoop(MESC_motor_typedef *_motor) {
 	}
 #endif
    _motor->FOC.cycles_fastloop = CPU_CYCLES - cycles;
+
+// owen toggles PB5 to see if anything screwy happens to this loop
+#ifdef POSVEL_PLANE
+   jit_toggle();
+#endif
+
 }
 
 // The hyperloop runs at PWM timer bottom, when the PWM is in V7 (all high)

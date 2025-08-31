@@ -383,6 +383,18 @@ void TASK_CAN_telemetry(void * argument){
 	}
 }
 
+#ifdef POSVEL_PLANE
+static void TASK_CAN_posvel(void *arg) {
+    TASK_CAN_handle *h = (TASK_CAN_handle*)arg;
+    const TickType_t period = pdMS_TO_TICKS(1000 / POSVEL_HZ);
+    TickType_t last = xTaskGetTickCount();
+
+    for (;;) {
+        TASK_CAN_telemetry_posvel(h);
+        vTaskDelayUntil(&last, period ? period : 1);
+    }
+}
+#endif
 
 #define CAN_STREAM_SIZE 128
 
@@ -397,6 +409,10 @@ void TASK_CAN_init(port_str * port, char * short_name){
 	xTaskCreate(TASK_CAN_rx, "task_rx_can", 256, (void*)port, osPriorityAboveNormal, &handle->rx_task_handle);
 	xTaskCreate(TASK_CAN_tx, "task_tx_can", 256, (void*)port, osPriorityAboveNormal, &handle->tx_task_handle);
 	xTaskCreate(TASK_CAN_telemetry, "can_metry", 256, (void*)port, osPriorityAboveNormal, NULL);
+
+	#ifdef POSVEL_PLANE
+	xTaskCreate(TASK_CAN_posvel, "can_posvel", 256, (void*)port, osPriorityAboveNormal, NULL);
+	#endif
 }
 
 

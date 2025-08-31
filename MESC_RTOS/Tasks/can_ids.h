@@ -29,6 +29,10 @@
 #define CAN_ID_STATUS 			0x2C0
 #define CAN_ID_FOC_HYPER		0x2C1
 
+#ifdef POSVEL_PLANE
+#define CAN_ID_POSVEL            0x2D0   // new high-rate position/velocity ID
+#endif
+
 #define CAN_ID_SAMPLE			0x300
 #define CAN_ID_SAMPLE_NOW		0x301
 #define CAN_ID_SAMPLE_SEND		0x302

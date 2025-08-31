@@ -2,7 +2,7 @@
 //Ensure only one board's header file is uncommented!
 #include <math.h>
 
-//#include "MP2_V0_1.h"
+#include "MP2_V0_1.h"
 //#include "CL700_V0_3.h"
 //#include "INDI-600.h"
 //#include "MX_FOC_IMS.h"
@@ -15,7 +15,7 @@
 //#include "VESC6MK5.h"
 //#include "Pulse18.h"
 //#include "BSM24.h"
-#include "Wheely.h"
+//#include "Wheely.h"
 
 
 //#include "Q6F_minideskr1.h"

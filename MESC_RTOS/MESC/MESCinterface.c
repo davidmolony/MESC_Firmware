@@ -633,6 +633,23 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 
 }
 
+#ifdef POSVEL_PLANE
+void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
+    MESC_motor_typedef *motor_curr = &mtr[0];
+
+    // Mechanical position: enc_angle → mechanical radians
+    float pos_rad = ((float)motor_curr->FOC.enc_angle / (float)motor_curr->m.pole_pairs)
+                    * (2.0f * M_PI / 65536.0f);
+
+    // Mechanical velocity: mechRPM → rad/s
+    float vel_rad_s = motor_curr->FOC.mechRPM * (2.0f * M_PI / 60.0f);
+
+    TASK_CAN_add_float(handle, CAN_ID_POSVEL, CAN_BROADCAST,
+                       pos_rad,
+                       vel_rad_s,
+                       0);
+}
+#endif
 
 #define POST_ERROR_SAMPLES 		LOGLENGTH/2
 
