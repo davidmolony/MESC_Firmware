@@ -384,13 +384,15 @@ void TASK_CAN_telemetry(void * argument){
 }
 
 #ifdef POSVEL_PLANE
-static void TASK_CAN_posvel(void *arg) {
-    TASK_CAN_handle *h = (TASK_CAN_handle*)arg;
+static void TASK_CAN_posvel(void *argument) {
+    port_str *port = argument;                  // same as telemetry
+    TASK_CAN_handle *handle = port->hw;         // resolve handle
+
     const TickType_t period = pdMS_TO_TICKS(1000 / POSVEL_HZ);
     TickType_t last = xTaskGetTickCount();
 
     for (;;) {
-        TASK_CAN_telemetry_posvel(h);
+        TASK_CAN_telemetry_posvel(handle);      // enqueue pos/vel frame
         vTaskDelayUntil(&last, period ? period : 1);
     }
 }
