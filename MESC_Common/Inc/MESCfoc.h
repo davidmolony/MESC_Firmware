@@ -572,6 +572,25 @@ typedef struct {
 	bool lognow;
 } MESClogging_s;
 
+#ifdef JITTER_TEST
+// Jitter metrics for fastLoop() entry-to-entry period, measured via DWT->CYCCNT
+typedef struct {
+    // Accumulators in *cycles* over the current reporting window
+    int32_t  min_cyc;        // most negative jitter in cycles
+    int32_t  max_cyc;        // most positive jitter in cycles
+    int64_t  sum_cyc;        // sum of jitter cycles (for average)
+    uint32_t samples;        // number of samples accumulated
+
+    // Bookkeeping
+    uint32_t last_entry_cyc; // CYCCNT at previous fastLoop() entry
+
+    // Optional: last published snapshot in microseconds (for CAN)
+    int16_t  snap_min_us;
+    int16_t  snap_max_us;
+    float    snap_avg_us;
+} MESCjitter_s;
+#endif
+
 typedef struct {
 
 	///////////////////RCPWM//////////////////////
@@ -762,6 +781,9 @@ typedef struct{
 	MESClrobs_s lrobs;
 	MESCoptionFlags_s options;
 	bool conf_is_valid;
+#ifdef JITTER_TEST
+    MESCjitter_s jitter;     // fastLoop() timing jitter metrics
+#endif
 }MESC_motor_typedef;
 
 extern MESC_motor_typedef mtr[NUM_MOTORS];

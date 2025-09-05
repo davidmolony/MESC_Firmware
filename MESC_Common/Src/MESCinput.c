@@ -122,8 +122,21 @@ void MESCinput_Collect(MESC_motor_typedef *_motor){
 	  }
 
 	  //UART input
-	  if(0 == (_motor->input_vars.input_options & 0b1000)){
-		  _motor->input_vars.UART_req = 0.0f;
+	  // OWEN NOTE:
+	  // this gets set if user passes in a variable by CAN using CAN_ID_IQREQ
+	  //   see: TASK_CAN_packet_cb() in MESCinterface.c
+	  // the only way to do that is if input_option is set to 32
+	  // but this code zeros out UART_req when input_option is 32
+	  //if(0 == (_motor->input_vars.input_options & 0b1000)){
+		 // _motor->input_vars.UART_req = 0.0f;
+	  //}
+
+	  // new code
+	  if ((_motor->input_vars.input_options & 0b1000) == 0 &&
+	      _motor->input_vars.input_options != 1 &&
+	      _motor->input_vars.input_options != 32) {
+
+	      _motor->input_vars.UART_req = 0.0f;
 	  }
 
 	  //RCPWM input

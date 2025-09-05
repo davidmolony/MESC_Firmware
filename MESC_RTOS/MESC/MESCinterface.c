@@ -584,8 +584,12 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 		case CAN_ID_IQREQ:{
 			float req = PACK_buf_to_float(data);
 			if(req > 0){
+				// Owen addition
+				motor_curr->input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
 				motor_curr->input_vars.UART_req = req * motor_curr->input_vars.max_request_Idq.q;
 			}else{
+				// Owen addition
+				motor_curr->input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
 				motor_curr->input_vars.UART_req = req * motor_curr->input_vars.min_request_Idq.q * -1.0;
 			}
 			break;
@@ -620,6 +624,33 @@ void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle){
 	TASK_CAN_add_uint32(handle	, CAN_ID_STATUS	  		, CAN_BROADCAST, motor_curr->MotorState		, 0						, 0);
 	TASK_CAN_add_float(handle	, CAN_ID_MOTOR_CURRENT 	, CAN_BROADCAST, motor_curr->FOC.Idq.q		, motor_curr->FOC.Idq.d	, 0);
 	TASK_CAN_add_float(handle	, CAN_ID_MOTOR_VOLTAGE 	, CAN_BROADCAST, motor_curr->FOC.Vdq.q		, motor_curr->FOC.Vdq.d	, 0);
+
+#ifdef POSVEL_PLANE
+
+    // ---- snapshot + reset (very short critical section if the ISR is maskable) ----
+    int32_t  min_cyc, max_cyc;
+    int64_t  sum_cyc;
+    uint32_t n;
+
+    taskENTER_CRITICAL();
+    min_cyc = motor_curr->jitter.min_cyc;
+    max_cyc = motor_curr->jitter.max_cyc;
+    sum_cyc = motor_curr->jitter.sum_cyc;
+    n       = motor_curr->jitter.samples;
+    motor_curr->jitter.min_cyc = INT32_MAX;
+    motor_curr->jitter.max_cyc = INT32_MIN;
+    motor_curr->jitter.sum_cyc = 0;
+    motor_curr->jitter.samples = 0;
+    taskEXIT_CRITICAL();
+
+    if (n) {
+        const float cyc_to_us = 1.0f / ((float)SystemCoreClock / 1e6f);
+        const float avg_us = ((float)sum_cyc / (float)n) * cyc_to_us;
+        const float p2p_us = (float)(max_cyc - min_cyc) * cyc_to_us;
+
+        TASK_CAN_add_float(handle, CAN_ID_JITTER, CAN_BROADCAST, avg_us, p2p_us, 0);
+    }
+#endif
 
 }
 

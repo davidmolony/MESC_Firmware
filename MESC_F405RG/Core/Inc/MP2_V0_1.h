@@ -12,7 +12,9 @@
 #define PWM_FREQUENCY 20000
 #define CUSTOM_DEADTIME 800 //ns, MAX 1500ns! implementation in MESCInit().
 
-#define POSVEL_PLANE 1
+// Owen block of code
+#define JITTER_TEST  1 // if true exports square wave out of PB5
+#define POSVEL_PLANE 1 // export 0x02D0 CAN messages with position/velocity data
 #define POSVEL_HZ 500
 
 #define SHUNT_POLARITY -1.0f

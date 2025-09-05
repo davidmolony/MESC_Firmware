@@ -11,7 +11,7 @@
 #include "stm32f4xx.h"
 
 /* owen block of code to measure jitter */
-#ifdef POSVEL_PLANE
+#ifdef JITTER_TEST
 
 // PB5 setup
 static inline void jitter_pin_init(void) {
@@ -28,6 +28,6 @@ static inline void jit_set(void)    { GPIOB->BSRR =  (1U << 5); }
 static inline void jit_clr(void)    { GPIOB->BSRR = ((1U << 5) << 16); }
 static inline void jit_toggle(void) {  GPIOB->ODR ^= (1U << 5); }
 
-#endif /* POSVEL_PLANE */
+#endif /* JITTER_TEST */
 
 #endif /* INC_MESC_JITTER_H_ */

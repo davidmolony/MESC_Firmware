@@ -433,7 +433,30 @@ void MESC_ADC_IRQ_handler(MESC_motor_typedef *_motor){
 int16_t diff;
 void fastLoop(MESC_motor_typedef *_motor) {
 	uint32_t cycles = CPU_CYCLES;
-  // Call this directly from the TIM top IRQ
+
+#ifdef JITTER_TEST
+	// god forgive the idiot that puts something at the top of fastLoop()
+	//
+	// Expected fastLoop period in CPU cycles
+	// (PWM_FREQUENCY is already defined in MESCfoc.h; SystemCoreClock is 168 MHz on F405)
+	const int32_t expected_cyc = (int32_t)(SystemCoreClock / PWM_FREQUENCY);
+
+	// 'cycles' is the native entry timestamp already taken earlier:  uint32_t cycles = CPU_CYCLES;
+	if (_motor->jitter.last_entry_cyc != 0u) {
+		// wrap-safe because it's unsigned subtraction
+		uint32_t period = cycles - _motor->jitter.last_entry_cyc;
+		int32_t  jitter_cyc = (int32_t)period - expected_cyc;
+
+		if (jitter_cyc < _motor->jitter.min_cyc) _motor->jitter.min_cyc = jitter_cyc;
+		if (jitter_cyc > _motor->jitter.max_cyc) _motor->jitter.max_cyc = jitter_cyc;
+		_motor->jitter.sum_cyc += jitter_cyc;
+		_motor->jitter.samples++;
+	}
+	_motor->jitter.last_entry_cyc = cycles;
+
+#endif
+
+	// Call this directly from the TIM top IRQ
   _motor->hall.current_hall_state = getHallState(); //ToDo, this macro is not applicable to dual motors
   // First thing we ever want to do is convert the ADC values
   // to real, useable numbers.
@@ -731,13 +754,13 @@ void fastLoop(MESC_motor_typedef *_motor) {
 		}
 	}
 #endif
-   _motor->FOC.cycles_fastloop = CPU_CYCLES - cycles;
 
-// owen toggles PB5 to see if anything screwy happens to this loop
-#ifdef POSVEL_PLANE
+// toggles PB5 to see if anything screwy happens to this loop
+#ifdef JITTER_TEST
    jit_toggle();
 #endif
 
+   _motor->FOC.cycles_fastloop = CPU_CYCLES - cycles;
 }
 
 // The hyperloop runs at PWM timer bottom, when the PWM is in V7 (all high)
