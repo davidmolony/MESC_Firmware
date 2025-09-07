@@ -434,25 +434,30 @@ int16_t diff;
 void fastLoop(MESC_motor_typedef *_motor) {
 	uint32_t cycles = CPU_CYCLES;
 
-#ifdef JITTER_TEST
+#ifdef POSVEL_PLANE
+	//
 	// god forgive the idiot that puts something at the top of fastLoop()
 	//
-	// Expected fastLoop period in CPU cycles
-	// (PWM_FREQUENCY is already defined in MESCfoc.h; SystemCoreClock is 168 MHz on F405)
-	const int32_t expected_cyc = (int32_t)(SystemCoreClock / PWM_FREQUENCY);
-
-	// 'cycles' is the native entry timestamp already taken earlier:  uint32_t cycles = CPU_CYCLES;
-	if (_motor->jitter.last_entry_cyc != 0u) {
-		// wrap-safe because it's unsigned subtraction
-		uint32_t period = cycles - _motor->jitter.last_entry_cyc;
-		int32_t  jitter_cyc = (int32_t)period - expected_cyc;
-
-		if (jitter_cyc < _motor->jitter.min_cyc) _motor->jitter.min_cyc = jitter_cyc;
-		if (jitter_cyc > _motor->jitter.max_cyc) _motor->jitter.max_cyc = jitter_cyc;
-		_motor->jitter.sum_cyc += jitter_cyc;
-		_motor->jitter.samples++;
-	}
+	uint32_t period = cycles - _motor->jitter.last_entry_cyc;   // wrap-safe
 	_motor->jitter.last_entry_cyc = cycles;
+
+	if (period != 0u) { // skip first sample
+	    int32_t jitter_cyc = (int32_t)period - _motor->jitter.expected_cyc;
+
+	    if (jitter_cyc < _motor->jitter.min_cyc) _motor->jitter.min_cyc = jitter_cyc;
+	    if (jitter_cyc > _motor->jitter.max_cyc) _motor->jitter.max_cyc = jitter_cyc;
+	    _motor->jitter.sum_cyc += jitter_cyc;
+	    _motor->jitter.samples++;
+	}
+
+	// Resets after request from the task
+	if (_motor->jitter.clear_req) {
+	    _motor->jitter.min_cyc = INT32_MAX;
+	    _motor->jitter.max_cyc = INT32_MIN;
+	    _motor->jitter.sum_cyc = 0;
+	    _motor->jitter.samples = 0;
+	    _motor->jitter.clear_req = 0;
+	}
 
 #endif
 
@@ -1271,6 +1276,14 @@ case SQRT_CIRCLE_LIM_VD:
 	  }
 	_motor->m.L_QD = _motor->m.L_Q-_motor->m.L_D;
 	_motor->FOC.d_polarity = 1;
+
+#ifdef POSVEL_PLANE
+	// xxx
+	if (_motor->FOC.pwm_frequency <= 0.0f) {
+        _motor->FOC.pwm_frequency = PWM_FREQUENCY;  // fallback to default 20kHz
+    }
+    _motor->jitter.expected_cyc = (int32_t)((float)SystemCoreClock / _motor->FOC.pwm_frequency);
+#endif
   }
 
   void calculateVoltageGain(MESC_motor_typedef *_motor) {
@@ -1838,10 +1851,13 @@ void HallFluxMonitor(MESC_motor_typedef *_motor){
 void getIncEncAngle(MESC_motor_typedef *_motor){
 	if(_motor->FOC.encoder_polarity_invert){
 		_motor->FOC.enc_angle = _motor->m.pole_pairs*(65536-(_motor->FOC.enc_ratio*(uint16_t)_motor->enctimer->Instance->CNT-_motor->FOC.enc_ratio*(uint16_t)_motor->enctimer->Instance->CCR3)) + _motor->FOC.enc_offset;
-
 	}else{
 		_motor->FOC.enc_angle = _motor->m.pole_pairs*((_motor->FOC.enc_ratio*(uint16_t)_motor->enctimer->Instance->CNT-_motor->FOC.enc_ratio*(uint16_t)_motor->enctimer->Instance->CCR3)) + _motor->FOC.enc_offset;
 	}
+
+#ifdef POSVEL_PLANE
+	_motor->FOC.abs_position = ( (uint16_t)(_motor->enctimer->Instance->CNT) - (uint16_t)(_motor->enctimer->Instance->CCR3) ) & 0x0FFF; // for 12-bit encoder
+#endif
 }
 
 void  logVars(MESC_motor_typedef *_motor){

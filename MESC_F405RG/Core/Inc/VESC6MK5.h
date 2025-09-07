@@ -13,6 +13,11 @@
 #define CUSTOM_DEADTIME 360 //ns, MAX 1500ns! implementation in MESCInit().
 //#define MISSING_VCURRSENSOR
 
+// Owen block of code
+// #define JITTER_TEST  1 // if true exports square wave out of PB5
+#define POSVEL_PLANE 1 // export 0x02D0 CAN messages with position/velocity data
+#define POSVEL_HZ 500
+
 #define SHUNT_POLARITY 1.0f
 
 #define ABS_MAX_PHASE_CURRENT 160.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.

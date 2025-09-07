@@ -626,29 +626,21 @@ void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle){
 	TASK_CAN_add_float(handle	, CAN_ID_MOTOR_VOLTAGE 	, CAN_BROADCAST, motor_curr->FOC.Vdq.q		, motor_curr->FOC.Vdq.d	, 0);
 
 #ifdef POSVEL_PLANE
+	// these values are somewhat untested in that I've
+	//  never been able to make fastLoop() slow down
+	uint32_t n       = motor_curr->jitter.samples;
+    int32_t  min_cyc = motor_curr->jitter.min_cyc;
+    int32_t  max_cyc = motor_curr->jitter.max_cyc;
+    int64_t  sum_cyc = motor_curr->jitter.sum_cyc;
 
-    // ---- snapshot + reset (very short critical section if the ISR is maskable) ----
-    int32_t  min_cyc, max_cyc;
-    int64_t  sum_cyc;
-    uint32_t n;
+    if (n > 0 && min_cyc != INT32_MAX && max_cyc != INT32_MIN) {
+        const float cyc2us = 1.0f / ((float)SystemCoreClock / 1e6f);
+        motor_curr->jitter.avg_us = ((float)sum_cyc / (float)n) * cyc2us;
+        motor_curr->jitter.p2p_us = (float)(max_cyc - min_cyc) * cyc2us;
 
-    taskENTER_CRITICAL();
-    min_cyc = motor_curr->jitter.min_cyc;
-    max_cyc = motor_curr->jitter.max_cyc;
-    sum_cyc = motor_curr->jitter.sum_cyc;
-    n       = motor_curr->jitter.samples;
-    motor_curr->jitter.min_cyc = INT32_MAX;
-    motor_curr->jitter.max_cyc = INT32_MIN;
-    motor_curr->jitter.sum_cyc = 0;
-    motor_curr->jitter.samples = 0;
-    taskEXIT_CRITICAL();
+        TASK_CAN_add_float(handle, CAN_ID_JITTER, CAN_BROADCAST, motor_curr->jitter.avg_us, motor_curr->jitter.p2p_us, 0);
 
-    if (n) {
-        const float cyc_to_us = 1.0f / ((float)SystemCoreClock / 1e6f);
-        const float avg_us = ((float)sum_cyc / (float)n) * cyc_to_us;
-        const float p2p_us = (float)(max_cyc - min_cyc) * cyc_to_us;
-
-        TASK_CAN_add_float(handle, CAN_ID_JITTER, CAN_BROADCAST, avg_us, p2p_us, 0);
+        motor_curr->jitter.clear_req = 1; // ask ISR to reset window
     }
 #endif
 
@@ -667,15 +659,34 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 #ifdef POSVEL_PLANE
 void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     MESC_motor_typedef *motor_curr = &mtr[0];
-    // Mechanical position: undo pole_pairs scaling and wrap
+    static int16_t last_pos = 0;
 
-    float mech_ticks = (float)motor_curr->FOC.enc_angle; // already scaled
-    mech_ticks = fmodf(mech_ticks, 65536.0f);
-    float pos_rad = mech_ticks * (2.0f * M_PI / 65536.0f);
+    // Snapshot absolute position (0–4095, Z-synced)
+    uint16_t abs_pos = motor_curr->FOC.abs_position;
 
-    // Mechanical velocity: mechRPM → rad/s
-    float vel_rad_s = motor_curr->FOC.mechRPM * (2.0f * M_PI / 60.0f);
+    // Convert to radians (0–2π mechanical)
+    float pos_rad = ((float)abs_pos / 4096.0f) * (2.0f * M_PI);
 
+    // Compute delta ticks since last call
+    int16_t delta = (int16_t)(abs_pos - last_pos);
+
+    // Wrap-around correction
+    if (delta > 2048) delta -= 4096;
+    if (delta < -2048) delta += 4096;
+
+    last_pos = abs_pos;
+
+    // Convert ticks → revolutions
+    float delta_rev = (float)delta / 4096.0f;
+
+    // dt from POSVEL_HZ
+    float dt = 1.0f / (float)POSVEL_HZ;
+
+    // Velocity in rev/s → rad/s
+    float vel_rev_s = delta_rev / dt;
+    float vel_rad_s = vel_rev_s * 2.0f * M_PI;
+
+    // Send over CAN: [pos_rad, vel_rad_s, reserved]
     TASK_CAN_add_float(handle, CAN_ID_POSVEL, CAN_BROADCAST,
                        pos_rad,
                        vel_rad_s,

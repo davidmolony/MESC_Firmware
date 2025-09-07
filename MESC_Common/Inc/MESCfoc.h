@@ -306,6 +306,10 @@ typedef struct {
   uint32_t encoder_pulse;
   uint32_t encoder_OK;
   uint16_t enc_angle;
+#ifdef POSVEL_PLANE
+  uint16_t abs_position;
+#endif
+
   float FOC_advance;
 
   uint16_t enc_period_count;//For PWM encoder interpolation
@@ -564,7 +568,6 @@ typedef struct {
 	float Vq[LOGLENGTH];
 	uint16_t angle[LOGLENGTH];
 	uint16_t hallstate[LOGLENGTH];
-
 	uint32_t current_sample;
 	bool sample_now;
 	bool sample_no_auto_send;
@@ -572,22 +575,17 @@ typedef struct {
 	bool lognow;
 } MESClogging_s;
 
-#ifdef JITTER_TEST
+#ifdef POSVEL_PLANE
 // Jitter metrics for fastLoop() entry-to-entry period, measured via DWT->CYCCNT
 typedef struct {
-    // Accumulators in *cycles* over the current reporting window
-    int32_t  min_cyc;        // most negative jitter in cycles
-    int32_t  max_cyc;        // most positive jitter in cycles
-    int64_t  sum_cyc;        // sum of jitter cycles (for average)
-    uint32_t samples;        // number of samples accumulated
-
-    // Bookkeeping
-    uint32_t last_entry_cyc; // CYCCNT at previous fastLoop() entry
-
-    // Optional: last published snapshot in microseconds (for CAN)
-    int16_t  snap_min_us;
-    int16_t  snap_max_us;
-    float    snap_avg_us;
+    int32_t  min_cyc, max_cyc;
+    int64_t  sum_cyc;
+    uint32_t samples;
+    uint32_t last_entry_cyc;
+    int32_t  expected_cyc;
+    float    avg_us; // average jitter over all samples, in microseconds
+    float    p2p_us; // peak-to-peak jitter over all samples, in microseconds
+    volatile uint8_t clear_req;
 } MESCjitter_s;
 #endif
 
@@ -781,7 +779,7 @@ typedef struct{
 	MESClrobs_s lrobs;
 	MESCoptionFlags_s options;
 	bool conf_is_valid;
-#ifdef JITTER_TEST
+#ifdef POSVEL_PLANE
     MESCjitter_s jitter;     // fastLoop() timing jitter metrics
 #endif
 }MESC_motor_typedef;
