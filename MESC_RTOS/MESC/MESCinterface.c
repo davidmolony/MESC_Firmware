@@ -684,16 +684,11 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 //  back-and-forth produces a velocity spike, and the sign flips every time.
 // This must be dealt with on the controller side
 //
-
-
 // --- Encoder configuration ---
 // Adjust ENCODER_CPR to match your hardware encoder resolution
 // For a 12-bit ABI encoder (0–4095 counts per rev):
 #define ENCODER_CPR 4096
-// --- Precompute constant ---
-// Convert encoder ticks (0–65536) → radians
-// static const float ENC_TICKS_TO_RAD = (2.0f * M_PI) / 65536.0f;
- // mechanical counts per revolution
+
 // --- DWT cycle counter (hardware timer running at CPU frequency) ---
 // Used to get precise microsecond timestamps.
 // On STM32F405, core clock is 168 MHz → 168 cycles = 1 µs.
@@ -703,7 +698,6 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 // If |vel_tick| < LOW_SPEED_THRESH, use tick-timing method (better at low speed).
 // Else, use delta-theta/dt method (smoother at high speed).
 #define LOW_SPEED_THRESH 20.0f  // rad/s
-
 
 void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     MESC_motor_typedef *motor_curr = &mtr[0];
