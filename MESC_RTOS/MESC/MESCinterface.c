@@ -590,7 +590,7 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 			}else{
 				// Owen addition
 				motor_curr->input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
-				motor_curr->input_vars.UART_req = req * motor_curr->input_vars.min_request_Idq.q * -1.0;
+				motor_curr->input_vars.UART_req = req * motor_curr->input_vars.max_request_Idq.q; // for some reason min_req is assymettric
 			}
 			break;
 		}
@@ -657,42 +657,135 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 }
 
 #ifdef POSVEL_PLANE
+// We compute velocity here as Δθ/Δt from the encoder angle rather than using
+// the FOC observer (PLL-based eHz) that MESC normally reports.
+// The reason:
+//  * PLL/observer velocity (default in MESC):
+//      - Good at medium/high speed, tracks electrical frequency smoothly.
+//      - Poor near standstill: noisy, can flip sign, lags true motion.
+//      - Causes problems for balancing / precise low-speed control.
+//  * Tick-timing (measuring Δt between encoder edges):
+//      - Very accurate at very low speed.
+//      - Becomes coarse/noisy at higher speeds and adds ISR jitter.
+//  * Δθ/Δt method (this code):
+//      - Simple, low-latency, and consistent across the full speed range.
+//      - Works well for balancing robots where accurate small-angle velocity
+//        is critical.
+//      - Some quantization/noise at near-zero speed is expected (sign flip),
+//        but easier to filter downstream than observer lag.
+//
+// Assumptions:
+//  motor never travels faster than ~15k RPM
+//  we are always hard coding to 65536.0f
+//  the encoder resolution is 4096
+//  At standstill or low torque balance, the rotor
+//  may jitter slightly forward/backward due to cogging,
+//  quantization, or load disturbances. Each tiny tick
+//  back-and-forth produces a velocity spike, and the sign flips every time.
+// This must be dealt with on the controller side
+//
+
+
+// --- Encoder configuration ---
+// Adjust ENCODER_CPR to match your hardware encoder resolution
+// For a 12-bit ABI encoder (0–4095 counts per rev):
+#define ENCODER_CPR 4096
+// --- Precompute constant ---
+// Convert encoder ticks (0–65536) → radians
+// static const float ENC_TICKS_TO_RAD = (2.0f * M_PI) / 65536.0f;
+ // mechanical counts per revolution
+// --- DWT cycle counter (hardware timer running at CPU frequency) ---
+// Used to get precise microsecond timestamps.
+// On STM32F405, core clock is 168 MHz → 168 cycles = 1 µs.
+#define DWT_CYCCNT      ((volatile uint32_t *)0xE0001004)
+
+// --- Velocity threshold for hybrid estimator ---
+// If |vel_tick| < LOW_SPEED_THRESH, use tick-timing method (better at low speed).
+// Else, use delta-theta/dt method (smoother at high speed).
+#define LOW_SPEED_THRESH 20.0f  // rad/s
+
+
 void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     MESC_motor_typedef *motor_curr = &mtr[0];
-    static int16_t last_pos = 0;
 
-    // Snapshot absolute position (0–4095, Z-synced)
-    uint16_t abs_pos = motor_curr->FOC.abs_position;
+    static uint16_t last_count = 0;
+    static uint32_t last_task_us = 0;   // last timestamp for task-based dt
+    static uint32_t last_tick_us = 0;   // last timestamp for encoder tick-based dt
+    static bool initialized = false;
 
-    // Convert to radians (0–2π mechanical)
-    float pos_rad = ((float)abs_pos / 4096.0f) * (2.0f * M_PI);
+    // Capture raw encoder count for debugging
+    uint16_t curr_count = motor_curr->enctimer->Instance->CNT;
 
-    // Compute delta ticks since last call
-    int16_t delta = (int16_t)(abs_pos - last_pos);
+    // --- Read precise timestamp from DWT cycle counter ---
+    uint32_t now_cycles = DWT->CYCCNT;
+    uint32_t now_us = now_cycles / 168;  // convert cycles → microseconds
 
-    // Wrap-around correction
-    if (delta > 2048) delta -= 4096;
-    if (delta < -2048) delta += 4096;
+    // --- Position in radians ---
+    // Converts raw encoder counts (0–4096) → angle (0–2π).
+    float pos_rad = ((float)curr_count / ENCODER_CPR) * (2.0f * M_PI);
 
-    last_pos = abs_pos;
+    // Velocity estimate to send over CAN (in rad/s)
+    float vel_rad_s = 0.0f;
 
-    // Convert ticks → revolutions
-    float delta_rev = (float)delta / 4096.0f;
+    if (!initialized) {
+        // Initialize history on first run
+        last_count = curr_count;
+        last_task_us = now_us;
+        last_tick_us = now_us;
+        initialized = true;
+    } else {
+        // --- Δticks with wrap correction ---
+        // Handles rollover at 0/4096 boundary.
+        int32_t delta_ticks = (int32_t)curr_count - (int32_t)last_count;
+        if (delta_ticks >  ENCODER_CPR / 2) delta_ticks -= ENCODER_CPR;
+        if (delta_ticks < -ENCODER_CPR / 2) delta_ticks += ENCODER_CPR;
 
-    // dt from POSVEL_HZ
-    float dt = 1.0f / (float)POSVEL_HZ;
+        // --- Task-period dt (always updated, stable ~2000 µs) ---
+        uint32_t dt_task_us = now_us - last_task_us;
+        float dt_task = dt_task_us * 1e-6f;
 
-    // Velocity in rev/s → rad/s
-    float vel_rev_s = delta_rev / dt;
-    float vel_rad_s = vel_rev_s * 2.0f * M_PI;
+        // Δθ based on encoder ticks
+        float delta_theta = ((float)delta_ticks / ENCODER_CPR) * (2.0f * M_PI);
 
-    // Send over CAN: [pos_rad, vel_rad_s, reserved]
+        // Velocity estimate from Δθ / dt_task
+        float vel_delta = delta_theta / dt_task;   // smooth at medium/high speeds
+        last_task_us = now_us;
+
+        // --- Tick-timing method (only updated when encoder moved) ---
+        float vel_tick = 0.0f;
+        if (delta_ticks != 0) {
+            uint32_t dt_tick_us = now_us - last_tick_us;
+            float dt_tick = dt_tick_us * 1e-6f;
+
+            vel_tick = delta_theta / dt_tick;      // accurate at very low speeds
+            last_tick_us = now_us;
+        }
+
+        // --- Hybrid estimator ---
+        // Use tick-timing at low speed (better resolution).
+        // Use Δθ/Δt at higher speed (less jitter).
+        if (vel_tick > -LOW_SPEED_THRESH && vel_tick < LOW_SPEED_THRESH) {
+            vel_rad_s = vel_tick;
+        } else {
+            vel_rad_s = vel_delta;
+        }
+
+        last_count = curr_count;
+    }
+
+    // --- Send telemetry over CAN ---
+    // Payload: position [rad], velocity [rad/s], unused (0.0f).
+    // NOTE: vel_rad_s is in *radians per second*.
+    //       To get RPM, multiply by (60 / 2π).
     TASK_CAN_add_float(handle, CAN_ID_POSVEL, CAN_BROADCAST,
                        pos_rad,
                        vel_rad_s,
                        0.0f);
 }
+
+
 #endif
+
 
 #define POST_ERROR_SAMPLES 		LOGLENGTH/2
 

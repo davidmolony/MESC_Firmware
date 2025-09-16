@@ -41,7 +41,9 @@ void MESCinput_Init(MESC_motor_typedef *_motor){
 	_motor->input_vars.min_request_Idq.d = 0.0f;
 	if(!_motor->input_vars.max_request_Idq.q){
 		_motor->input_vars.max_request_Idq.q = MAX_IQ_REQUEST;
-		_motor->input_vars.min_request_Idq.q = MIN_IQ_REQUEST; //ToDo, SETTING THESE ASSYMETRIC WILL CAUSE ISSUES WITH REVERSE..
+		// owen change:
+		// _motor->input_vars.min_request_Idq.q = MIN_IQ_REQUEST; //ToDo, SETTING THESE ASSYMETRIC WILL CAUSE ISSUES WITH REVERSE..
+		_motor->input_vars.min_request_Idq.q = _motor->input_vars.max_request_Idq.q * -1.0f;
 	}
 
 	_motor->input_vars.IC_pulse_MAX = IC_PULSE_MAX;
