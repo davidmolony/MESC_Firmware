@@ -694,92 +694,82 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 // On STM32F405, core clock is 168 MHz → 168 cycles = 1 µs.
 #define DWT_CYCCNT      ((volatile uint32_t *)0xE0001004)
 
-// --- Velocity threshold for hybrid estimator ---
-// If |vel_tick| < LOW_SPEED_THRESH, use tick-timing method (better at low speed).
-// Else, use delta-theta/dt method (smoother at high speed).
-#define LOW_SPEED_THRESH 20.0f  // rad/s
+// Persistent + debugger-visible state
+static volatile float vel_est_filtered = 0.0f;
+static volatile uint32_t last_pos = 0;
+static volatile uint32_t last_time_us = 0;
+
+// Debugger-visible intermediate values
+static volatile float eHz_dbg = 0.0f;
+static volatile float vel_PLL_dbg = 0.0f;
+static volatile float vel_enc_dbg = 0.0f;
+static volatile float vel_raw_dbg = 0.0f;
+static volatile float dt_s_dbg = 0.0f;
+static volatile int32_t delta_pos_dbg = 0;
+
 
 void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     MESC_motor_typedef *motor_curr = &mtr[0];
 
-    static uint16_t last_count = 0;
-    static uint32_t last_task_us = 0;   // last timestamp for task-based dt
-    static uint32_t last_tick_us = 0;   // last timestamp for encoder tick-based dt
-    static bool initialized = false;
 
-    // Capture encoder count for debugging
-    uint16_t curr_count = motor_curr->FOC.abs_position;
+    // === 1. Raw PLL output ===
+    eHz_dbg = mtr[0].FOC.eHz;   // electrical Hz from FOC PLL
+
+    // === 2. Convert PLL to mechanical rad/s ===
+    vel_PLL_dbg = 0.0f;
+    if (mtr[0].m.pole_pairs > 0) {
+        vel_PLL_dbg = eHz_dbg * (2.0f * M_PI / (float)mtr[0].m.pole_pairs);
+    }
+
+    // === 3. Encoder-based velocity (Δθ/Δt) ===
+    uint32_t pos_now = mtr[0].FOC.abs_position;  // absolute mechanical position in ticks
 
     // --- Read precise timestamp from DWT cycle counter ---
     uint32_t now_cycles = DWT->CYCCNT;
-    uint32_t now_us = now_cycles / 168;  // convert cycles → microseconds
+    uint32_t time_now_us = now_cycles / 168;     // convert cycles → µs (for 168 MHz CPU)
 
-    // --- Position in radians ---
-    // Converts raw encoder counts (0–4096) → angle (0–2π).
-    float pos_rad = ((float)curr_count / ENCODER_CPR) * (2.0f * M_PI);
+    delta_pos_dbg = (int32_t)pos_now - (int32_t)last_pos;
+    dt_s_dbg = (time_now_us - last_time_us) * 1e-6f;
 
-    // Velocity estimate to send over CAN (in rad/s)
-    float vel_rad_s = 0.0f;
-
-    if (!initialized) {
-        // Initialize history on first run
-        last_count = curr_count;
-        last_task_us = now_us;
-        last_tick_us = now_us;
-        initialized = true;
-    } else {
-        // --- Δticks with wrap correction ---
-        // Handles rollover at 0/4096 boundary.
-        int32_t delta_ticks = (int32_t)curr_count - (int32_t)last_count;
-        if (delta_ticks >  ENCODER_CPR / 2) delta_ticks -= ENCODER_CPR;
-        if (delta_ticks < -ENCODER_CPR / 2) delta_ticks += ENCODER_CPR;
-
-        // --- Task-period dt (always updated, stable ~2000 µs) ---
-        uint32_t dt_task_us = now_us - last_task_us;
-        float dt_task = dt_task_us * 1e-6f;
-
-        // Δθ based on encoder ticks
-        float delta_theta = ((float)delta_ticks / ENCODER_CPR) * (2.0f * M_PI);
-
-        // Velocity estimate from Δθ / dt_task
-        float vel_delta = delta_theta / dt_task;   // smooth at medium/high speeds
-        last_task_us = now_us;
-
-        // --- Tick-timing method (only updated when encoder moved) ---
-        float vel_tick = 0.0f;
-        if (delta_ticks != 0) {
-            uint32_t dt_tick_us = now_us - last_tick_us;
-            float dt_tick = dt_tick_us * 1e-6f;
-
-            vel_tick = delta_theta / dt_tick;      // accurate at very low speeds
-            last_tick_us = now_us;
-        }
-
-        // --- Hybrid estimator ---
-        // Use tick-timing at low speed (better resolution).
-        // Use Δθ/Δt at higher speed (less jitter).
-        // with clamp-to-zero fix ---
-        if (delta_ticks == 0) {
-            // No encoder movement → no velocity
-            vel_rad_s = 0.0f;
-        } else if (fabsf(vel_tick) < LOW_SPEED_THRESH) {
-            vel_rad_s = vel_tick;     // more accurate at low speeds
-        } else {
-            vel_rad_s = vel_delta;    // smoother at higher speeds
-        }
-
-
-        last_count = curr_count;
+    vel_enc_dbg = 0.0f;
+    if (dt_s_dbg > 1e-6f) {
+        float delta_rad = delta_pos_dbg * (2.0f * M_PI / (float)mtr[0].m.enc_counts);
+        vel_enc_dbg = delta_rad / dt_s_dbg;  // mechanical rad/s
     }
 
-    // --- Send telemetry over CAN ---
+    last_pos = pos_now;
+    last_time_us = time_now_us;
+
+    // === 4. Blend PLL and encoder velocities ===
+    vel_raw_dbg = 0.0f;
+    if (fabsf(vel_enc_dbg) < 5.0f) {
+        vel_raw_dbg = 0.7f * vel_enc_dbg + 0.3f * vel_PLL_dbg;
+    } else {
+        vel_raw_dbg = 0.3f * vel_enc_dbg + 0.7f * vel_PLL_dbg;
+    }
+
+    // === 5. Low-pass filter ===
+    const float alpha = 0.1f;  // smoothing factor
+    vel_est_filtered = alpha * vel_raw_dbg + (1.0f - alpha) * vel_est_filtered;
+
+    // === 6. Position in radians (absolute mechanical angle) ===
+    float pos_rad = (pos_now % mtr[0].m.enc_counts) * (2.0f * M_PI / (float)mtr[0].m.enc_counts);
+
+    // === 6.5 if close to zero, force to zero
+    if (fabsf(vel_est_filtered) < 0.02f) {   // threshold in rad/s
+        vel_est_filtered = 0.0f;
+    }
+
+    // === 7. Send telemetry over CAN ===
     // Payload: position [rad], velocity [rad/s], unused (0.0f).
-    // NOTE: vel_rad_s is in *radians per second*.
+    // NOTE: vel_est_filtered is in radians per second.
     //       To get RPM, multiply by (60 / 2π).
     TASK_CAN_add_float(handle, CAN_ID_POSVEL, CAN_BROADCAST,
                        pos_rad,
-                       vel_rad_s,
+                       vel_est_filtered,
                        0.0f);
+
+    // Debugger-visible:eHz_dbg, vel_PLL_dbg, vel_enc_dbg, vel_raw_dbg, vel_est_filtered
 }
 
 
