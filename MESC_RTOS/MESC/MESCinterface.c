@@ -707,8 +707,8 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     static uint32_t last_tick_us = 0;   // last timestamp for encoder tick-based dt
     static bool initialized = false;
 
-    // Capture raw encoder count for debugging
-    uint16_t curr_count = motor_curr->enctimer->Instance->CNT;
+    // Capture encoder count for debugging
+    uint16_t curr_count = motor_curr->FOC.abs_position;
 
     // --- Read precise timestamp from DWT cycle counter ---
     uint32_t now_cycles = DWT->CYCCNT;
@@ -758,11 +758,16 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
         // --- Hybrid estimator ---
         // Use tick-timing at low speed (better resolution).
         // Use Δθ/Δt at higher speed (less jitter).
-        if (vel_tick > -LOW_SPEED_THRESH && vel_tick < LOW_SPEED_THRESH) {
-            vel_rad_s = vel_tick;
+        // with clamp-to-zero fix ---
+        if (delta_ticks == 0) {
+            // No encoder movement → no velocity
+            vel_rad_s = 0.0f;
+        } else if (fabsf(vel_tick) < LOW_SPEED_THRESH) {
+            vel_rad_s = vel_tick;     // more accurate at low speeds
         } else {
-            vel_rad_s = vel_delta;
+            vel_rad_s = vel_delta;    // smoother at higher speeds
         }
+
 
         last_count = curr_count;
     }
