@@ -130,7 +130,7 @@ void MESCinput_Collect(MESC_motor_typedef *_motor){
 	  // the only way to do that is if input_option is set to 32
 	  // but this code zeros out UART_req when input_option is 32
 	  //if(0 == (_motor->input_vars.input_options & 0b1000)){
-		 // _motor->input_vars.UART_req = 0.0f;
+	 // _motor->input_vars.UART_req = 0.0f;
 	  //}
 
 	  // new code
