@@ -694,6 +694,13 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 // On STM32F405, core clock is 168 MHz → 168 cycles = 1 µs.
 #define DWT_CYCCNT      ((volatile uint32_t *)0xE0001004)
 
+#define ENCODER_CPR 4096
+
+// --- DWT cycle counter (hardware timer running at CPU frequency) ---
+// Used to get precise microsecond timestamps.
+// On STM32F405, core clock is 168 MHz → 168 cycles = 1 µs.
+#define DWT_CYCCNT      ((volatile uint32_t *)0xE0001004)
+
 // Persistent + debugger-visible state
 static volatile float vel_est_filtered = 0.0f;
 static volatile uint32_t last_pos = 0;
@@ -706,41 +713,44 @@ static volatile float vel_enc_dbg = 0.0f;
 static volatile float vel_raw_dbg = 0.0f;
 static volatile float dt_s_dbg = 0.0f;
 static volatile int32_t delta_pos_dbg = 0;
-
-
 void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     MESC_motor_typedef *motor_curr = &mtr[0];
 
-
     // === 1. Raw PLL output ===
-    eHz_dbg = mtr[0].FOC.eHz;   // electrical Hz from FOC PLL
+    eHz_dbg = motor_curr->FOC.eHz;   // electrical Hz from FOC PLL
 
     // === 2. Convert PLL to mechanical rad/s ===
     vel_PLL_dbg = 0.0f;
-    if (mtr[0].m.pole_pairs > 0) {
-        vel_PLL_dbg = eHz_dbg * (2.0f * M_PI / (float)mtr[0].m.pole_pairs);
+    if (motor_curr->m.pole_pairs > 0) {
+        vel_PLL_dbg = eHz_dbg * (2.0f * M_PI / (float)motor_curr->m.pole_pairs);
     }
 
     // === 3. Encoder-based velocity (Δθ/Δt) ===
-    uint32_t pos_now = mtr[0].FOC.abs_position;  // absolute mechanical position in ticks
+    uint32_t pos_now = motor_curr->FOC.abs_position;  // absolute mechanical position in ticks
 
-    // --- Read precise timestamp from DWT cycle counter ---
-    uint32_t now_cycles = DWT->CYCCNT;
+    // === 4. Read precise timestamp from DWT cycle counter ---
+    uint32_t now_cycles = *DWT_CYCCNT;
     uint32_t time_now_us = now_cycles / 168;     // convert cycles → µs (for 168 MHz CPU)
 
+    // === 5. Delta counts with rollover correction ---
     delta_pos_dbg = (int32_t)pos_now - (int32_t)last_pos;
+    int32_t half_cpr = ENCODER_CPR / 2;
+    if (delta_pos_dbg >  half_cpr) delta_pos_dbg -= ENCODER_CPR;
+    if (delta_pos_dbg < -half_cpr) delta_pos_dbg += ENCODER_CPR;
+
+    // === 6. Δt in seconds ---
     dt_s_dbg = (time_now_us - last_time_us) * 1e-6f;
 
     vel_enc_dbg = 0.0f;
     if (dt_s_dbg > 1e-6f) {
-        float delta_rad = delta_pos_dbg * (2.0f * M_PI / (float)mtr[0].m.enc_counts);
+        float delta_rad = delta_pos_dbg * (2.0f * M_PI / (float)motor_curr->m.enc_counts);
         vel_enc_dbg = delta_rad / dt_s_dbg;  // mechanical rad/s
     }
 
     last_pos = pos_now;
     last_time_us = time_now_us;
 
-    // === 4. Blend PLL and encoder velocities ===
+    // === 7. Blend PLL and encoder velocities ===
     vel_raw_dbg = 0.0f;
     if (fabsf(vel_enc_dbg) < 5.0f) {
         vel_raw_dbg = 0.7f * vel_enc_dbg + 0.3f * vel_PLL_dbg;
@@ -748,19 +758,19 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
         vel_raw_dbg = 0.3f * vel_enc_dbg + 0.7f * vel_PLL_dbg;
     }
 
-    // === 5. Low-pass filter ===
+    // === 8. Low-pass filter ===
     const float alpha = 0.1f;  // smoothing factor
     vel_est_filtered = alpha * vel_raw_dbg + (1.0f - alpha) * vel_est_filtered;
 
-    // === 6. Position in radians (absolute mechanical angle) ===
-    float pos_rad = (pos_now % mtr[0].m.enc_counts) * (2.0f * M_PI / (float)mtr[0].m.enc_counts);
+    // === 9. Position in radians (absolute mechanical angle) ===
+    float pos_rad = (pos_now % motor_curr->m.enc_counts) * (2.0f * M_PI / (float)motor_curr->m.enc_counts);
 
-    // === 6.5 if close to zero, force to zero
+    // === 10. if close to zero, force to zero ===
     if (fabsf(vel_est_filtered) < 0.02f) {   // threshold in rad/s
         vel_est_filtered = 0.0f;
     }
 
-    // === 7. Send telemetry over CAN ===
+    // === 11. Send telemetry over CAN ===
     // Payload: position [rad], velocity [rad/s], unused (0.0f).
     // NOTE: vel_est_filtered is in radians per second.
     //       To get RPM, multiply by (60 / 2π).
@@ -769,7 +779,6 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
                        vel_est_filtered,
                        0.0f);
 
-    // Debugger-visible:eHz_dbg, vel_PLL_dbg, vel_enc_dbg, vel_raw_dbg, vel_est_filtered
 }
 
 

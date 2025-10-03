@@ -1399,6 +1399,7 @@ float  Square(float x){ return((x)*(x));}
 		  case MOTOR_CONTROL_MODE_POSITION:
 			  RunPosControl(_motor);
 			  break;
+
 		  case MOTOR_CONTROL_MODE_SPEED:
 			  //TBC PID loop to convert eHz feedback to an iq request
 			  RunSpeedControl(_motor);
@@ -1856,7 +1857,13 @@ void getIncEncAngle(MESC_motor_typedef *_motor){
 	}
 
 #ifdef POSVEL_PLANE
-	_motor->FOC.abs_position = ( (uint16_t)(_motor->enctimer->Instance->CNT) - (uint16_t)(_motor->enctimer->Instance->CCR3) ) & 0x0FFF; // for 12-bit encoder
+    if(_motor->FOC.encoder_polarity_invert){
+        // Invert direction for abs_position as well
+        _motor->FOC.abs_position = ((uint16_t)(_motor->enctimer->Instance->CCR3) - (uint16_t)(_motor->enctimer->Instance->CNT)) & 0x0FFF; // 12-bit wrap
+    } else {
+        _motor->FOC.abs_position = ((uint16_t)(_motor->enctimer->Instance->CNT)  - (uint16_t)(_motor->enctimer->Instance->CCR3)) & 0x0FFF; // 12-bit wrap
+    }
+	// _motor->FOC.abs_position = ( (uint16_t)(_motor->enctimer->Instance->CNT) - (uint16_t)(_motor->enctimer->Instance->CCR3) ) & 0x0FFF; // for 12-bit encoder
 #endif
 }
 
