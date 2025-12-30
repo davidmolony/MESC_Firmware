@@ -504,6 +504,7 @@ void fastLoop(MESC_motor_typedef *_motor) {
 				angleObserver(_motor);
 				MESCFOC(_motor);
 				break;
+
 			case MOTOR_SENSOR_MODE_OPENLOOP:
 				getIncEncAngle(_motor); //Add this for setting up encoder
 				OLGenerateAngle(_motor);
@@ -621,7 +622,30 @@ void fastLoop(MESC_motor_typedef *_motor) {
       break;
 
     case MOTOR_STATE_ALIGN:
-      // Turn on at a given voltage at electricalangle0;
+        // owen code to calculate encoder offset
+    	// I think this will freeze at electrical angle = 0
+    	// to use:
+    	//    1) Set FOC_enc_oset = 0
+    	//    2) Make sure CCR3 has been set by a rotation of the motor
+    	//    3) Mark the motor where CCR3 rolls over
+    	//    4) Note pos_start = CCR1
+    	//    5) Change the MotorState = MOTOR_STATE_ALIGN
+    	//    6) Note pos_new = CCR1
+    	//    7) Subtract pos_new - pos_start = raw_oset_dis
+    	//    8) Set FOC_enc_oset = raw_oset_dis * 16 * pp
+    	// If it is set properly, when MotorState = MOTOR_STATE_ALIGN
+    	//   _mtr[0]->FOC->enc_offset->enc_angle should be ~0
+        MESCpwm_generateEnable(_motor);
+        static const uint16_t FOCAngle_target = 0;
+
+        _motor->FOC.FOCAngle = FOCAngle_target;
+        sin_cos_fast(_motor->FOC.FOCAngle,
+                     &_motor->FOC.sincosangle.sin,
+                     &_motor->FOC.sincosangle.cos);
+    	_motor->FOC.Idq_req.q = 0.0f;
+        _motor->FOC.Idq_req.d = 0.4f;
+        getIncEncAngle(_motor);
+    	MESCFOC(_motor);
       break;
 
     case MOTOR_STATE_TEST:

@@ -76,8 +76,18 @@ const float sinwave[321] = { 0.0000000000,  0.0245412285,  0.0490676743,  0.0735
 
 void sin_cos_fast( uint16_t angle , float * sin, float * cos)
 {
-	*sin = sinwave[angle >> 8];
-	*cos = sinwave[(angle >> 8) + 64];
+    uint16_t cosaengle = angle + 16384;
+    uint16_t bigangle = angle >> 8;
+    uint16_t bigcosangle = cosaengle >> 8;
+    uint16_t smallangle = angle & 0xFF;
+
+    *sin = ((float) sinwave[bigangle]      * (float)(255 - smallangle) +
+            (float) sinwave[bigangle + 1] * (float)(smallangle)) * 0.00390625f;
+
+    *cos = ((float) sinwave[bigcosangle]      * (float)(255 - smallangle) +
+            (float) sinwave[bigcosangle + 1] * (float)(smallangle)) * 0.00390625f;
+	// *sin = sinwave[angle >> 8];
+	// *cos = sinwave[(angle >> 8) + 64];
 }
 #endif
 

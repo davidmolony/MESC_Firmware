@@ -197,6 +197,9 @@
 #define ENCODER_E_OFFSET 0
 #endif
 
+#ifdef FETCH_ENC_OFFSET
+	#define ZERO_WINDOW 150   // ~0.8 electrical degrees
+#endif
 
 #define clamp(value, min, max) (min < max           \
   ? (value < min ? min : value > max ? max : value) \
@@ -306,8 +309,19 @@ typedef struct {
   uint32_t encoder_pulse;
   uint32_t encoder_OK;
   uint16_t enc_angle;
+  float alignment_error;
+
 #ifdef POSVEL_PLANE
   uint16_t abs_position;
+#endif
+
+#ifdef FETCH_ENC_OFFSET
+  int32_t offset_accumulator;
+  uint32_t offset_count;
+  int16_t manual_enc_offset;
+  int16_t offset_samples;
+  int16_t was_outside;
+  int16_t zero_window;
 #endif
 
   float FOC_advance;

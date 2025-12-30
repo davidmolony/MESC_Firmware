@@ -242,7 +242,7 @@ if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.injec
     }//end of pwm type switch
 
 #endif //End of #ifdef STEPPER_MOTOR
-  }
+}
 
 // Here we set all the PWMoutputs to LOW, without triggering the timerBRK,
  // which should only be set by the hardware comparators, in the case of a
@@ -272,6 +272,12 @@ if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.injec
    MESCpwm_phU_Enable(_motor);
    MESCpwm_phV_Enable(_motor);
    MESCpwm_phW_Enable(_motor);
+
+   // owen change:
+   // Enforces that high-side timers outputs (H1/H2/H3) are not driven
+#ifdef LOWSIDE_ONLY
+   _motor->mtimer->Instance->CCER &= ~(TIM_CCER_CC1E | TIM_CCER_CC2E | TIM_CCER_CC3E);
+#endif
  }
 
  void MESCpwm_generateBreakAll() {
@@ -288,17 +294,6 @@ if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.injec
 
  uint32_t tmpccmrx;  // Temporary buffer which is used to turn on/off phase PWMs
 
- // Turn all phase U FETs off, Tristate the HBridge output - For BLDC mode
- // mainly, but also used for measuring, software fault detection and recovery
- void MESCpwm_phU_Break(MESC_motor_typedef *_motor) {
-   tmpccmrx = _motor->mtimer->Instance->CCMR1;
-   tmpccmrx &= ~TIM_CCMR1_OC1M;
-   tmpccmrx &= ~TIM_CCMR1_CC1S;
-   tmpccmrx |= TIM_OCMODE_FORCED_INACTIVE;
-   _motor->mtimer->Instance->CCMR1 = tmpccmrx;
-   _motor->mtimer->Instance->CCER &= ~TIM_CCER_CC1E;   // disable
-   _motor->mtimer->Instance->CCER &= ~TIM_CCER_CC1NE;  // disable
- }
  // Basically un-break phase U, opposite of above...
  void MESCpwm_phU_Enable(MESC_motor_typedef *_motor) {
    tmpccmrx = _motor->mtimer->Instance->CCMR1;
@@ -306,9 +301,65 @@ if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.injec
    tmpccmrx &= ~TIM_CCMR1_CC1S;
    tmpccmrx |= TIM_OCMODE_PWM1;
    _motor->mtimer->Instance->CCMR1 = tmpccmrx;
+
+   // owen change
+
+
+#if defined(LOWSIDE_ONLY)
+   _motor->mtimer->Instance->CCER &= ~TIM_CCER_CC1E;   // never H1
+   _motor->mtimer->Instance->CCER |=  TIM_CCER_CC1NE;  // allow L1
+#else
    _motor->mtimer->Instance->CCER |= TIM_CCER_CC1E;   // enable
    _motor->mtimer->Instance->CCER |= TIM_CCER_CC1NE;  // enable
+#endif
  }
+
+ void MESCpwm_phV_Enable(MESC_motor_typedef *_motor) {
+   tmpccmrx = _motor->mtimer->Instance->CCMR1;
+   tmpccmrx &= ~TIM_CCMR1_OC2M;
+   tmpccmrx &= ~TIM_CCMR1_CC2S;
+   tmpccmrx |= TIM_OCMODE_PWM1 << 8;
+   _motor->mtimer->Instance->CCMR1 = tmpccmrx;
+
+   // owen change
+#if defined(LOWSIDE_ONLY)
+   _motor->mtimer->Instance->CCER &= ~TIM_CCER_CC2E;   // never H2
+   _motor->mtimer->Instance->CCER |=  TIM_CCER_CC2NE;  // allow L2
+#else
+   _motor->mtimer->Instance->CCER |= TIM_CCER_CC2E;   // enable
+   _motor->mtimer->Instance->CCER |= TIM_CCER_CC2NE;  // enable
+#endif
+ }
+
+ void MESCpwm_phW_Enable(MESC_motor_typedef *_motor) {
+   tmpccmrx = _motor->mtimer->Instance->CCMR2;
+   tmpccmrx &= ~TIM_CCMR2_OC3M;
+   tmpccmrx &= ~TIM_CCMR2_CC3S;
+   tmpccmrx |= TIM_OCMODE_PWM1;
+   _motor->mtimer->Instance->CCMR2 = tmpccmrx;
+
+   // owen change
+#if defined(LOWSIDE_ONLY)
+   _motor->mtimer->Instance->CCER &= ~TIM_CCER_CC3E;   // never H3
+   _motor->mtimer->Instance->CCER |=  TIM_CCER_CC3NE;  // allow L3
+#else
+   _motor->mtimer->Instance->CCER |= TIM_CCER_CC3E;   // enable
+   _motor->mtimer->Instance->CCER |= TIM_CCER_CC3NE;  // enable
+#endif
+ }
+
+
+ // Turn all phase U FETs off, Tristate the HBridge output - For BLDC mode
+  // mainly, but also used for measuring, software fault detection and recovery
+  void MESCpwm_phU_Break(MESC_motor_typedef *_motor) {
+    tmpccmrx = _motor->mtimer->Instance->CCMR1;
+    tmpccmrx &= ~TIM_CCMR1_OC1M;
+    tmpccmrx &= ~TIM_CCMR1_CC1S;
+    tmpccmrx |= TIM_OCMODE_FORCED_INACTIVE;
+    _motor->mtimer->Instance->CCMR1 = tmpccmrx;
+    _motor->mtimer->Instance->CCER &= ~TIM_CCER_CC1E;   // disable
+    _motor->mtimer->Instance->CCER &= ~TIM_CCER_CC1NE;  // disable
+  }
 
  void MESCpwm_phV_Break(MESC_motor_typedef *_motor) {
    tmpccmrx = _motor->mtimer->Instance->CCMR1;
@@ -318,16 +369,6 @@ if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.injec
    _motor->mtimer->Instance->CCMR1 = tmpccmrx;
    _motor->mtimer->Instance->CCER &= ~TIM_CCER_CC2E;   // disable
    _motor->mtimer->Instance->CCER &= ~TIM_CCER_CC2NE;  // disable
- }
-
- void MESCpwm_phV_Enable(MESC_motor_typedef *_motor) {
-   tmpccmrx = _motor->mtimer->Instance->CCMR1;
-   tmpccmrx &= ~TIM_CCMR1_OC2M;
-   tmpccmrx &= ~TIM_CCMR1_CC2S;
-   tmpccmrx |= TIM_OCMODE_PWM1 << 8;
-   _motor->mtimer->Instance->CCMR1 = tmpccmrx;
-   _motor->mtimer->Instance->CCER |= TIM_CCER_CC2E;   // enable
-   _motor->mtimer->Instance->CCER |= TIM_CCER_CC2NE;  // enable
  }
 
  void MESCpwm_phW_Break(MESC_motor_typedef *_motor) {
@@ -340,13 +381,5 @@ if((fabsf(_motor->FOC.eHz)>0.005f*_motor->FOC.pwm_frequency)&&(_motor->HFI.injec
    _motor->mtimer->Instance->CCER &= ~TIM_CCER_CC3NE;  // disable
  }
 
- void MESCpwm_phW_Enable(MESC_motor_typedef *_motor) {
-   tmpccmrx = _motor->mtimer->Instance->CCMR2;
-   tmpccmrx &= ~TIM_CCMR2_OC3M;
-   tmpccmrx &= ~TIM_CCMR2_CC3S;
-   tmpccmrx |= TIM_OCMODE_PWM1;
-   _motor->mtimer->Instance->CCMR2 = tmpccmrx;
-   _motor->mtimer->Instance->CCER |= TIM_CCER_CC3E;   // enable
-   _motor->mtimer->Instance->CCER |= TIM_CCER_CC3NE;  // enable
- }
+
 

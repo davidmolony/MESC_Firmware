@@ -55,4 +55,6 @@ void MESCpwm_phV_Enable(MESC_motor_typedef *_motor);
 void MESCpwm_phW_Break(MESC_motor_typedef *_motor);
 void MESCpwm_phW_Enable(MESC_motor_typedef *_motor);
 
+//#define LOWSIDE_ONLY 1
+
 #endif /* INC_MESCPWM_H_ */

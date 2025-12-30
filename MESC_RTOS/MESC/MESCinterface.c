@@ -582,15 +582,17 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 
 	switch(id){
 		case CAN_ID_IQREQ:{
-			float req = PACK_buf_to_float(data);
-			if(req > 0){
+			volatile float req = PACK_buf_to_float(data);
+			if(req > 0.0f){
 				// Owen addition
 				motor_curr->input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
-				motor_curr->input_vars.UART_req = req * motor_curr->input_vars.max_request_Idq.q;
+				// motor_curr->input_vars.UART_req = req * motor_curr->input_vars.max_request_Idq.q;
+				motor_curr->input_vars.UART_req = req;
 			}else{
 				// Owen addition
 				motor_curr->input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
-				motor_curr->input_vars.UART_req = req * motor_curr->input_vars.max_request_Idq.q; // for some reason min_req is assymettric
+				// motor_curr->input_vars.UART_req = req * motor_curr->input_vars.min_request_Idq.q;
+				motor_curr->input_vars.UART_req = req;
 			}
 			break;
 		}
@@ -647,7 +649,6 @@ void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle){
 }
 
 void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
-
 	MESC_motor_typedef * motor_curr = &mtr[0];
 
 	TASK_CAN_add_float(handle	, CAN_ID_TEMP_MOT_MOS1	, CAN_BROADCAST, motor_curr->Conv.Motor_T			, motor_curr->Conv.MOSu_T			, 0);

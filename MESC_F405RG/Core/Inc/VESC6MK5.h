@@ -15,8 +15,9 @@
 
 // Owen block of code
 // #define JITTER_TEST  1 // if true exports square wave out of PB5
-#define POSVEL_PLANE 1 // export 0x02D0 CAN messages with position/velocity data
+#define POSVEL_PLANE 1     // export 0x02D0 CAN messages with position/velocity data
 #define POSVEL_HZ 500
+// #define FETCH_ENC_OFFSET 1
 
 #define SHUNT_POLARITY 1.0f
 
@@ -30,8 +31,8 @@
 #define R_VBUS_TOP 39000.0f
 
 #define MAX_ID_REQUEST 2.0f
-#define MAX_IQ_REQUEST 10.0f
-#define MIN_IQ_REQUEST -10.0f
+#define MAX_IQ_REQUEST 50.0f
+#define MIN_IQ_REQUEST -50.0f
 #define DEFAULT_CONTROL_MODE MOTOR_CONTROL_MODE_TORQUE
 #define ADC1OOR 4090
 

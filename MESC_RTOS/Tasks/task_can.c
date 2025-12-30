@@ -158,6 +158,7 @@ void TASK_CAN_packet_received(TASK_CAN_handle * handle, uint32_t id, uint8_t sen
 		}
 		default:
 			TASK_CAN_packet_cb(handle, id, sender, receiver, data, len);
+
 			break;
 	}
 
