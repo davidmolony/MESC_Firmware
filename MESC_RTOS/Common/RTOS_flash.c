@@ -242,6 +242,7 @@ uint32_t RTOS_flash_erase( uint32_t const address, uint32_t const length )
     sector_erase.Banks     = FLASH_BANK_1; // (ignored)
     sector_erase.Sector    = ssector;
     sector_erase.NbSectors = (esector - ssector + 1);
+    sector_erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
 #endif
 #ifdef STM32L4
     sector_erase.TypeErase = FLASH_TYPEERASE_PAGES;

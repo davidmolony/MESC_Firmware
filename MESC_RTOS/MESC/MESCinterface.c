@@ -685,9 +685,9 @@ void TASK_CAN_aux_data(TASK_CAN_handle * handle){
 
 
 void MESCinterface_init(TERMINAL_HANDLE * handle){
-	static bool is_init=false;
+	static volatile bool is_init = false;
 	if(is_init) return;
-
+	is_init = true;
 
 	populate_vars();
 
@@ -717,5 +717,5 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 	REGISTER_apps(&TERM_defaultList);
 
-	is_init=true;
+
 }
