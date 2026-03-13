@@ -2,6 +2,10 @@
 
 Use this document as the handoff brief for a future Codex session that will simplify the firmware to a single-target, non-RTOS, non-CLI build.
 
+Before starting work from this handoff, read these documents first:
+- [VSCODE_BUILD_SETUP.md](VSCODE_BUILD_SETUP.md)
+- [VSCODE_BOOTUP_COMMENTS.md](VSCODE_BOOTUP_COMMENTS.md)
+
 ## Handoff Prompt
 
 ```text
@@ -15,6 +19,7 @@ Target constraints
 - Remove the RTOS/FreeRTOS runtime from this target
 - Retain motor-driving capability only
 - Preserve the ability to read the existing persistent configuration stored in reserved flash/NVM
+- Preserve and enable the ability to edit/update persistent configuration and retrieve live runtime data mapped to that persisted model
 
 Requirements
 - Work only within this target and do not preserve compatibility with other STM32 families or other board configs unless absolutely required by shared code
@@ -219,7 +224,9 @@ Resume work on this firmware simplification from the current repo state.
 
 Current known state:
 - Target has already been frozen to `STM32F405` + `Wheely.h`
-- VS Code compile/upload/debug now works using the STM32CubeIDE 13.3 toolchain
+- VS Code compile/upload now works using the STM32CubeIDE 13.3 toolchain
+- Debug operation has not yet been proven end-to-end on this target
+- Milestone completed: a documented and repeatable VS Code mechanism exists to build and upload firmware for this target
 - The motor still spins on hardware in the current firmware
 - A standalone persistent-memory reader has been added in:
   - `MESC_F405RG/Core/Inc/mesc_persist.h`
@@ -238,6 +245,7 @@ Constraints:
 - Keep support limited to `MESC_F405RG`, `STM32F405`, and `Wheely.h`
 - Preserve motor-driving capability throughout the migration
 - Preserve access to existing persisted flash configuration
+- Ensure the non-CLI path can read, edit/update, and observe live data corresponding to persisted configuration
 - Use apply_patch for edits
 - Do not revert unrelated user changes
 

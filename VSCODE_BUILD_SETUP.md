@@ -2,6 +2,10 @@
 
 This document explains what was done to make `MESC_F405RG` compile and upload from VS Code.
 
+Before using this setup, also read:
+- [VSCODE_BOOTUP_COMMENTS.md](VSCODE_BOOTUP_COMMENTS.md)
+- [RTOS_UNWIND_HANDOFF.md](RTOS_UNWIND_HANDOFF.md)
+
 ## Overview
 
 The working VS Code build path reuses the existing STM32CubeIDE-generated build system rather than replacing it with CMake or a handwritten Makefile.
@@ -124,6 +128,38 @@ With this setup in place:
 - VS Code can compile the project
 - VS Code can upload the firmware
 - hardware was verified to still run and spin the motor
+
+## Recovery: Missing Debug Build Folder
+
+If compile fails with:
+
+```text
+make: *** MESC_F405RG/Debug: No such file or directory.  Stop.
+```
+
+the CubeIDE-managed build artifacts are missing and need to be regenerated.
+
+### Regenerate Managed Build Artifacts
+
+Run STM32CubeIDE in headless mode to import and build the project:
+
+```bash
+"/Applications/STM32CubeIDE.app/Contents/MacOS/STM32CubeIDE" --launcher.suppressErrors -nosplash -consoleLog -application org.eclipse.cdt.managedbuilder.core.headlessbuild -data "$PWD/.cubeide_ws" -import "$PWD/MESC_F405RG" -build MESC_F405RG/Debug
+```
+
+This regenerates `MESC_F405RG/Debug` and related generated files such as:
+- `MESC_F405RG/Debug/makefile`
+- `MESC_F405RG/Debug/objects.list`
+
+### Verify Compile From VS Code Dropdown Path
+
+After regeneration, run compile using either:
+- Run and Debug dropdown: `MESC_F405RG: compile only`
+- Task dropdown: `MESC_F405RG: compile`
+
+Expected success indicators:
+- task exits with code `0`
+- output includes a successful size step for `MESC_F405RG.elf`
 
 ## Notes For Future Changes
 

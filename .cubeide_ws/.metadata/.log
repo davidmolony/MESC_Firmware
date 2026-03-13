@@ -1,0 +1,16 @@
+!SESSION 2026-03-13 18:00:56.216 -----------------------------------------------
+eclipse.buildId=Version 1.19.0
+java.version=21.0.3
+java.vendor=Eclipse Adoptium
+BootLoader constants: OS=macosx, ARCH=x86_64, WS=cocoa, NL=en_US
+Framework arguments:  -application org.eclipse.cdt.managedbuilder.core.headlessbuild -importAll /Users/owhite/MESC_Firmware -build MESC_F405RG/Debug
+Command-line arguments:  -os macosx -ws cocoa -arch x86_64 -application org.eclipse.cdt.managedbuilder.core.headlessbuild -data /Users/owhite/MESC_Firmware/.cubeide_ws -importAll /Users/owhite/MESC_Firmware -build MESC_F405RG/Debug
+
+!ENTRY org.eclipse.cdt.core 1 0 2026-03-13 18:01:07.282
+!MESSAGE Indexed 'DASH_F407VET6' (179 sources, 390 headers) in 7.65 sec: 29,809 declarations; 174,921 references; 6 unresolved inclusions; 1,480 syntax errors; 2,555 unresolved names (1.2%)
+
+!ENTRY org.eclipse.cdt.core 1 0 2026-03-13 18:01:10.021
+!MESSAGE Indexed 'MESC_F405RG' (88 sources, 229 headers) in 2.65 sec: 23,968 declarations; 122,167 references; 10 unresolved inclusions; 1,676 syntax errors; 2,196 unresolved names (1.5%)
+
+!ENTRY org.eclipse.cdt.core 1 0 2026-03-13 18:01:10.029
+!MESSAGE Indexed 'Axis-Throttle' (0 sources, 0 headers) in 0 sec: 0 declarations; 0 references; 0 unresolved inclusions; 0 syntax errors; 0 unresolved names (0%)
