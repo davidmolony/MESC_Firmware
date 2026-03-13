@@ -1,0 +1,75 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "MESC_F405RG: compile",
+      "type": "shell",
+      "command": "/bin/zsh",
+      "args": [
+        "-lc",
+        "export PATH='/Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.macos64_1.0.0.202411102158/tools/bin:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/opt/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin'; make -C MESC_F405RG/Debug main-build -j"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "MESC_F405RG: build",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "MESC_F405RG: compile"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "MESC_F405RG: clean",
+      "type": "shell",
+      "command": "/bin/zsh",
+      "args": [
+        "-lc",
+        "export PATH='/Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.macos64_1.0.0.202411102158/tools/bin:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/opt/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin'; make -C MESC_F405RG/Debug clean"
+      ],
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "MESC_F405RG: upload",
+      "type": "shell",
+      "command": "openocd",
+      "args": [
+        "-f",
+        "interface/stlink.cfg",
+        "-f",
+        "target/stm32f4x.cfg",
+        "-c",
+        "program ${workspaceFolder}/MESC_F405RG/Debug/MESC_F405RG.elf verify reset exit"
+      ],
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "MESC_F405RG: build + upload",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "MESC_F405RG: build",
+        "MESC_F405RG: upload"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

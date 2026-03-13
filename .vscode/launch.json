@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "MESC_F405RG: compile only",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "true",
+      "preLaunchTask": "MESC_F405RG: compile"
+    },
+    {
+      "name": "MESC_F405RG: debug (build + flash)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "servertype": "openocd",
+      "interface": "swd",
+      "device": "STM32F405RG",
+      "executable": "${workspaceFolder}/MESC_F405RG/Debug/MESC_F405RG.elf",
+      "configFiles": [
+        "interface/stlink.cfg",
+        "target/stm32f4x.cfg"
+      ],
+      "runToEntryPoint": "main",
+      "showDevDebugOutput": "none",
+      "preLaunchTask": "MESC_F405RG: build"
+    },
+    {
+      "name": "MESC_F405RG: build + upload",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "true",
+      "preLaunchTask": "MESC_F405RG: build + upload"
+    }
+  ]
+}

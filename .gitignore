@@ -2,6 +2,10 @@ Debug/
 Release/
 .settings/
 /**/.vscode/
+/!.vscode/
+/!.vscode/tasks.json
+/!.vscode/launch.json
+/!.vscode/extensions.json
 /**/BIST/build/
 /**/BIST/bist
 /**/BIST/FLASH
