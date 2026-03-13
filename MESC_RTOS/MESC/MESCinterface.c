@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <MESC/MESCinterface.h>
+
 #include "MESCmeasure.h"
 
 void handleEscape(TERMINAL_HANDLE *handle){
@@ -50,7 +51,7 @@ void handleEscape(TERMINAL_HANDLE *handle){
 }
 
 const char TERM_startupText1[] = "\r\n";
-const char TERM_startupText2[] = "\r\n[M]olony [E]lectronic [S]peed [C]ontroller";
+const char TERM_startupText2[] = "\r\n[M]olony CHANGED [E]lectronic [S]peed [C]ontroller";
 const char TERM_startupText3[] = "\r\n";
 
 uint8_t CMD_error(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){

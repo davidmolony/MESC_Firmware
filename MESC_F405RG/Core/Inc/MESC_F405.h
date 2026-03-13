@@ -1,24 +1,8 @@
-//First, include the header specific to your board, which includes hardware parameters like ABS MAX, shunts, potential divdiders
-//Ensure only one board's header file is uncommented!
+// This target is now fixed to the STM32F405 + Wheely board configuration.
+// Keep all board-specific hardware parameters in Wheely.h.
 #include <math.h>
 
-//#include "MP2_V0_1.h"
-//#include "CL700_V0_3.h"
-//#include "INDI-600.h"
-//#include "MX_FOC_IMS.h"
-//#include "MX_FOC_GaN.h"
-//#include "GIGAVESC.h"
-//#include "Squareboard.h"
-//#include "12FETP.h"
-//#include "30FETP.h"
-//#include "RUN18.h"
-//#include "VESC6MK5.h"
-//#include "Pulse18.h"
-//#include "BSM24.h"
 #include "Wheely.h"
-
-
-//#include "Q6F_minideskr1.h"
 
 
 #define HAS_PHASE_SENSORS //This refers to VOLTAGE sensing on phase, not current!
