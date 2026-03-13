@@ -1,81 +1,81 @@
-  Parameter             | Value             | Min      | Max      | Description
-  adc1                  | 1556              | 0        | 4096     | Raw ADC throttle
-  adc1_max              | 2700              | 0        | 4096     | ADC1 max val
-  adc1_min              | 1200              | 0        | 4096     | ADC1 min val
-  adc1_pol              | 1.000000          | -1.00    | 1.00     | ADC1 polarity
-  adc2_max              | 4095              | 0        | 4096     | ADC2 max val
-  adc2_min              | 1200              | 0        | 4096     | ADC2 min val
-  adc2_pol              | 1.000000          | -1.00    | 1.00     | ADC2 polarity
-  can_adc               | 3                 | 0        | 254      | CAN ADC ID  0=disabled
-  ehz                   | -0.054948         | -inf     | inf      | Motor electrical hz
-  error                 | 0                 | 0        | 429496729| System errors now
-  error_all             | 0                 | 0        | 429496729| All errors encountered
-  FOC_Advance           | 0.000000          | -10.00   | 10.00    | FOC advance, proportion of 1 PWM cycle
-  FOC_angle             | 25000             | 0        | 65535    | FOC angle now
-  FOC_curr_BW           | 3000.000000       | 200.00   | 10000.00 | Current Controller Bandwidth
-  FOC_enc_ang           | 25000             | 0        | 65535    | Encoder angle now
-  FOC_enc_oset          | 25000             | 0        | 65535    | Encoder alignment angle
-  FOC_enc_pol           | 0                 | 0        | 1        | Encoder polarity
-  FOC_enc_PPR           | 4096              | 0        | 65535    | Encoder ABI PPR
-  FOC_flux_gain         | 0.367423          | 0.00     | 100.00   | Flux linkage gain
-  FOC_flux_gain         | 0.367423          | 0.00     | 100.00   | Flux linkage gain
-  FOC_flux_nlin         | 5000.000000       | 0.00     | 10000.00 | Flux centering gain
-  FOC_fpwm              | 20000.000000      | 0.00     | 100000.00| PWM frequency
-  FOC_fw_ehz            | 0.000000          | 0.00     | 6000.00  | max eHz under field weakenning
-  FOC_hall_array_ok     | 0                 | 0        | 1        | Hall array OK flag (set to 0 to restart live hall cal process)
-  FOC_hall_iir          | 0.950000          | 0.00     | 1.00     | Decay constant for hall preload (0-1.0)
-  FOC_hall_Vt           | 2.000000          | 0.00     | 100.00   | Hall transition voltage
-  FOC_hfi_eHz           | 0.000000          | 0.00     | 2000.00  | HFI Max Frequency
-  FOC_hfi_type          | 0                 | 0        | 3        | HFI type [0=None, 1=45deg, 2=d axis]
-  FOC_hfi_volt          | 1.000000          | 0.00     | 50.00    | HFI voltage
-  FOC_Max_Mod           | 0.950000          | 0.10     | 1.12     | Max modulation index; typically 0.95, can over modulate to 1.12
-  FOC_obs_type          | 1                 | 0        | 4        | Observer type, 0=None, 1=MXLLambda, 2MXL, 3=OrtegaOrig, 4=PLL
-  FOC_ol_step           | 0                 | 0        | 6000     | Angle per PWM period openloop (65535 per erev)
-  FOC_ortega_gain       | 1000000.000000    | 1.00     | 100000000| Ortega gain, typically 1M
-  Hall_flux             | Array[12]         | -10.00   | 10.00    | hall start table
-  id                    | 0.005158          | -inf     | inf      | Phase Idq_d smoothed
-  input_opt             | 32                | 0        | 128      | Inputs [1=ADC1 2=ADC2 4=PPM 8=UART 16=Killswitch 32=CANADC1 64=CANADC2 128=ADC12DIFF]
-  iq                    | 0.004025          | -inf     | inf      | Phase Idq_q smoothed
-  iqreq                 | 0.000000          | -4096.00 | 4096.00  | mtr[0].FOC.Idq_req.q
-  meas_cl_curr          | 8.500000          | 0.50     | 100.00   | Measuring q closed loop current
-  meas_curr             | 20.000000         | 0.50     | 100.00   | Measuring current
-  meas_volt             | 4.000000          | 0.50     | 100.00   | Measuring voltage
-  node_id               | 11                | 1        | 254      | Node ID
-  opt_app_type          | 0                 | 0        | 3        | App type, 0=none, 1=Vehicle, 2,3 = undefined
-  opt_circ_lim          | 2                 | 0        | 2        | Circle limiter [0=OFF, 1=ON, 2=ON Vd]
-  opt_cont_type         | 0                 | 0        | 4        | Cont type: 0=Torque, 1=Speed, 2=Duty, 3=Position, 4=Measuring, 5=Handbrake
-  opt_fw                | 2                 | 0        | 2        | Field weakening [0=OFF, 1=ON, 2=ON V2]
-  opt_hall_start        | false             | false    | true     | Use hall start
-  opt_lr_obs            | false             | false    | true     | Use LR observer
-  opt_motor_temp        | false             | false    | true     | Motor has temperature sensor
-  opt_mtpa              | 0                 | 0        | 3        | MTPA type = 0=none, 1=setpoint, 2=magnitude, 3=iq
-  opt_phase_bal         | false             | false    | true     | Use highhopes phase balancing
-  opt_pwm_type          | 0                 | 0        | 3        | Modulator [0=SVPWM, 1=sinusoidal, 2=Bottom clamp, 3=Sin/bottom combo]
-  par_dir               | 0                 | 0        | 1        | Motor direction
-  par_flux              | 0.001350          | 0.00     | 100.00   | Flux linkage
-  par_fw_curr           | 0.000000          | 0.00     | 300.00   | Max field weakenning current
-  par_i_max             | 10.000000         | 0.00     | 1000.00  | Max motor current
-  par_i_min             | -10.000000        | -1000.00 | 0.00     | Min motor current
-  par_i_park            | 0.000000          | 0.00     | 300.00   | Max current for handbrake
-  par_ibat_max          | 10.000000         | 0.00     | 1000.00  | Max battery current power
-  par_ld                | 0.000140          | 0.00     | 10.00    | Phase inductance
-  par_lq                | 0.000210          | 0.00     | 10.00    | Phase inductance
-  par_motor_sensor      | 4                 | 0        | 30       | 0=SL, 1=Hall, 2=OL, 3=ABSENC, 4=INC_ENC, 5=HFI
-  par_p_max             | 3000.000000       | 0.00     | 50000.00 | Max power
-  par_pp                | 14                | 0        | 255      | Motor pole pairs
-  par_r                 | 0.650000          | 0.00     | 10.00    | Phase resistance
-  par_rpm_max           | 0                 | 0        | 300000   | Max RPM
-  par_SL_sensor         | 0                 | 0        | 30       | 0=OL, 1=Hall, 2=PWMENC, 3=HFI
-  password              |                                         | Password for SU
-  safe_count            | 100               | 0        | 1000     | Live count before allowing throttle
-  safe_start            | 100               | 0        | 1000     | Countdown before allowing throttle
-  speed_ki              | 0.100000          | 0.00     | 6000000.0| amps/Hz integral gain
-  speed_kp              | 0.500000          | 0.00     | 6000000.0| amps/Hz proportional gain
-  speed_req             | 0.000000          | 0.00     | 5000.00  | Hz
-  TMOS                  | 300.291382        | 0.00     | 4096.00  | MOSFET temp, kelvin
-  TMOT                  | 179.163300        | 0.00     | 4096.00  | Motor temp, kelvin
-  uart_dreq             | 0.000000          | -1000.00 | 1000.00  | Uart input
-  uart_req              | 0.000000          | -1000.00 | 1000.00  | Uart input
-  vbus                  | 32.195755         | 0.00     | inf      | Read input voltage
-  Vd                    | -0.017286         | -4096.00 | 4096.00  | FOC_Vdq_d
-  Vq                    | -0.023972         | -4096.00 | 4096.00  | FOC_Vdq_q
+  Parameter             | Access | Value             | Min      | Max      | Description
+  adc1                  | R      | 1556              | 0        | 4096     | Raw ADC throttle
+  adc1_max              | R_W    | 2700              | 0        | 4096     | ADC1 max val
+  adc1_min              | R_W    | 1200              | 0        | 4096     | ADC1 min val
+  adc1_pol              | R_W    | 1.000000          | -1.00    | 1.00     | ADC1 polarity
+  adc2_max              | R_W    | 4095              | 0        | 4096     | ADC2 max val
+  adc2_min              | R_W    | 1200              | 0        | 4096     | ADC2 min val
+  adc2_pol              | R_W    | 1.000000          | -1.00    | 1.00     | ADC2 polarity
+  can_adc               | R_W    | 3                 | 0        | 254      | CAN ADC ID  0=disabled
+  ehz                   | R      | -0.054948         | -inf     | inf      | Motor electrical hz
+  error                 | R      | 0                 | 0        | 429496729| System errors now
+  error_all             | R      | 0                 | 0        | 429496729| All errors encountered
+  FOC_Advance           | R_W    | 0.000000          | -10.00   | 10.00    | FOC advance, proportion of 1 PWM cycle
+  FOC_angle             | R_W    | 25000             | 0        | 65535    | FOC angle now
+  FOC_curr_BW           | R_W    | 3000.000000       | 200.00   | 10000.00 | Current Controller Bandwidth
+  FOC_enc_ang           | R_W    | 25000             | 0        | 65535    | Encoder angle now
+  FOC_enc_oset          | R_W    | 25000             | 0        | 65535    | Encoder alignment angle
+  FOC_enc_pol           | R_W    | 0                 | 0        | 1        | Encoder polarity
+  FOC_enc_PPR           | R_W    | 4096              | 0        | 65535    | Encoder ABI PPR
+  FOC_flux_gain         | R_W    | 0.367423          | 0.00     | 100.00   | Flux linkage gain
+  FOC_flux_gain         | R_W    | 0.367423          | 0.00     | 100.00   | Flux linkage gain
+  FOC_flux_nlin         | R_W    | 5000.000000       | 0.00     | 10000.00 | Flux centering gain
+  FOC_fpwm              | R_W    | 20000.000000      | 0.00     | 100000.00| PWM frequency
+  FOC_fw_ehz            | R_W    | 0.000000          | 0.00     | 6000.00  | max eHz under field weakenning
+  FOC_hall_array_ok     | R_W    | 0                 | 0        | 1        | Hall array OK flag (set to 0 to restart live hall cal process)
+  FOC_hall_iir          | R_W    | 0.950000          | 0.00     | 1.00     | Decay constant for hall preload (0-1.0)
+  FOC_hall_Vt           | R_W    | 2.000000          | 0.00     | 100.00   | Hall transition voltage
+  FOC_hfi_eHz           | R_W    | 0.000000          | 0.00     | 2000.00  | HFI Max Frequency
+  FOC_hfi_type          | R_W    | 0                 | 0        | 3        | HFI type [0=None, 1=45deg, 2=d axis]
+  FOC_hfi_volt          | R_W    | 1.000000          | 0.00     | 50.00    | HFI voltage
+  FOC_Max_Mod           | R_W    | 0.950000          | 0.10     | 1.12     | Max modulation index; typically 0.95, can over modulate to 1.12
+  FOC_obs_type          | R_W    | 1                 | 0        | 4        | Observer type, 0=None, 1=MXLLambda, 2MXL, 3=OrtegaOrig, 4=PLL
+  FOC_ol_step           | R_W    | 0                 | 0        | 6000     | Angle per PWM period openloop (65535 per erev)
+  FOC_ortega_gain       | R_W    | 1000000.000000    | 1.00     | 100000000| Ortega gain, typically 1M
+  Hall_flux             | R_W    | Array[12]         | -10.00   | 10.00    | hall start table
+  id                    | R      | 0.005158          | -inf     | inf      | Phase Idq_d smoothed
+  input_opt             | R_W    | 32                | 0        | 128      | Inputs [1=ADC1 2=ADC2 4=PPM 8=UART 16=Killswitch 32=CANADC1 64=CANADC2 128=ADC12DIFF]
+  iq                    | R      | 0.004025          | -inf     | inf      | Phase Idq_q smoothed
+  iqreq                 | R      | 0.000000          | -4096.00 | 4096.00  | mtr[0].FOC.Idq_req.q
+  meas_cl_curr          | R_W    | 8.500000          | 0.50     | 100.00   | Measuring q closed loop current
+  meas_curr             | R_W    | 20.000000         | 0.50     | 100.00   | Measuring current
+  meas_volt             | R_W    | 4.000000          | 0.50     | 100.00   | Measuring voltage
+  node_id               | R_W    | 11                | 1        | 254      | Node ID
+  opt_app_type          | R_W    | 0                 | 0        | 3        | App type, 0=none, 1=Vehicle, 2,3 = undefined
+  opt_circ_lim          | R_W    | 2                 | 0        | 2        | Circle limiter [0=OFF, 1=ON, 2=ON Vd]
+  opt_cont_type         | R_W    | 0                 | 0        | 4        | Cont type: 0=Torque, 1=Speed, 2=Duty, 3=Position, 4=Measuring, 5=Handbrake
+  opt_fw                | R_W    | 2                 | 0        | 2        | Field weakening [0=OFF, 1=ON, 2=ON V2]
+  opt_hall_start        | R_W    | false             | false    | true     | Use hall start
+  opt_lr_obs            | R_W    | false             | false    | true     | Use LR observer
+  opt_motor_temp        | R_W    | false             | false    | true     | Motor has temperature sensor
+  opt_mtpa              | R_W    | 0                 | 0        | 3        | MTPA type = 0=none, 1=setpoint, 2=magnitude, 3=iq
+  opt_phase_bal         | R_W    | false             | false    | true     | Use highhopes phase balancing
+  opt_pwm_type          | R_W    | 0                 | 0        | 3        | Modulator [0=SVPWM, 1=sinusoidal, 2=Bottom clamp, 3=Sin/bottom combo]
+  par_dir               | R_W    | 0                 | 0        | 1        | Motor direction
+  par_flux              | R_W    | 0.001350          | 0.00     | 100.00   | Flux linkage
+  par_fw_curr           | R_W    | 0.000000          | 0.00     | 300.00   | Max field weakenning current
+  par_i_max             | R_W    | 10.000000         | 0.00     | 1000.00  | Max motor current
+  par_i_min             | R_W    | -10.000000        | -1000.00 | 0.00     | Min motor current
+  par_i_park            | R_W    | 0.000000          | 0.00     | 300.00   | Max current for handbrake
+  par_ibat_max          | R_W    | 10.000000         | 0.00     | 1000.00  | Max battery current power
+  par_ld                | R_W    | 0.000140          | 0.00     | 10.00    | Phase inductance
+  par_lq                | R_W    | 0.000210          | 0.00     | 10.00    | Phase inductance
+  par_motor_sensor      | R_W    | 4                 | 0        | 30       | 0=SL, 1=Hall, 2=OL, 3=ABSENC, 4=INC_ENC, 5=HFI
+  par_p_max             | R_W    | 3000.000000       | 0.00     | 50000.00 | Max power
+  par_pp                | R_W    | 14                | 0        | 255      | Motor pole pairs
+  par_r                 | R_W    | 0.650000          | 0.00     | 10.00    | Phase resistance
+  par_rpm_max           | R_W    | 0                 | 0        | 300000   | Max RPM
+  par_SL_sensor         | R_W    | 0                 | 0        | 30       | 0=OL, 1=Hall, 2=PWMENC, 3=HFI
+  password              | R_W    |                   |          |          | Password for SU
+  safe_count            | R      | 100               | 0        | 1000     | Live count before allowing throttle
+  safe_start            | R_W    | 100               | 0        | 1000     | Countdown before allowing throttle
+  speed_ki              | R_W    | 0.100000          | 0.00     | 6000000.0| amps/Hz integral gain
+  speed_kp              | R_W    | 0.500000          | 0.00     | 6000000.0| amps/Hz proportional gain
+  speed_req             | R_W    | 0.000000          | 0.00     | 5000.00  | Hz
+  TMOS                  | R      | 300.291382        | 0.00     | 4096.00  | MOSFET temp, kelvin
+  TMOT                  | R      | 179.163300        | 0.00     | 4096.00  | Motor temp, kelvin
+  uart_dreq             | R_W    | 0.000000          | -1000.00 | 1000.00  | Uart input
+  uart_req              | R_W    | 0.000000          | -1000.00 | 1000.00  | Uart input
+  vbus                  | R      | 32.195755         | 0.00     | inf      | Read input voltage
+  Vd                    | R      | -0.017286         | -4096.00 | 4096.00  | FOC_Vdq_d
+  Vq                    | R      | -0.023972         | -4096.00 | 4096.00  | FOC_Vdq_q
