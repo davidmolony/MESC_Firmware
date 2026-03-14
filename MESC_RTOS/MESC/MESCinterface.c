@@ -34,6 +34,7 @@
 #include "TTerm/Core/include/TTerm.h"
 #include "Tasks/task_cli.h"
 #include "Tasks/task_overlay.h"
+#include "Common/RTOS_flash.h"
 #include "MESCmotor_state.h"
 #include "MESCmotor.h"
 #include <stdlib.h>
@@ -41,8 +42,101 @@
 #include <stdint.h>
 #include <math.h>
 #include <MESC/MESCinterface.h>
+#include "mesc_persist.h"
 
 #include "MESCmeasure.h"
+
+static TermVariableDescriptor * mesc_find_var_by_name(TermVariableDescriptor *head, char const *name){
+	TermVariableDescriptor *curr;
+
+	if(head == NULL || name == NULL){
+		return NULL;
+	}
+
+	curr = head->nextVar;
+	while(curr != NULL){
+		if(strcmp(curr->name, name) == 0){
+			return curr;
+		}
+		curr = curr->nextVar;
+	}
+
+	return NULL;
+}
+
+static void mesc_step4_validate_persist_reader(TERMINAL_HANDLE *handle){
+	MESC_PersistDataset dataset;
+	MESC_PersistEntry entry;
+	TermVariableDescriptor *head;
+	uint32_t i;
+	uint32_t missing_name = 0;
+	uint32_t type_mismatch = 0;
+	uint32_t parse_errors = 0;
+	uint32_t rw_checked = 0;
+	uint32_t rw_matches = 0;
+	uint32_t rw_mismatches = 0;
+	uint32_t ro_skipped = 0;
+
+	if(handle == NULL || handle->varHandle == NULL || handle->varHandle->varListHead == NULL){
+		return;
+	}
+
+	head = handle->varHandle->varListHead;
+
+	if(!MESC_PersistOpenLatest(&dataset, (void const *)RTOS_flash_base_address(), RTOS_flash_base_size())){
+		ttprintf("[persist-step4] no dataset found in NVM\r\n");
+		return;
+	}
+
+	if(!MESC_PersistValidate(&dataset)){
+		ttprintf("[persist-step4] dataset validation failed (rev=%lu entries=%lu)\r\n",
+				 (unsigned long)dataset.revision,
+				 (unsigned long)dataset.entry_count);
+		return;
+	}
+
+	for(i = 0; i < dataset.entry_count; i++){
+		TermVariableDescriptor *currVar;
+
+		if(!MESC_PersistGetEntry(&dataset, i, &entry)){
+			parse_errors++;
+			continue;
+		}
+
+		currVar = mesc_find_var_by_name(head, entry.name);
+		if(currVar == NULL){
+			missing_name++;
+			continue;
+		}
+
+		if(((uint32_t)currVar->type != entry.type) || (currVar->typeSize != entry.type_size)){
+			type_mismatch++;
+			continue;
+		}
+
+		if((currVar->rw & VAR_ACCESS_W) != 0U){
+			rw_checked++;
+			if(memcmp(currVar->variable, entry.value, currVar->typeSize) == 0){
+				rw_matches++;
+			}else{
+				rw_mismatches++;
+			}
+		}else{
+			ro_skipped++;
+		}
+	}
+
+	ttprintf("[persist-step4] rev=%lu entries=%lu parse_err=%lu missing=%lu type_mismatch=%lu rw_checked=%lu rw_match=%lu rw_mismatch=%lu ro_skipped=%lu\r\n",
+			 (unsigned long)dataset.revision,
+			 (unsigned long)dataset.entry_count,
+			 (unsigned long)parse_errors,
+			 (unsigned long)missing_name,
+			 (unsigned long)type_mismatch,
+			 (unsigned long)rw_checked,
+			 (unsigned long)rw_matches,
+			 (unsigned long)rw_mismatches,
+			 (unsigned long)ro_skipped);
+}
 
 void handleEscape(TERMINAL_HANDLE *handle){
 	MESC_motor_typedef * motor_curr = &mtr[0];
@@ -849,6 +943,9 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 			mtr[i].conf_is_valid = false;
 		}
 	}
+
+	/* Step 4 check: compare standalone parser output with CLI-loaded runtime values. */
+	mesc_step4_validate_persist_reader(handle);
 
 	calculateGains(&mtr[0]);
 	calculateVoltageGain(&mtr[0]);

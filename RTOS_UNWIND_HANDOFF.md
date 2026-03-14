@@ -107,6 +107,44 @@ Tasks:
 - Verify that important motor/runtime fields match after load.
 - Fix any format, naming, typing, or callback-related mismatches before switching startup over.
 
+Step 4 validation checklist (pass/fail):
+1. Baseline capture (CLI path)
+  - Build/upload current firmware with existing CLI path active.
+  - Capture a baseline snapshot of values from `CLI_VALUES.txt` fields, including:
+    - Core motor parameters: `par_*`, `FOC_*` setup values
+    - Input/safety values: `adc*`, `safe_*`, `input_opt`, `uart_*`
+    - Control mode/options: `opt_*`, `speed_*`
+  - Mark each captured item as `R` or `R_W` according to `CLI_VALUES.txt`.
+2. Reader parse and dataset integrity
+  - Open latest dataset with standalone reader.
+  - Validate header/footer markers, revision, entry count, and CRC.
+  - PASS only if dataset validates and entry count is non-zero.
+3. Name and type compatibility
+  - For each persisted entry from flash, attempt name match to runtime variable registry.
+  - Verify type and type-size match for each mapped variable.
+  - PASS only if there are zero unexpected type/size mismatches for intended persisted fields.
+4. Value equivalence check
+  - Compare standalone-reader values with values loaded by `CMD_varLoad(...)`.
+  - Use exact equality for integer/flag fields.
+  - Use tolerance-based equality for floating-point fields (document tolerance used).
+  - PASS only if all required `R_W` persisted fields match within criteria.
+5. Callback side-effect equivalence
+  - After applying values, verify derived recomputations are consistent with current behavior:
+    - `calculateGains`
+    - `calculateVoltageGain`
+    - `calculateFlux`
+    - `MESCinput_Init`
+  - PASS only if post-load runtime state needed for motor operation is equivalent.
+6. Access-behavior sanity
+  - Confirm read-only (`R`) telemetry/readback fields are not treated as persisted writable targets.
+  - Confirm read-write (`R_W`) fields remain writable and loadable.
+  - PASS only if RO/RW behavior remains consistent with `CLI_VALUES.txt` intent.
+7. Evidence package to keep in repo notes/handoff
+  - Dataset revision tested.
+  - Mismatch list (name/type/value/callback), if any.
+  - Final pass/fail table for required fields.
+  - Statement of residual risks before step 5 startup cutover.
+
 ### 5. Integrate the Standalone Persistent-Memory Loader into Startup
 
 Files to edit:
