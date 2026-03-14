@@ -269,15 +269,16 @@ Current known state:
 - A standalone persistent-memory reader has been added in:
   - `MESC_F405RG/Core/Inc/mesc_persist.h`
   - `MESC_F405RG/Core/Src/mesc_persist.c`
+- Step 4 completion was committed as: `52f2bc277f025ff0b39da711d64496bed49c728f`
 - That reader is currently compiled in but dormant; startup still relies on the existing CLI/RTOS load path
 - The persistent flash/NVM data must be preserved and remain readable after CLI/RTOS removal
 - Important new realization: the motor is currently being commanded through the CLI, so removing CLI requires a replacement runtime control path, not just a config/persistence replacement
 
 Immediate priorities:
-1. Validate the standalone persistent-memory reader against the current CLI-loaded runtime values
+1. Integrate the standalone persistent loader into startup so CLI is no longer mandatory for initial configuration load
 2. Identify exactly which CLI action/path is currently used to make the motor spin
 3. Propose and implement the simplest non-CLI runtime control path so the motor can still be driven before CLI removal
-4. Only after that, continue with integrating the persistent loader into startup and making CLI non-essential
+4. Continue removal of CLI/TTerm and RTOS dependencies only after the non-CLI runtime path is verified
 
 Constraints:
 - Keep support limited to `MESC_F405RG`, `STM32F405`, and `Wheely.h`

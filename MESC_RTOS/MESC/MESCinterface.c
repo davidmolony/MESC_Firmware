@@ -64,7 +64,7 @@ static TermVariableDescriptor * mesc_find_var_by_name(TermVariableDescriptor *he
 	return NULL;
 }
 
-static void mesc_step4_validate_persist_reader(TERMINAL_HANDLE *handle){
+static bool mesc_apply_persist_reader(TERMINAL_HANDLE *handle){
 	MESC_PersistDataset dataset;
 	MESC_PersistEntry entry;
 	TermVariableDescriptor *head;
@@ -76,23 +76,24 @@ static void mesc_step4_validate_persist_reader(TERMINAL_HANDLE *handle){
 	uint32_t rw_matches = 0;
 	uint32_t rw_mismatches = 0;
 	uint32_t ro_skipped = 0;
+	bool load_ok = true;
 
 	if(handle == NULL || handle->varHandle == NULL || handle->varHandle->varListHead == NULL){
-		return;
+		return false;
 	}
 
 	head = handle->varHandle->varListHead;
 
 	if(!MESC_PersistOpenLatest(&dataset, (void const *)RTOS_flash_base_address(), RTOS_flash_base_size())){
-		ttprintf("[persist-step4] no dataset found in NVM\r\n");
-		return;
+		ttprintf("[persist-load] no dataset found in NVM\r\n");
+		return false;
 	}
 
 	if(!MESC_PersistValidate(&dataset)){
-		ttprintf("[persist-step4] dataset validation failed (rev=%lu entries=%lu)\r\n",
+		ttprintf("[persist-load] dataset validation failed (rev=%lu entries=%lu)\r\n",
 				 (unsigned long)dataset.revision,
 				 (unsigned long)dataset.entry_count);
-		return;
+		return false;
 	}
 
 	for(i = 0; i < dataset.entry_count; i++){
@@ -100,6 +101,7 @@ static void mesc_step4_validate_persist_reader(TERMINAL_HANDLE *handle){
 
 		if(!MESC_PersistGetEntry(&dataset, i, &entry)){
 			parse_errors++;
+			load_ok = false;
 			continue;
 		}
 
@@ -111,6 +113,7 @@ static void mesc_step4_validate_persist_reader(TERMINAL_HANDLE *handle){
 
 		if(((uint32_t)currVar->type != entry.type) || (currVar->typeSize != entry.type_size)){
 			type_mismatch++;
+			load_ok = false;
 			continue;
 		}
 
@@ -119,6 +122,7 @@ static void mesc_step4_validate_persist_reader(TERMINAL_HANDLE *handle){
 			if(memcmp(currVar->variable, entry.value, currVar->typeSize) == 0){
 				rw_matches++;
 			}else{
+				memcpy(currVar->variable, entry.value, currVar->typeSize);
 				rw_mismatches++;
 			}
 		}else{
@@ -126,7 +130,7 @@ static void mesc_step4_validate_persist_reader(TERMINAL_HANDLE *handle){
 		}
 	}
 
-	ttprintf("[persist-step4] rev=%lu entries=%lu parse_err=%lu missing=%lu type_mismatch=%lu rw_checked=%lu rw_match=%lu rw_mismatch=%lu ro_skipped=%lu\r\n",
+	ttprintf("[persist-load] rev=%lu entries=%lu parse_err=%lu missing=%lu type_mismatch=%lu rw_checked=%lu rw_match=%lu rw_applied=%lu ro_skipped=%lu\r\n",
 			 (unsigned long)dataset.revision,
 			 (unsigned long)dataset.entry_count,
 			 (unsigned long)parse_errors,
@@ -136,6 +140,12 @@ static void mesc_step4_validate_persist_reader(TERMINAL_HANDLE *handle){
 			 (unsigned long)rw_matches,
 			 (unsigned long)rw_mismatches,
 			 (unsigned long)ro_skipped);
+
+	if(parse_errors != 0U || type_mismatch != 0U){
+		load_ok = false;
+	}
+
+	return load_ok;
 }
 
 void handleEscape(TERMINAL_HANDLE *handle){
@@ -933,19 +943,25 @@ void TASK_CAN_aux_data(TASK_CAN_handle * handle){
 
 void MESCinterface_init(TERMINAL_HANDLE * handle){
 	static bool is_init=false;
-	if(is_init) return;
+	taskENTER_CRITICAL();
+	if(is_init){
+		taskEXIT_CRITICAL();
+		return;
+	}
+	is_init = true;
+	taskEXIT_CRITICAL();
 
 
 	populate_vars();
 
-	if(CMD_varLoad(&null_handle, 0, NULL) == TERM_CMD_EXIT_ERROR){
-		for(int i = 0; i<NUM_MOTORS; i++){
-			mtr[i].conf_is_valid = false;
+	if(!mesc_apply_persist_reader(handle)){
+		ttprintf("[persist-load] fallback to legacy CMD_varLoad\r\n");
+		if(CMD_varLoad(handle, 0, NULL) == TERM_CMD_EXIT_ERROR){
+			for(int i = 0; i<NUM_MOTORS; i++){
+				mtr[i].conf_is_valid = false;
+			}
 		}
 	}
-
-	/* Step 4 check: compare standalone parser output with CLI-loaded runtime values. */
-	mesc_step4_validate_persist_reader(handle);
 
 	calculateGains(&mtr[0]);
 	calculateVoltageGain(&mtr[0]);
@@ -967,5 +983,4 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 	REGISTER_apps(&TERM_defaultList);
 
-	is_init=true;
 }
