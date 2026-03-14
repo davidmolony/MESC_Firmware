@@ -1,8 +1,8 @@
 /*
  **
  ******************************************************************************
- * @file           : task_cli.h
- * @brief          : IO-Task for TTerm
+ * @file           : MESCinterface.h
+ * @brief          : Initializing RTOS system and parameters
  ******************************************************************************
  * @attention
  *
@@ -29,47 +29,17 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
-#ifndef TASK_CLI_H_
-#define TASK_CLI_H_
 
-#include "FreeRTOS.h"
-#include "stream_buffer.h"
-#include "main.h"
-#include "task.h"
-#include "stdbool.h"
-#include "semphr.h"
+#ifndef INC_MESC_INTERFACE_H_
+#define INC_MESC_INTERFACE_H_
 
-#include "task_overlay.h"
+#include "TTerm/Core/include/TTerm.h"
 
+#define CAN_NAME "ESC_MP2"
 
-void cli_start_console();
+void MESCinterface_startup_init(void);
+void MESCinterface_init(TERMINAL_HANDLE * handle);
 
-#define HW_TYPE_NULL 	0
-#define HW_TYPE_UART 	1
-#define HW_TYPE_USB 	2
-#define HW_TYPE_CAN 	3
+uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 
-
-
-typedef struct{
-	void * hw;
-	uint8_t hw_type;
-	uint8_t * rx_buffer;
-	uint16_t rx_buffer_size;  //power of 2
-	bool half_duplex;
-	TaskHandle_t task_handle;
-	overlay_handle overlay_handle;
-	SemaphoreHandle_t term_block;
-	SemaphoreHandle_t tx_semaphore;
-	StreamBufferHandle_t rx_stream;
-	StreamBufferHandle_t tx_stream;
-} port_str;
-
-
-void task_cli_init(port_str * port);
-void task_cli_kill(port_str * port);
-
-void putbuffer_can(unsigned char *buf, unsigned int len, port_str * port);
-
-#endif /* TASK_LED_H_ */
-
+#endif /* INC_MESC_INTERFACE_H_ */

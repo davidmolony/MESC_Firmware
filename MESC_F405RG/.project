@@ -37,9 +37,9 @@
 			<locationURI>PARENT-1-PROJECT_LOC/MESC_Common</locationURI>
 		</link>
 		<link>
-			<name>MESC_RTOS</name>
+			<name>MESC_Interface</name>
 			<type>2</type>
-			<locationURI>PARENT-1-PROJECT_LOC/MESC_RTOS</locationURI>
+			<locationURI>PARENT-1-PROJECT_LOC/MESC_Interface</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>

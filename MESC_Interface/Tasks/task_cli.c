@@ -33,14 +33,8 @@
 #include <stdarg.h>
 #include <string.h>
 
-#ifdef DASH
-#include "DASH/MESCinterface.h"
-#endif
 #ifdef MESC
 #include "MESC/MESCinterface.h"
-#endif
-#ifdef AXIS
-#include "AXIS/MESCinterface.h"
 #endif
 
 #include "Common/RTOS_flash.h"
@@ -245,10 +239,8 @@ void task_cli(void * argument)
 	}
 
 	if(term_cli != NULL){
-		null_handle.varHandle = TERM_VAR_init(term_cli, (uint8_t*)RTOS_flash_base_address(), RTOS_flash_base_size(), RTOS_flash_clear, RTOS_flash_start_write, RTOS_flash_write, RTOS_flash_end_write);
+		TERM_VAR_init(term_cli, (uint8_t*)RTOS_flash_base_address(), RTOS_flash_base_size(), RTOS_flash_clear, RTOS_flash_start_write, RTOS_flash_write, RTOS_flash_end_write);
 	}
-
-	MESCinterface_init(term_cli);
 
 	if(port->hw_type == HW_TYPE_UART){
 		rd_ptr = uart_get_write_pos(port); //Clear input buffer.

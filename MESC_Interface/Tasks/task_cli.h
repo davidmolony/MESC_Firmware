@@ -1,8 +1,8 @@
 /*
  **
  ******************************************************************************
- * @file           : MESCinterface.h
- * @brief          : Initializing RTOS system and parameters
+ * @file           : task_cli.h
+ * @brief          : IO-Task for TTerm
  ******************************************************************************
  * @attention
  *
@@ -29,22 +29,45 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
+#ifndef TASK_CLI_H_
+#define TASK_CLI_H_
 
-#ifndef INC_MESC_INTERFACE_H_
-#define INC_MESC_INTERFACE_H_
+#include "FreeRTOS.h"
+#include "stream_buffer.h"
+#include "main.h"
+#include "task.h"
+#include "stdbool.h"
+#include "semphr.h"
 
-#include "Tasks/task_cli.h"
-#include "Tasks/task_can.h"
+#include "overlay_types.h"
 
-#define CAN_NAME "ESC_MP2"
 
-void MESCinterface_init(TERMINAL_HANDLE * handle);
+void cli_start_console();
 
-uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+#define HW_TYPE_NULL 	0
+#define HW_TYPE_UART 	1
+#define HW_TYPE_USB 	2
+#define HW_TYPE_CAN 	3
 
-#ifdef HAL_CAN_MODULE_ENABLED
-void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle);
-void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle);
-#endif
+typedef struct{
+	void * hw;
+	uint8_t hw_type;
+	uint8_t * rx_buffer;
+	uint16_t rx_buffer_size;  //power of 2
+	bool half_duplex;
+	TaskHandle_t task_handle;
+	overlay_handle overlay_handle;
+	SemaphoreHandle_t term_block;
+	SemaphoreHandle_t tx_semaphore;
+	StreamBufferHandle_t rx_stream;
+	StreamBufferHandle_t tx_stream;
+} port_str;
 
-#endif /* INC_MESC_INTERFACE_H_ */
+
+void task_cli_init(port_str * port);
+void task_cli_kill(port_str * port);
+
+void putbuffer_can(unsigned char *buf, unsigned int len, port_str * port);
+
+#endif /* TASK_LED_H_ */
+

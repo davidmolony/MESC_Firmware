@@ -145,6 +145,9 @@ Step 4 validation checklist (pass/fail):
   - Final pass/fail table for required fields.
   - Statement of residual risks before step 5 startup cutover.
 
+Completion of step 4:
+`833cc4baaa58ababe459db9a30abfa4356766395`
+
 ### 5. Integrate the Standalone Persistent-Memory Loader into Startup
 
 Files to edit:
@@ -162,6 +165,23 @@ Tasks:
   - `MESCinput_Init`
 - Ensure startup still uses the interrupt-driven motor path.
 
+Step 5 implementation status (2026-03-14):
+- Implemented in code and flashed to target.
+- Startup ordering is now:
+  1. `motor_init(&mtr[0])`
+  2. `MESCfoc_Init(&mtr[0])`
+  3. `MESCinterface_startup_init()`
+- `MESCinterface_startup_init()` now performs:
+  - Variable-system bring-up for persistence storage access.
+  - Variable registration (`populate_vars`) once.
+  - Standalone reader apply first, with legacy `CMD_varLoad` fallback.
+  - Derived recomputation: `calculateGains`, `calculateVoltageGain`, `calculateFlux`, `MESCinput_Init`.
+- `MESCinterface_init()` remains for one-time CLI command registration only.
+- Validation updates:
+  - Reboot-time verification completed (user-confirmed): persisted values are applied correctly after power-cycle.
+- Remaining validation before marking Step 5 complete:
+  - Confirm no regression in `get/set/save/load` command behavior across transports.
+
 ### 6. Remove Dependence on CLI/TTerm for Required Initialization
 
 Files to inspect/edit:
@@ -173,6 +193,17 @@ Tasks:
 - Identify anything still required from `MESCinterface_init()` after the standalone loader exists.
 - Move any truly required initialization into core startup or the new persistence layer.
 - Leave CLI/TTerm with no mandatory role before removing it.
+
+Step 6 progress (2026-03-14):
+- Core initialization decoupled from CLI task startup:
+  - `MESCinterface_init(&null_handle)` now runs from `init_system()` before CLI tasks are created.
+  - `task_cli.c` no longer calls `MESCinterface_init(...)` per transport task.
+- Startup persistence path remains in `main.c` via `MESCinterface_startup_init()`.
+- CLI tasks currently remain as transport/runtime shell only.
+- Build/upload validation after change: PASS.
+- Remaining Step 6 validation before completion:
+  - Confirm `get/set/save/load` behavior is unchanged on active CLI transport(s).
+  - Confirm there is no duplicate command registration when multiple transports are enabled.
 
 ### 7. Remove CLI/TTerm/App-Style Task Code from Target Build
 
@@ -197,6 +228,38 @@ Tasks:
 - Remove includes and compile references.
 - Ensure no core file still includes task/terminal headers.
 
+Step 7 progress (2026-03-14):
+- Partial removal slice completed:
+  - Removed app-style command registration (`status`, `log`, `REGISTER_apps`) from `MESCinterface.c`.
+  - Removed these modules from active target build lists (`Debug` generated make/object lists):
+    - `MESC_RTOS/Tasks/app_template.c`
+    - `MESC_RTOS/Tasks/apps.c`
+    - `MESC_RTOS/Tasks/task_overlay.c`
+    - `MESC_RTOS/Tasks/top.c`
+    - `MESC_RTOS/MESC/calibrate.c`
+    - `MESC_RTOS/MESC/hfi.c`
+- Build/upload after this slice: PASS.
+- Hardware validation after upload: motor spin test PASS (user-confirmed).
+- Note: CLI/TTerm still present and active; full Step 7 removal is not complete yet.
+
+Step 7 additional slice (2026-03-14, later):
+- Removed `MESC_RTOS/Tasks/cana.c` from active target build/link lists.
+- Intermediate compile regression was introduced during header decoupling attempt and then corrected (restored `task_cli.h` dependency path).
+- Final state after correction:
+  - Rebuild: PASS
+  - Reflash/verify/reset: PASS
+  - CLI/TTerm still present.
+
+Step 7 additional slice (2026-03-14, latest):
+- Introduced shared overlay type header `MESC_RTOS/Tasks/overlay_types.h`.
+- `task_cli.h` now depends on `overlay_types.h` instead of `task_overlay.h`.
+- `task_overlay.h` now consumes `overlay_types.h`.
+- `task_can.h` now includes `TTerm.h` directly to provide `TERMINAL_HANDLE` type independently.
+- Validation after refactor:
+  - Rebuild: PASS
+  - Reflash/verify/reset: PASS
+  - Motor spin test: PASS (user-confirmed)
+
 ### 8. Remove RTOS Startup from F405 Target
 
 Files to edit:
@@ -210,6 +273,23 @@ Tasks:
 - Remove kernel init, task creation, `init_system()`, `osKernelStart()`, and `StartDefaultTask()`.
 - Replace post-init flow with a simple non-RTOS idle loop.
 - If LED indication is still desired, reimplement it later as simple polled logic, not a task.
+
+Step 8 progress (2026-03-14):
+- Implemented in `main.c`:
+  - Removed `cmsis_os.h` include.
+  - Removed default task objects/prototype and `StartDefaultTask()` implementation.
+  - Removed scheduler bring-up calls (`osKernelInitialize`, `osThreadNew`, `init_system`, `osKernelStart`).
+  - Kept core startup ordering (`motor_init` -> `MESCfoc_Init` -> `MESCinterface_startup_init`) and switched USB device init to direct call in main startup path.
+- Active build updates:
+  - Removed `Core/Src/freertos.c` from `Debug/Core/Src/subdir.mk` source/object/dep lists.
+  - Removed `./Core/Src/freertos.o` from `Debug/objects.list`.
+- Validation after Step 8 slice:
+  - Rebuild: PASS
+  - Reflash/verify/reset: PASS
+  - Motor spin test: PASS (user-confirmed)
+
+Remaining for full RTOS removal (handled in step 9):
+- FreeRTOS middleware and remaining RTOS task/object references are still present in build configuration and will be removed in dependency-cleanup step.
 
 ### 9. Remove FreeRTOS/RTOS Build Dependencies from Target
 
@@ -225,35 +305,121 @@ Tasks:
 - Remove `freertos.c` from compilation.
 - Regenerate or manually clean CubeIDE configuration as needed.
 
+Step 9 progress (2026-03-14, slice 1):
+- Active build/link cleanup completed:
+  - Removed `MESC_RTOS/Tasks/*` objects from active `Debug` task subdir/object lists.
+  - Removed `MESC_RTOS/MESC/task_LED.o` from active link path.
+  - Kept `MESC_RTOS/MESC/MESCinterface.o`, `MESC_RTOS/Common/RTOS_flash.o`, and TTerm core objects for persistence startup path.
+- Code-side dependency adjustments:
+  - `null_handle` ownership moved into `MESCinterface.c` (no dependency on `Tasks/init.o`).
+  - Added local USB CDC callback stub in `MESCinterface.c` to satisfy `usbd_cdc_if` link hook after `task_cli.o` removal.
+  - Removed CAN command registration from `MESCinterface_init`; retained internal CAN state placeholder for compile compatibility.
+- Validation after slice:
+  - Rebuild: PASS
+  - Reflash/verify/reset: PASS
+  - Motor spin test: PASS (user-confirmed)
+
+Step 9 progress (2026-03-14, slice 2):
+- Removed all FreeRTOS scheduler objects from `objects.list`:
+  - Dropped: `cmsis_os2.o`, `croutine.o`, `event_groups.o`, `list.o`, `queue.o`, `stream_buffer.o`, `tasks.o`, `timers.o`, `port.o`
+  - Retained: `heap_4.o` (still needed by `pvPortMalloc` in TTerm/MESCinterface)
+- Cleared corresponding `C_SRCS`/`OBJS`/`C_DEPS` entries from three subdir.mk files:
+  - `Middlewares/Third_Party/FreeRTOS/Source/subdir.mk`
+  - `Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/subdir.mk`
+  - `Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/subdir.mk`
+- Added `vTaskSuspendAll()` / `xTaskResumeAll()` no-op stubs in `MESCinterface.c`
+  - `heap_4.c` calls these two functions for malloc thread-safety; they are the only external scheduler symbols it references
+  - Safe as no-ops because the FreeRTOS scheduler is never started
+- Binary size after slice 2: 79,672 text / 900 data / 84,856 bss
+- Validation after slice:
+  - Rebuild: PASS
+  - Reflash/verify/reset: PASS
+  - Motor spin test: PASS (user-confirmed)
+
+Step 9 progress (2026-03-14, metadata):
+- Removed all FREERTOS entries from `MESC_F405RG.ioc`:
+  - Deleted 7 `FREERTOS.*` parameter lines
+  - Removed `Mcu.IP5=FREERTOS`; renumbered IP5–IP16 (formerly IP6–IP17); updated `Mcu.IPNb` 18→17
+  - Removed `Mcu.Pin43=VP_FREERTOS_VS_CMSIS_V2`; renumbered Pin43–Pin49 (formerly Pin44–Pin50); updated `Mcu.PinsNb` 51→50
+  - Removed `VP_FREERTOS_VS_CMSIS_V2.Mode/Signal` entries
+  - Removed `rtos.0.ip=FREERTOS`
+- Removed `MESC_RTOS/Tasks` source folder entry from `.cproject` (all task sources already empty)
+- No changes to `.project` — `MESC_RTOS` linked folder still needed for active sources (Common, MESC, TTerm)
+
+**Step 9: COMPLETE**
+
+- Validation after metadata slice:
+  - Rebuild: PASS (user-performed)
+  - Reflash/verify/reset: PASS (user-performed)
+  - Motor spin test: PASS (user-confirmed)
+
+> **WARNING — .ioc code generation is a destructive operation.**
+> The `.ioc` edits above are bookkeeping only. CubeMX code generation was deliberately NOT run after modifying the `.ioc`.
+> Running "Generate Code" from CubeMX would overwrite `main.c` and other hand-modified files, undoing the manual changes made across Steps 7–9.
+> The `.ioc` should be treated as a reference document that accurately describes the non-RTOS target state.
+> If CubeMX code generation is ever needed in the future, all generated files (`main.c`, `freertos.c`, interrupt handlers, etc.) must be carefully diff-reviewed and reconciled against the manual edits before rebuilding.
+
 ### 10. Final Single-Target Cleanup
 
-Files to inspect/edit:
-- [MESC_F405RG/Core/Src/stm32f4xx_it.c](/Users/owhite/MESC_Firmware/MESC_F405RG/Core/Src/stm32f4xx_it.c)
-- [MESC_F405RG/Core/Src/MESChw_setup.c](/Users/owhite/MESC_Firmware/MESC_F405RG/Core/Src/MESChw_setup.c)
-- [MESC_Common/Src/MESCfoc.c](/Users/owhite/MESC_Firmware/MESC_Common/Src/MESCfoc.c)
-- [MESC_Common/Src/MESCinput.c](/Users/owhite/MESC_Firmware/MESC_Common/Src/MESCinput.c)
+Files inspected:
+- [MESC_F405RG/Core/Src/stm32f4xx_it.c](/Users/owhite/MESC_Firmware/MESC_F405RG/Core/Src/stm32f4xx_it.c) — clean, no RTOS/CLI refs
+- [MESC_F405RG/Core/Src/MESChw_setup.c](/Users/owhite/MESC_Firmware/MESC_F405RG/Core/Src/MESChw_setup.c) — clean, no RTOS/CLI refs
+- [MESC_Common/Src/MESCfoc.c](/Users/owhite/MESC_Firmware/MESC_Common/Src/MESCfoc.c) — clean, no RTOS/CLI refs
+- [MESC_Common/Src/MESCinput.c](/Users/owhite/MESC_Firmware/MESC_Common/Src/MESCinput.c) — one stale comment updated
 
-Tasks:
-- Remove any leftover dead references to CLI, RTOS, TTerm, or multi-board abstractions that are no longer meaningful.
-- Keep only the code needed for `STM32F405` + `Wheely.h` motor operation.
-- Confirm the minimal runtime path is:
-  - `main.c`
-  - F405 peripheral setup
-  - `MESChw_setup.c`
-  - `MESCmotor.c`
-  - `MESCfoc.c`
-  - `MESCinput.c`
-  - ISR handlers in `stm32f4xx_it.c`
+Additional cleanup in `MESC_Interface/MESC/MESCinterface.c` (active compiled file):
+- Replaced all `vTaskDelay(N)` → `HAL_Delay(N)` in `CMD_measure` and other handlers (18 calls total)
+- Removed all `xSemaphoreGive(port->term_block)` and `xQueueSemaphoreTake(port->term_block, portMAX_DELAY)` yield-point calls (9 pairs)
+- Removed now-unused `port_str * port` local variable from `CMD_measure`
+- Net effect: if `CMD_measure` is ever invoked over USB CDC, it will spin-wait correctly using HAL_Delay instead of crashing through undefined RTOS scheduler calls
+
+Step 10 progress (2026-03-14):
+- Rebuild: PASS (79,672 bytes text — identical to Step 9 slice 2, confirming no binary regression)
+- Reflash/verify/reset: PASS
+- Motor spin test: PASS (user-confirmed)
+
+**Step 10: COMPLETE**
+
+Post-step rename update (2026-03-14):
+- Renamed top-level firmware interface folder: `MESC_RTOS` -> `MESC_Interface`
+- Updated active project/build metadata paths (`.cproject`, `.project`, `Debug/makefile`, `Debug/sources.mk`, `Debug/objects.list`, and Debug `subdir.mk` files)
+- Rebuild + reflash/verify/reset after rename: PASS
+- Motor spin test after rename: PASS (user-confirmed)
+
+AXIS cleanup follow-up (2026-03-14):
+- Removed `MESC_Interface/AXIS/` directory (encoder app module not required for F405 motor operation path)
+- Removed dormant AXIS hooks from task sources (`Tasks/init.c`, `Tasks/task_cli.c`, `Tasks/apps.c`)
+- Updated legacy device-name literal in `TTerm/TTerm_config.h` from `"AXIS"` to `"MESC"`
+- Rebuild + reflash/verify/reset after AXIS cleanup: PASS
+- Motor spin test after AXIS cleanup: PASS (user-confirmed)
+
+DASH cleanup follow-up (2026-03-14):
+- Removed `MESC_Interface/Dash/` directory (not required for F405 motor operation path)
+- Removed dormant DASH hooks from task sources (`Tasks/init.c`, `Tasks/task_cli.c`)
+- Simplified `TTerm/TTerm_config.h` by removing DASH-specific `TERM_SUPPORT_CWD` branch
+- Rebuild + reflash/verify/reset after DASH cleanup: PASS
+- Motor spin test after DASH cleanup: PASS (user-confirmed)
+
+Root artifact cleanup follow-up (2026-03-14):
+- Removed orphan root file `CCER` (not referenced by build metadata or source includes)
+- Rebuild + reflash/verify/reset after `CCER` removal: PASS
+- Motor spin test after `CCER` removal: PASS (user-confirmed)
 
 ## Validation Checkpoints
 
-- After step 3: the standalone reader should successfully parse the existing persisted flash format.
-- After step 4: the standalone reader should agree with the CLI-loaded runtime values.
-- After step 5: startup should be able to load persisted configuration without relying on the CLI path, and derived values should still be recomputed correctly.
-- After step 6: the firmware should no longer depend on CLI/TTerm for required initialization, and there should be a verified non-CLI runtime control path that can still command the motor.
-- After step 8: target should boot without scheduler startup and still retain the intended motor-driving behavior.
-- After step 9: build should no longer require FreeRTOS or RTOS task sources, and compile/upload from VS Code should still work.
-- Final: motor-driving ISR path remains intact, persisted flash configuration remains readable, and no CLI/RTOS code is required for operation.
+Completed checkpoints:
+- Step 3: standalone persistence reader parses existing flash format.
+- Step 4: reader behavior aligns with CLI-loaded runtime values.
+- Step 5: startup persistence loading works without scheduler startup dependencies.
+- Step 6: required initialization no longer depends on RTOS task startup path.
+- Step 8: target boots without scheduler start and retains motor-driving behavior.
+- Step 9: build no longer requires FreeRTOS scheduler/CMSIS wrapper objects or RTOS task sources in the active link path.
+- Step 10/final unwind: motor-driving ISR/runtime path remains intact; persisted flash configuration remains readable; all incremental cleanup slices validated with build/flash/spin tests.
+
+Next-phase checkpoints (if continuing cleanup):
+- If TTerm is removed, confirm startup persistence load and variable registration parity with current behavior.
+- If `RTOS_flash.*` is renamed/refactored, confirm flash read/write compatibility on existing persisted datasets.
+- After each further reduction slice: compile PASS, upload/verify PASS, motor spin PASS.
 
 ## Resume Prompt
 
@@ -261,32 +427,30 @@ Tasks:
 Resume work on this firmware simplification from the current repo state.
 
 Current known state:
-- Target has already been frozen to `STM32F405` + `Wheely.h`
-- VS Code compile/upload now works using the STM32CubeIDE 13.3 toolchain
-- Debug operation has not yet been proven end-to-end on this target
-- Milestone completed: a documented and repeatable VS Code mechanism exists to build and upload firmware for this target
-- The motor still spins on hardware in the current firmware
-- A standalone persistent-memory reader has been added in:
-  - `MESC_F405RG/Core/Inc/mesc_persist.h`
-  - `MESC_F405RG/Core/Src/mesc_persist.c`
-- Step 4 completion was committed as: `52f2bc277f025ff0b39da711d64496bed49c728f`
-- That reader is currently compiled in but dormant; startup still relies on the existing CLI/RTOS load path
-- The persistent flash/NVM data must be preserved and remain readable after CLI/RTOS removal
-- Important new realization: the motor is currently being commanded through the CLI, so removing CLI requires a replacement runtime control path, not just a config/persistence replacement
+- Target is frozen to `STM32F405RG` + `Wheely.h`; multi-target runtime/task infrastructure has been removed from the active build path.
+- RTOS unwind plan is complete through Step 10, including metadata alignment and post-cleanup hardware validation.
+- VS Code compile/upload flow is stable with STM32CubeIDE 13.3 toolchain; repeated build/flash/verify cycles are passing.
+- Motor spin is verified on hardware after all major cleanup slices (scheduler removal, task-object removal, metadata cleanup, folder rename, AXIS/DASH cleanup, orphan-file cleanup).
+- Top-level interface folder has been renamed from `MESC_RTOS` to `MESC_Interface`.
+- Removed modules not needed for current F405 motor path:
+  - `MESC_Interface/AXIS/`
+  - `MESC_Interface/Dash/`
+  - orphan root file `CCER`
+- Active persistence/load path is in `MESC_Interface/MESC/MESCinterface.c` startup init.
+- FreeRTOS scheduler/CMSIS wrapper objects are removed from link; `heap_4.o` remains to satisfy allocator usage in retained TTerm/persistence path.
+- TTerm is still compiled and linked intentionally for variable/persistence plumbing.
 
 Immediate priorities:
-1. Integrate the standalone persistent loader into startup so CLI is no longer mandatory for initial configuration load
-2. Identify exactly which CLI action/path is currently used to make the motor spin
-3. Propose and implement the simplest non-CLI runtime control path so the motor can still be driven before CLI removal
-4. Continue removal of CLI/TTerm and RTOS dependencies only after the non-CLI runtime path is verified
+1. Decide whether to keep TTerm as a lightweight variable/persistence backend or fully remove it.
+2. If removing TTerm, replace `TERM_VAR_*` dependencies in `MESC_Interface/MESC/MESCinterface.c` with a minimal native persistence/parameter registry path.
+3. Rename remaining legacy RTOS-prefixed files (for example `RTOS_flash.*`) only after functional parity is preserved.
+4. Keep validating each cleanup slice with compile + flash + hardware spin test before proceeding.
 
 Constraints:
-- Keep support limited to `MESC_F405RG`, `STM32F405`, and `Wheely.h`
-- Preserve motor-driving capability throughout the migration
-- Preserve access to existing persisted flash configuration
-- Ensure the non-CLI path can read, edit/update, and observe live data corresponding to persisted configuration
-- Use apply_patch for edits
-- Do not revert unrelated user changes
+- Keep support limited to `MESC_F405RG`, `STM32F405`, and `Wheely.h`.
+- Preserve motor-driving capability throughout all changes.
+- Preserve readability/compatibility of existing persisted flash configuration.
+- Continue non-destructive incremental edits; do not revert unrelated user changes.
 
 Before making major changes, inspect the current code and confirm assumptions locally.
 ```

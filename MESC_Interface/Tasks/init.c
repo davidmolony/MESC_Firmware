@@ -1,8 +1,8 @@
 /*
  **
  ******************************************************************************
- * @file           : MESCinterface.h
- * @brief          : Initializing RTOS system and parameters
+ * @file           : init.c
+ * @brief          : Bring up the system
  ******************************************************************************
  * @attention
  *
@@ -29,58 +29,93 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
+#include "init.h"
+#include "task_cli.h"
+#include "main.h"
+#include "stdarg.h"
 
-#ifndef INC_MESC_INTERFACE_H_
-#define INC_MESC_INTERFACE_H_
-
-#include "Tasks/task_cli.h"
-#include "Tasks/task_can.h"
-
-
-#define CAN_NAME "THR_AXIS"
-typedef struct{
-	uint16_t angle;
-	uint8_t status;
-	uint8_t error;
-}mt6816_t;
-
-typedef struct{
-	bool check_pwm_vs_spi;
-	bool use_spi;
-	bool use_pwm;
-
-	mt6816_t mt6816;
-	float ratioPWM;
-	float ratioSPI;
-	uint32_t encoder_error_limit;
-	uint32_t error_count;
-	uint32_t accumulated_errors;
-	float throttle_raw;
-	float throttle_z_calib;
-	float throttle_calibrated;
-	float throttle_start;
-	float throttle_end;
-	float throttle_offset;
-	float throttle_mapped;
-	float throttle_threshold;
-}axis_vars_t;
+#ifdef MESC
+#include "MESC/MESCinterface.h"
+#endif
 
 
+#ifdef HAL_CAN_MODULE_ENABLED
+extern CAN_HandleTypeDef hcan1;
+#endif
+
+#ifdef HW_UART
+extern UART_HandleTypeDef HW_UART;
+port_str main_uart = {	.hw = &HW_UART,
+						.hw_type = HW_TYPE_UART,
+					    .rx_buffer_size = 512,
+						.half_duplex = false,
+						.task_handle = NULL
+};
+
+#endif
+
+#ifdef MESC_UART_USB
+
+extern USBD_HandleTypeDef hUsbDeviceFS;
+
+port_str main_usb = {	.hw = &hUsbDeviceFS,
+						.hw_type = HW_TYPE_USB,
+					    .rx_buffer_size = 512,
+						.half_duplex = false,
+						.task_handle = NULL
+};
+
+#endif
+
+#ifdef HAL_CAN_MODULE_ENABLED
+TASK_CAN_handle can1 = { 	.hw = &hcan1,
+							.stream_dropped  = 0
+
+};
+port_str main_can = {	.hw = &can1,
+						.hw_type = HW_TYPE_CAN,
+					    .rx_buffer_size = 512,
+						.half_duplex = false,
+						.task_handle = NULL
+};
+#endif
 
 
+#if EXTENDED_PRINTF == 1
+uint32_t null_printf(void * port, const char* format, ...) {
+	va_list arg;
+	va_start (arg, format);
+	va_end (arg);
+	return 0;
+}
+#else
+uint32_t null_printf(const char* format, ...) {
+	va_list arg;
+	va_start (arg, format);
+	va_end (arg);
+	return 0;
+}
+#endif
 
-#define MT6816_OK 			0
-#define MT6816_NO_MAG 		1
-#define MT6816_ERROR 		1
-#define MT6816_PARITY_ERROR 2
-#define MT6816_SPI_ERROR 	3
-#define MT6816_OVERSPEED 	4
+
+TERMINAL_HANDLE null_handle = {
+		.print=null_printf,
+		.currPermissionLevel=0
+};
 
 
-extern axis_vars_t axis_vars;
+void init_system(void){
+	MESCinterface_init(&null_handle);
 
+#ifdef MESC_UART_USB
+	task_cli_init(&main_usb);
+#endif
 
-void MESCinterface_init(TERMINAL_HANDLE * handle);
-
-
-#endif /* INC_MESC_INTERFACE_H_ */
+	task_cli_init(&main_uart);
+#ifdef MESC
+	task_led_init();
+#endif
+#ifdef HAL_CAN_MODULE_ENABLED
+	task_cli_init(&main_can);
+#endif
+}

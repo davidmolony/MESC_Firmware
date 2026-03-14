@@ -1,8 +1,8 @@
 /*
  **
  ******************************************************************************
- * @file           : MESCinterface.h
- * @brief          : Initializing RTOS system and parameters
+ * @file           : task_can.c
+ * @brief          : CAN-BUS-Task for MESC and TTERM
  ******************************************************************************
  * @attention
  *
@@ -29,27 +29,31 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
+#ifndef TASK_CAN_H_
+#define TASK_CAN_H_
 
-#ifndef INC_MESC_INTERFACE_H_
-#define INC_MESC_INTERFACE_H_
+#include "main.h"
+#include "TTerm/Core/include/TTerm.h"
+#include "task_cli.h"
+#include "CAN_helper.h"
 
-#include "Tasks/task_cli.h"
-#include "Tasks/task_can.h"
-
-
-#define CAN_NAME "DASHF407"
-
-
-typedef struct{
-	uint8_t id_speed;
-	float speed;
-	uint8_t id_voltage;
-	float bus_voltage;
-} dash_data;
+#ifdef HAL_CAN_MODULE_ENABLED
 
 
+#define NUM_NODES 64
 
-void MESCinterface_init(TERMINAL_HANDLE * handle);
+#define NODE_OVERRUN (TASK_CAN_node*) 0xFFFFFFFF
+
+extern TASK_CAN_node nodes[NUM_NODES];
+
+void TASK_CAN_init(port_str * port, char * short_name);
+void TASK_CAN_set_stream(TASK_CAN_handle * handle, uint32_t id);
+uint8_t CMD_nodes(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+uint32_t TASK_CAN_connect(TASK_CAN_handle * handle, uint16_t remote, uint8_t connect);
+
+TASK_CAN_node * TASK_CAN_get_node_from_id(uint8_t id);
 
 
-#endif /* INC_MESC_INTERFACE_H_ */
+#endif
+#endif

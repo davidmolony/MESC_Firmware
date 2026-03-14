@@ -30,10 +30,9 @@
  ******************************************************************************/
 
 #include "main.h"
-#include "Tasks/init.h"
 #include "TTerm/Core/include/TTerm.h"
 #include "Tasks/task_cli.h"
-#include "Tasks/task_overlay.h"
+#include "Tasks/task_can.h"
 #include "Common/RTOS_flash.h"
 #include "MESCmotor_state.h"
 #include "MESCmotor.h"
@@ -41,10 +40,72 @@
 #include <string.h>
 #include <stdint.h>
 #include <math.h>
+#include <stdarg.h>
 #include <MESC/MESCinterface.h>
 #include "mesc_persist.h"
 
 #include "MESCmeasure.h"
+#include "MESCinput.h"
+
+/* heap_4.c calls these for malloc thread-safety; no-ops are safe since we
+ * never start the FreeRTOS scheduler.
+ * BaseType_t is typedef long on ARM Cortex-M4 (portmacro.h). */
+void vTaskSuspendAll(void) {}
+long xTaskResumeAll(void) { return 0; }
+
+static uint32_t null_printf(void * port, const char* format, ...) {
+	va_list arg;
+	UNUSED(port);
+	UNUSED(format);
+	va_start(arg, format);
+	va_end(arg);
+	return 0;
+}
+
+TERMINAL_HANDLE null_handle = {
+		.print = null_printf,
+		.currPermissionLevel = 0
+};
+
+void USB_CDC_Callback(uint8_t *buffer, uint32_t len){
+	UNUSED(buffer);
+	UNUSED(len);
+}
+
+#ifdef HAL_CAN_MODULE_ENABLED
+TASK_CAN_handle can1 = {0};
+#endif
+
+void populate_vars(void);
+
+static bool mesc_vars_populated = false;
+static bool mesc_persist_loaded = false;
+static bool mesc_commands_registered = false;
+
+static bool mesc_prepare_var_system(void){
+	if(null_handle.varHandle == NULL){
+		null_handle.varHandle = pvPortMalloc(sizeof(TermVariableHandle));
+		if(null_handle.varHandle == NULL){
+			return false;
+		}
+		memset(null_handle.varHandle, 0, sizeof(TermVariableHandle));
+		null_handle.varHandle->varListHead = &TERM_varList;
+	}else if(null_handle.varHandle->varListHead == NULL){
+		null_handle.varHandle->varListHead = &TERM_varList;
+	}
+
+	if(TERM_VAR_init(&null_handle,
+					 (uint8_t*)RTOS_flash_base_address(),
+					 RTOS_flash_base_size(),
+					 RTOS_flash_clear,
+					 RTOS_flash_start_write,
+					 RTOS_flash_write,
+					 RTOS_flash_end_write) == NULL){
+		return false;
+	}
+
+	return true;
+}
 
 static TermVariableDescriptor * mesc_find_var_by_name(TermVariableDescriptor *head, char const *name){
 	TermVariableDescriptor *curr;
@@ -148,6 +209,39 @@ static bool mesc_apply_persist_reader(TERMINAL_HANDLE *handle){
 	return load_ok;
 }
 
+void MESCinterface_startup_init(void){
+	if(mesc_persist_loaded){
+		return;
+	}
+
+	if(!mesc_prepare_var_system()){
+		for(int i = 0; i < NUM_MOTORS; i++){
+			mtr[i].conf_is_valid = false;
+		}
+		return;
+	}
+
+	if(!mesc_vars_populated){
+		populate_vars();
+		mesc_vars_populated = true;
+	}
+
+	if(!mesc_apply_persist_reader(&null_handle)){
+		if(CMD_varLoad(&null_handle, 0, NULL) == TERM_CMD_EXIT_ERROR){
+			for(int i = 0; i < NUM_MOTORS; i++){
+				mtr[i].conf_is_valid = false;
+			}
+		}
+	}
+
+	calculateGains(&mtr[0]);
+	calculateVoltageGain(&mtr[0]);
+	calculateFlux(&mtr[0]);
+	MESCinput_Init(&mtr[0]);
+
+	mesc_persist_loaded = true;
+}
+
 void handleEscape(TERMINAL_HANDLE *handle){
 	MESC_motor_typedef * motor_curr = &mtr[0];
 	motor_curr->input_vars.UART_req = 0;
@@ -177,7 +271,6 @@ uint8_t CMD_error(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 	MESC_motor_typedef * motor_curr = &mtr[0];
-	port_str * port = handle->port;
 
 	bool measure_RL = false;
 	bool measure_res = false;
@@ -250,9 +343,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		mtr[0].meas.PWM_cycles = 0;
 
 		while(motor_curr->MotorState == MOTOR_STATE_MEASURING){
-			xSemaphoreGive(port->term_block);
-			vTaskDelay(200);
-			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			HAL_Delay(200);
 			ttprintf(".");
 		}
 
@@ -282,7 +373,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 		ttprintf("R = %f %s\r\nLd = %f %s\r\nLq = %f %s\r\n\r\n", (double)R, Runit, (double)Ld, Lunit, (double)Lq, Lunit);
 		calculateGains(motor_curr);
-		vTaskDelay(1000);
+		HAL_Delay(1000);
 	}
 
 	if(measure_res){
@@ -307,9 +398,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		motor_curr->input_vars.UART_req = 0.45f*motor_curr->m.Imax;
 
 		while(a){
-			xSemaphoreGive(port->term_block);
-			vTaskDelay(5);
-			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			HAL_Delay(5);
 			ttprintf(".");
 			Ibot = Ibot+motor_curr->FOC.Idq.q;
 			Vbot = Vbot+motor_curr->FOC.Vdq.q;
@@ -319,9 +408,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		a=200;
 		motor_curr->input_vars.UART_req = 0.55f*motor_curr->m.Imax;
 		while(a){
-			xSemaphoreGive(port->term_block);
-			vTaskDelay(5);
-			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			HAL_Delay(5);
 			ttprintf(".");
 			Itop = Itop+motor_curr->FOC.Idq.q;
 			Vtop = Vtop+motor_curr->FOC.Vdq.q;
@@ -352,7 +439,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		ttprintf("R = %f %s\r\n\r\n", (double)R, Runit);
 		motor_curr->m.L_D =old_L_D;
 		calculateGains(motor_curr);
-		vTaskDelay(1000);
+		HAL_Delay(1000);
 	}
 
 	if(measure_ind){
@@ -375,7 +462,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		motor_curr->FOC.FOCAngle = 0;
 		motor_curr->input_vars.UART_dreq = -5.0f;
 		motor_curr->FOC.didq.d = 0.0f;
-		vTaskDelay(10);
+		HAL_Delay(10);
 
 		//Determine the voltage required
 		while(a){
@@ -386,9 +473,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 					motor_curr->HFI.special_injectionVd = 0.5f * motor_curr->Conv.Vbus;
 				}
 			}
-			xSemaphoreGive(port->term_block);
-			vTaskDelay(5);
-			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			HAL_Delay(5);
 			ttprintf(".");
 			a--;
 		}
@@ -400,9 +485,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 			motor_curr->input_vars.UART_dreq = -motor_curr->m.Imax * 0.25f * (float)b;
 			while(a){
 				Loffset[b] = Loffset[b] + motor_curr->FOC.didq.d;
-				xSemaphoreGive(port->term_block);
-				vTaskDelay(5);
-				xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+				HAL_Delay(5);
 				ttprintf(".");
 				a--;
 			}
@@ -426,9 +509,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 			if(motor_curr->HFI.special_injectionVq > motor_curr->Conv.Vbus*0.5f){motor_curr->HFI.special_injectionVq = motor_curr->Conv.Vbus*0.5f;}
 			while(a){
 				Lqoffset[b] = Lqoffset[b] + motor_curr->FOC.didq.q;
-				xSemaphoreGive(port->term_block);
-				vTaskDelay(5);
-				xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+				HAL_Delay(5);
 				ttprintf(".");
 				a--;
 			}
@@ -451,7 +532,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		motor_curr->HFI.special_injectionVd = 0.0f;
 		motor_curr->HFI.special_injectionVq = 0.0f;
 
-		vTaskDelay(200);
+		HAL_Delay(200);
 	}
 
 
@@ -462,9 +543,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		ttprintf("Measuring flux linkage\r\nWaiting for result");
 
 		while(motor_curr->MotorState == MOTOR_STATE_GET_KV){
-			xSemaphoreGive(port->term_block);
-			vTaskDelay(200);
-			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			HAL_Delay(200);
 			ttprintf(".");
 		}
 
@@ -472,7 +551,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
 
 		ttprintf("Flux linkage = %f mWb\r\n\r\n", (double)(motor_curr->m.flux_linkage * 1000.0f));
-		vTaskDelay(2000);
+		HAL_Delay(2000);
 	}
 
 	if(measure_linkage){
@@ -487,9 +566,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		motor_curr->input_vars.UART_req = 10.0f; //Parametise later, closedloop current
 
 		while((motor_curr->m.flux_linkage_max > 0.0001f) && (motor_curr->FOC.eHz<100)){
-			xSemaphoreGive(port->term_block);
-			vTaskDelay(10);
-			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			HAL_Delay(10);
 			ttprintf(".");
 			motor_curr->m.flux_linkage_max = motor_curr->m.flux_linkage_max*0.997f;// + 0.0001f;
 			motor_curr->FOC.flux_a = motor_curr->FOC.flux_a	+ 0.01*motor_curr->FOC.flux_b;
@@ -501,9 +578,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		int a=200;
 		motor_curr->m.flux_linkage_max = motor_curr->m.flux_linkage_max*1.5f;
 		while(a){
-			xSemaphoreGive(port->term_block);
-			vTaskDelay(10);
-			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			HAL_Delay(10);
 			ttprintf(".");
 			a--;
 		}
@@ -517,7 +592,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		ttprintf("Flux linkage = %f mWb\r\n\r\n", (double)(motor_curr->m.flux_linkage * 1000.0f));
 		ttprintf("Did the motor spin for >2seconds?");
 
-		vTaskDelay(200);
+		HAL_Delay(200);
 
 		motor_curr->input_vars.UART_req = 0.0f;
 		motor_curr->MotorState = MOTOR_STATE_TRACKING;
@@ -529,16 +604,14 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 
 		ttprintf("HFI threshold: %f\r\n", (double)HFI_Threshold);
 
-		vTaskDelay(500);
+		HAL_Delay(500);
 	}
 
 	if(measure_dt){
 		ttprintf("Measuring deadtime compensation\r\nWaiting for result");
 		motor_curr->MotorState = MOTOR_STATE_TEST;
 		while(motor_curr->MotorState == MOTOR_STATE_TEST){
-			xSemaphoreGive(port->term_block);
-			vTaskDelay(200);
-			xQueueSemaphoreTake(port->term_block, portMAX_DELAY);
+			HAL_Delay(200);
 			ttprintf(".");
 		}
 
@@ -546,7 +619,7 @@ uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		TERM_sendVT100Code(handle,_VT100_CURSOR_SET_COLUMN, 0);
 
 		ttprintf("Deadtime register: %d\r\n", motor_curr->FOC.deadtime_comp);
-		vTaskDelay(500);
+		HAL_Delay(500);
 	}
 
 
@@ -800,13 +873,6 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 // On STM32F405, core clock is 168 MHz → 168 cycles = 1 µs.
 #define DWT_CYCCNT      ((volatile uint32_t *)0xE0001004)
 
-#define ENCODER_CPR 4096
-
-// --- DWT cycle counter (hardware timer running at CPU frequency) ---
-// Used to get precise microsecond timestamps.
-// On STM32F405, core clock is 168 MHz → 168 cycles = 1 µs.
-#define DWT_CYCCNT      ((volatile uint32_t *)0xE0001004)
-
 // Persistent + debugger-visible state
 static volatile float vel_est_filtered = 0.0f;
 static volatile uint32_t last_pos = 0;
@@ -942,45 +1008,23 @@ void TASK_CAN_aux_data(TASK_CAN_handle * handle){
 
 
 void MESCinterface_init(TERMINAL_HANDLE * handle){
-	static bool is_init=false;
+	if(handle == NULL){
+		handle = &null_handle;
+	}
+
+	MESCinterface_startup_init();
+
 	taskENTER_CRITICAL();
-	if(is_init){
+	if(mesc_commands_registered){
 		taskEXIT_CRITICAL();
 		return;
 	}
-	is_init = true;
+	mesc_commands_registered = true;
 	taskEXIT_CRITICAL();
-
-
-	populate_vars();
-
-	if(!mesc_apply_persist_reader(handle)){
-		ttprintf("[persist-load] fallback to legacy CMD_varLoad\r\n");
-		if(CMD_varLoad(handle, 0, NULL) == TERM_CMD_EXIT_ERROR){
-			for(int i = 0; i<NUM_MOTORS; i++){
-				mtr[i].conf_is_valid = false;
-			}
-		}
-	}
-
-	calculateGains(&mtr[0]);
-	calculateVoltageGain(&mtr[0]);
-	calculateFlux(&mtr[0]);
-	MESCinput_Init(&mtr[0]);
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_error, "error", "Show errors", 0, &TERM_defaultList);
 
-	TERM_addCommand(CMD_status, "status", "Realtime data", 0, &TERM_defaultList);
-
-#ifdef HAL_CAN_MODULE_ENABLED
-	TERM_addCommand(CMD_nodes, "nodes", "Node info", 0, &TERM_defaultList);
-	TERM_addCommand(CMD_can_send, "can_send", "Send CAN message", 0, &TERM_defaultList);
-#endif
-
-	TermCommandDescriptor * varAC = TERM_addCommand(CMD_log, "log", "Configure logging", 0, &TERM_defaultList);
-	TERM_addCommandAC(varAC, TERM_varCompleter, null_handle.varHandle->varListHead);
-
-	REGISTER_apps(&TERM_defaultList);
+	(void)handle;
 
 }

@@ -20,12 +20,19 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+#include "apps.h"
+#include "main.h"
 
-#if !defined(app_encoder_H)
-#define app_encoder_H
-
-#include "TTerm/Core/include/TTerm.h"
-
-uint8_t REGISTER_app_encoder(TermCommandDescriptor * desc);
-
+uint8_t REGISTER_apps(TermCommandDescriptor * desc){
+    REGISTER_top(desc);
+#ifdef MESC
+    REGISTER_calibrate(desc);
+    REGISTER_hfi(desc);
 #endif
+    //REGISTER_app_template(desc);
+#ifdef HAL_CAN_MODULE_ENABLED
+    REGISTER_can(desc);
+#endif
+
+    return pdTRUE;
+}

@@ -1,8 +1,8 @@
 /*
  **
  ******************************************************************************
- * @file           : init.c
- * @brief          : Bring up the system
+ * @file           : task_overlay.h
+ * @brief          : Overlay realtime data in terminal
  ******************************************************************************
  * @attention
  *
@@ -29,97 +29,38 @@
  *warranties can reasonably be honoured.
  ******************************************************************************/
 
-#include "init.h"
-#include "task_cli.h"
-#include "main.h"
-#include "stdarg.h"
+#if !defined(overlay_TASK_H)
+#define overlay_TASK_H
 
-#ifdef DASH
-#include "MESChw_setup.h"
-#include "fatfs.h"
+
+#include "TTerm/Core/include/TTerm.h"
+#include "overlay_types.h"
+
+/*
+ * Add user task definitions, types, includes and other things in the below
+ * merge region to customize the task.
+ */
+/* `#START USER_TYPES_AND_DEFINES` */
+
+/* `#END` */
+
+void tsk_overlay_TaskProc(void *pvParameters);
+
+void start_overlay_task(TERMINAL_HANDLE * handle);
+void stop_overlay_task(TERMINAL_HANDLE * handle);
+
+uint8_t CMD_status(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+uint8_t CMD_log(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
+
+
+/*
+ * Add user function prototypes in the below merge region to add user
+ * functionality to the task definition.
+ */
+/* `#START USER_TASK_PROTOS` */
+
+/* `#END` */
+
+/* ------------------------------------------------------------------------ */
 #endif
-
-#ifdef AXIS
-#include "MESChw_setup.h"
-#endif
-
-
-#ifdef HAL_CAN_MODULE_ENABLED
-extern CAN_HandleTypeDef hcan1;
-#endif
-
-#ifdef HW_UART
-extern UART_HandleTypeDef HW_UART;
-port_str main_uart = {	.hw = &HW_UART,
-						.hw_type = HW_TYPE_UART,
-					    .rx_buffer_size = 512,
-						.half_duplex = false,
-						.task_handle = NULL
-};
-
-#endif
-
-#ifdef MESC_UART_USB
-
-extern USBD_HandleTypeDef hUsbDeviceFS;
-
-port_str main_usb = {	.hw = &hUsbDeviceFS,
-						.hw_type = HW_TYPE_USB,
-					    .rx_buffer_size = 512,
-						.half_duplex = false,
-						.task_handle = NULL
-};
-
-#endif
-
-#ifdef HAL_CAN_MODULE_ENABLED
-TASK_CAN_handle can1 = { 	.hw = &hcan1,
-							.stream_dropped  = 0
-
-};
-port_str main_can = {	.hw = &can1,
-						.hw_type = HW_TYPE_CAN,
-					    .rx_buffer_size = 512,
-						.half_duplex = false,
-						.task_handle = NULL
-};
-#endif
-
-
-#if EXTENDED_PRINTF == 1
-uint32_t null_printf(void * port, const char* format, ...) {
-	va_list arg;
-	va_start (arg, format);
-	va_end (arg);
-	return 0;
-}
-#else
-uint32_t null_printf(const char* format, ...) {
-	va_list arg;
-	va_start (arg, format);
-	va_end (arg);
-	return 0;
-}
-#endif
-
-
-TERMINAL_HANDLE null_handle = {
-		.print=null_printf,
-		.currPermissionLevel=0
-};
-
-
-void init_system(void){
-
-#ifdef MESC_UART_USB
-	task_cli_init(&main_usb);
-#endif
-
-	task_cli_init(&main_uart);
-#ifdef MESC
-	task_led_init();
-#endif
-#ifdef HAL_CAN_MODULE_ENABLED
-	task_cli_init(&main_can);
-#endif
-}
+/* [] END OF FILE */
