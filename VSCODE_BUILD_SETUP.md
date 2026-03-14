@@ -4,7 +4,7 @@ This document explains what was done to make `MESC_F405RG` compile and upload fr
 
 Before using this setup, also read:
 - [VSCODE_BOOTUP_COMMENTS.md](VSCODE_BOOTUP_COMMENTS.md)
-- [RTOS_UNWIND_HANDOFF.md](RTOS_UNWIND_HANDOFF.md)
+- [RTOS_UNWIND.md](RTOS_UNWIND.md)
 
 ## Overview
 

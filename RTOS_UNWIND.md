@@ -423,6 +423,9 @@ Next-phase checkpoints (if continuing cleanup):
 
 ## Resume Prompt
 
+as of git commit: 
+`8a3d052c29bdc37aec694d40280fa0b8507cf42e`
+
 ```text
 Resume work on this firmware simplification from the current repo state.
 
