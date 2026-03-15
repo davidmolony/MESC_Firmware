@@ -8,14 +8,24 @@ Primary goals:
 - Transmit POS/VEL at 500 Hz per node with low jitter.
 - Receive and apply `CAN_ID_IQREQ` and `CAN_ID_ADC1_2_REQ` robustly.
 - Avoid burst/stall behavior observed in previous implementations.
+- Preserve FOC control timing as highest priority.
+- Preserve USB serial/CLI liveness while CAN traffic is active.
 
 ## Constraints and Context
 
 - Runtime remains no-RTOS for the active target path.
 - Prior intermittent issues were likely multi-factor: electrical integrity plus servicing/scheduling stalls.
 - Trusted drop metric is per-frame sequence accounting in the CAN RX path on receiver side.
+- FOC control-loop work must retain highest priority over CAN and USB servicing.
 
 ## Strategy
+
+### 0) Priority and Scheduling Guardrails (FOC First)
+
+- FOC control-loop timing is the top runtime priority.
+- CAN and USB work must not add blocking behavior to the FOC critical path.
+- CAN ISR/callback work is limited to lightweight ingest/flag/counter updates.
+- Heavier work (parsing policy, state application, formatting, diagnostics) is deferred to non-ISR context.
 
 ### 1) Deterministic POS/VEL TX at 500 Hz
 
@@ -44,12 +54,19 @@ Primary goals:
   - send fresh data on next slot.
 - Class B traffic may be skipped under pressure to protect Class A cadence.
 
+Mailbox pressure policy:
+- Reduce effective mailbox depth for low-priority traffic.
+- Keep at most one fresh Class B frame pending per class; drop older stale data instead of queueing.
+- Do not allow queued low-priority traffic to block the next Class A slot.
+- If needed during hardening, operate in a reduced-mailbox strategy where only one mailbox is used for best-effort traffic while Class A attempts immediate send per slot.
+
 ### 4) RX Handling for `CAN_ID_IQREQ` and `CAN_ID_ADC1_2_REQ`
 
 - Keep ISR work minimal:
   - parse ID and payload length,
   - update volatile latest-command storage,
   - update counters.
+- No dynamic allocation, no blocking waits, and no heavy formatting in ISR.
 - Use latest-command semantics (no deep queue for commands).
 - Apply commands in the control loop with age/timeouts.
 - Track per-ID counters:
@@ -101,6 +118,17 @@ Keep these counters/metrics always available during development and regression t
   - max inter-frame gap
   - p95/p99 inter-frame gap
   - burst-length histogram
+  - per-slot jitter against 2 ms target (`abs(actual_period - 2 ms)`)
+  - running jitter accumulator and max jitter
+
+- Dropout metrics:
+  - sequence-gap dropout counter
+  - longest consecutive dropout run
+  - running dropout accumulator
+
+- Service-health metrics:
+  - CAN error-active/passive/bus-off counters
+  - USB CLI heartbeat/response watchdog counter
 
 ## Bus-Load and Stability Strategy
 
@@ -119,6 +147,67 @@ Keep these counters/metrics always available during development and regression t
 - Keep transport-layer logic separate from command backend logic.
 - If command/control over CAN is added, route through the same backend used by USB CLI to preserve one safety/persistence policy.
 
+## Pre-Flight Gate (Before CAN Feature Expansion)
+
+These checks must pass before adding additional CAN features beyond baseline telemetry/command handling:
+
+1. Priority map verification
+- FOC path confirmed highest runtime priority.
+- CAN/USB priorities configured so neither can starve FOC.
+
+2. ISR budget verification
+- CAN RX/TX ISR paths contain only minimal ingest/counter operations.
+- No heavy processing or policy logic in ISR context.
+
+3. Mailbox policy verification
+- No catch-up bursting.
+- Low-priority traffic cannot monopolize mailboxes.
+- Class A slot behavior remains deterministic under load.
+
+4. Instrumentation readiness
+- Jitter, dropout, and CAN error counters available.
+- USB heartbeat/liveness counter available.
+
+5. USB coexistence verification
+- USB CLI remains responsive during idle CAN traffic and stressed CAN traffic.
+
+6. FOC timing regression check
+- No measurable control-loop timing regression versus CAN-disabled baseline.
+
+## Quantitative Thresholds (Initial)
+
+These are initial acceptance thresholds for bring-up and early regression runs. Tighten as the implementation matures.
+
+1. FOC timing budget
+- Control-loop period jitter increase vs CAN-disabled baseline: <= 5% at p99.
+- Worst-case control-loop period increase vs baseline: <= 10%.
+
+2. POS/VEL cadence at 500 Hz (2 ms target)
+- p99 inter-frame jitter: <= 150 us.
+- Maximum inter-frame gap during nominal load: <= 4 ms.
+- Maximum inter-frame gap during stress load: <= 6 ms.
+
+3. Dropout limits (sequence-based)
+- Nominal load: 0 sequence drops over 60 s window.
+- Stress load: <= 0.1% sequence drop rate over 60 s window.
+- Longest consecutive dropout run: <= 2 frames.
+
+4. Mailbox/queue pressure limits
+- `mailbox_busy_count` growth under nominal load: 0 sustained growth.
+- `posvel_slot_miss` rate under stress load: <= 0.1% of slots.
+
+5. RX integrity limits
+- `rx_bad_len`: 0 under nominal load.
+- `rx_overrun`: 0 under nominal load, and no sustained growth under stress.
+
+6. CAN error-state limits
+- Bus-off count: 0 in all acceptance runs.
+- Error-passive transitions: 0 in nominal runs; investigate any nonzero during stress.
+
+7. USB coexistence limits
+- USB CLI heartbeat misses: 0 over 60 s nominal and stress windows.
+- CLI command-response latency (p99) while CAN stress is active: <= 20 ms.
+
 ## Validation Plan
 
 1. Baseline run:
@@ -130,9 +219,13 @@ Keep these counters/metrics always available during development and regression t
 - enable torque command traffic
 - enable serial side traffic
 - enable motor power stage activity
+- combine serial + CAN stress to verify coexistence
 
 3. Pass criteria:
 - no command timeout anomalies under nominal conditions
 - no ISR ring overruns
 - bounded max gap for POS/VEL stream
 - stable sequence continuity over long windows
+- jitter accumulator and p99 jitter meet the quantitative thresholds above
+- dropout accumulator and consecutive-dropout limits meet the quantitative thresholds above
+- USB CLI heartbeat and command-response latency meet the quantitative thresholds above
