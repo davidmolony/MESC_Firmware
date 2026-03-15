@@ -31,8 +31,6 @@
 
 #include "main.h"
 #include "TTerm/Core/include/TTerm.h"
-#include "Tasks/task_cli.h"
-#include "Tasks/task_can.h"
 #include "Common/RTOS_flash.h"
 #include "MESCmotor_state.h"
 #include "MESCmotor.h"
@@ -43,15 +41,10 @@
 #include <stdarg.h>
 #include <MESC/MESCinterface.h>
 #include "mesc_persist.h"
+#include "Tasks/task_can.h"
 
 #include "MESCmeasure.h"
 #include "MESCinput.h"
-
-/* heap_4.c calls these for malloc thread-safety; no-ops are safe since we
- * never start the FreeRTOS scheduler.
- * BaseType_t is typedef long on ARM Cortex-M4 (portmacro.h). */
-void vTaskSuspendAll(void) {}
-long xTaskResumeAll(void) { return 0; }
 
 static uint32_t null_printf(void * port, const char* format, ...) {
 	va_list arg;
@@ -66,6 +59,19 @@ TERMINAL_HANDLE null_handle = {
 		.print = null_printf,
 		.currPermissionLevel = 0
 };
+
+/* TTerm_var expects these symbols from TTerm.c; keep minimal stubs in
+   bare-metal builds where the full terminal task is removed. */
+TermVariableDescriptor TERM_varList = {
+		.nextVar = 0,
+		.nameLength = 0
+};
+
+void TERM_sendVT100Code(TERMINAL_HANDLE * handle, uint16_t cmd, uint8_t var){
+	UNUSED(handle);
+	UNUSED(cmd);
+	UNUSED(var);
+}
 
 void USB_CDC_Callback(uint8_t *buffer, uint32_t len){
 	UNUSED(buffer);
@@ -82,13 +88,12 @@ static bool mesc_vars_populated = false;
 static bool mesc_persist_loaded = false;
 static bool mesc_commands_registered = false;
 
+static TermVariableHandle s_varHandle;
+
 static bool mesc_prepare_var_system(void){
 	if(null_handle.varHandle == NULL){
-		null_handle.varHandle = pvPortMalloc(sizeof(TermVariableHandle));
-		if(null_handle.varHandle == NULL){
-			return false;
-		}
-		memset(null_handle.varHandle, 0, sizeof(TermVariableHandle));
+		memset(&s_varHandle, 0, sizeof(s_varHandle));
+		null_handle.varHandle = &s_varHandle;
 		null_handle.varHandle->varListHead = &TERM_varList;
 	}else if(null_handle.varHandle->varListHead == NULL){
 		null_handle.varHandle->varListHead = &TERM_varList;
@@ -1014,13 +1019,10 @@ void MESCinterface_init(TERMINAL_HANDLE * handle){
 
 	MESCinterface_startup_init();
 
-	taskENTER_CRITICAL();
 	if(mesc_commands_registered){
-		taskEXIT_CRITICAL();
 		return;
 	}
 	mesc_commands_registered = true;
-	taskEXIT_CRITICAL();
 
 	TERM_addCommand(CMD_measure, "measure", "Measure motor R+L", 0, &TERM_defaultList);
 	TERM_addCommand(CMD_error, "error", "Show errors", 0, &TERM_defaultList);

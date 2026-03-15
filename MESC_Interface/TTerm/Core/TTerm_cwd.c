@@ -25,7 +25,6 @@
 #if TERM_SUPPORT_CWD == 1
 
 #include "TTerm/Core/include/TTerm_cwd.h"
-#include "FreeRTOS.h"
 #include "ff.h"
 #include "ffconf.h"
 #include <string.h>

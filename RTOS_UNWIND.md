@@ -405,6 +405,31 @@ Root artifact cleanup follow-up (2026-03-14):
 - Rebuild + reflash/verify/reset after `CCER` removal: PASS
 - Motor spin test after `CCER` removal: PASS (user-confirmed)
 
+Post-cleanup unwind completion (2026-03-14, latest):
+- Completed removal of heavy terminal/task runtime objects from active F405 link path:
+  - Removed from active build: `TTerm.o`, `TTerm_AC.o`, `TTerm_cmd.o`
+  - Retained for variable/persistence plumbing: `TTerm_var.o`, `TTerm_fnv.o`, `TTerm_cwd.o`
+- Removed final allocator/scheduler remnants:
+  - dropped `heap_4.o` from active link path
+  - removed `vTaskSuspendAll()` / `xTaskResumeAll()` stubs from `MESCinterface.c`
+- Removed dynamic allocation for startup var handle in `mesc_prepare_var_system()`:
+  - replaced `pvPortMalloc(sizeof(TermVariableHandle))` with static storage
+- Added minimal local symbol replacements required by retained `TTerm_var.o`:
+  - `TERM_varList`
+  - `TERM_sendVT100Code(...)` (no-op)
+- Added bare-metal compatibility typedef/macros in `TTerm.h` and removed direct `FreeRTOS.h` dependencies from retained TTerm/CAN headers.
+- Removed FreeRTOS include paths from active `Debug` compile recipes and `MESC_F405RG/.cproject` include metadata.
+- Restored `task_can.h` include in `MESCinterface.c` so CAN-gated code compiles when `HAL_CAN_MODULE_ENABLED` is defined.
+- Validation after final unwind fixes:
+  - Rebuild: PASS
+  - Reflash/verify/reset: PASS
+
+Post USB directory consolidation validation (2026-03-14, latest):
+- Canonical USB stack kept from `MESC_F405RG/USB_DEVICE` and synchronized into `MESC_Interface/USB_DEVICE`.
+- Rebuild + reflash/verify/reset after consolidation: PASS
+- Motor spin test: PASS (user-confirmed)
+- USB CDC port enumeration/operation: PASS (user-confirmed)
+
 ## Validation Checkpoints
 
 Completed checkpoints:
@@ -440,12 +465,12 @@ Current known state:
   - `MESC_Interface/Dash/`
   - orphan root file `CCER`
 - Active persistence/load path is in `MESC_Interface/MESC/MESCinterface.c` startup init.
-- FreeRTOS scheduler/CMSIS wrapper objects are removed from link; `heap_4.o` remains to satisfy allocator usage in retained TTerm/persistence path.
-- TTerm is still compiled and linked intentionally for variable/persistence plumbing.
+- FreeRTOS scheduler/CMSIS wrapper objects and `heap_4.o` are removed from the active link path.
+- TTerm core runtime objects are removed; only `TTerm_var.o`, `TTerm_fnv.o`, and `TTerm_cwd.o` remain for variable/persistence plumbing.
 
 Immediate priorities:
-1. Decide whether to keep TTerm as a lightweight variable/persistence backend or fully remove it.
-2. If removing TTerm, replace `TERM_VAR_*` dependencies in `MESC_Interface/MESC/MESCinterface.c` with a minimal native persistence/parameter registry path.
+1. Decide whether to keep the remaining lightweight TTerm variable backend (`TTerm_var/fnv/cwd`) or fully replace it.
+2. If removing the remaining TTerm layer, replace `TERM_VAR_*` dependencies in `MESC_Interface/MESC/MESCinterface.c` with a native persistence/parameter registry path.
 3. Rename remaining legacy RTOS-prefixed files (for example `RTOS_flash.*`) only after functional parity is preserved.
 4. Keep validating each cleanup slice with compile + flash + hardware spin test before proceeding.
 

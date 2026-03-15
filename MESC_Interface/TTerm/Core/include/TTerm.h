@@ -24,13 +24,45 @@
 #ifndef TTerm_H
 #define TTerm_H
 
-#include "FreeRTOS.h"
-#include "task.h"
-#include "stream_buffer.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdlib.h>
 
 #include "TTerm_VT100.h"
 #include "TTerm/TTerm_config.h"
-#include "stdint.h"
+
+/* Bare-metal compatibility for retained TTerm variable/persistence modules. */
+#ifndef TaskHandle_t
+typedef void * TaskHandle_t;
+#endif
+
+#ifndef StreamBufferHandle_t
+typedef void * StreamBufferHandle_t;
+#endif
+
+#ifndef QueueHandle_t
+typedef void * QueueHandle_t;
+#endif
+
+#ifndef BaseType_t
+typedef int32_t BaseType_t;
+#endif
+
+#ifndef pvPortMalloc
+#define pvPortMalloc malloc
+#endif
+
+#ifndef vPortFree
+#define vPortFree free
+#endif
+
+#ifndef taskENTER_CRITICAL
+#define taskENTER_CRITICAL() do {} while(0)
+#endif
+
+#ifndef taskEXIT_CRITICAL
+#define taskEXIT_CRITICAL() do {} while(0)
+#endif
 
 #define EXTENDED_PRINTF 1
 #define TERM_VERSION_STRING "V0.9"

@@ -34,7 +34,6 @@
 
 #include "main.h"
 #include "TTerm/Core/include/TTerm.h"
-#include "task_cli.h"
 #include "CAN_helper.h"
 
 #ifdef HAL_CAN_MODULE_ENABLED
@@ -46,7 +45,7 @@
 
 extern TASK_CAN_node nodes[NUM_NODES];
 
-void TASK_CAN_init(port_str * port, char * short_name);
+void TASK_CAN_init(void * port, char * short_name);
 void TASK_CAN_set_stream(TASK_CAN_handle * handle, uint32_t id);
 uint8_t CMD_nodes(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);

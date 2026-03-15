@@ -13,8 +13,14 @@
 #include "main.h"
 #include "stdint.h"
 #include "stdbool.h"
-#include "FreeRTOS.h"
-#include "queue.h"
+
+#ifndef TaskHandle_t
+typedef void * TaskHandle_t;
+#endif
+
+#ifndef QueueHandle_t
+typedef void * QueueHandle_t;
+#endif
 
 typedef enum{
 	NODE_TYPE_ESC,
