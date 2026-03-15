@@ -2,6 +2,15 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "MESC_F405RG: preflight",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/preflight_f405rg.sh",
+      "problemMatcher": [],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
       "label": "MESC_F405RG: compile",
       "type": "shell",
       "command": "${workspaceFolder}/scripts/build_f405rg.sh",
