@@ -36,12 +36,16 @@
 #include "MESCmotor.h"
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <stdint.h>
 #include <math.h>
 #include <stdarg.h>
+#include <ctype.h>
 #include <MESC/MESCinterface.h>
 #include "mesc_persist.h"
 #include "Tasks/task_can.h"
+#include "usbd_cdc_if.h"
+#include "TTerm/Core/include/TTerm_var.h"
 
 #include "MESCmeasure.h"
 #include "MESCinput.h"
@@ -73,9 +77,767 @@ void TERM_sendVT100Code(TERMINAL_HANDLE * handle, uint16_t cmd, uint8_t var){
 	UNUSED(var);
 }
 
+#define USB_CLI_LINE_MAX 96U
+#define USB_CLI_HISTORY_DEPTH 8U
+#define USB_CLI_RESP_MAX APP_TX_DATA_SIZE
+
+static char s_usb_cli_line[USB_CLI_LINE_MAX];
+static char s_usb_cli_resp[USB_CLI_RESP_MAX];
+static char s_usb_cli_history[USB_CLI_HISTORY_DEPTH][USB_CLI_LINE_MAX];
+static char s_usb_cli_history_draft[USB_CLI_LINE_MAX];
+static uint8_t s_usb_cli_tx[APP_TX_DATA_SIZE];
+static uint32_t s_usb_cli_line_len = 0U;
+static uint32_t s_usb_cli_cursor = 0U;
+static uint8_t s_usb_cli_esc_state = 0U;
+static uint8_t s_usb_cli_skip_lf = 0U;
+static uint32_t s_usb_cli_history_count = 0U;
+static uint32_t s_usb_cli_history_next = 0U;
+static uint32_t s_usb_cli_history_draft_len = 0U;
+static int32_t s_usb_cli_history_pos = -1;
+static bool mesc_persist_loaded;
+
+static TermVariableDescriptor * mesc_find_var_by_name(TermVariableDescriptor *head, char const *name);
+static bool mesc_cli_parse_float(char const *value, float *out);
+
+static bool mesc_cli_write_allowed(void){
+	motor_state_e state = mtr[0].MotorState;
+
+	if((state == MOTOR_STATE_INITIALISING) ||
+	   (state == MOTOR_STATE_TRACKING) ||
+	   (state == MOTOR_STATE_IDLE)){
+		return true;
+	}
+
+	return false;
+}
+
+static bool mesc_cli_uart_req_safe_override(char *name, char *value){
+	float req;
+
+	if(name == NULL || value == NULL){
+		return false;
+	}
+
+	if(strcmp(name, "uart_req") != 0){
+		return false;
+	}
+
+	if(!mesc_cli_parse_float(value, &req)){
+		return false;
+	}
+
+	if(req < -40.0f || req > 40.0f){
+		return false;
+	}
+
+	return true;
+}
+
+static bool mesc_cli_parse_uint(char const *value, uint32_t *out){
+	char *end = NULL;
+	unsigned long parsed;
+
+	if(value == NULL || out == NULL || *value == '\0'){
+		return false;
+	}
+
+	parsed = strtoul(value, &end, 0);
+	if(end == value){
+		return false;
+	}
+
+	while(end != NULL && *end != '\0'){
+		if(!isspace((int)(unsigned char)*end)){
+			return false;
+		}
+		end++;
+	}
+
+	*out = (uint32_t)parsed;
+	return true;
+}
+
+static bool mesc_cli_parse_int(char const *value, int32_t *out){
+	char *end = NULL;
+	long parsed;
+
+	if(value == NULL || out == NULL || *value == '\0'){
+		return false;
+	}
+
+	parsed = strtol(value, &end, 0);
+	if(end == value){
+		return false;
+	}
+
+	while(end != NULL && *end != '\0'){
+		if(!isspace((int)(unsigned char)*end)){
+			return false;
+		}
+		end++;
+	}
+
+	*out = (int32_t)parsed;
+	return true;
+}
+
+static bool mesc_cli_parse_float(char const *value, float *out){
+	char *end = NULL;
+	float parsed;
+	float mul = 1.0f;
+
+	if(value == NULL || out == NULL || *value == '\0'){
+		return false;
+	}
+
+	parsed = strtof(value, &end);
+	if(end == value){
+		return false;
+	}
+
+	if(end != NULL && *end != '\0' && !isspace((int)(unsigned char)*end)){
+		switch(*end){
+		case 'u':
+			mul = 1e-6f;
+			break;
+		case 'm':
+			mul = 1e-3f;
+			break;
+		case 'k':
+			mul = 1e3f;
+			break;
+		case 'M':
+			mul = 1e6f;
+			break;
+		default:
+			return false;
+		}
+		end++;
+	}
+
+	while(end != NULL && *end != '\0'){
+		if(!isspace((int)(unsigned char)*end)){
+			return false;
+		}
+		end++;
+	}
+
+	*out = parsed * mul;
+	return true;
+}
+
+static bool mesc_cli_set_value(TermVariableDescriptor *var, char *value, char *out, uint32_t out_len){
+	uint32_t u;
+	int32_t s;
+	float f;
+
+	if(var == NULL || value == NULL || out == NULL || out_len == 0U){
+		return false;
+	}
+
+	switch(var->type){
+	case TERM_VARIABLE_UINT:
+		if(!mesc_cli_parse_uint(value, &u)){
+			snprintf(out, out_len, "ERR PARSE\r\n");
+			return true;
+		}
+		if(u < var->min_unsigned || u > var->max_unsigned){
+			snprintf(out, out_len, "ERR RANGE\r\n");
+			return true;
+		}
+		switch(var->typeSize){
+		case 1:
+			*(uint8_t*)var->variable = (uint8_t)u;
+			break;
+		case 2:
+			*(uint16_t*)var->variable = (uint16_t)u;
+			break;
+		case 4:
+			*(uint32_t*)var->variable = u;
+			break;
+		default:
+			snprintf(out, out_len, "ERR TYPE\r\n");
+			return true;
+		}
+		break;
+	case TERM_VARIABLE_INT:
+		if(!mesc_cli_parse_int(value, &s)){
+			snprintf(out, out_len, "ERR PARSE\r\n");
+			return true;
+		}
+		if(s < var->min_signed || s > var->max_signed){
+			snprintf(out, out_len, "ERR RANGE\r\n");
+			return true;
+		}
+		switch(var->typeSize){
+		case 1:
+			*(int8_t*)var->variable = (int8_t)s;
+			break;
+		case 2:
+			*(int16_t*)var->variable = (int16_t)s;
+			break;
+		case 4:
+			*(int32_t*)var->variable = s;
+			break;
+		default:
+			snprintf(out, out_len, "ERR TYPE\r\n");
+			return true;
+		}
+		break;
+	case TERM_VARIABLE_FLOAT:
+		if(!mesc_cli_parse_float(value, &f)){
+			snprintf(out, out_len, "ERR PARSE\r\n");
+			return true;
+		}
+		if(f < var->min_float || f > var->max_float){
+			snprintf(out, out_len, "ERR RANGE\r\n");
+			return true;
+		}
+		*(float*)var->variable = f;
+		break;
+	case TERM_VARIABLE_CHAR:
+		if(value[0] == '\0'){
+			snprintf(out, out_len, "ERR PARSE\r\n");
+			return true;
+		}
+		*(char*)var->variable = value[0];
+		break;
+	case TERM_VARIABLE_STRING:
+		if(var->typeSize == 0U){
+			snprintf(out, out_len, "ERR TYPE\r\n");
+			return true;
+		}
+		strncpy((char*)var->variable, value, var->typeSize);
+		((char*)var->variable)[var->typeSize - 1U] = '\0';
+		break;
+	case TERM_VARIABLE_BOOL:
+		if((strcasecmp(value, "true") == 0) || (strcmp(value, "1") == 0)){
+			*(bool*)var->variable = true;
+		}else if((strcasecmp(value, "false") == 0) || (strcmp(value, "0") == 0)){
+			*(bool*)var->variable = false;
+		}else{
+			snprintf(out, out_len, "ERR PARSE\r\n");
+			return true;
+		}
+		break;
+	default:
+		snprintf(out, out_len, "ERR TYPE\r\n");
+		return true;
+	}
+
+	if(var->cb != NULL){
+		var->cb(var);
+	}
+
+	snprintf(out, out_len, "OK SET\r\n");
+	return true;
+}
+
+static bool mesc_cli_write_set(char *name, char *value, char *out, uint32_t out_len){
+	TermVariableDescriptor *head;
+	TermVariableDescriptor *var;
+
+	if(name == NULL || name[0] == '\0' || value == NULL || value[0] == '\0'){
+		snprintf(out, out_len, "ERR ARG\r\n");
+		return true;
+	}
+
+	if(null_handle.varHandle == NULL || null_handle.varHandle->varListHead == NULL){
+		snprintf(out, out_len, "ERR UNINIT\r\n");
+		return true;
+	}
+
+	head = null_handle.varHandle->varListHead;
+	var = mesc_find_var_by_name(head, name);
+	if(var == NULL){
+		snprintf(out, out_len, "ERR NOT_FOUND\r\n");
+		return true;
+	}
+
+	if((var->rw & VAR_ACCESS_W) == 0U){
+		snprintf(out, out_len, "ERR RO\r\n");
+		return true;
+	}
+
+	if(!mesc_cli_write_allowed() && !mesc_cli_uart_req_safe_override(name, value)){
+		snprintf(out, out_len, "ERR UNSAFE\r\n");
+		return true;
+	}
+
+	return mesc_cli_set_value(var, value, out, out_len);
+}
+
+static bool mesc_cli_write_save(char *out, uint32_t out_len){
+	if(!mesc_cli_write_allowed()){
+		snprintf(out, out_len, "ERR UNSAFE\r\n");
+		return true;
+	}
+
+	if(CMD_varSave(&null_handle, 0, NULL) == TERM_CMD_EXIT_ERROR){
+		snprintf(out, out_len, "ERR SAVE\r\n");
+		return true;
+	}
+
+	snprintf(out, out_len, "OK SAVE\r\n");
+	return true;
+}
+
+static bool mesc_cli_write_load(char *out, uint32_t out_len){
+	if(!mesc_cli_write_allowed()){
+		snprintf(out, out_len, "ERR UNSAFE\r\n");
+		return true;
+	}
+
+	if(CMD_varLoad(&null_handle, 0, NULL) == TERM_CMD_EXIT_ERROR){
+		snprintf(out, out_len, "ERR LOAD\r\n");
+		return true;
+	}
+
+	calculateGains(&mtr[0]);
+	calculateVoltageGain(&mtr[0]);
+	calculateFlux(&mtr[0]);
+	MESCinput_Init(&mtr[0]);
+	mesc_persist_loaded = true;
+
+	snprintf(out, out_len, "OK LOAD\r\n");
+	return true;
+}
+
+static bool mesc_cli_write_list(char *out, uint32_t out_len){
+	TermVariableDescriptor *curr;
+	uint32_t used = 0U;
+	uint32_t count = 0U;
+
+	if(null_handle.varHandle == NULL || null_handle.varHandle->varListHead == NULL){
+		snprintf(out, out_len, "ERR UNINIT\r\n");
+		return true;
+	}
+
+	curr = null_handle.varHandle->varListHead;
+	used = (uint32_t)snprintf(out, out_len, "OK LIST");
+	if(used >= out_len){
+		snprintf(out, out_len, "ERR OVERFLOW\r\n");
+		return true;
+	}
+
+	while(curr != NULL){
+		int n;
+
+		if(curr->name != NULL && curr->nameLength > 0U){
+			n = snprintf(&out[used], out_len - used, " %s", curr->name);
+			if(n < 0 || (uint32_t)n >= (out_len - used)){
+				snprintf(out, out_len, "ERR OVERFLOW\r\n");
+				return true;
+			}
+			used += (uint32_t)n;
+			count++;
+		}
+
+		curr = curr->nextVar;
+	}
+
+	if((used + 4U) >= out_len){
+		snprintf(out, out_len, "ERR OVERFLOW\r\n");
+		return true;
+	}
+
+	/* Keep output compact and machine-friendly. */
+	(void)count;
+	out[used++] = '\r';
+	out[used++] = '\n';
+	out[used] = '\0';
+	return true;
+}
+
+static bool mesc_cli_write_status(char *out, uint32_t out_len){
+	motor_state_e state = mtr[0].MotorState;
+	uint8_t write_allowed = 0U;
+
+	if((state == MOTOR_STATE_INITIALISING) ||
+	   (state == MOTOR_STATE_TRACKING) ||
+	   (state == MOTOR_STATE_IDLE)){
+		write_allowed = 1U;
+	}
+
+	snprintf(out, out_len,
+			 "OK STATUS state=%u write=%u load=%u\r\n",
+			 (unsigned)state,
+			 (unsigned)write_allowed,
+			 (unsigned)(mesc_persist_loaded ? 1U : 0U));
+	return true;
+}
+
+static bool mesc_cli_write_get(char *name, char *out, uint32_t out_len){
+	TermVariableDescriptor *head;
+	TermVariableDescriptor *var;
+	char val[80];
+
+	if(name == NULL || name[0] == '\0'){
+		return mesc_cli_write_list(out, out_len);
+	}
+
+	if(null_handle.varHandle == NULL || null_handle.varHandle->varListHead == NULL){
+		snprintf(out, out_len, "ERR UNINIT\r\n");
+		return true;
+	}
+
+	head = null_handle.varHandle->varListHead;
+	var = mesc_find_var_by_name(head, name);
+	if(var == NULL){
+		snprintf(out, out_len, "ERR NOT_FOUND\r\n");
+		return true;
+	}
+
+	memset(val, 0, sizeof(val));
+	(void)TERM_var2str(&null_handle, var, val, (int32_t)sizeof(val));
+	snprintf(out, out_len, "OK %s=%s\r\n", name, val);
+	return true;
+}
+
+static bool mesc_cli_minimal_dispatch(char *line, char *out, uint32_t out_len){
+	char *start = line;
+	char *end;
+	char *arg = NULL;
+	char *arg2 = NULL;
+	char *ws;
+
+	while(*start == ' ' || *start == '\t'){
+		start++;
+	}
+
+	if(*start == '\0'){
+		return false;
+	}
+
+	end = start + strlen(start);
+	while(end > start && (end[-1] == ' ' || end[-1] == '\t')){
+		end--;
+	}
+	*end = '\0';
+
+	ws = strpbrk(start, " \t");
+	if(ws != NULL){
+		*ws = '\0';
+		arg = ws + 1;
+		while(*arg == ' ' || *arg == '\t'){
+			arg++;
+		}
+		if(*arg == '\0'){
+			arg = NULL;
+		}else{
+			char *ws2 = strpbrk(arg, " \t");
+			if(ws2 != NULL){
+				*ws2 = '\0';
+				arg2 = ws2 + 1;
+				while(*arg2 == ' ' || *arg2 == '\t'){
+					arg2++;
+				}
+				if(*arg2 == '\0'){
+					arg2 = NULL;
+				}
+			}
+		}
+	}
+
+	if(strcasecmp(start, "help") == 0){
+		snprintf(out, out_len, "OK HELP HELP LIST GET [name] SET SAVE LOAD STATUS\r\n");
+		return true;
+	}
+
+	if(strcasecmp(start, "list") == 0){
+		return mesc_cli_write_list(out, out_len);
+	}
+
+	if(strcasecmp(start, "status") == 0){
+		return mesc_cli_write_status(out, out_len);
+	}
+
+	if(strcasecmp(start, "get") == 0){
+		return mesc_cli_write_get(arg, out, out_len);
+	}
+
+	if(strcasecmp(start, "set") == 0){
+		return mesc_cli_write_set(arg, arg2, out, out_len);
+	}
+
+	if(strcasecmp(start, "save") == 0){
+		return mesc_cli_write_save(out, out_len);
+	}
+
+	if(strcasecmp(start, "load") == 0){
+		return mesc_cli_write_load(out, out_len);
+	}
+
+	snprintf(out, out_len, "ERR UNKNOWN\r\n");
+	return true;
+}
+
+static void mesc_cli_tx_append_byte(uint32_t *txlen, uint8_t byte){
+	if(*txlen < sizeof(s_usb_cli_tx)){
+		s_usb_cli_tx[*txlen] = byte;
+		(*txlen)++;
+	}
+}
+
+static void mesc_cli_tx_append_data(uint32_t *txlen, uint8_t const *data, uint32_t data_len){
+	uint32_t i;
+
+	for(i = 0U; i < data_len; i++){
+		mesc_cli_tx_append_byte(txlen, data[i]);
+	}
+}
+
+static void mesc_cli_tx_append_str(uint32_t *txlen, char const *text){
+	if(text == NULL){
+		return;
+	}
+
+	mesc_cli_tx_append_data(txlen, (uint8_t const *)text, (uint32_t)strlen(text));
+}
+
+static void mesc_cli_redraw_line(uint32_t *txlen){
+	uint32_t backtrack;
+
+	mesc_cli_tx_append_byte(txlen, '\r');
+	mesc_cli_tx_append_str(txlen, "\x1b[2K");
+	mesc_cli_tx_append_data(txlen, (uint8_t const *)s_usb_cli_line, s_usb_cli_line_len);
+
+	backtrack = s_usb_cli_line_len - s_usb_cli_cursor;
+	while(backtrack > 0U){
+		mesc_cli_tx_append_byte(txlen, '\b');
+		backtrack--;
+	}
+}
+
+static uint32_t mesc_cli_history_slot(uint32_t chronological_index){
+	uint32_t start = (s_usb_cli_history_next + USB_CLI_HISTORY_DEPTH - s_usb_cli_history_count) % USB_CLI_HISTORY_DEPTH;
+	return (start + chronological_index) % USB_CLI_HISTORY_DEPTH;
+}
+
+static void mesc_cli_set_line(char const *text){
+	uint32_t copy_len = 0U;
+
+	if(text != NULL){
+		copy_len = (uint32_t)strlen(text);
+		if(copy_len >= USB_CLI_LINE_MAX){
+			copy_len = USB_CLI_LINE_MAX - 1U;
+		}
+		memcpy(s_usb_cli_line, text, copy_len);
+	}
+
+	s_usb_cli_line[copy_len] = '\0';
+	s_usb_cli_line_len = copy_len;
+	s_usb_cli_cursor = copy_len;
+}
+
+static void mesc_cli_store_history(void){
+	uint32_t newest_slot;
+
+	if(s_usb_cli_line_len == 0U){
+		return;
+	}
+
+	if(s_usb_cli_history_count > 0U){
+		newest_slot = mesc_cli_history_slot(s_usb_cli_history_count - 1U);
+		if(strcmp(s_usb_cli_history[newest_slot], s_usb_cli_line) == 0){
+			return;
+		}
+	}
+
+	memcpy(s_usb_cli_history[s_usb_cli_history_next], s_usb_cli_line, s_usb_cli_line_len);
+	s_usb_cli_history[s_usb_cli_history_next][s_usb_cli_line_len] = '\0';
+	s_usb_cli_history_next = (s_usb_cli_history_next + 1U) % USB_CLI_HISTORY_DEPTH;
+	if(s_usb_cli_history_count < USB_CLI_HISTORY_DEPTH){
+		s_usb_cli_history_count++;
+	}
+}
+
+static void mesc_cli_history_up(uint32_t *txlen){
+	uint32_t slot;
+
+	if(s_usb_cli_history_count == 0U){
+		return;
+	}
+
+	if(s_usb_cli_history_pos < 0){
+		memcpy(s_usb_cli_history_draft, s_usb_cli_line, s_usb_cli_line_len);
+		s_usb_cli_history_draft[s_usb_cli_line_len] = '\0';
+		s_usb_cli_history_draft_len = s_usb_cli_line_len;
+		s_usb_cli_history_pos = (int32_t)s_usb_cli_history_count - 1;
+	}else if(s_usb_cli_history_pos > 0){
+		s_usb_cli_history_pos--;
+	}
+
+	slot = mesc_cli_history_slot((uint32_t)s_usb_cli_history_pos);
+	mesc_cli_set_line(s_usb_cli_history[slot]);
+	mesc_cli_redraw_line(txlen);
+}
+
+static void mesc_cli_history_down(uint32_t *txlen){
+	uint32_t slot;
+
+	if(s_usb_cli_history_pos < 0){
+		return;
+	}
+
+	if(s_usb_cli_history_pos < ((int32_t)s_usb_cli_history_count - 1)){
+		s_usb_cli_history_pos++;
+		slot = mesc_cli_history_slot((uint32_t)s_usb_cli_history_pos);
+		mesc_cli_set_line(s_usb_cli_history[slot]);
+	}else{
+		s_usb_cli_history_pos = -1;
+		s_usb_cli_history_draft[s_usb_cli_history_draft_len] = '\0';
+		mesc_cli_set_line(s_usb_cli_history_draft);
+	}
+
+	mesc_cli_redraw_line(txlen);
+}
+
 void USB_CDC_Callback(uint8_t *buffer, uint32_t len){
-	UNUSED(buffer);
-	UNUSED(len);
+	uint32_t i;
+	char const *resp = NULL;
+	uint32_t txlen = 0U;
+
+	if(buffer == NULL || len == 0U){
+		return;
+	}
+
+	for(i = 0U; i < len; i++){
+		uint8_t c = buffer[i];
+
+		if(s_usb_cli_esc_state == 1U){
+			s_usb_cli_esc_state = (c == '[') ? 2U : 0U;
+			continue;
+		}
+
+		if(s_usb_cli_esc_state == 2U){
+			s_usb_cli_esc_state = 0U;
+			if(c == 'A'){
+				mesc_cli_history_up(&txlen);
+				continue;
+			}
+			if(c == 'B'){
+				mesc_cli_history_down(&txlen);
+				continue;
+			}
+			if(c == 'D'){
+				if(s_usb_cli_cursor > 0U){
+					s_usb_cli_cursor--;
+					mesc_cli_tx_append_str(&txlen, "\x1b[D");
+				}
+				continue;
+			}
+			if(c == 'C'){
+				if(s_usb_cli_cursor < s_usb_cli_line_len){
+					s_usb_cli_cursor++;
+					mesc_cli_tx_append_str(&txlen, "\x1b[C");
+				}
+				continue;
+			}
+			if(c == 'H'){
+				s_usb_cli_cursor = 0U;
+				mesc_cli_redraw_line(&txlen);
+				continue;
+			}
+			if(c == 'F'){
+				s_usb_cli_cursor = s_usb_cli_line_len;
+				mesc_cli_redraw_line(&txlen);
+				continue;
+			}
+			if(c == '3'){
+				s_usb_cli_esc_state = 3U;
+				continue;
+			}
+			continue;
+		}
+
+		if(s_usb_cli_esc_state == 3U){
+			s_usb_cli_esc_state = 0U;
+			if(c == '~' && s_usb_cli_cursor < s_usb_cli_line_len){
+				memmove(&s_usb_cli_line[s_usb_cli_cursor],
+						&s_usb_cli_line[s_usb_cli_cursor + 1U],
+						s_usb_cli_line_len - s_usb_cli_cursor - 1U);
+				s_usb_cli_line_len--;
+				mesc_cli_redraw_line(&txlen);
+			}
+			continue;
+		}
+
+		if(c == 0x1BU){
+			s_usb_cli_esc_state = 1U;
+			continue;
+		}
+
+		if(c == '\n' && s_usb_cli_skip_lf != 0U){
+			s_usb_cli_skip_lf = 0U;
+			continue;
+		}
+
+		if(c == '\r' || c == '\n'){
+			s_usb_cli_skip_lf = (c == '\r') ? 1U : 0U;
+			mesc_cli_tx_append_str(&txlen, "\r\n");
+			if(s_usb_cli_line_len > 0U){
+				s_usb_cli_line[s_usb_cli_line_len] = '\0';
+				mesc_cli_store_history();
+				if(mesc_cli_minimal_dispatch(s_usb_cli_line, s_usb_cli_resp, sizeof(s_usb_cli_resp))){
+					resp = s_usb_cli_resp;
+				}
+				s_usb_cli_line_len = 0U;
+				s_usb_cli_cursor = 0U;
+			}
+			s_usb_cli_history_pos = -1;
+			s_usb_cli_history_draft_len = 0U;
+			s_usb_cli_history_draft[0] = '\0';
+			continue;
+		}
+
+		s_usb_cli_skip_lf = 0U;
+
+		if((c == '\b') || (c == 0x7FU)){
+			if(s_usb_cli_cursor > 0U){
+				memmove(&s_usb_cli_line[s_usb_cli_cursor - 1U],
+						&s_usb_cli_line[s_usb_cli_cursor],
+						s_usb_cli_line_len - s_usb_cli_cursor);
+				s_usb_cli_line_len--;
+				s_usb_cli_cursor--;
+				mesc_cli_redraw_line(&txlen);
+			}
+			continue;
+		}
+
+		if((c >= 32U) && (c <= 126U)){
+			if(s_usb_cli_line_len < (USB_CLI_LINE_MAX - 1U)){
+				if(s_usb_cli_cursor < s_usb_cli_line_len){
+					memmove(&s_usb_cli_line[s_usb_cli_cursor + 1U],
+							&s_usb_cli_line[s_usb_cli_cursor],
+							s_usb_cli_line_len - s_usb_cli_cursor);
+				}
+				s_usb_cli_line[s_usb_cli_cursor] = (char)c;
+				s_usb_cli_line_len++;
+				s_usb_cli_cursor++;
+				mesc_cli_redraw_line(&txlen);
+			}else{
+				s_usb_cli_line_len = 0U;
+				s_usb_cli_cursor = 0U;
+				resp = "ERR OVERFLOW\r\n";
+			}
+		}
+	}
+
+	if(resp != NULL){
+		uint32_t rlen = (uint32_t)strlen(resp);
+		uint32_t j;
+		for(j = 0U; j < rlen && txlen < sizeof(s_usb_cli_tx); j++){
+			s_usb_cli_tx[txlen++] = (uint8_t)resp[j];
+		}
+	}
+
+	if(txlen > 0U){
+		if(txlen > 0xFFFFU){
+			txlen = 0xFFFFU;
+		}
+		(void)CDC_Transmit_FS(s_usb_cli_tx, (uint16_t)txlen);
+	}
 }
 
 #ifdef HAL_CAN_MODULE_ENABLED

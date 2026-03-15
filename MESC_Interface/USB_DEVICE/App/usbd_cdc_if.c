@@ -64,6 +64,7 @@ void USB_CDC_Callback(uint8_t *buffer, uint32_t len);
   */
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
+static const uint8_t g_cdc_banner[] = "\r\nMESC CLI READY\r\n";
 /* USER CODE END PRIVATE_DEFINES */
 
 /**
@@ -96,6 +97,7 @@ uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
+static uint8_t g_banner_sent = 0;
 
 /* USER CODE END PRIVATE_VARIABLES */
 
@@ -130,6 +132,7 @@ static int8_t CDC_Receive_FS(uint8_t* pbuf, uint32_t *Len);
 static int8_t CDC_TransmitCplt_FS(uint8_t *pbuf, uint32_t *Len, uint8_t epnum);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
+static void CDC_TrySendBanner(void);
 
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
@@ -154,6 +157,7 @@ USBD_CDC_ItfTypeDef USBD_Interface_fops_FS =
 static int8_t CDC_Init_FS(void)
 {
   /* USER CODE BEGIN 3 */
+  g_banner_sent = 0;
   /* Set Application Buffers */
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, UserTxBufferFS, 0);
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, UserRxBufferFS);
@@ -230,6 +234,7 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
     break;
 
     case CDC_SET_CONTROL_LINE_STATE:
+      CDC_TrySendBanner();
 
     break;
 
@@ -263,6 +268,7 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
+  CDC_TrySendBanner();
   USB_CDC_Callback(Buf, *Len);
 
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
@@ -320,6 +326,17 @@ static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
+
+static void CDC_TrySendBanner(void)
+{
+  if (g_banner_sent != 0U) {
+    return;
+  }
+
+  if (CDC_Transmit_FS((uint8_t *)g_cdc_banner, (uint16_t)(sizeof(g_cdc_banner) - 1U)) == USBD_OK) {
+    g_banner_sent = 1U;
+  }
+}
 
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

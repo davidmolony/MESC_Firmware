@@ -267,9 +267,29 @@ Now that Phase 1 is complete, prioritize hardening and maintenance over new CLI 
 - Keep USB as the only CLI transport in this track.
 - Defer CAN transport to a later, separate phase.
 
+## Confirmed Policy Decisions (2026-03-14)
+
+These decisions are fixed unless explicitly changed later.
+
+1) Persistence writes are manual only
+- `SAVE` remains operator-triggered only.
+- No auto-save behavior is introduced in this track.
+
+2) Backward compatibility is not a requirement for upcoming revisions
+- Command/response refinements are allowed when they improve safety and maintainability.
+
+3) Error semantics should stay concise
+- Prefer short machine-oriented error forms.
+- Avoid verbose response text in the CLI transport layer.
+
+4) Response verbosity should stay minimal
+- CLI output should not be chatty.
+- Additional presentation/verbosity concerns are handled by a higher layer.
+
 ## Deferred Items (Future Phase)
+- CAN telemetry integration (higher priority within CAN phase).
 - CAN transport adapter using the same dispatcher/backend API.
-- Extended telemetry and remote update framing over CAN.
+- Extended remote update framing over CAN.
 
 ## HANDOFF PROMPT
 
@@ -310,6 +330,13 @@ Immediate objective:
 - Preserve validated USB CLI behavior and safety policy.
 - Enforce repeatable regression validation for any code changes.
 - Keep transport-neutral backend API stable so CAN can be added later without backend rewrite.
+
+Confirmed policy constraints for next work:
+- `SAVE` is manual only (no auto-save).
+- Backward compatibility is optional for future CLI revisions.
+- Error responses stay short.
+- CLI transport output stays non-chatty.
+- In CAN work, telemetry has higher priority than update/control framing.
 
 Hardening requirements:
 1) Preserve command contract and response format
