@@ -45,11 +45,9 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-#ifdef POSVEL_PLANE
 #define JIT_PORT      GPIOB
 #define JIT_PIN_N     3U
 #define JIT_PIN_MASK  (1U << JIT_PIN_N)
-#endif
 
 /* USER CODE END PM */
 
@@ -229,6 +227,7 @@ HAL_Delay(1);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    MESCinterface_can_periodic();
   }
   /* USER CODE END 3 */
 }

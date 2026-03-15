@@ -434,7 +434,6 @@ int16_t diff;
 void fastLoop(MESC_motor_typedef *_motor) {
 	uint32_t cycles = CPU_CYCLES;
 
-#ifdef POSVEL_PLANE
 	//
 	// god forgive the idiot that puts something at the top of fastLoop()
 	//
@@ -458,8 +457,6 @@ void fastLoop(MESC_motor_typedef *_motor) {
 	    _motor->jitter.samples = 0;
 	    _motor->jitter.clear_req = 0;
 	}
-
-#endif
 
 	// Call this directly from the TIM top IRQ
   _motor->hall.current_hall_state = getHallState(); //ToDo, this macro is not applicable to dual motors
@@ -1301,13 +1298,11 @@ case SQRT_CIRCLE_LIM_VD:
 	_motor->m.L_QD = _motor->m.L_Q-_motor->m.L_D;
 	_motor->FOC.d_polarity = 1;
 
-#ifdef POSVEL_PLANE
 	// xxx
 	if (_motor->FOC.pwm_frequency <= 0.0f) {
         _motor->FOC.pwm_frequency = PWM_FREQUENCY;  // fallback to default 20kHz
     }
     _motor->jitter.expected_cyc = (int32_t)((float)SystemCoreClock / _motor->FOC.pwm_frequency);
-#endif
   }
 
   void calculateVoltageGain(MESC_motor_typedef *_motor) {
@@ -1880,7 +1875,6 @@ void getIncEncAngle(MESC_motor_typedef *_motor){
 		_motor->FOC.enc_angle = _motor->m.pole_pairs*((_motor->FOC.enc_ratio*(uint16_t)_motor->enctimer->Instance->CNT-_motor->FOC.enc_ratio*(uint16_t)_motor->enctimer->Instance->CCR3)) + _motor->FOC.enc_offset;
 	}
 
-#ifdef POSVEL_PLANE
     if(_motor->FOC.encoder_polarity_invert){
         // Invert direction for abs_position as well
         _motor->FOC.abs_position = ((uint16_t)(_motor->enctimer->Instance->CCR3) - (uint16_t)(_motor->enctimer->Instance->CNT)) & 0x0FFF; // 12-bit wrap
@@ -1888,7 +1882,6 @@ void getIncEncAngle(MESC_motor_typedef *_motor){
         _motor->FOC.abs_position = ((uint16_t)(_motor->enctimer->Instance->CNT)  - (uint16_t)(_motor->enctimer->Instance->CCR3)) & 0x0FFF; // 12-bit wrap
     }
 	// _motor->FOC.abs_position = ( (uint16_t)(_motor->enctimer->Instance->CNT) - (uint16_t)(_motor->enctimer->Instance->CCR3) ) & 0x0FFF; // for 12-bit encoder
-#endif
 }
 
 void  logVars(MESC_motor_typedef *_motor){

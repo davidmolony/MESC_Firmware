@@ -43,7 +43,11 @@ bool TASK_CAN_add_float(TASK_CAN_handle * handle, uint16_t message_id, uint8_t r
 	packet.len = sizeof(float)*2;
 	memcpy(&packet.buffer[0], &n1, sizeof(float));
 	memcpy(&packet.buffer[4], &n2, sizeof(float));
-	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
+	if(xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout)) == pdPASS){
+		return true;
+	}
+	handle->tx_enqueue_dropped++;
+	return false;
 }
 
 bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint32_t n1, uint32_t n2, uint32_t timeout){
@@ -56,7 +60,11 @@ bool TASK_CAN_add_uint32(TASK_CAN_handle * handle, uint16_t message_id, uint8_t 
 	packet.len = sizeof(uint32_t)*2;
 	PACK_u32_to_buf(&packet.buffer[0], n1);
 	PACK_u32_to_buf(&packet.buffer[4], n2);
-	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
+	if(xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout)) == pdPASS){
+		return true;
+	}
+	handle->tx_enqueue_dropped++;
+	return false;
 }
 
 bool TASK_CAN_add_rawSTD(TASK_CAN_handle * handle, uint32_t message_id, uint8_t * data, uint8_t len, uint32_t timeout){
@@ -70,7 +78,11 @@ bool TASK_CAN_add_rawSTD(TASK_CAN_handle * handle, uint32_t message_id, uint8_t 
 	packet.message_id = message_id;
 	packet.len = len;
 	memcpy(packet.buffer, data, len);
-	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
+	if(xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout)) == pdPASS){
+		return true;
+	}
+	handle->tx_enqueue_dropped++;
+	return false;
 }
 
 bool TASK_CAN_add_rawEXT(TASK_CAN_handle * handle, uint32_t message_id, uint8_t * data, uint8_t len, uint32_t timeout){
@@ -84,7 +96,11 @@ bool TASK_CAN_add_rawEXT(TASK_CAN_handle * handle, uint32_t message_id, uint8_t 
 	packet.message_id = message_id;
 	packet.len = len;
 	memcpy(packet.buffer, data, len);
-	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
+	if(xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout)) == pdPASS){
+		return true;
+	}
+	handle->tx_enqueue_dropped++;
+	return false;
 }
 
 bool TASK_CAN_add_sample(TASK_CAN_handle * handle, uint16_t message_id, uint8_t receiver, uint16_t row, uint8_t col, uint8_t flags, float value, uint32_t timeout){
@@ -99,7 +115,11 @@ bool TASK_CAN_add_sample(TASK_CAN_handle * handle, uint16_t message_id, uint8_t 
 	PACK_u8_to_buf(&packet.buffer[2], col);
 	PACK_u8_to_buf(&packet.buffer[3], flags);
 	PACK_float_to_buf(&packet.buffer[4], value);
-	return xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout));
+	if(xQueueSend(handle->tx_queue, &packet, pdMS_TO_TICKS(timeout)) == pdPASS){
+		return true;
+	}
+	handle->tx_enqueue_dropped++;
+	return false;
 }
 #endif
 

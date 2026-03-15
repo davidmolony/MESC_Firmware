@@ -55,6 +55,21 @@ typedef struct {
 	QueueHandle_t rx_queue;
 	uint32_t rx_dropped;
 	QueueHandle_t tx_queue;
+	uint32_t rx_isr_frames;
+	uint32_t rx_isr_filtered;
+	uint32_t rx_isr_getmsg_err;
+	uint32_t rx_packets_handled;
+	uint32_t rx_terminal_packets;
+	uint32_t rx_control_packets;
+	uint32_t tx_mailbox_full;
+	uint32_t tx_enqueue_dropped;
+	uint32_t tx_frames_sent;
+	uint32_t tx_frames_failed;
+	uint32_t posvel_sent;
+	uint32_t posvel_slot_miss;
+	uint32_t posvel_tx_blocked;
+	uint32_t posvel_last_tick;
+	uint32_t posvel_max_gap_ticks;
 }TASK_CAN_handle;
 
 

@@ -310,10 +310,7 @@ typedef struct {
   uint32_t encoder_OK;
   uint16_t enc_angle;
   float alignment_error;
-
-#ifdef POSVEL_PLANE
   uint16_t abs_position;
-#endif
 
 #ifdef FETCH_ENC_OFFSET
   int32_t offset_accumulator;
@@ -589,7 +586,6 @@ typedef struct {
 	bool lognow;
 } MESClogging_s;
 
-#ifdef POSVEL_PLANE
 // Jitter metrics for fastLoop() entry-to-entry period, measured via DWT->CYCCNT
 typedef struct {
     int32_t  min_cyc, max_cyc;
@@ -601,7 +597,6 @@ typedef struct {
     float    p2p_us; // peak-to-peak jitter over all samples, in microseconds
     volatile uint8_t clear_req;
 } MESCjitter_s;
-#endif
 
 typedef struct {
 
@@ -793,9 +788,7 @@ typedef struct{
 	MESClrobs_s lrobs;
 	MESCoptionFlags_s options;
 	bool conf_is_valid;
-#ifdef POSVEL_PLANE
     MESCjitter_s jitter;     // fastLoop() timing jitter metrics
-#endif
 }MESC_motor_typedef;
 
 extern MESC_motor_typedef mtr[NUM_MOTORS];

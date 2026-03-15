@@ -83,7 +83,12 @@ void CAN1_RX0_IRQHandler(void)
 
 	CAN_RxHeaderTypeDef pheader;
 
-	HAL_CAN_GetRxMessage(can1.hw, CAN_RX_FIFO0, &pheader, packet.buffer);
+	if(HAL_CAN_GetRxMessage(can1.hw, CAN_RX_FIFO0, &pheader, packet.buffer) != HAL_OK){
+		can1.rx_isr_getmsg_err++;
+		return;
+	}
+
+	can1.rx_isr_frames++;
 
 	packet.len = pheader.DLC;
 	packet.message_id = CANhelper_unpackMESC_id(pheader.ExtId, &packet.sender, &packet.receiver);
@@ -96,6 +101,8 @@ void CAN1_RX0_IRQHandler(void)
 		}
 
 		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}else{
+		can1.rx_isr_filtered++;
 	}
 
 }
@@ -178,15 +185,18 @@ void TASK_CAN_rx(void * argument){
 
 	while(1){
 		xQueueReceive(handle->rx_queue, &packet, portMAX_DELAY);
+		handle->rx_packets_handled++;
 #ifdef LED_RED_Pin
 		HAL_GPIO_TogglePin(LED_RED_GPIO_Port, LED_RED_Pin);
 #endif
 		if(packet.message_id == CAN_ID_TERMINAL && packet.receiver == handle->node_id){
+			handle->rx_terminal_packets++;
 			handle->remote_node_id = packet.sender;
 			if(xStreamBufferSend(port->rx_stream, packet.buffer, packet.len, ALLOWED_BLOCK_TIME) != packet.len){
 				handle->stream_dropped++;  //Streambuffer was not consumed fast enough from other tasks
 			}
 		}else{
+			handle->rx_control_packets++;
 			TASK_CAN_packet_received(handle, packet.message_id, packet.sender, packet.receiver, packet.buffer, packet.len);
 		}
 	}
@@ -207,7 +217,13 @@ void TASK_CAN_ping(TASK_CAN_handle * handle){
 		TxHeader.DLC = 8;
 		TxHeader.TransmitGlobalTime = DISABLE;
 
-		HAL_CAN_AddTxMessage(handle->hw, &TxHeader, buffer, &TxMailbox);  //function to add message for transmition
+		if(HAL_CAN_AddTxMessage(handle->hw, &TxHeader, buffer, &TxMailbox) == HAL_OK){
+			handle->tx_frames_sent++;
+		}else{
+			handle->tx_frames_failed++;
+		}
+	}else{
+		handle->tx_mailbox_full++;
 	}
 
 	uint8_t active_nodes=0;
@@ -254,9 +270,15 @@ uint32_t TASK_CAN_connect(TASK_CAN_handle * handle, uint16_t remote, uint8_t con
 		TxHeader.DLC = 1;
 		TxHeader.TransmitGlobalTime = DISABLE;
 
-		HAL_CAN_AddTxMessage(handle->hw, &TxHeader, buffer, &TxMailbox);  //function to add message for transmition
-		return 1;
+		if(HAL_CAN_AddTxMessage(handle->hw, &TxHeader, buffer, &TxMailbox) == HAL_OK){
+			handle->tx_frames_sent++;
+			return 1;
+		}
+
+		handle->tx_frames_failed++;
+		return 0;
 	}else{
+		handle->tx_mailbox_full++;
 		return 0;
 	}
 
@@ -283,7 +305,8 @@ void TASK_CAN_tx(void * argument){
 	TASK_CAN_packet packet;
 
 	while(1){
-		if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)){
+		uint32_t tx_free = HAL_CAN_GetTxMailboxesFreeLevel(handle->hw);
+		if(tx_free){
 			uint8_t buffer[8];
 
 			uint8_t len = xStreamBufferReceive(port->tx_stream, buffer, sizeof(buffer), 0);
@@ -296,13 +319,18 @@ void TASK_CAN_tx(void * argument){
 				TxHeader.IDE = CAN_ID_EXT;
 				TxHeader.TransmitGlobalTime = DISABLE;
 
-				HAL_CAN_AddTxMessage(handle->hw, &TxHeader, buffer, &TxMailbox);
+				if(HAL_CAN_AddTxMessage(handle->hw, &TxHeader, buffer, &TxMailbox) == HAL_OK){
+					handle->tx_frames_sent++;
+				}else{
+					handle->tx_frames_failed++;
+				}
 
 			}
 
 		}
 
-		if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw)){
+		tx_free = HAL_CAN_GetTxMailboxesFreeLevel(handle->hw);
+		if(tx_free){
 			if(xQueueReceive(handle->tx_queue, &packet, 0)){
 
 				CAN_TxHeaderTypeDef TxHeader;
@@ -331,9 +359,19 @@ void TASK_CAN_tx(void * argument){
 					TxHeader.DLC = packet.len;
 					TxHeader.TransmitGlobalTime = DISABLE;
 
-					HAL_CAN_AddTxMessage(handle->hw, &TxHeader, packet.buffer, &TxMailbox);
+					if(HAL_CAN_AddTxMessage(handle->hw, &TxHeader, packet.buffer, &TxMailbox) == HAL_OK){
+						handle->tx_frames_sent++;
+					}else{
+						handle->tx_frames_failed++;
+					}
 				}
 
+			}
+		}
+
+		if(!tx_free){
+			if((xStreamBufferIsEmpty(port->tx_stream) == pdFALSE) || (uxQueueMessagesWaiting(handle->tx_queue) > 0U)){
+				handle->tx_mailbox_full++;
 			}
 		}
 
@@ -384,7 +422,6 @@ void TASK_CAN_telemetry(void * argument){
 	}
 }
 
-#ifdef POSVEL_PLANE
 static void TASK_CAN_posvel(void *argument) {
     port_str *port = argument;                  // same as telemetry
     TASK_CAN_handle *handle = port->hw;         // resolve handle
@@ -393,11 +430,27 @@ static void TASK_CAN_posvel(void *argument) {
     TickType_t last = xTaskGetTickCount();
 
     for (;;) {
+		TickType_t now = xTaskGetTickCount();
+		TickType_t delta = now - (TickType_t)handle->posvel_last_tick;
+
+		if(handle->posvel_last_tick != 0U){
+			if((uint32_t)delta > handle->posvel_max_gap_ticks){
+				handle->posvel_max_gap_ticks = (uint32_t)delta;
+			}
+
+			if(period > 0U && delta > period){
+				uint32_t slots_elapsed = (uint32_t)(delta / period);
+				if(slots_elapsed > 1U){
+					handle->posvel_slot_miss += (slots_elapsed - 1U);
+				}
+			}
+		}
+
+		handle->posvel_last_tick = (uint32_t)now;
         TASK_CAN_telemetry_posvel(handle);      // enqueue pos/vel frame
         vTaskDelayUntil(&last, period ? period : 1);
     }
 }
-#endif
 
 #define CAN_STREAM_SIZE 128
 
@@ -413,9 +466,7 @@ void TASK_CAN_init(port_str * port, char * short_name){
 	xTaskCreate(TASK_CAN_tx, "task_tx_can", 256, (void*)port, osPriorityAboveNormal, &handle->tx_task_handle);
 	xTaskCreate(TASK_CAN_telemetry, "can_metry", 256, (void*)port, osPriorityAboveNormal, NULL);
 
-	#ifdef POSVEL_PLANE
 	xTaskCreate(TASK_CAN_posvel, "can_posvel", 256, (void*)port, osPriorityAboveNormal, NULL);
-	#endif
 }
 
 
@@ -501,6 +552,18 @@ uint8_t CMD_can_send(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args){
 		}
 		if(strcmp(args[i], "-i")==0){
 			ttprintf("Dropped frames\r\nTX: %u RX: %u\r\n", can1.stream_dropped, can1.rx_dropped);
+			ttprintf("ISR rx=%u filt=%u err=%u proc=%u term=%u ctrl=%u\r\n",
+				can1.rx_isr_frames,
+				can1.rx_isr_filtered,
+				can1.rx_isr_getmsg_err,
+				can1.rx_packets_handled,
+				can1.rx_terminal_packets,
+				can1.rx_control_packets);
+			ttprintf("TX sent=%u fail=%u qdrop=%u mbox=%u\r\n",
+				can1.tx_frames_sent,
+				can1.tx_frames_failed,
+				can1.tx_enqueue_dropped,
+				can1.tx_mailbox_full);
 		}
 	}
 

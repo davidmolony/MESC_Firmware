@@ -39,6 +39,7 @@
 
 void MESCinterface_startup_init(void);
 void MESCinterface_init(TERMINAL_HANDLE * handle);
+void MESCinterface_can_periodic(void);
 
 uint8_t CMD_measure(TERMINAL_HANDLE * handle, uint8_t argCount, char ** args);
 

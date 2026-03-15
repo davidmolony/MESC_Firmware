@@ -18,7 +18,6 @@
 
 // Owen block of code
 #define JITTER_TEST  1 // if true exports square wave out of PB5
-#define POSVEL_PLANE 1 // export 0x02D0 CAN messages with position/velocity data
 #define POSVEL_HZ 500
 
 #define ABS_MAX_PHASE_CURRENT 75.0f //We set this as the board abs max, and the firmware sets the value actually used depending on the input setpoints with this as a maximum.

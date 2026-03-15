@@ -1,0 +1,11 @@
+{
+  "kv": 170,
+  "torque": 0.4,
+  "rphase": 0.07,
+  "Rterm": 7.0,
+  "Qterm": 100.0,
+  "Bterm": 102.0,
+  "Theta": 4.368,
+  "total_ms": 3000,
+  "LQR_data": "/Users/owhite/MESC_brain_board/modeling/pendulum_LQR_data.json"
+}
