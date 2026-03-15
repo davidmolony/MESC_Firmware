@@ -446,39 +446,9 @@ Next-phase checkpoints (if continuing cleanup):
 - If `RTOS_flash.*` is renamed/refactored, confirm flash read/write compatibility on existing persisted datasets.
 - After each further reduction slice: compile PASS, upload/verify PASS, motor spin PASS.
 
-## Resume Prompt
+## Work completed...
 
-as of git commit: 
-`8a3d052c29bdc37aec694d40280fa0b8507cf42e`
+as of this git commit: 
+`2578dbb`
 
-```text
-Resume work on this firmware simplification from the current repo state.
 
-Current known state:
-- Target is frozen to `STM32F405RG` + `Wheely.h`; multi-target runtime/task infrastructure has been removed from the active build path.
-- RTOS unwind plan is complete through Step 10, including metadata alignment and post-cleanup hardware validation.
-- VS Code compile/upload flow is stable with STM32CubeIDE 13.3 toolchain; repeated build/flash/verify cycles are passing.
-- Motor spin is verified on hardware after all major cleanup slices (scheduler removal, task-object removal, metadata cleanup, folder rename, AXIS/DASH cleanup, orphan-file cleanup).
-- Top-level interface folder has been renamed from `MESC_RTOS` to `MESC_Interface`.
-- Removed modules not needed for current F405 motor path:
-  - `MESC_Interface/AXIS/`
-  - `MESC_Interface/Dash/`
-  - orphan root file `CCER`
-- Active persistence/load path is in `MESC_Interface/MESC/MESCinterface.c` startup init.
-- FreeRTOS scheduler/CMSIS wrapper objects and `heap_4.o` are removed from the active link path.
-- TTerm core runtime objects are removed; only `TTerm_var.o`, `TTerm_fnv.o`, and `TTerm_cwd.o` remain for variable/persistence plumbing.
-
-Immediate priorities:
-1. Decide whether to keep the remaining lightweight TTerm variable backend (`TTerm_var/fnv/cwd`) or fully replace it.
-2. If removing the remaining TTerm layer, replace `TERM_VAR_*` dependencies in `MESC_Interface/MESC/MESCinterface.c` with a native persistence/parameter registry path.
-3. Rename remaining legacy RTOS-prefixed files (for example `RTOS_flash.*`) only after functional parity is preserved.
-4. Keep validating each cleanup slice with compile + flash + hardware spin test before proceeding.
-
-Constraints:
-- Keep support limited to `MESC_F405RG`, `STM32F405`, and `Wheely.h`.
-- Preserve motor-driving capability throughout all changes.
-- Preserve readability/compatibility of existing persisted flash configuration.
-- Continue non-destructive incremental edits; do not revert unrelated user changes.
-
-Before making major changes, inspect the current code and confirm assumptions locally.
-```
