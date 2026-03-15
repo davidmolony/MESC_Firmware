@@ -1,3 +1,23 @@
+// Send key motor status CAN frames at 100Hz
+static void mesc_can_send_motor_status_frame(TASK_CAN_handle *handle) {
+	if (!handle) return;
+	MESC_motor_typedef *motor_curr = &mtr[0];
+
+	// Speed (electrical Hz)
+	TASK_CAN_add_float(handle, CAN_ID_SPEED, CAN_BROADCAST, motor_curr->FOC.eHz, 0.0f, 0);
+	// Bus voltage and current
+	TASK_CAN_add_float(handle, CAN_ID_BUS_VOLT_CURR, CAN_BROADCAST, motor_curr->Conv.Vbus, motor_curr->FOC.Ibus, 0);
+	// Motor currents (q, d)
+	TASK_CAN_add_float(handle, CAN_ID_MOTOR_CURRENT, CAN_BROADCAST, motor_curr->FOC.Idq.q, motor_curr->FOC.Idq.d, 0);
+	// Motor voltages (q, d)
+	TASK_CAN_add_float(handle, CAN_ID_MOTOR_VOLTAGE, CAN_BROADCAST, motor_curr->FOC.Vdq.q, motor_curr->FOC.Vdq.d, 0);
+	// Motor and MOSFET temperature
+	TASK_CAN_add_float(handle, CAN_ID_TEMP_MOT_MOS1, CAN_BROADCAST, motor_curr->Conv.Motor_T, motor_curr->Conv.MOSu_T, 0);
+}
+// Call this from a 100Hz scheduler or timer interrupt
+void TASK_CAN_telemetry_motor_status(TASK_CAN_handle *handle) {
+	mesc_can_send_motor_status_frame(handle);
+}
 /*
  **
  ******************************************************************************
@@ -96,8 +116,87 @@ static uint32_t s_usb_cli_history_draft_len = 0U;
 static int32_t s_usb_cli_history_pos = -1;
 static bool mesc_persist_loaded;
 
+#ifdef HAL_CAN_MODULE_ENABLED
+extern TASK_CAN_handle can1;
+extern CAN_HandleTypeDef hcan1;
+#endif
+
 static TermVariableDescriptor * mesc_find_var_by_name(TermVariableDescriptor *head, char const *name);
 static bool mesc_cli_parse_float(char const *value, float *out);
+
+#ifdef HAL_CAN_MODULE_ENABLED
+static bool s_can_hw_ready = false;
+
+static uint32_t mesc_pack_can_id(uint16_t id, uint8_t sender, uint8_t receiver){
+	uint32_t ret = (uint32_t)id << 16;
+	ret |= sender;
+	ret |= (uint32_t)receiver << 8;
+	return ret;
+}
+
+static void mesc_can_hw_init_if_needed(void){
+	CAN_FilterTypeDef sFilterConfig;
+
+	if(s_can_hw_ready){
+		return;
+	}
+
+	can1.hw = &hcan1;
+	if(can1.node_id == 0U || can1.node_id > 254U){
+		can1.node_id = 1U;
+	}
+
+	memset(&sFilterConfig, 0, sizeof(sFilterConfig));
+	sFilterConfig.FilterBank = 1;
+	sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+	sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+	sFilterConfig.FilterActivation = ENABLE;
+	sFilterConfig.SlaveStartFilterBank = 14;
+
+	if(HAL_CAN_ConfigFilter(can1.hw, &sFilterConfig) != HAL_OK){
+		return;
+	}
+
+	if(HAL_CAN_Start(can1.hw) != HAL_OK){
+		return;
+	}
+
+	s_can_hw_ready = true;
+}
+
+static bool mesc_can_send_posvel_frame(TASK_CAN_handle *handle, float pos_rad, float vel_rad){
+	CAN_TxHeaderTypeDef tx_header;
+	uint8_t buffer[8];
+	uint32_t tx_mailbox;
+
+	if(handle == NULL || handle->hw == NULL){
+		return false;
+	}
+
+	if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw) == 0U){
+		handle->tx_mailbox_full++;
+		return false;
+	}
+
+	memcpy(&buffer[0], &pos_rad, sizeof(float));
+	memcpy(&buffer[4], &vel_rad, sizeof(float));
+
+	tx_header.ExtId = mesc_pack_can_id(CAN_ID_POSVEL, (uint8_t)handle->node_id, CAN_BROADCAST);
+	tx_header.RTR = CAN_RTR_DATA;
+	tx_header.IDE = CAN_ID_EXT;
+	tx_header.DLC = 8;
+	tx_header.TransmitGlobalTime = DISABLE;
+
+	if(HAL_CAN_AddTxMessage(handle->hw, &tx_header, buffer, &tx_mailbox) == HAL_OK){
+		handle->tx_frames_sent++;
+		return true;
+	}
+
+	handle->tx_frames_failed++;
+	return false;
+}
+#endif
 
 static bool mesc_cli_write_allowed(void){
 	motor_state_e state = mtr[0].MotorState;
@@ -452,6 +551,12 @@ static bool mesc_cli_write_list(char *out, uint32_t out_len){
 static bool mesc_cli_write_status(char *out, uint32_t out_len){
 	motor_state_e state = mtr[0].MotorState;
 	uint8_t write_allowed = 0U;
+	unsigned long can_rx_drop = 0UL;
+	unsigned long can_tx_fail = 0UL;
+	unsigned long can_tx_qdrop = 0UL;
+	unsigned long can_posvel_sent = 0UL;
+	unsigned long can_posvel_miss = 0UL;
+	unsigned long can_posvel_block = 0UL;
 
 	if((state == MOTOR_STATE_INITIALISING) ||
 	   (state == MOTOR_STATE_TRACKING) ||
@@ -459,11 +564,26 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 		write_allowed = 1U;
 	}
 
+#ifdef HAL_CAN_MODULE_ENABLED
+	can_rx_drop = (unsigned long)can1.rx_dropped;
+	can_tx_fail = (unsigned long)can1.tx_frames_failed;
+	can_tx_qdrop = (unsigned long)can1.tx_enqueue_dropped;
+	can_posvel_sent = (unsigned long)can1.posvel_sent;
+	can_posvel_miss = (unsigned long)can1.posvel_slot_miss;
+	can_posvel_block = (unsigned long)can1.posvel_tx_blocked;
+#endif
+
 	snprintf(out, out_len,
-			 "OK STATUS state=%u write=%u load=%u\r\n",
+			 "OK STATUS state=%u write=%u load=%u rx_drop=%lu tx_fail=%lu tx_qdrop=%lu pos_sent=%lu pos_miss=%lu pos_block=%lu\r\n",
 			 (unsigned)state,
 			 (unsigned)write_allowed,
-			 (unsigned)(mesc_persist_loaded ? 1U : 0U));
+			 (unsigned)(mesc_persist_loaded ? 1U : 0U),
+			 can_rx_drop,
+			 can_tx_fail,
+			 can_tx_qdrop,
+			 can_posvel_sent,
+			 can_posvel_miss,
+			 can_posvel_block);
 	return true;
 }
 
@@ -1480,6 +1600,20 @@ void populate_vars(){
 	#ifdef HAL_CAN_MODULE_ENABLED
 	TERM_addVar(can1.node_id						, 1			, 254		, "node_id"	    , "Node ID"																					, VAR_ACCESS_RW	, callback	, &TERM_varList);
 	TERM_addVar(mtr[0].input_vars.remote_ADC_can_id	, 0			, 254		, "can_adc"	    , "CAN ADC ID  0=disabled"																	, VAR_ACCESS_RW	, callback	, &TERM_varList);
+	TERM_addVar(can1.rx_dropped, 0, 4294967295U, "can_rx_drop", "CAN RX queue drops", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.stream_dropped, 0, 4294967295U, "can_stream_drop", "CAN terminal stream drops", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.rx_isr_frames, 0, 4294967295U, "can_rx_isr", "CAN RX ISR accepted frames", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.rx_isr_filtered, 0, 4294967295U, "can_rx_filt", "CAN RX ISR filtered frames", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.rx_isr_getmsg_err, 0, 4294967295U, "can_rx_err", "CAN RX ISR HAL get errors", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.rx_packets_handled, 0, 4294967295U, "can_rx_proc", "CAN RX task processed packets", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.tx_frames_sent, 0, 4294967295U, "can_tx_sent", "CAN TX HAL sent frames", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.tx_frames_failed, 0, 4294967295U, "can_tx_fail", "CAN TX HAL failed frames", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.tx_enqueue_dropped, 0, 4294967295U, "can_tx_qdrop", "CAN TX queue enqueue drops", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.tx_mailbox_full, 0, 4294967295U, "can_tx_mbox", "CAN TX mailbox busy while pending", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.posvel_sent, 0, 4294967295U, "can_posvel_sent", "CAN POSVEL frames sent", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.posvel_slot_miss, 0, 4294967295U, "can_posvel_miss", "CAN POSVEL slot misses", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.posvel_tx_blocked, 0, 4294967295U, "can_posvel_block", "CAN POSVEL TX blocked/fail", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.posvel_max_gap_ticks, 0, 4294967295U, "can_posvel_gap", "CAN POSVEL max gap in OS ticks", VAR_ACCESS_R, NULL, &TERM_varList);
 #endif
 
 	TermVariableDescriptor * desc;
@@ -1527,17 +1661,19 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 
 	switch(id){
 		case CAN_ID_IQREQ:{
-			volatile float req = PACK_buf_to_float(data);
-			if(req > 0.0f){
-				// Owen addition
-				motor_curr->input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
-				// motor_curr->input_vars.UART_req = req * motor_curr->input_vars.max_request_Idq.q;
-				motor_curr->input_vars.UART_req = req;
-			}else{
-				// Owen addition
-				motor_curr->input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
-				// motor_curr->input_vars.UART_req = req * motor_curr->input_vars.min_request_Idq.q;
-				motor_curr->input_vars.UART_req = req;
+			if(sender == motor_curr->input_vars.remote_ADC_can_id && motor_curr->input_vars.remote_ADC_can_id > 0){
+				volatile float req = PACK_buf_to_float(data);
+				if(req > 0.0f){
+					// Owen addition
+					motor_curr->input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
+					// motor_curr->input_vars.UART_req = req * motor_curr->input_vars.max_request_Idq.q;
+					motor_curr->input_vars.UART_req = req;
+				}else{
+					// Owen addition
+					motor_curr->input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
+					// motor_curr->input_vars.UART_req = req * motor_curr->input_vars.min_request_Idq.q;
+					motor_curr->input_vars.UART_req = req;
+				}
 			}
 			break;
 		}
@@ -1572,7 +1708,6 @@ void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle){
 	TASK_CAN_add_float(handle	, CAN_ID_MOTOR_CURRENT 	, CAN_BROADCAST, motor_curr->FOC.Idq.q		, motor_curr->FOC.Idq.d	, 0);
 	TASK_CAN_add_float(handle	, CAN_ID_MOTOR_VOLTAGE 	, CAN_BROADCAST, motor_curr->FOC.Vdq.q		, motor_curr->FOC.Vdq.d	, 0);
 
-#ifdef POSVEL_PLANE
 	// these values are somewhat untested in that I've
 	//  never been able to make fastLoop() slow down
 	uint32_t n       = motor_curr->jitter.samples;
@@ -1589,7 +1724,6 @@ void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle){
 
         motor_curr->jitter.clear_req = 1; // ask ISR to reset window
     }
-#endif
 
 }
 
@@ -1602,7 +1736,6 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 
 }
 
-#ifdef POSVEL_PLANE
 // We compute velocity here as Δθ/Δt from the encoder angle rather than using
 // the FOC observer (PLL-based eHz) that MESC normally reports.
 // The reason:
@@ -1621,9 +1754,7 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 //        but easier to filter downstream than observer lag.
 //
 // Assumptions:
-//  motor never travels faster than ~15k RPM
-//  we are always hard coding to 65536.0f
-//  the encoder resolution is 4096
+
 //  At standstill or low torque balance, the rotor
 //  may jitter slightly forward/backward due to cogging,
 //  quantization, or load disturbances. Each tiny tick
@@ -1654,6 +1785,8 @@ static volatile float dt_s_dbg = 0.0f;
 static volatile int32_t delta_pos_dbg = 0;
 void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     MESC_motor_typedef *motor_curr = &mtr[0];
+	uint32_t now_tick;
+	uint32_t gap_tick;
 
     // === 1. Raw PLL output ===
     eHz_dbg = motor_curr->FOC.eHz;   // electrical Hz from FOC PLL
@@ -1713,17 +1846,57 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     // Payload: position [rad], velocity [rad/s], unused (0.0f).
     // NOTE: vel_est_filtered is in radians per second.
     //       To get RPM, multiply by (60 / 2π).
-    TASK_CAN_add_float(handle, CAN_ID_POSVEL, CAN_BROADCAST,
-                       pos_rad,
-                       vel_est_filtered,
-                       0.0f);
+	if(mesc_can_send_posvel_frame(handle, pos_rad, vel_est_filtered)){
+		handle->posvel_sent++;
+
+		now_tick = HAL_GetTick();
+		gap_tick = now_tick - handle->posvel_last_tick;
+		if(handle->posvel_last_tick != 0U && gap_tick > handle->posvel_max_gap_ticks){
+			handle->posvel_max_gap_ticks = gap_tick;
+		}
+
+		handle->posvel_last_tick = now_tick;
+    }else{
+        handle->posvel_tx_blocked++;
+	}
 
 }
 
+void MESCinterface_can_periodic(void){
+	#ifdef HAL_CAN_MODULE_ENABLED
+	static uint32_t last_tick_posvel = 0U;
+	static uint32_t last_tick_status = 0U;
+	uint32_t now_tick = HAL_GetTick();
+	uint32_t period_tick_posvel = (1000U / POSVEL_HZ);
+	if(period_tick_posvel == 0U) period_tick_posvel = 1U;
+	const uint32_t period_tick_status = 10U; // 100Hz = 10ms
 
-#endif
+	mesc_can_hw_init_if_needed();
+	if(!s_can_hw_ready){
+		return;
+	}
 
+	// POSVEL scheduler (500Hz by default)
+	uint32_t elapsed_posvel = now_tick - last_tick_posvel;
+	if(elapsed_posvel >= period_tick_posvel){
+		if(last_tick_posvel != 0U){
+			uint32_t slots_elapsed = elapsed_posvel / period_tick_posvel;
+			if(slots_elapsed > 1U){
+				can1.posvel_slot_miss += (slots_elapsed - 1U);
+			}
+		}
+		last_tick_posvel = now_tick;
+		TASK_CAN_telemetry_posvel(&can1);
+	}
 
+	// Motor status scheduler (100Hz)
+	uint32_t elapsed_status = now_tick - last_tick_status;
+	if(elapsed_status >= period_tick_status){
+		last_tick_status = now_tick;
+		TASK_CAN_telemetry_motor_status(&can1);
+	}
+	#endif
+}
 #define POST_ERROR_SAMPLES 		LOGLENGTH/2
 
 void TASK_CAN_aux_data(TASK_CAN_handle * handle){

@@ -29,10 +29,8 @@
 #define CAN_ID_STATUS 			0x2C0
 #define CAN_ID_FOC_HYPER		0x2C1
 
-#ifdef POSVEL_PLANE
 #define CAN_ID_POSVEL           0x2D0   // high-rate position/velocity ID
 #define CAN_ID_JITTER           0x2D1   // debugging fastLoop() cycle times
-#endif
 
 #define CAN_ID_SAMPLE			0x300
 #define CAN_ID_SAMPLE_NOW		0x301
