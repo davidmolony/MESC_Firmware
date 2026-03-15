@@ -23,14 +23,14 @@
       ],
       "runToEntryPoint": "main",
       "showDevDebugOutput": "none",
-      "preLaunchTask": "MESC_F405RG: build"
+      "preLaunchTask": "MESC_F405RG: compile"
     },
     {
       "name": "MESC_F405RG: build + upload",
       "type": "node-terminal",
       "request": "launch",
       "command": "true",
-      "preLaunchTask": "MESC_F405RG: build + upload"
+      "preLaunchTask": "MESC_F405RG: compile + upload"
     }
   ]
 }

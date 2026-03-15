@@ -162,6 +162,7 @@ case ORTEGA_ORIGINAL:
 //Seems that in the presence of high salience, the Ortega observer stabilises better
 //This is becuase the application of the flux error adaptation is rotated by the L_ia and L_ib components
 //This results in a decreasing power factor with higher gain but remains stable.
+	{
 
 //Adapt inductance
 	float Lnow = _motor->m.L_D + 0.5*(_motor->m.L_Q - _motor->m.L_D) * (_motor->FOC.Idq.q * _motor->FOC.Idq.q) / (_motor->FOC.Idq.q * _motor->FOC.Idq.q + _motor->FOC.Idq.d * _motor->FOC.Idq.d);
@@ -204,6 +205,7 @@ case ORTEGA_ORIGINAL:
 	    	_motor->FOC.FOCAngle = (_motor->FOC.FOC_advance * _motor->FOC.PLL_int) + (uint16_t)(32768.0f + 10430.0f * fast_atan2((_motor->FOC.flux_b - L_ib), _motor->FOC.flux_a - L_ia)) - 32768;
 
 	    }
+	}
 
 	break;
 case PLL_OBS:

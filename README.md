@@ -17,10 +17,19 @@ The primary build target is now MESC_F405RG. This build was developed and tested
 - Build artifacts are generated under MESC_F405RG/Debug.
 - Main firmware image: MESC_F405RG/Debug/MESC_F405RG.elf
 - Typical local flow:
-	1. Compile: make -C MESC_F405RG/Debug main-build -j
-	2. Flash: openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program MESC_F405RG/Debug/MESC_F405RG.elf verify reset exit"
+	1. Compile (reproducible): ./scripts/build_f405rg.sh
+	2. Flash (with fallback connection modes): ./scripts/upload_f405rg.sh
+	3. Full flow: ./scripts/build_and_upload_f405rg.sh
     3. motor spin test
     4. CLI test
+
+### Reproducible Build Notes
+
+- Use the wrapper scripts in `scripts/` as the canonical workflow.
+- The build wrapper sets a consistent PATH and locale, then performs a clean build by default.
+- The build wrapper writes `MESC_F405RG/Debug/build_env.txt` and `MESC_F405RG/Debug/MESC_F405RG.elf.sha256` for run-to-run comparison.
+- The upload wrapper retries OpenOCD with progressively safer connection sequences for hard-to-connect targets.
+- VS Code tasks are wired to these scripts so terminal runs and task runs stay consistent.
 
 
 ## RTOS Removal (Active Target Runtime)

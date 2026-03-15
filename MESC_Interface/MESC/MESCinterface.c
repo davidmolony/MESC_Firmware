@@ -1,23 +1,4 @@
-// Send key motor status CAN frames at 100Hz
-static void mesc_can_send_motor_status_frame(TASK_CAN_handle *handle) {
-	if (!handle) return;
-	MESC_motor_typedef *motor_curr = &mtr[0];
 
-	// Speed (electrical Hz)
-	TASK_CAN_add_float(handle, CAN_ID_SPEED, CAN_BROADCAST, motor_curr->FOC.eHz, 0.0f, 0);
-	// Bus voltage and current
-	TASK_CAN_add_float(handle, CAN_ID_BUS_VOLT_CURR, CAN_BROADCAST, motor_curr->Conv.Vbus, motor_curr->FOC.Ibus, 0);
-	// Motor currents (q, d)
-	TASK_CAN_add_float(handle, CAN_ID_MOTOR_CURRENT, CAN_BROADCAST, motor_curr->FOC.Idq.q, motor_curr->FOC.Idq.d, 0);
-	// Motor voltages (q, d)
-	TASK_CAN_add_float(handle, CAN_ID_MOTOR_VOLTAGE, CAN_BROADCAST, motor_curr->FOC.Vdq.q, motor_curr->FOC.Vdq.d, 0);
-	// Motor and MOSFET temperature
-	TASK_CAN_add_float(handle, CAN_ID_TEMP_MOT_MOS1, CAN_BROADCAST, motor_curr->Conv.Motor_T, motor_curr->Conv.MOSu_T, 0);
-}
-// Call this from a 100Hz scheduler or timer interrupt
-void TASK_CAN_telemetry_motor_status(TASK_CAN_handle *handle) {
-	mesc_can_send_motor_status_frame(handle);
-}
 /*
  **
  ******************************************************************************
@@ -64,6 +45,7 @@ void TASK_CAN_telemetry_motor_status(TASK_CAN_handle *handle) {
 #include <MESC/MESCinterface.h>
 #include "mesc_persist.h"
 #include "Tasks/task_can.h"
+#include "Tasks/CAN_helper.h"
 #include "usbd_cdc_if.h"
 #include "TTerm/Core/include/TTerm_var.h"
 
@@ -195,6 +177,54 @@ static bool mesc_can_send_posvel_frame(TASK_CAN_handle *handle, float pos_rad, f
 
 	handle->tx_frames_failed++;
 	return false;
+}
+
+static bool mesc_can_send_two_float_frame(TASK_CAN_handle *handle, uint16_t message_id, float v0, float v1){
+	CAN_TxHeaderTypeDef tx_header;
+	uint8_t buffer[8];
+	uint32_t tx_mailbox;
+
+	if(handle == NULL || handle->hw == NULL){
+		return false;
+	}
+
+	if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw) == 0U){
+		handle->tx_mailbox_full++;
+		return false;
+	}
+
+	memcpy(&buffer[0], &v0, sizeof(float));
+	memcpy(&buffer[4], &v1, sizeof(float));
+
+	tx_header.ExtId = mesc_pack_can_id(message_id, (uint8_t)handle->node_id, CAN_BROADCAST);
+	tx_header.RTR = CAN_RTR_DATA;
+	tx_header.IDE = CAN_ID_EXT;
+	tx_header.DLC = 8;
+	tx_header.TransmitGlobalTime = DISABLE;
+
+	if(HAL_CAN_AddTxMessage(handle->hw, &tx_header, buffer, &tx_mailbox) == HAL_OK){
+		handle->tx_frames_sent++;
+		return true;
+	}
+
+	handle->tx_frames_failed++;
+	return false;
+}
+
+// Send key motor status CAN frames at 100Hz
+void TASK_CAN_telemetry_motor_status(TASK_CAN_handle *handle) {
+	MESC_motor_typedef *motor_curr;
+
+	if(handle == NULL){
+		return;
+	}
+
+	motor_curr = &mtr[0];
+	(void)mesc_can_send_two_float_frame(handle, CAN_ID_SPEED, motor_curr->FOC.eHz, 0.0f);
+	(void)mesc_can_send_two_float_frame(handle, CAN_ID_BUS_VOLT_CURR, motor_curr->Conv.Vbus, motor_curr->FOC.Ibus);
+	(void)mesc_can_send_two_float_frame(handle, CAN_ID_MOTOR_CURRENT, motor_curr->FOC.Idq.q, motor_curr->FOC.Idq.d);
+	(void)mesc_can_send_two_float_frame(handle, CAN_ID_MOTOR_VOLTAGE, motor_curr->FOC.Vdq.q, motor_curr->FOC.Vdq.d);
+	(void)mesc_can_send_two_float_frame(handle, CAN_ID_TEMP_MOT_MOS1, motor_curr->Conv.Motor_T, motor_curr->Conv.MOSu_T);
 }
 #endif
 

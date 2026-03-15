@@ -1,3 +1,11 @@
+## Reproducible Workflow (Recommended)
+
+- Compile: `./scripts/build_f405rg.sh`
+- Upload: `./scripts/upload_f405rg.sh`
+- Compile + Upload: `./scripts/build_and_upload_f405rg.sh`
+
+The VS Code tasks for MESC_F405RG call these scripts directly to keep behavior consistent between task runner and shell.
+
 # VS Code Build Setup
 
 This document explains what was done to make `MESC_F405RG` compile and upload from VS Code.
