@@ -241,6 +241,32 @@ Status (2026-03-14): Complete.
 - Persistence survives reset/power cycle and remains compatible.
 - No CAN update path is required for completion.
 
+## Immediate Priorities (Post-Phase-1)
+
+Status (2026-03-14): Active.
+
+Now that Phase 1 is complete, prioritize hardening and maintenance over new CLI feature work.
+
+1) Documentation state alignment
+- Keep this document synchronized with actual validated runtime/build state.
+- Remove stale assumptions in handoff text before new work starts.
+
+2) Regression gate for every change
+- Run this gate before accepting any follow-up change:
+  - clean build
+  - compile
+  - upload/verify/reset
+  - motor spin test
+  - USB CLI smoke + negative checks
+
+3) Safety/persistence invariants must not regress
+- Keep mutating command safety policy behavior unchanged unless explicitly planned.
+- Keep SAVE/LOAD dataset compatibility and post-load recompute sequence unchanged.
+
+4) Scope control
+- Keep USB as the only CLI transport in this track.
+- Defer CAN transport to a later, separate phase.
+
 ## Deferred Items (Future Phase)
 - CAN transport adapter using the same dispatcher/backend API.
 - Extended telemetry and remote update framing over CAN.
@@ -250,7 +276,7 @@ Status (2026-03-14): Complete.
 Use this prompt to resume work in a new Codex session with minimal context loss.
 
 ```text
-Resume implementation of Phase 1 USB CLI variable interface for the MESC firmware repo.
+Resume work on post-Phase-1 CLI hardening and maintenance for the MESC firmware repo.
 
 Project context and current state:
 - Date checkpoint: 2026-03-14.
@@ -261,7 +287,7 @@ Project context and current state:
   - MESC_Interface/AXIS/
   - MESC_Interface/Dash/
   - root file CCER
-- Current firmware still links TTerm and heap_4 for variable/persistence plumbing.
+- Current firmware keeps a lightweight retained variable/persistence plumbing path.
 - FreeRTOS scheduler/CMSIS wrapper objects are removed from active link path.
 
 Important files:
@@ -280,43 +306,33 @@ Current behavior to preserve:
 - Motor spin test currently passes after all cleanup changes.
 - Startup persistence load path in MESCinterface startup init is operational.
 
-Phase 1 objective (no CAN in this phase):
-- Implement safe variable management over USB CDC only.
-- Commands: HELP, LIST, GET <name>, SET <name> <value>, SAVE, LOAD, STATUS.
-- Keep transport-neutral backend API so CAN can be added later without backend rewrite.
+Immediate objective:
+- Preserve validated USB CLI behavior and safety policy.
+- Enforce repeatable regression validation for any code changes.
+- Keep transport-neutral backend API stable so CAN can be added later without backend rewrite.
 
-Implementation requirements:
-1) Define backend API layer
-  - list_vars, get_var, set_var, save_vars, load_vars, get_status
-  - enforce rw permissions and min/max bounds
-  - return explicit error codes (not found, read-only, out-of-range, parse error, unsafe-state)
-
-2) Add write safety policy
-  - reject non-critical writes while motor is in unsafe/active drive state
-  - reads always allowed
-  - save/load allowed only in safe states
-
-3) Build parser/dispatcher
-  - line-based ASCII
-  - deterministic one-line responses:
+Hardening requirements:
+1) Preserve command contract and response format
+  - Commands: HELP, LIST, GET, SET, SAVE, LOAD, STATUS
+  - Deterministic one-line responses remain:
     - OK <...>
     - ERR <CODE> <reason>
 
-4) Integrate USB CDC RX/TX
-  - hook RX callback to line buffer
-  - parse on CR/LF
-  - guard against overflow and malformed commands
-  - emit responses via CDC transmit
+2) Preserve safety behavior
+  - Non-critical writes blocked in disallowed motor states
+  - Reads always allowed
+  - SAVE/LOAD only in allowed states
 
-5) Persistence parity
+3) Preserve persistence parity
   - SAVE writes current RAM values to flash dataset
   - LOAD restores from flash dataset
-  - after LOAD, recompute derived runtime values exactly as current startup does
+  - After LOAD, apply required recompute flow
 
 Validation gate after each slice:
 - Compile: PASS
 - Upload/verify/reset: PASS
 - Motor spin: PASS
+- USB CLI smoke + negative checks: PASS
 - Functional checks:
   - LIST returns expected variables
   - GET returns expected value
@@ -337,10 +353,10 @@ Known warnings currently seen in build (pre-existing unless changed):
 - unused MX_I2C2_Init warning in main.c
 - linker RWX segment warning
 
-Recommended first coding slice:
-- Add a new small module under MESC_Interface/MESC for command dispatch + backend wrappers, with no transport glue yet.
-- Unit-test-like validation via direct function calls from a temporary debug hook.
-- Once stable, connect only USB CDC callback path.
+Recommended first maintenance slice:
+- Run a full clean -> compile -> upload -> spin -> USB CLI regression pass.
+- Fix only regressions/warnings that affect safety, persistence correctness, or validated runtime behavior.
+- Keep unrelated refactors out of this slice.
 
 Hard constraints:
 - Keep support scoped to MESC_F405RG / STM32F405 / Wheely.
