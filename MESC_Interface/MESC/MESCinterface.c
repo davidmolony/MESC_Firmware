@@ -639,6 +639,10 @@ static bool mesc_cli_write_get(char *name, char *out, uint32_t out_len){
 	}
 
 	memset(val, 0, sizeof(val));
+	if(var->type == TERM_VARIABLE_FLOAT && strcmp(name, "par_r") == 0){
+		snprintf(out, out_len, "OK %s=%.6f\r\n", name, (double)(*(float*)var->variable));
+		return true;
+	}
 	(void)TERM_var2str(&null_handle, var, val, (int32_t)sizeof(val));
 	snprintf(out, out_len, "OK %s=%s\r\n", name, val);
 	return true;
