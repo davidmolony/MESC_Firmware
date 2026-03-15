@@ -15,26 +15,18 @@ Create a safe, maintainable variable update interface over USB CDC for the F405 
 
 ## Baseline Assumptions
 - Active target is STM32F405RG with Wheely configuration.
-- Runtime variable and persistence logic currently lives in MESC_Interface/MESC/MESCinterface.c.
+- Active USB CLI implementation currently lives in `MESC_Interface/MESC/MESCinterface.c`, with USB CDC transport glue in `MESC_Interface/USB_DEVICE/App/usbd_cdc_if.c`.
 - Build and flash workflow is stable and validated.
 
 ## Step 1: Define Variable Access Contract
 Define a transport-agnostic API layer for variable access and persistence operations.
 
-Status (2026-03-14): Implemented in `MESC_Interface/MESC/MESCinterface.h` and `MESC_Interface/MESC/MESCinterface.c`.
+Status (2026-03-14): Superseded by current branch implementation.
 
-Implemented API:
-- `MESCinterface_var_count(uint32_t *out_count)`
-- `MESCinterface_var_get_by_index(uint32_t index, MESC_VAR_META *out_meta)`
-- `MESCinterface_var_get_meta(const char *name, MESC_VAR_META *out_meta)`
-- `MESCinterface_var_get(const char *name, char *out_value, uint32_t out_len)`
-- `MESCinterface_var_set(const char *name, const char *value)`
-- `MESCinterface_var_save(void)`
-- `MESCinterface_var_load(void)`
-
-API result enum and metadata struct:
-- `MESC_VAR_API_RESULT`
-- `MESC_VAR_META`
+Current branch reality:
+- The active runtime does not use a separate transport-agnostic wrapper API layer.
+- Variable access, safety checks, persistence calls, and minimal command dispatch are currently implemented directly in `MESC_Interface/MESC/MESCinterface.c` using existing TTerm variable descriptors and persistence helpers.
+- Documentation below is retained as intent, but the validated implementation in this branch is the inline USB CLI path.
 
 Validation after Step 1 implementation:
 - Compile: PASS
@@ -65,11 +57,8 @@ Implemented policy:
   - `MOTOR_STATE_INITIALISING`
   - `MOTOR_STATE_TRACKING`
   - `MOTOR_STATE_IDLE`
-- Mutating operations in any other state return `MESC_VAR_API_ERR_UNSAFE_STATE`.
-
-Supporting API additions:
-- Added `MESC_VAR_API_ERR_UNSAFE_STATE` to `MESC_VAR_API_RESULT`.
-- Added `MESCinterface_var_get_status(uint32_t *motor_state, uint8_t *write_allowed, uint8_t *persist_loaded)` for dispatcher/status reporting.
+- Mutating operations in any other state return `ERR UNSAFE` in the CLI transport.
+- Exception: `SET uart_req <value>` is allowed outside the general safe states when the requested value is within `-40` to `40`.
 
 Validation after Step 2 implementation:
 - Compile: PASS
@@ -91,12 +80,9 @@ Create one command dispatcher/parser that maps commands to the API in Step 1.
 
 Status (2026-03-14): Implemented.
 
-Implemented module:
-- `MESC_Interface/MESC/cli_dispatcher.c`
-- `MESC_Interface/MESC/cli_dispatcher.h`
-
-Dispatcher entrypoint:
-- `MESCcli_dispatch_line(const char *line, char *out, uint32_t out_len)`
+Current branch reality:
+- No separate `cli_dispatcher.c` / `cli_dispatcher.h` module is present in the active tree.
+- The active dispatcher is the inline minimal parser in `MESC_Interface/MESC/MESCinterface.c`.
 
 Implemented commands:
 - `HELP`
@@ -109,17 +95,12 @@ Implemented commands:
 
 Response contract:
 - Success: `OK ...`
-- Error: `ERR <code> <reason>`
-
-Build integration updates:
-- Added dispatcher source/object to active F405 debug build lists:
-  - `MESC_F405RG/Debug/MESC_Interface/MESC/subdir.mk`
-  - `MESC_F405RG/Debug/objects.list`
+- Error: short machine-oriented `ERR ...` forms
 
 Validation after Step 3 implementation:
 - Compile: PASS
-- Upload/verify/reset: pending
-- Motor spin test: pending
+- Upload/verify/reset: PASS
+- Motor spin test: pending user confirmation for this CLI milestone
 
 Protocol style:
 - Line-based ASCII commands
@@ -146,15 +127,18 @@ Response format:
 ## Step 4: Integrate USB CDC Front End
 Wire USB CDC receive callback to the dispatcher.
 
-Status (2026-03-14): Implemented in `MESC_F405RG/USB_DEVICE/App/usbd_cdc_if.c`.
+Status (2026-03-14): Implemented across `MESC_Interface/USB_DEVICE/App/usbd_cdc_if.c` and `MESC_Interface/MESC/MESCinterface.c`.
 
 Implemented behavior:
-- Byte-accumulating RX line buffer with fixed maximum line length
-- CR/LF line termination handling
-- Malformed control-character rejection
+- CDC banner on connect/open: `MESC CLI READY`
+- RX forwarding from CDC transport into `USB_CDC_Callback(...)`
+- Fixed-size line buffer with command dispatch on Enter
+- CR/LF handling with clean newline before response output
 - Overflow detection with deterministic error response
-- Dispatch through `MESCcli_dispatch_line(...)`
-- One-line response transmit via CDC IN endpoint, with pending-response retry on TX complete callback
+- Backspace/delete support
+- Left/right cursor editing support
+- Up/down RAM-only command history support
+- Inline response transmit over CDC
 
 Validation after Step 4 implementation:
 - Compile: PASS
@@ -175,7 +159,7 @@ Status (2026-03-14): Implemented in `MESC_Interface/MESC/MESCinterface.c`.
 Implemented behavior:
 - SAVE path remains `CMD_varSave(...)`, persisting current in-RAM variable values to flash dataset.
 - LOAD path keeps `CMD_varLoad(...)` restore behavior and now applies the same post-load recompute flow used at startup.
-- Centralized recompute sequence added via `mesc_apply_runtime_recompute()`:
+- Current recompute sequence is applied inline after runtime LOAD and during startup init:
   - `calculateGains(&mtr[0])`
   - `calculateVoltageGain(&mtr[0])`
   - `calculateFlux(&mtr[0])`
@@ -195,7 +179,7 @@ Requirements:
 ## Step 6: Validation Matrix
 Run these checks after each implementation slice:
 
-Status (2026-03-14): Completed (operator validation confirmed).
+Status (2026-03-14): Partially validated; update as new runtime checks are confirmed.
 
 Build/runtime checks:
 - Compile: PASS
@@ -203,11 +187,15 @@ Build/runtime checks:
 - Motor spin: PASS
 
 Functional checks:
-- LIST returns expected variables: PASS
+- HELP returns expected command summary: PASS
+- STATUS returns current state/write/load summary: PASS
 - GET returns current value for `GET <name>` and list for bare `GET`: PASS
+- LIST returns expected variable names: PASS
 - SET updates allowed variable and rejects invalid writes: PASS
-- SAVE persists update: PASS
-- Power cycle + LOAD/startup confirms persistence: PASS
+- SAVE returns success in allowed state: PASS
+- LOAD returns success in allowed state and recomputes runtime values: PASS
+- Cursor-aware left/right edit path: PASS (operator-confirmed)
+- Command history up/down recall: pending operator confirmation
 
 Negative tests:
 - Unknown variable name: PASS
@@ -215,6 +203,7 @@ Negative tests:
 - Out-of-range write: PASS
 - Write to read-only variable: PASS
 - Command while in disallowed motor state: PASS
+- `uart_req` override outside safe state, within `-40..40`: PASS
 
 Operator USB CLI script (run in safe state unless noted):
 - `HELP` -> expect `OK HELP ...`
@@ -230,6 +219,9 @@ Operator USB CLI script (run in safe state unless noted):
 - `GET input_opt` -> expect persisted value
 - `STATUS` while safe -> expect `write_allowed=1`
 - `STATUS` while actively driving motor -> expect `write_allowed=0`, then run `SAVE` or `SET ...` and expect `ERR UNSAFE_STATE ...`
+- `SET uart_req 0` while otherwise unsafe -> expect `OK SET`
+- Edit a numeric command with left/right arrows before Enter -> expect successful parse
+- `Up` / `Down` arrows -> expect prior command recall / draft restore
 
 ## Step 7: Exit Criteria
 Phase 1 is complete when:
@@ -325,6 +317,7 @@ Current behavior to preserve:
 - Build + flash flow works from VS Code tasks.
 - Motor spin test currently passes after all cleanup changes.
 - Startup persistence load path in MESCinterface startup init is operational.
+- Active CLI path is inline in `MESC_Interface/MESC/MESCinterface.c`, not a separate dispatcher module.
 
 Immediate objective:
 - Preserve validated USB CLI behavior and safety policy.
@@ -343,7 +336,7 @@ Hardening requirements:
   - Commands: HELP, LIST, GET, SET, SAVE, LOAD, STATUS
   - Deterministic one-line responses remain:
     - OK <...>
-    - ERR <CODE> <reason>
+    - ERR <...>
 
 2) Preserve safety behavior
   - Non-critical writes blocked in disallowed motor states
@@ -384,6 +377,14 @@ Recommended first maintenance slice:
 - Run a full clean -> compile -> upload -> spin -> USB CLI regression pass.
 - Fix only regressions/warnings that affect safety, persistence correctness, or validated runtime behavior.
 - Keep unrelated refactors out of this slice.
+
+Recently completed milestone notes:
+- Milestone commit: `3f46b23` (`Add interactive USB CLI milestone`)
+- USB CLI banner is live.
+- Minimal command set is operator-usable.
+- Cursor-aware line editing is live.
+- RAM-only command history is live.
+- `uart_req` has bounded transient override support in unsafe states.
 
 Hard constraints:
 - Keep support scoped to MESC_F405RG / STM32F405 / Wheely.
