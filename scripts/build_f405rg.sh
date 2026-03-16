@@ -6,7 +6,20 @@ BUILD_DIR="$ROOT_DIR/MESC_F405RG/Debug"
 TOOLCHAIN_BIN="/Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.macos64_1.0.0.202411102158/tools/bin"
 
 usage() {
-  echo "Usage: $0 [--no-clean] [--preflight]"
+  echo "Usage: $0 [--no-clean] [--preflight] [--release-opt]"
+}
+
+apply_debug_flags() {
+  # Cube-generated subdir.mk files hardcode -O2; replace with breakpoint-friendly flags.
+  # Use perl for portable in-place edits on macOS.
+  find "$BUILD_DIR" -name subdir.mk -print0 \
+    | xargs -0 perl -pi -e 's/-O2\b/-Og -fno-inline -fno-omit-frame-pointer/g'
+}
+
+restore_release_flags() {
+  # Revert debug optimization replacement if requested.
+  find "$BUILD_DIR" -name subdir.mk -print0 \
+    | xargs -0 perl -pi -e 's/-Og -fno-inline -fno-omit-frame-pointer/-O2/g'
 }
 
 preflight() {
@@ -58,6 +71,7 @@ export PATH="$TOOLCHAIN_BIN:/usr/local/bin:/usr/local/sbin:/opt/local/bin:/opt/l
 JOBS="${MESC_JOBS:-$(sysctl -n hw.logicalcpu 2>/dev/null || echo 4)}"
 DO_CLEAN=1
 PRECHECK_ONLY=0
+USE_DEBUG_OPT=1
 
 for arg in "$@"; do
   case "$arg" in
@@ -66,6 +80,9 @@ for arg in "$@"; do
       ;;
     --preflight)
       PRECHECK_ONLY=1
+      ;;
+    --release-opt)
+      USE_DEBUG_OPT=0
       ;;
     -h|--help)
       usage
@@ -88,6 +105,14 @@ fi
 if [[ "$DO_CLEAN" -eq 1 ]]; then
   echo "==> Cleaning build directory"
   make -C "$BUILD_DIR" clean
+fi
+
+if [[ "$USE_DEBUG_OPT" -eq 1 ]]; then
+  echo "==> Applying debug-friendly compiler flags (-Og, no-inline)"
+  apply_debug_flags
+else
+  echo "==> Using release compiler flags (-O2)"
+  restore_release_flags
 fi
 
 echo "==> Building MESC_F405RG (jobs=$JOBS)"
