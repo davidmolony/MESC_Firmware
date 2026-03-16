@@ -101,6 +101,7 @@ static bool mesc_persist_loaded;
 #ifdef HAL_CAN_MODULE_ENABLED
 extern TASK_CAN_handle can1;
 extern CAN_HandleTypeDef hcan1;
+void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len);
 #endif
 
 static TermVariableDescriptor * mesc_find_var_by_name(TermVariableDescriptor *head, char const *name);
@@ -108,11 +109,30 @@ static bool mesc_cli_parse_float(char const *value, float *out);
 
 #ifdef HAL_CAN_MODULE_ENABLED
 static bool s_can_hw_ready = false;
+static uint32_t s_can_iqreq_rx_count = 0U;
 
 static uint32_t mesc_pack_can_id(uint16_t id, uint8_t sender, uint8_t receiver){
 	uint32_t ret = (uint32_t)id << 16;
 	ret |= sender;
 	ret |= (uint32_t)receiver << 8;
+	return ret;
+}
+
+static uint16_t mesc_unpack_can_id(uint32_t ext_id, uint8_t *sender, uint8_t *receiver){
+	if(sender != NULL){
+		*sender = (uint8_t)(ext_id & 0xFFU);
+	}
+	if(receiver != NULL){
+		*receiver = (uint8_t)((ext_id >> 8) & 0xFFU);
+	}
+	return (uint16_t)(ext_id >> 16);
+}
+
+static float mesc_unpack_float(uint8_t const *buffer){
+	float ret = 0.0f;
+	if(buffer != NULL){
+		memcpy(&ret, buffer, sizeof(float));
+	}
 	return ret;
 }
 
@@ -211,6 +231,64 @@ static bool mesc_can_send_two_float_frame(TASK_CAN_handle *handle, uint16_t mess
 	return false;
 }
 
+/*
+ * Some builds do not run the legacy TASK_CAN_rx queue/task path, so IQREQ
+ * frames can be present in FIFO0 without reaching TASK_CAN_packet_cb.
+ * Polling here keeps RX handling in the known-active interface periodic loop
+ * while preserving the existing packet callback logic.
+ */
+static void mesc_can_poll_rx_fifo(TASK_CAN_handle *handle){
+	CAN_RxHeaderTypeDef rx_header;
+	uint8_t rx_data[8];
+	uint8_t sender;
+	uint8_t receiver;
+	uint16_t id;
+	uint32_t frames_polled = 0U;
+	uint32_t fill_level;
+	const uint32_t max_frames_per_call = 8U;
+
+	if(handle == NULL || handle->hw == NULL){
+		return;
+	}
+
+	while(frames_polled < max_frames_per_call){
+		fill_level = HAL_CAN_GetRxFifoFillLevel(handle->hw, CAN_RX_FIFO0);
+		if(fill_level == 0U){
+			break;
+		}
+
+		if(HAL_CAN_GetRxMessage(handle->hw, CAN_RX_FIFO0, &rx_header, rx_data) != HAL_OK){
+			handle->rx_isr_getmsg_err++;
+			break;
+		}
+
+		handle->rx_packets_handled++;
+		sender = 0U;
+		receiver = 0U;
+		id = mesc_unpack_can_id(rx_header.ExtId, &sender, &receiver);
+
+		if(receiver != CAN_BROADCAST && receiver != handle->node_id){
+			handle->rx_isr_filtered++;
+			frames_polled++;
+			continue;
+		}
+
+		if(rx_header.DLC > sizeof(rx_data)){
+			handle->rx_dropped++;
+			frames_polled++;
+			continue;
+		}
+
+		TASK_CAN_packet_cb(handle, id, sender, receiver, rx_data, rx_header.DLC);
+		frames_polled++;
+	}
+
+	fill_level = HAL_CAN_GetRxFifoFillLevel(handle->hw, CAN_RX_FIFO0);
+	if(fill_level > 0U){
+		handle->rx_dropped += fill_level;
+	}
+}
+
 // Send key motor status CAN frames at 100Hz
 void TASK_CAN_telemetry_motor_status(TASK_CAN_handle *handle) {
 	MESC_motor_typedef *motor_curr;
@@ -228,12 +306,36 @@ void TASK_CAN_telemetry_motor_status(TASK_CAN_handle *handle) {
 }
 #endif
 
+static char const * mesc_cli_motor_state_name(motor_state_e state){
+	switch(state){
+	case MOTOR_STATE_INITIALISING: return "INITIALISING";
+	case MOTOR_STATE_DETECTING: return "DETECTING";
+	case MOTOR_STATE_ALIGN: return "ALIGN";
+	case MOTOR_STATE_MEASURING: return "MEASURING";
+	case MOTOR_STATE_OPEN_LOOP_STARTUP: return "OPEN_LOOP_STARTUP";
+	case MOTOR_STATE_OPEN_LOOP_TRANSITION: return "OPEN_LOOP_TRANSITION";
+	case MOTOR_STATE_TRACKING: return "TRACKING";
+	case MOTOR_STATE_RUN: return "RUN";
+	case MOTOR_STATE_GET_KV: return "GET_KV";
+	case MOTOR_STATE_TEST: return "TEST";
+	case MOTOR_STATE_ERROR: return "ERROR";
+	case MOTOR_STATE_RECOVERING: return "RECOVERING";
+	case MOTOR_STATE_SLAMBRAKE: return "SLAMBRAKE";
+	case MOTOR_STATE_IDLE: return "IDLE";
+	case MOTOR_STATE_RUN_BLDC: return "RUN_BLDC";
+	default: return "UNKNOWN";
+	}
+}
+
 static bool mesc_cli_write_allowed(void){
 	motor_state_e state = mtr[0].MotorState;
 
 	if((state == MOTOR_STATE_INITIALISING) ||
 	   (state == MOTOR_STATE_TRACKING) ||
-	   (state == MOTOR_STATE_IDLE)){
+	   (state == MOTOR_STATE_IDLE) ||
+	   (state == MOTOR_STATE_RUN) ||
+	   (state == MOTOR_STATE_RUN_BLDC) ||
+	   (state == MOTOR_STATE_ERROR)){
 		return true;
 	}
 
@@ -577,11 +679,13 @@ static bool mesc_cli_write_list(char *out, uint32_t out_len){
 	out[used] = '\0';
 	return true;
 }
-
+// OWEN XXXX
 static bool mesc_cli_write_status(char *out, uint32_t out_len){
 	motor_state_e state = mtr[0].MotorState;
+	char const *state_name = mesc_cli_motor_state_name(state);
 	uint8_t write_allowed = 0U;
 	unsigned long can_rx_drop = 0UL;
+	unsigned long can_iqreq_rx = 0UL;
 	unsigned long can_tx_fail = 0UL;
 	unsigned long can_tx_qdrop = 0UL;
 	unsigned long can_posvel_sent = 0UL;
@@ -590,12 +694,16 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 
 	if((state == MOTOR_STATE_INITIALISING) ||
 	   (state == MOTOR_STATE_TRACKING) ||
-	   (state == MOTOR_STATE_IDLE)){
+	   (state == MOTOR_STATE_IDLE) ||
+	   (state == MOTOR_STATE_RUN) ||
+	   (state == MOTOR_STATE_RUN_BLDC) ||
+	   (state == MOTOR_STATE_ERROR)){
 		write_allowed = 1U;
 	}
 
 #ifdef HAL_CAN_MODULE_ENABLED
 	can_rx_drop = (unsigned long)can1.rx_dropped;
+	can_iqreq_rx = (unsigned long)s_can_iqreq_rx_count;
 	can_tx_fail = (unsigned long)can1.tx_frames_failed;
 	can_tx_qdrop = (unsigned long)can1.tx_enqueue_dropped;
 	can_posvel_sent = (unsigned long)can1.posvel_sent;
@@ -604,11 +712,13 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 #endif
 
 	snprintf(out, out_len,
-			 "OK STATUS state=%u write=%u load=%u rx_drop=%lu tx_fail=%lu tx_qdrop=%lu pos_sent=%lu pos_miss=%lu pos_block=%lu\r\n",
+			 "OK STATUS state=%u state_name=%s write=%u load=%u rx_drop=%lu iqreq_rx=%lu tx_fail=%lu tx_qdrop=%lu pos_sent=%lu pos_miss=%lu pos_block=%lu\r\n",
 			 (unsigned)state,
+			 state_name,
 			 (unsigned)write_allowed,
 			 (unsigned)(mesc_persist_loaded ? 1U : 0U),
 			 can_rx_drop,
+			 can_iqreq_rx,
 			 can_tx_fail,
 			 can_tx_qdrop,
 			 can_posvel_sent,
@@ -639,7 +749,7 @@ static bool mesc_cli_write_get(char *name, char *out, uint32_t out_len){
 	}
 
 	memset(val, 0, sizeof(val));
-	if(var->type == TERM_VARIABLE_FLOAT && strcmp(name, "par_r") == 0){
+	if(var->type == TERM_VARIABLE_FLOAT){
 		snprintf(out, out_len, "OK %s=%.6f\r\n", name, (double)(*(float*)var->variable));
 		return true;
 	}
@@ -1695,8 +1805,9 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 
 	switch(id){
 		case CAN_ID_IQREQ:{
+			s_can_iqreq_rx_count++;
 			if(sender == motor_curr->input_vars.remote_ADC_can_id && motor_curr->input_vars.remote_ADC_can_id > 0){
-				volatile float req = PACK_buf_to_float(data);
+				volatile float req = mesc_unpack_float(data);
 				if(req > 0.0f){
 					// Owen addition
 					motor_curr->input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
@@ -1721,8 +1832,8 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 		case CAN_ID_ADC1_2_REQ:{
 			if(sender == motor_curr->input_vars.remote_ADC_can_id && motor_curr->input_vars.remote_ADC_can_id > 0){
 				motor_curr->input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
-				motor_curr->input_vars.remote_ADC1_req = PACK_buf_to_float(data);
-				motor_curr->input_vars.remote_ADC2_req = PACK_buf_to_float(data+4);
+				motor_curr->input_vars.remote_ADC1_req = mesc_unpack_float(data);
+				motor_curr->input_vars.remote_ADC2_req = mesc_unpack_float(data+4);
 			}
 			break;
 		}
@@ -1909,6 +2020,9 @@ void MESCinterface_can_periodic(void){
 	if(!s_can_hw_ready){
 		return;
 	}
+
+	// Poll and dispatch pending CAN frames in the known-active interface task.
+	mesc_can_poll_rx_fifo(&can1);
 
 	// POSVEL scheduler (500Hz by default)
 	uint32_t elapsed_posvel = now_tick - last_tick_posvel;

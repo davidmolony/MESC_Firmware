@@ -3,6 +3,12 @@
 
 ## What Has Been Completed
 
+- **CAN Command Receive Confirmed (Current Build):**
+  - The active firmware build now receives CAN control commands reliably in the no-RTOS path.
+  - RX processing is performed in the active interface periodic loop by polling CAN FIFO0 and dispatching frames into the existing command callback logic.
+  - IQREQ command reception has been validated on hardware (motor spin confirmed from CAN command input).
+  - `status` output now includes `iqreq_rx` so command reception can be confirmed live during testing.
+
 - **No-RTOS CAN Telemetry and Control:**  
   The firmware now operates without an RTOS, using a deterministic scheduler for CAN tasks.
 - **POS/VEL Transmission:**  
