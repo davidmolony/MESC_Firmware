@@ -1928,6 +1928,7 @@ static volatile float vel_enc_dbg = 0.0f;
 static volatile float vel_raw_dbg = 0.0f;
 static volatile float dt_s_dbg = 0.0f;
 static volatile int32_t delta_pos_dbg = 0;
+static volatile uint32_t posvel_counter_dbg = 0U;
 void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     MESC_motor_typedef *motor_curr = &mtr[0];
 	uint32_t now_tick;
@@ -1979,19 +1980,20 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     const float alpha = 0.1f;  // smoothing factor
     vel_est_filtered = alpha * vel_raw_dbg + (1.0f - alpha) * vel_est_filtered;
 
-    // === 9. Position in radians (absolute mechanical angle) ===
-    float pos_rad = (pos_now % motor_curr->m.enc_counts) * (2.0f * M_PI / (float)motor_curr->m.enc_counts);
+	// === 9. Counter payload for POSVEL slot 0 ===
+	float pos_counter = (float)posvel_counter_dbg;
+	posvel_counter_dbg++;
 
     // === 10. if close to zero, force to zero ===
     if (fabsf(vel_est_filtered) < 0.02f) {   // threshold in rad/s
         vel_est_filtered = 0.0f;
     }
 
-    // === 11. Send telemetry over CAN ===
-    // Payload: position [rad], velocity [rad/s], unused (0.0f).
+	// === 11. Send telemetry over CAN ===
+	// Payload: counter [float-encoded], velocity [rad/s].
     // NOTE: vel_est_filtered is in radians per second.
     //       To get RPM, multiply by (60 / 2π).
-	if(mesc_can_send_posvel_frame(handle, pos_rad, vel_est_filtered)){
+	if(mesc_can_send_posvel_frame(handle, pos_counter, vel_est_filtered)){
 		handle->posvel_sent++;
 
 		now_tick = HAL_GetTick();

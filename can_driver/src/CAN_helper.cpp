@@ -1,10 +1,13 @@
 #include "CAN_helper.h"
 
+#include <math.h>
+
 #define INVERT_ESC_ENCODER  0
 
 static volatile uint32_t g_last_posvel_rx_us = 0;
 static PosvelRxStats g_posvel_stats[ESC_LOOKUP_SIZE];
 static constexpr uint32_t POSVEL_EXPECTED_PERIOD_US = 2000u;
+static bool g_posvel_counter_mode = false;
 
 bool canBufferPush(CANBuffer &cb, const CAN_message_t &msg) {
     int next = (cb.head + 1) % CAN_BUF_SIZE;
@@ -69,6 +72,21 @@ bool canGetPosvelRxStats(uint8_t node_id, PosvelRxStats &out) {
     return true;
 }
 
+void canResetPosvelRxStats() {
+    for (uint16_t i = 0; i < ESC_LOOKUP_SIZE; ++i) {
+        g_posvel_stats[i] = PosvelRxStats{};
+    }
+    g_last_posvel_rx_us = 0;
+}
+
+void canSetPosvelCounterMode(bool enabled) {
+    g_posvel_counter_mode = enabled;
+}
+
+bool canGetPosvelCounterMode() {
+    return g_posvel_counter_mode;
+}
+
 CAN_message_t g_last_can_msg = {};
 void handleCANMessage(const CAN_message_t &msg) {
     g_last_can_msg = msg;
@@ -109,11 +127,30 @@ void handleCANMessage(const CAN_message_t &msg) {
             st.last_rx_us = now_us;
             st.count++;
             g_last_posvel_rx_us = now_us;
+
+                        if (g_posvel_counter_mode) {
+                            const uint32_t ctr = (uint32_t)lroundf(pos);
+                            if (st.counter_seen) {
+                                if (ctr == st.last_counter) {
+                                    st.counter_duplicates++;
+                                } else {
+                                    const uint32_t delta = ctr - st.last_counter;
+                                    if (delta > 1u) {
+                                        st.counter_jumps++;
+                                        st.counter_jump_total += (delta - 1u);
+                                    }
+                                }
+                            }
+                            st.last_counter = ctr;
+                            st.counter_seen = true;
+                        }
 #if INVERT_ESC_ENCODER
 	    esc->state.pos_rad   = TWO_PI - pos;  // mirror around 2π
 	    esc->state.vel_rad_s = -vel;          // flip velocity sign
 #else
-	    esc->state.pos_rad   = pos;
+	    if (!g_posvel_counter_mode) {
+	      esc->state.pos_rad = pos;
+	    }
 	    esc->state.vel_rad_s = vel;
 #endif
 	    esc->state.alive     = true;

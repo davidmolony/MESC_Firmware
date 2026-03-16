@@ -54,3 +54,97 @@
   - Update and maintain this document as features mature.
 - **Pre-Flight Gate Checks:**  
   - Complete all pre-flight checks before expanding CAN features (see original plan for details).
+
+---
+
+## Addendum (2026-03-16): Dual-ESC Shared-Bus Findings
+
+### Summary
+
+- Single-ESC high-throughput operation has now been demonstrated as robust.
+- Dual-ESC operation on one shared CAN bus shows repeatable asymmetry and frame-loss under concurrent traffic.
+- The current bottleneck appears to be multi-node bus interaction (arbitration/scheduling and possibly physical-layer sensitivity), not a fundamental Teensy-ESC CAN incompatibility.
+
+### Verified Results
+
+- **Single ESC active (node 11):**
+  - Sustained ESC POSVEL receive at approximately 500 Hz with counter integrity (`ctr_dup=0`, `ctr_jump=0`, `ctr_missed=0`).
+  - Concurrent Teensy command TX remained healthy (zero TX enqueue failures).
+  - This validates robust bidirectional throughput on a one-ESC bus.
+
+- **Two ESCs active on one bus (nodes 11 and 12):**
+  - At multiple command rates and patterns, one node often degraded while the other remained cleaner.
+  - Observed failure signatures included rising counter jumps/missed counts, stale age spikes, and side-specific dropouts.
+  - A/B tests (single-target, alternating-target) indicate contention/fairness effects are significant on the shared bus.
+
+- **Control physical test (right branch unplugged/unpowered):**
+  - Right branch state could strongly affect overall bus behavior.
+  - In at least one test configuration, connecting an unpowered right ESC branch caused loss of expected receive behavior, reinforcing concern about physical-layer robustness and unpowered-node transceiver behavior.
+
+### Interpretation
+
+- The system can do high-throughput CAN with one ESC.
+- Degradation emerges when scaling to two ESCs on one bus, likely from a combination of:
+  - frame timing collisions between publishers,
+  - arbitration priority asymmetry,
+  - scheduler phase alignment,
+  - and/or branch-level physical effects.
+
+### Recommended Next Steps
+
+- Keep single-bus tuning as an interim path:
+  - stagger ESC telemetry phase,
+  - reduce avoidable command traffic,
+  - continue counter-based integrity monitoring.
+
+- Preferred architecture direction for reliability:
+  - move to dual independent CAN channels from Teensy (CAN1 and CAN2), one ESC per bus,
+  - each bus with correct termination and known high-impedance behavior for unpowered nodes,
+  - retain per-bus telemetry/error counters for validation.
+
+### Practical Conclusion
+
+- Current evidence supports feasibility of robust high-rate Teensy<->ESC CAN for a balancing robot in single-ESC operation.
+- For dual-ESC robustness, separate CAN buses are now a strongly justified design direction.
+
+---
+
+## Reproducibility Runbook (2026-03-16)
+
+### Objective
+
+- Reproduce and verify high-throughput CAN behavior, first on a single ESC, then under dual-ESC bus loading.
+
+### Steps Used To Produce Current Results
+
+1. Build and flash ESC firmware (`MESC_F405RG`) with CAN POSVEL payload slot 0 set to a monotonic counter and slot 1 set to velocity.
+2. Build and flash Teensy `can_driver` with counter-mode receive diagnostics enabled.
+3. Enable counter diagnostics from Teensy USB serial:
+  - `posvel_counter on`
+4. Run the timed test sequence from Teensy USB serial:
+  - `run`
+5. Capture and compare these telemetry fields from `CAN_POSVEL_RX`:
+  - `left_count` / `right_count`
+  - `left_avg_gap_us` / `right_avg_gap_us`
+  - `left_ctr_dup`, `left_ctr_jump`, `left_ctr_missed`
+  - `right_ctr_dup`, `right_ctr_jump`, `right_ctr_missed`
+6. Compare against `CAN_TXQ_SUM` and `CAN_TX_DONE` for Teensy transmit health (`attempts`, `ok`, `fail`).
+
+### Device Firmware Load Reminder
+
+- Teensy device:
+  - Project: `can_driver`
+  - Build command: `pio run`
+  - Flash command (host/tooling dependent): `pio run -t upload`
+  - Runtime test commands: `posvel_counter on`, then `run`
+
+- ESC device(s):
+  - Project target: `MESC_F405RG`
+  - Build+flash script: `scripts/build_and_upload_f405rg.sh`
+  - VS Code task alternative: `MESC_F405RG: build + upload`
+
+### Notes For Repeatability
+
+- Use one known wiring/termination configuration per test run and do not change it mid-run.
+- Reset Teensy POSVEL stats at test start (already implemented in test entry path).
+- Record whether right ESC branch is unplugged, powered, or connected-unpowered for each dataset.

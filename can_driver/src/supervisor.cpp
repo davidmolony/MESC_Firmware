@@ -208,28 +208,8 @@ void controlLoop(Supervisor_typedef *sup,
   // ---- Core control loop body ----
   switch (sup->mode) {
   case SUP_MODE_IDLE: {
-    // --- Send zero torque (motor free) ---
-
-    if (++telem_counter >= TELEMETRY_DECIMATE) {
-      telem_counter = 0;
-
-      CAN_message_t msg1;
-      msg1.id = canMakeExtId(CAN_ID_IQREQ, TEENSY_NODE_ID, sup->esc[0].config.node_id);
-      msg1.len = 8;
-      msg1.flags.extended = 1;
-      canPackFloat(0.0f, msg1.buf);
-      canPackFloat(0.0f, msg1.buf + 4);
-
-      CAN_message_t msg2;
-      msg2.id = canMakeExtId(CAN_ID_IQREQ, TEENSY_NODE_ID, sup->esc[1].config.node_id);
-      msg2.len = 8;
-      msg2.flags.extended = 1;
-      canPackFloat(0.0f, msg2.buf);
-      canPackFloat(0.0f, msg2.buf + 4);
-
-      can.write(msg1);
-      can.write(msg2);
-    }
+    // Idle is receive-only; explicit run mode performs throughput TX testing.
+    telem_counter = 0;
 
     break;
   }

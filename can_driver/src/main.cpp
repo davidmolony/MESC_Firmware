@@ -161,14 +161,20 @@ void loop() {
           (have_left && left.gap_count > 0u) ? left.min_gap_us : 0u;
       const uint32_t right_min_gap_us =
           (have_right && right.gap_count > 0u) ? right.min_gap_us : 0u;
+        const bool counter_mode = canGetPosvelCounterMode();
 
-      Serial1.printf(
+        char can_diag[512];
+        snprintf(
+          can_diag,
+          sizeof(can_diag),
           "{\"cmd\":\"CAN_POSVEL_RX\",\"t\":%lu,"
+          "\"counter_mode\":%u,"
           "\"left_id\":%u,\"left_count\":%lu,\"left_age_us\":%lu,"
-          "\"left_avg_gap_us\":%lu,\"left_min_gap_us\":%lu,\"left_max_gap_us\":%lu,\"left_est_missed\":%lu,"
+          "\"left_avg_gap_us\":%lu,\"left_min_gap_us\":%lu,\"left_max_gap_us\":%lu,\"left_est_missed\":%lu,\"left_ctr_dup\":%lu,\"left_ctr_jump\":%lu,\"left_ctr_missed\":%lu,"
           "\"right_id\":%u,\"right_count\":%lu,\"right_age_us\":%lu,"
-          "\"right_avg_gap_us\":%lu,\"right_min_gap_us\":%lu,\"right_max_gap_us\":%lu,\"right_est_missed\":%lu}\n",
+          "\"right_avg_gap_us\":%lu,\"right_min_gap_us\":%lu,\"right_max_gap_us\":%lu,\"right_est_missed\":%lu,\"right_ctr_dup\":%lu,\"right_ctr_jump\":%lu,\"right_ctr_missed\":%lu}\r\n",
           (unsigned long)now_us,
+          (unsigned)counter_mode,
           left_id,
           (unsigned long)(have_left ? left.count : 0u),
           (unsigned long)left_age_us,
@@ -176,13 +182,21 @@ void loop() {
           (unsigned long)left_min_gap_us,
           (unsigned long)(have_left ? left.max_gap_us : 0u),
           (unsigned long)(have_left ? left.est_missed : 0u),
+          (unsigned long)(have_left ? left.counter_duplicates : 0u),
+          (unsigned long)(have_left ? left.counter_jumps : 0u),
+          (unsigned long)(have_left ? left.counter_jump_total : 0u),
           right_id,
           (unsigned long)(have_right ? right.count : 0u),
           (unsigned long)right_age_us,
           (unsigned long)right_avg_gap_us,
           (unsigned long)right_min_gap_us,
           (unsigned long)(have_right ? right.max_gap_us : 0u),
-          (unsigned long)(have_right ? right.est_missed : 0u));
+          (unsigned long)(have_right ? right.est_missed : 0u),
+          (unsigned long)(have_right ? right.counter_duplicates : 0u),
+          (unsigned long)(have_right ? right.counter_jumps : 0u),
+          (unsigned long)(have_right ? right.counter_jump_total : 0u));
+
+        Serial.print(can_diag);
     }
   }
 
@@ -207,7 +221,15 @@ void loop() {
 		  tone_start(&g_tone, PB_BEEP_HZ, PB_BEEP_MS, PB_GAP_MS);
 		  supervisor.user_total_us = BALANCE_BUTTON_RUN_US;
 		  supervisor.mode = SUP_MODE_TEST_CAN;
-		} 
+    } else if (line == "posvel_counter on") {
+      canSetPosvelCounterMode(true);
+      Serial.println("serial: posvel counter mode ON");
+    } else if (line == "posvel_counter off") {
+      canSetPosvelCounterMode(false);
+      Serial.println("serial: posvel counter mode OFF");
+    } else if (line == "posvel_counter") {
+      Serial.printf("serial: posvel counter mode=%u\r\n", (unsigned)(canGetPosvelCounterMode() ? 1u : 0u));
+    }
 		input = "";  // reset buffer
 	      } else {
 		input += c;  // append char to buffer

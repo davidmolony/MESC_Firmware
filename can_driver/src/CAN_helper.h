@@ -25,6 +25,11 @@ struct PosvelRxStats {
   uint64_t sum_gap_us = 0;
   uint32_t gap_count = 0;
   uint32_t est_missed = 0;
+  uint32_t last_counter = 0;
+  uint32_t counter_duplicates = 0;
+  uint32_t counter_jumps = 0;
+  uint32_t counter_jump_total = 0;
+  bool counter_seen = false;
 };
 
 bool canBufferPush(CANBuffer &cb, const CAN_message_t &msg);
@@ -38,6 +43,9 @@ uint32_t canMakeExtId(uint16_t msg_id, uint8_t sender, uint8_t receiver);
 void canPackFloat(float val, uint8_t *buf);
 uint32_t canGetLastPosVelRxUs();
 bool canGetPosvelRxStats(uint8_t node_id, PosvelRxStats &out);
+void canResetPosvelRxStats();
+void canSetPosvelCounterMode(bool enabled);
+bool canGetPosvelCounterMode();
 
 extern CAN_message_t g_last_can_msg;
 void handleCANMessage(const CAN_message_t &msg);
