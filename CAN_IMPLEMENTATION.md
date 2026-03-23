@@ -111,6 +111,11 @@
 
 ## Reproducibility Runbook (2026-03-16)
 
+### Snapshot Commit
+
+- Repository snapshot hash for this documented state:
+  - `d621df0a0093731d3c8162774a0a3fe046bf76ad`
+
 ### Objective
 
 - Reproduce and verify high-throughput CAN behavior, first on a single ESC, then under dual-ESC bus loading.

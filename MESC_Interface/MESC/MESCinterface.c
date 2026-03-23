@@ -1911,6 +1911,13 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 // For a 12-bit ABI encoder (0–4095 counts per rev):
 #define ENCODER_CPR 4096
 
+// POSVEL payload mode:
+//   0 -> normal control mode: position [rad], velocity [rad/s]
+//   1 -> transport diagnostics mode: counter in position slot
+#ifndef CAN_COUNTER_TEST
+#define CAN_COUNTER_TEST 0
+#endif
+
 // --- DWT cycle counter (hardware timer running at CPU frequency) ---
 // Used to get precise microsecond timestamps.
 // On STM32F405, core clock is 168 MHz → 168 cycles = 1 µs.
@@ -1928,7 +1935,9 @@ static volatile float vel_enc_dbg = 0.0f;
 static volatile float vel_raw_dbg = 0.0f;
 static volatile float dt_s_dbg = 0.0f;
 static volatile int32_t delta_pos_dbg = 0;
+#if CAN_COUNTER_TEST
 static volatile uint32_t posvel_counter_dbg = 0U;
+#endif
 void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     MESC_motor_typedef *motor_curr = &mtr[0];
 	uint32_t now_tick;
@@ -1980,21 +1989,28 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     const float alpha = 0.1f;  // smoothing factor
     vel_est_filtered = alpha * vel_raw_dbg + (1.0f - alpha) * vel_est_filtered;
 
-	// === 9. Counter payload for POSVEL slot 0 ===
-	float pos_counter = (float)posvel_counter_dbg;
-	posvel_counter_dbg++;
+		// === 9. Position payload selection ===
+		float pos_payload = 0.0f;
+#if CAN_COUNTER_TEST
+		pos_payload = (float)posvel_counter_dbg;
+		posvel_counter_dbg++;
+#else
+		if (motor_curr->m.enc_counts > 0U) {
+			pos_payload = ((float)pos_now) * (2.0f * M_PI / (float)motor_curr->m.enc_counts);
+		}
+#endif
 
     // === 10. if close to zero, force to zero ===
     if (fabsf(vel_est_filtered) < 0.02f) {   // threshold in rad/s
         vel_est_filtered = 0.0f;
     }
 
-	// === 11. Send telemetry over CAN ===
-	// Payload: counter [float-encoded], velocity [rad/s].
+		// === 11. Send telemetry over CAN ===
+		// Payload: position [rad] or counter [float-encoded], velocity [rad/s].
     // NOTE: vel_est_filtered is in radians per second.
     //       To get RPM, multiply by (60 / 2π).
-	if(mesc_can_send_posvel_frame(handle, pos_counter, vel_est_filtered)){
-		handle->posvel_sent++;
+		if(mesc_can_send_posvel_frame(handle, pos_payload, vel_est_filtered)){
+			handle->posvel_sent++;
 
 		now_tick = HAL_GetTick();
 		gap_tick = now_tick - handle->posvel_last_tick;
