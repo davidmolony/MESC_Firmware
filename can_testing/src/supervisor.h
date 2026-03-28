@@ -49,6 +49,19 @@ struct SerialStats {
   uint32_t count;           // Number of writes measured
 };
 
+// Control-loop entry timing distribution (run-level, not 1 Hz reset).
+struct ControlDtStats {
+  uint32_t count = 0;
+  uint32_t min_dt_us = UINT32_MAX;
+  uint32_t p50_dt_us = 0;
+  uint32_t p95_dt_us = 0;
+  uint32_t p99_dt_us = 0;
+  uint32_t max_dt_us = 0;
+  uint64_t sum_dt_us = 0;
+  uint32_t spike_threshold_us = 0;
+  uint32_t spike_count = 0;
+};
+
 // ---------------- RC Input ----------------
 // Raw RC signal input (pulse width in microseconds).
 struct RCInputRaw {
@@ -91,6 +104,7 @@ struct Supervisor_typedef {
   uint16_t       esc_count;                                // Number of ESCs managed
   ESC            esc[SUPERVISOR_MAX_ESCS];                 // Array of ESC objects
   uint32_t       last_esc_heartbeat_us[SUPERVISOR_MAX_ESCS]; // Last CAN heartbeat timestamps per ESC
+  uint32_t       esc_alive_false_count[SUPERVISOR_MAX_ESCS]; // Per-ESC count of control ticks where alive=false
 
   SupervisorMode mode;                                     // Current supervisor mode
   GaitMode       gait_mode;                                // Current gait mode
@@ -137,6 +151,8 @@ void init_supervisor(Supervisor_typedef *sup,
 void updateSupervisorRC(Supervisor_typedef *sup);   // Update RC input channels
 void resetLoopTimingStats(Supervisor_typedef *sup); // Reset loop timing stats
 void resetTelemetryStats(Supervisor_typedef *sup);  // Reset telemetry stats
+void resetControlDtStats();
+ControlDtStats getControlDtStats();
 float angle_diff(float target, float actual);
 
 

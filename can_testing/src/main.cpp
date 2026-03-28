@@ -29,7 +29,9 @@ CANBuffer canRxBuf;  // ✅ holds buffer + link_ok
 static TonePlayer g_tone;
 PushButton g_button(PUSHBUTTON_PIN, true, 50000u);
 static constexpr uint32_t CAN_POSVEL_RX_TIMEOUT_US = 400000u;
-static constexpr uint32_t BALANCE_BUTTON_RUN_US = 60000000u;  // 60 seconds
+static constexpr uint32_t BALANCE_BUTTON_RUN_US = 30000000u;  // 30 seconds
+// Runtime decimated printing can perturb timing; keep off for measurement runs.
+#define CAN_RUNTIME_DIAG_PRINT 0
 
 // Uncomment to ignore pushbutton state transitions.
 #define PB_OVERRIDE
@@ -58,7 +60,11 @@ static void process_serial_line(const char *line) {
     tone_start(&g_tone, PB_BEEP_HZ, PB_BEEP_MS, PB_GAP_MS);
     canResetPosvelStats();
     canResetRuntimeStats();
+    resetControlDtStats();
     canRxBuf.overflow_count = 0;
+    for (uint16_t i = 0; i < supervisor.esc_count; ++i) {
+      supervisor.esc_alive_false_count[i] = 0u;
+    }
     supervisor.user_total_us = BALANCE_BUTTON_RUN_US;
     supervisor.mode = SUP_MODE_TEST_CAN;
     return;
@@ -87,7 +93,11 @@ static void process_serial_line(const char *line) {
   if (strcmp(line, "stats reset") == 0) {
     canResetPosvelStats();
     canResetRuntimeStats();
+    resetControlDtStats();
     canRxBuf.overflow_count = 0;
+    for (uint16_t i = 0; i < supervisor.esc_count; ++i) {
+      supervisor.esc_alive_false_count[i] = 0u;
+    }
     Serial.printf("{\"cmd\":\"CAN_STATS_RESET\",\"ok\":1}\r\n");
     return;
   }
@@ -233,7 +243,11 @@ void loop() {
 	      if (supervisor.mode != test_mode) {
           canResetPosvelStats();
           canResetRuntimeStats();
+          resetControlDtStats();
           canRxBuf.overflow_count = 0;
+          for (uint16_t i = 0; i < supervisor.esc_count; ++i) {
+            supervisor.esc_alive_false_count[i] = 0u;
+          }
 	        supervisor.user_total_us = BALANCE_BUTTON_RUN_US;
 	        supervisor.mode = test_mode;
 	      }
@@ -251,7 +265,8 @@ void loop() {
   if (now_us - last_medprio_us >= (CONTROL_PERIOD_US * 10)) {  // 10 ms at 1 kHz base
     last_medprio_us = now_us;
 
-    // Live CAN RX health for ESP32/python during balance.
+    // Live CAN RX health printing intentionally disabled during timing tests.
+#if CAN_RUNTIME_DIAG_PRINT
     static uint32_t last_can_diag_us = 0;
     if (supervisor.mode == SUP_MODE_TEST_CAN &&
         (uint32_t)(now_us - last_can_diag_us) >= 1000000u) {
@@ -281,6 +296,18 @@ void loop() {
           (have_left && left.gap_count > 0u) ? left.min_gap_us : 0u;
       const uint32_t right_min_gap_us =
           (have_right && right.gap_count > 0u) ? right.min_gap_us : 0u;
+      const uint32_t left_p50_gap_us =
+          (have_left && left.gap_count > 0u) ? left.p50_gap_us : 0u;
+      const uint32_t right_p50_gap_us =
+          (have_right && right.gap_count > 0u) ? right.p50_gap_us : 0u;
+      const uint32_t left_p95_gap_us =
+          (have_left && left.gap_count > 0u) ? left.p95_gap_us : 0u;
+      const uint32_t right_p95_gap_us =
+          (have_right && right.gap_count > 0u) ? right.p95_gap_us : 0u;
+      const uint32_t left_p99_gap_us =
+          (have_left && left.gap_count > 0u) ? left.p99_gap_us : 0u;
+      const uint32_t right_p99_gap_us =
+          (have_right && right.gap_count > 0u) ? right.p99_gap_us : 0u;
       const uint32_t can1_age_us =
           (have_can1_bus && can1_bus.last_rx_us > 0u) ? (uint32_t)(now_us - can1_bus.last_rx_us) : UINT32_MAX;
       const uint32_t can2_age_us =
@@ -289,6 +316,18 @@ void loop() {
           (have_can1_bus && can1_bus.gap_count > 0u) ? (uint32_t)(can1_bus.sum_gap_us / can1_bus.gap_count) : 0u;
       const uint32_t can2_avg_gap_us =
           (have_can2_bus && can2_bus.gap_count > 0u) ? (uint32_t)(can2_bus.sum_gap_us / can2_bus.gap_count) : 0u;
+      const uint32_t can1_p50_gap_us =
+          (have_can1_bus && can1_bus.gap_count > 0u) ? can1_bus.p50_gap_us : 0u;
+      const uint32_t can2_p50_gap_us =
+          (have_can2_bus && can2_bus.gap_count > 0u) ? can2_bus.p50_gap_us : 0u;
+      const uint32_t can1_p95_gap_us =
+          (have_can1_bus && can1_bus.gap_count > 0u) ? can1_bus.p95_gap_us : 0u;
+      const uint32_t can2_p95_gap_us =
+          (have_can2_bus && can2_bus.gap_count > 0u) ? can2_bus.p95_gap_us : 0u;
+      const uint32_t can1_p99_gap_us =
+          (have_can1_bus && can1_bus.gap_count > 0u) ? can1_bus.p99_gap_us : 0u;
+      const uint32_t can2_p99_gap_us =
+          (have_can2_bus && can2_bus.gap_count > 0u) ? can2_bus.p99_gap_us : 0u;
       const int32_t lr_offset_us =
           (have_left && have_right && left.last_rx_us > 0u && right.last_rx_us > 0u)
               ? (int32_t)(right.last_rx_us - left.last_rx_us)
@@ -305,11 +344,11 @@ void loop() {
       Serial.printf(
           "{\"cmd\":\"CAN_POSVEL_RX\",\"t\":%lu,"
           "\"left_id\":%u,\"left_count\":%lu,\"left_age_us\":%lu,"
-          "\"left_avg_gap_us\":%lu,\"left_min_gap_us\":%lu,\"left_max_gap_us\":%lu,\"left_est_missed\":%lu,"
+          "\"left_avg_gap_us\":%lu,\"left_min_gap_us\":%lu,\"left_p50_gap_us\":%lu,\"left_p95_gap_us\":%lu,\"left_p99_gap_us\":%lu,\"left_max_gap_us\":%lu,\"left_est_missed\":%lu,"
           "\"right_id\":%u,\"right_count\":%lu,\"right_age_us\":%lu,"
-          "\"right_avg_gap_us\":%lu,\"right_min_gap_us\":%lu,\"right_max_gap_us\":%lu,\"right_est_missed\":%lu,"
-          "\"can1_posvel_count\":%lu,\"can1_posvel_age_us\":%lu,\"can1_posvel_avg_gap_us\":%lu,"
-          "\"can2_posvel_count\":%lu,\"can2_posvel_age_us\":%lu,\"can2_posvel_avg_gap_us\":%lu,"
+          "\"right_avg_gap_us\":%lu,\"right_min_gap_us\":%lu,\"right_p50_gap_us\":%lu,\"right_p95_gap_us\":%lu,\"right_p99_gap_us\":%lu,\"right_max_gap_us\":%lu,\"right_est_missed\":%lu,"
+          "\"can1_posvel_count\":%lu,\"can1_posvel_age_us\":%lu,\"can1_posvel_avg_gap_us\":%lu,\"can1_posvel_p50_gap_us\":%lu,\"can1_posvel_p95_gap_us\":%lu,\"can1_posvel_p99_gap_us\":%lu,"
+          "\"can2_posvel_count\":%lu,\"can2_posvel_age_us\":%lu,\"can2_posvel_avg_gap_us\":%lu,\"can2_posvel_p50_gap_us\":%lu,\"can2_posvel_p95_gap_us\":%lu,\"can2_posvel_p99_gap_us\":%lu,"
           "\"can1_rx_reads\":%lu,\"can2_rx_reads\":%lu,\"rx_overflow\":%lu,"
           "\"lr_offset_us\":%ld,\"lr_offset_abs_us\":%lu,\"lr_count_delta\":%ld}\r\n",
           (unsigned long)now_us,
@@ -318,6 +357,9 @@ void loop() {
           (unsigned long)left_age_us,
           (unsigned long)left_avg_gap_us,
           (unsigned long)left_min_gap_us,
+          (unsigned long)left_p50_gap_us,
+          (unsigned long)left_p95_gap_us,
+          (unsigned long)left_p99_gap_us,
           (unsigned long)(have_left ? left.max_gap_us : 0u),
           (unsigned long)(have_left ? left.est_missed : 0u),
           right_id,
@@ -325,14 +367,23 @@ void loop() {
           (unsigned long)right_age_us,
           (unsigned long)right_avg_gap_us,
           (unsigned long)right_min_gap_us,
+          (unsigned long)right_p50_gap_us,
+          (unsigned long)right_p95_gap_us,
+          (unsigned long)right_p99_gap_us,
           (unsigned long)(have_right ? right.max_gap_us : 0u),
           (unsigned long)(have_right ? right.est_missed : 0u),
           (unsigned long)(have_can1_bus ? can1_bus.count : 0u),
           (unsigned long)can1_age_us,
           (unsigned long)can1_avg_gap_us,
+          (unsigned long)can1_p50_gap_us,
+          (unsigned long)can1_p95_gap_us,
+          (unsigned long)can1_p99_gap_us,
           (unsigned long)(have_can2_bus ? can2_bus.count : 0u),
           (unsigned long)can2_age_us,
           (unsigned long)can2_avg_gap_us,
+          (unsigned long)can2_p50_gap_us,
+          (unsigned long)can2_p95_gap_us,
+          (unsigned long)can2_p99_gap_us,
           (unsigned long)rt.can1_rx_reads,
           (unsigned long)rt.can2_rx_reads,
           (unsigned long)rt.rx_overflow,
@@ -340,6 +391,7 @@ void loop() {
           (unsigned long)lr_offset_abs_us,
           (long)lr_count_delta);
     }
+#endif
   }
 
   // -------- LOW PRIORITY --------

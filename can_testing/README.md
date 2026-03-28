@@ -138,6 +138,7 @@ It takes the API a solid 60 seconds to send results
 - CAN transport: perfect (0% fail), low latency, adequate bandwidth
 - Overall: System timing and comms are green; data path is serviceable for balance; run ended cleanly by time limit.
 ```
+---------
 
 ## brain_board V1.6 testing
 
@@ -167,3 +168,41 @@ Current guidance:
 - With recent firmware updates, Teensy-side software FIFO drops were eliminated in tested runs (`rx_overflow=0`), and TX remained clean (`fail=0`).
 - Node-ID swap testing showed asymmetry followed the physical CAN path assignment, not a fixed node number. This points to channel/path-level margin differences rather than a deterministic node-ID decode bug.
 - Mounted-rig tests did not show a major EMI regression compared to bench-layout tests, which is a positive integration milestone for balance development.
+
+## Continued review of dropped CAN telemetry
+
+This section summarizes additional findings from recent instrumentation work and 30 s test runs.
+
+What we learned:
+
+- End-to-end communication is currently stable in many runs at both `250 Hz` and `500 Hz` Teensy command settings, with:
+  - `CAN TX fail=0`
+  - `rx_overflow=0`
+  - both ESC paths reporting continuous updates
+- Tail-gap metrics are now visible and matter more than mean alone. Typical recent runs showed:
+  - POSVEL `p95` near `~2050 us`
+  - POSVEL `p99` near `~3550-3750 us`
+  - POSVEL `max` near `~4.0-4.8 ms`
+- Added `alive_false_count` stayed `0` for both ESCs in good runs, confirming nodes were not being dropped by Teensy alive-timeout logic.
+- IQREQ timing was measured directly and is not truly fixed at 2.000 ms spacing when `tx hz 500` is selected. Distribution is dominated by ~3 ms intervals (2/3 ms quantization behavior).
+- Control-loop entry timing itself was measured and is very stable (`~1 kHz`, tight min/p50/p95/p99, no large control-loop dt spikes).
+- Setting `can_posvel_phase_us=0` on both ESCs (same-phase publish) did not degrade telemetry and coincided with improved repeatability in recent runs; this suggests ESC-to-ESC phase staggering was not the dominant cause on the current dual-bus setup.
+
+What we have ruled out (for these runs):
+
+- Not a Teensy CAN TX enqueue/HAL-fail problem (`fail=0`).
+- Not a Teensy software RX buffer overflow problem (`rx_overflow=0`).
+- Not a Teensy alive-timeout gating problem (`alive_false_count=0`).
+- Not a gross control-loop scheduler collapse on Teensy (control dt stats stayed tight).
+
+What remains unresolved:
+
+- Even in good runs, telemetry is not perfectly ideal at target rates: nonzero estimated misses and nontrivial p99/max gaps remain.
+- IQREQ spacing irregularity exists, but current spike-correlation checks showed weak direct alignment with POSVEL gap spikes in sampled runs.
+- This suggests remaining gap behavior is more likely tied to ESC-side publish/service timing and/or path-level transport behavior than to a simple Teensy loop overrun.
+
+Current practical stance:
+
+- Keep using percentile/tail metrics (`p95`, `p99`, `max`) as primary health indicators.
+- Keep `250 Hz` as default conservative operating point for robust balancing integration.
+- Treat `500 Hz` as feasible but still under characterization until long-duration soak and correlation evidence are consistently strong.

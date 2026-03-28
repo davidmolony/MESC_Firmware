@@ -8,6 +8,42 @@
 volatile uint32_t g_control_pending_ticks = 0;
 volatile uint32_t g_control_now_us = 0;
 static constexpr uint32_t ESC_ALIVE_TIMEOUT_US = 200000u;
+static constexpr uint32_t CONTROL_DT_HIST_BIN_US = 50u;
+static constexpr uint32_t CONTROL_DT_HIST_MAX_US = 20000u;
+static constexpr uint32_t CONTROL_DT_HIST_BINS =
+    (CONTROL_DT_HIST_MAX_US / CONTROL_DT_HIST_BIN_US) + 1u;
+static constexpr uint32_t CONTROL_DT_SPIKE_US = 2500u;
+static uint32_t g_control_dt_hist[CONTROL_DT_HIST_BINS] = {0};
+static uint32_t g_control_dt_count = 0u;
+static uint32_t g_control_dt_min_us = UINT32_MAX;
+static uint32_t g_control_dt_max_us = 0u;
+static uint64_t g_control_dt_sum_us = 0u;
+static uint32_t g_control_dt_spike_count = 0u;
+static uint32_t g_control_dt_last_us = 0u;
+
+static inline uint32_t control_dt_hist_index(uint32_t dt_us) {
+  uint32_t idx = dt_us / CONTROL_DT_HIST_BIN_US;
+  if (idx >= CONTROL_DT_HIST_BINS) idx = CONTROL_DT_HIST_BINS - 1u;
+  return idx;
+}
+
+static uint32_t control_dt_percentile(float q) {
+  if (g_control_dt_count == 0u) return 0u;
+  if (q < 0.0f) q = 0.0f;
+  if (q > 1.0f) q = 1.0f;
+  uint32_t target = (uint32_t)(q * (float)g_control_dt_count + 0.5f);
+  if (target == 0u) target = 1u;
+  if (target > g_control_dt_count) target = g_control_dt_count;
+  uint32_t acc = 0u;
+  for (uint32_t i = 0u; i < CONTROL_DT_HIST_BINS; ++i) {
+    acc += g_control_dt_hist[i];
+    if (acc >= target) {
+      if (i == CONTROL_DT_HIST_BINS - 1u) return CONTROL_DT_HIST_MAX_US;
+      return (i * CONTROL_DT_HIST_BIN_US) + (CONTROL_DT_HIST_BIN_US / 2u);
+    }
+  }
+  return CONTROL_DT_HIST_MAX_US;
+}
 
 // Note there are multiple ISRs, some for the controlLoop(),
 // and some for RC transmitter input capture.
@@ -93,6 +129,7 @@ void init_supervisor(Supervisor_typedef *sup,
   sup->timing.dt_us = 0;
   sup->timing.exec_time_us = 0;
   resetLoopTimingStats(sup);
+  resetControlDtStats();
 
   sup->last_health_ms = 0;
 
@@ -173,6 +210,30 @@ void resetTelemetryStats(Supervisor_typedef *sup) {
   sup->last_health_ms = 0; 
 }
 
+void resetControlDtStats() {
+  memset(g_control_dt_hist, 0, sizeof(g_control_dt_hist));
+  g_control_dt_count = 0u;
+  g_control_dt_min_us = UINT32_MAX;
+  g_control_dt_max_us = 0u;
+  g_control_dt_sum_us = 0u;
+  g_control_dt_spike_count = 0u;
+  g_control_dt_last_us = 0u;
+}
+
+ControlDtStats getControlDtStats() {
+  ControlDtStats out{};
+  out.count = g_control_dt_count;
+  out.min_dt_us = (g_control_dt_count > 0u) ? g_control_dt_min_us : 0u;
+  out.max_dt_us = (g_control_dt_count > 0u) ? g_control_dt_max_us : 0u;
+  out.sum_dt_us = g_control_dt_sum_us;
+  out.p50_dt_us = control_dt_percentile(0.50f);
+  out.p95_dt_us = control_dt_percentile(0.95f);
+  out.p99_dt_us = control_dt_percentile(0.99f);
+  out.spike_threshold_us = CONTROL_DT_SPIKE_US;
+  out.spike_count = g_control_dt_spike_count;
+  return out;
+}
+
 
 
 // ---------------- Main Control Loop ----------------
@@ -185,14 +246,13 @@ void controlLoop(Supervisor_typedef *sup,
   // ----- Update timing stats -----
   uint32_t start_us = micros();
 
-  static uint32_t last_us = 0;
-  if (last_us == 0) {
-    last_us = start_us;
+  if (g_control_dt_last_us == 0u) {
+    g_control_dt_last_us = start_us;
     return;
   }
 
-  uint32_t dt_us = start_us - last_us;
-  last_us = start_us;
+  uint32_t dt_us = start_us - g_control_dt_last_us;
+  g_control_dt_last_us = start_us;
 
   sup->timing.dt_us = dt_us;
   sup->timing.last_tick_us = start_us;
@@ -205,6 +265,14 @@ void controlLoop(Supervisor_typedef *sup,
   if (dt_us > CONTROL_PERIOD_US + 100){
     sup->timing.overruns++;
   }
+  if (dt_us < g_control_dt_min_us) g_control_dt_min_us = dt_us;
+  if (dt_us > g_control_dt_max_us) g_control_dt_max_us = dt_us;
+  g_control_dt_sum_us += dt_us;
+  g_control_dt_count++;
+  g_control_dt_hist[control_dt_hist_index(dt_us)]++;
+  if (dt_us >= CONTROL_DT_SPIKE_US && g_control_dt_spike_count < UINT32_MAX) {
+    g_control_dt_spike_count++;
+  }
 
   // ---- Update RC PWM input ----
   updateRC(sup);
@@ -215,12 +283,18 @@ void controlLoop(Supervisor_typedef *sup,
     if (esc.status.last_update_us == 0u) {
       esc.status.alive = false;
       esc.state.alive = false;
+      if (sup->esc_alive_false_count[i] < UINT32_MAX) {
+        sup->esc_alive_false_count[i]++;
+      }
       continue;
     }
     const uint32_t age_us = (uint32_t)(start_us - esc.status.last_update_us);
     const bool alive = (age_us <= ESC_ALIVE_TIMEOUT_US);
     esc.status.alive = alive;
     esc.state.alive = alive;
+    if (!alive && sup->esc_alive_false_count[i] < UINT32_MAX) {
+      sup->esc_alive_false_count[i]++;
+    }
   }
 
   // ---- Core control loop body ----
