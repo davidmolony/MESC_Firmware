@@ -108,8 +108,16 @@ static TermVariableDescriptor * mesc_find_var_by_name(TermVariableDescriptor *he
 static bool mesc_cli_parse_float(char const *value, float *out);
 
 #ifdef HAL_CAN_MODULE_ENABLED
+#ifndef DWT_CYCCNT
+#define DWT_CYCCNT ((volatile uint32_t *)0xE0001004U)
+#endif
+
 static bool s_can_hw_ready = false;
 static uint32_t s_can_iqreq_rx_count = 0U;
+static uint32_t s_posvel_next_due_us = 0U;
+static uint32_t s_posvel_last_sync_us = 0U;
+static uint32_t s_posvel_sync_events = 0U;
+static uint32_t s_posvel_sync_nudges = 0U;
 
 static uint32_t mesc_pack_can_id(uint16_t id, uint8_t sender, uint8_t receiver){
 	uint32_t ret = (uint32_t)id << 16;
@@ -146,6 +154,16 @@ static void mesc_can_hw_init_if_needed(void){
 	can1.hw = &hcan1;
 	if(can1.node_id == 0U || can1.node_id > 254U){
 		can1.node_id = 1U;
+	}
+	if(can1.posvel_period_us == 0U){
+		uint32_t default_period_us = 1000000U / POSVEL_HZ;
+		if(default_period_us == 0U){
+			default_period_us = 1U;
+		}
+		can1.posvel_period_us = default_period_us;
+	}
+	if(can1.posvel_phase_us >= can1.posvel_period_us){
+		can1.posvel_phase_us %= can1.posvel_period_us;
 	}
 
 	memset(&sFilterConfig, 0, sizeof(sFilterConfig));
@@ -691,6 +709,9 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 	unsigned long can_posvel_sent = 0UL;
 	unsigned long can_posvel_miss = 0UL;
 	unsigned long can_posvel_block = 0UL;
+	unsigned long can_posvel_sync = 0UL;
+	unsigned long can_posvel_nudge = 0UL;
+	unsigned long can_posvel_sync_age_us = 0UL;
 
 	if((state == MOTOR_STATE_INITIALISING) ||
 	   (state == MOTOR_STATE_TRACKING) ||
@@ -709,10 +730,15 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 	can_posvel_sent = (unsigned long)can1.posvel_sent;
 	can_posvel_miss = (unsigned long)can1.posvel_slot_miss;
 	can_posvel_block = (unsigned long)can1.posvel_tx_blocked;
+	can_posvel_sync = (unsigned long)s_posvel_sync_events;
+	can_posvel_nudge = (unsigned long)s_posvel_sync_nudges;
+	if(s_posvel_last_sync_us != 0U){
+		can_posvel_sync_age_us = (unsigned long)(((*DWT_CYCCNT) / 168U) - s_posvel_last_sync_us);
+	}
 #endif
 
 	snprintf(out, out_len,
-			 "OK STATUS state=%u state_name=%s write=%u load=%u rx_drop=%lu iqreq_rx=%lu tx_fail=%lu tx_qdrop=%lu pos_sent=%lu pos_miss=%lu pos_block=%lu\r\n",
+			 "OK STATUS state=%u state_name=%s write=%u load=%u rx_drop=%lu iqreq_rx=%lu tx_fail=%lu tx_qdrop=%lu pos_sent=%lu pos_miss=%lu pos_block=%lu pos_period_us=%lu pos_phase_us=%lu pos_sync=%lu pos_nudge=%lu pos_sync_age_us=%lu\r\n",
 			 (unsigned)state,
 			 state_name,
 			 (unsigned)write_allowed,
@@ -723,7 +749,12 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 			 can_tx_qdrop,
 			 can_posvel_sent,
 			 can_posvel_miss,
-			 can_posvel_block);
+			 can_posvel_block,
+			 (unsigned long)can1.posvel_period_us,
+			 (unsigned long)can1.posvel_phase_us,
+			 can_posvel_sync,
+			 can_posvel_nudge,
+			 can_posvel_sync_age_us);
 	return true;
 }
 
@@ -1758,6 +1789,8 @@ void populate_vars(){
 	TERM_addVar(can1.posvel_slot_miss, 0, 4294967295U, "can_posvel_miss", "CAN POSVEL slot misses", VAR_ACCESS_R, NULL, &TERM_varList);
 	TERM_addVar(can1.posvel_tx_blocked, 0, 4294967295U, "can_posvel_block", "CAN POSVEL TX blocked/fail", VAR_ACCESS_R, NULL, &TERM_varList);
 	TERM_addVar(can1.posvel_max_gap_ticks, 0, 4294967295U, "can_posvel_gap", "CAN POSVEL max gap in OS ticks", VAR_ACCESS_R, NULL, &TERM_varList);
+	TERM_addVar(can1.posvel_period_us, 1, 1000000U, "can_posvel_period_us", "CAN POSVEL scheduler period in us", VAR_ACCESS_RW, NULL, &TERM_varList);
+	TERM_addVar(can1.posvel_phase_us, 0, 1000000U, "can_posvel_phase_us", "CAN POSVEL scheduler phase offset in us", VAR_ACCESS_RW, NULL, &TERM_varList);
 #endif
 
 	TermVariableDescriptor * desc;
@@ -1802,6 +1835,18 @@ void populate_vars(){
 
 void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
 	MESC_motor_typedef * motor_curr = &mtr[0];
+	uint32_t now_us;
+	uint32_t period_us;
+	uint32_t phase_us;
+	uint32_t desired_due_us;
+	int32_t err_us;
+	int32_t nudge_us;
+	int32_t hard_relock_us;
+	uint32_t max_nudge_us;
+
+	UNUSED(handle);
+	UNUSED(receiver);
+	UNUSED(len);
 
 	switch(id){
 		case CAN_ID_IQREQ:{
@@ -1819,6 +1864,62 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 					// motor_curr->input_vars.UART_req = req * motor_curr->input_vars.min_request_Idq.q;
 					motor_curr->input_vars.UART_req = req;
 				}
+
+				/*
+				 * Use incoming Teensy torque requests as the scheduler anchor for POSVEL.
+				 * This lets the Teensy act as time master without introducing a new CAN command.
+				 */
+				now_us = (*DWT_CYCCNT) / 168U;
+				period_us = can1.posvel_period_us;
+				if(period_us == 0U){
+					period_us = (POSVEL_HZ > 0U) ? (1000000U / POSVEL_HZ) : 2000U;
+					if(period_us == 0U){
+						period_us = 1U;
+					}
+					can1.posvel_period_us = period_us;
+				}
+				phase_us = can1.posvel_phase_us;
+				if(phase_us >= period_us){
+					phase_us %= period_us;
+					can1.posvel_phase_us = phase_us;
+				}
+
+				desired_due_us = now_us + phase_us;
+				if((s_posvel_next_due_us == 0U) || ((now_us - s_posvel_last_sync_us) > (period_us * 50U))){
+					s_posvel_next_due_us = desired_due_us;
+					s_posvel_sync_events++;
+				}else{
+					err_us = (int32_t)(desired_due_us - s_posvel_next_due_us);
+					hard_relock_us = (int32_t)(period_us * 4U);
+					if((err_us > hard_relock_us) || (err_us < -hard_relock_us)){
+						s_posvel_next_due_us = desired_due_us;
+						s_posvel_sync_events++;
+					}else{
+						max_nudge_us = period_us / 8U;
+						if(max_nudge_us < 10U){
+							max_nudge_us = 10U;
+						}
+						if(max_nudge_us > 250U){
+							max_nudge_us = 250U;
+						}
+						nudge_us = err_us;
+						if(nudge_us > (int32_t)max_nudge_us){
+							nudge_us = (int32_t)max_nudge_us;
+						}
+						if(nudge_us < -(int32_t)max_nudge_us){
+							nudge_us = -(int32_t)max_nudge_us;
+						}
+						if(nudge_us > 0){
+							s_posvel_next_due_us += (uint32_t)nudge_us;
+						}else if(nudge_us < 0){
+							s_posvel_next_due_us -= (uint32_t)(-nudge_us);
+						}
+						if(nudge_us != 0){
+							s_posvel_sync_nudges++;
+						}
+					}
+				}
+				s_posvel_last_sync_us = now_us;
 			}
 			break;
 		}
@@ -1911,17 +2012,12 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 // For a 12-bit ABI encoder (0–4095 counts per rev):
 #define ENCODER_CPR 4096
 
-// POSVEL payload mode:
-//   0 -> normal control mode: position [rad], velocity [rad/s]
-//   1 -> transport diagnostics mode: counter in position slot
-#ifndef CAN_COUNTER_TEST
-#define CAN_COUNTER_TEST 0
-#endif
-
 // --- DWT cycle counter (hardware timer running at CPU frequency) ---
 // Used to get precise microsecond timestamps.
 // On STM32F405, core clock is 168 MHz → 168 cycles = 1 µs.
-#define DWT_CYCCNT      ((volatile uint32_t *)0xE0001004)
+#ifndef DWT_CYCCNT
+#define DWT_CYCCNT ((volatile uint32_t *)0xE0001004U)
+#endif
 
 // Persistent + debugger-visible state
 static volatile float vel_est_filtered = 0.0f;
@@ -1935,9 +2031,7 @@ static volatile float vel_enc_dbg = 0.0f;
 static volatile float vel_raw_dbg = 0.0f;
 static volatile float dt_s_dbg = 0.0f;
 static volatile int32_t delta_pos_dbg = 0;
-#if CAN_COUNTER_TEST
 static volatile uint32_t posvel_counter_dbg = 0U;
-#endif
 void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     MESC_motor_typedef *motor_curr = &mtr[0];
 	uint32_t now_tick;
@@ -1989,28 +2083,21 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     const float alpha = 0.1f;  // smoothing factor
     vel_est_filtered = alpha * vel_raw_dbg + (1.0f - alpha) * vel_est_filtered;
 
-		// === 9. Position payload selection ===
-		float pos_payload = 0.0f;
-#if CAN_COUNTER_TEST
-		pos_payload = (float)posvel_counter_dbg;
-		posvel_counter_dbg++;
-#else
-		if (motor_curr->m.enc_counts > 0U) {
-			pos_payload = ((float)pos_now) * (2.0f * M_PI / (float)motor_curr->m.enc_counts);
-		}
-#endif
+	// === 9. Counter payload for POSVEL slot 0 ===
+	float pos_counter = (float)posvel_counter_dbg;
+	posvel_counter_dbg++;
 
     // === 10. if close to zero, force to zero ===
     if (fabsf(vel_est_filtered) < 0.02f) {   // threshold in rad/s
         vel_est_filtered = 0.0f;
     }
 
-		// === 11. Send telemetry over CAN ===
-		// Payload: position [rad] or counter [float-encoded], velocity [rad/s].
+	// === 11. Send telemetry over CAN ===
+	// Payload: counter [float-encoded], velocity [rad/s].
     // NOTE: vel_est_filtered is in radians per second.
     //       To get RPM, multiply by (60 / 2π).
-		if(mesc_can_send_posvel_frame(handle, pos_payload, vel_est_filtered)){
-			handle->posvel_sent++;
+	if(mesc_can_send_posvel_frame(handle, pos_counter, vel_est_filtered)){
+		handle->posvel_sent++;
 
 		now_tick = HAL_GetTick();
 		gap_tick = now_tick - handle->posvel_last_tick;
@@ -2027,31 +2114,44 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
 
 void MESCinterface_can_periodic(void){
 	#ifdef HAL_CAN_MODULE_ENABLED
-	static uint32_t last_tick_posvel = 0U;
 	static uint32_t last_tick_status = 0U;
 	uint32_t now_tick = HAL_GetTick();
-	uint32_t period_tick_posvel = (1000U / POSVEL_HZ);
-	if(period_tick_posvel == 0U) period_tick_posvel = 1U;
+	uint32_t now_us = (*DWT_CYCCNT) / 168U;
+	uint32_t period_us = can1.posvel_period_us;
+	uint32_t phase_us = can1.posvel_phase_us;
 	const uint32_t period_tick_status = 10U; // 100Hz = 10ms
+	uint32_t slots_elapsed;
+	uint32_t wait_us;
+	uint32_t late_us;
 
 	mesc_can_hw_init_if_needed();
 	if(!s_can_hw_ready){
 		return;
+	}
+	if(period_us == 0U){
+		period_us = 1U;
+		can1.posvel_period_us = period_us;
+	}
+	if(phase_us >= period_us){
+		phase_us %= period_us;
+		can1.posvel_phase_us = phase_us;
 	}
 
 	// Poll and dispatch pending CAN frames in the known-active interface task.
 	mesc_can_poll_rx_fifo(&can1);
 
 	// POSVEL scheduler (500Hz by default)
-	uint32_t elapsed_posvel = now_tick - last_tick_posvel;
-	if(elapsed_posvel >= period_tick_posvel){
-		if(last_tick_posvel != 0U){
-			uint32_t slots_elapsed = elapsed_posvel / period_tick_posvel;
-			if(slots_elapsed > 1U){
-				can1.posvel_slot_miss += (slots_elapsed - 1U);
-			}
+	if(s_posvel_next_due_us == 0U){
+		wait_us = (period_us - ((now_us - phase_us) % period_us)) % period_us;
+		s_posvel_next_due_us = now_us + wait_us;
+	}
+	if((int32_t)(now_us - s_posvel_next_due_us) >= 0){
+		late_us = now_us - s_posvel_next_due_us;
+		slots_elapsed = (late_us / period_us) + 1U;
+		if(slots_elapsed > 1U){
+			can1.posvel_slot_miss += (slots_elapsed - 1U);
 		}
-		last_tick_posvel = now_tick;
+		s_posvel_next_due_us += slots_elapsed * period_us;
 		TASK_CAN_telemetry_posvel(&can1);
 	}
 

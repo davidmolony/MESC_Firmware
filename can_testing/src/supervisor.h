@@ -101,6 +101,8 @@ struct Supervisor_typedef {
   float user_pulse_torque   = 0.2f;    // amplitude of torque pulse
   uint32_t user_pulse_us    = 1000;   // duration of pulse (µs)
   uint32_t user_total_us    = 1000;
+  bool user_tx_enable       = true;   // Enables/disables torque command TX during test mode.
+  uint32_t user_tx_period_us = 1000;  // Command TX period in microseconds (1000 us = 1 kHz).
 
   SerialStats serial1_stats;                               // Telemetry serial performance stats
 
@@ -113,15 +115,17 @@ struct Supervisor_typedef {
 };
 
 // ---------------- Globals / Prototypes ----------------
-extern volatile bool g_control_due;       // Flag set by ISR to trigger control loop
+extern volatile uint32_t g_control_pending_ticks; // Pending control ISR ticks to service
 extern volatile uint32_t g_control_now_us;// Timestamp of control loop trigger (µs)
 
 void controlLoop_isr(void); // ISR triggered at CONTROL_PERIOD_US
 
 void controlLoop(Supervisor_typedef *sup, // Core control loop logic
-                 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> &can);
+                 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> &can1,
+                 FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> &can2);
 void test_can_transmit_mode(Supervisor_typedef *sup,
-                            FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> &can);
+                            FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> &can1,
+                            FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> &can2);
 
 void init_supervisor(Supervisor_typedef *sup,
                      uint16_t esc_count,

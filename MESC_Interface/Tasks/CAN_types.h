@@ -70,6 +70,8 @@ typedef struct {
 	uint32_t posvel_tx_blocked;
 	uint32_t posvel_last_tick;
 	uint32_t posvel_max_gap_ticks;
+	uint32_t posvel_period_us;
+	uint32_t posvel_phase_us;
 }TASK_CAN_handle;
 
 

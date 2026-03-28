@@ -138,3 +138,32 @@ It takes the API a solid 60 seconds to send results
 - CAN transport: perfect (0% fail), low latency, adequate bandwidth
 - Overall: System timing and comms are green; data path is serviceable for balance; run ended cleanly by time limit.
 ```
+
+## brain_board V1.6 testing
+
+- All previous testing was with `brain_board V1.4`.
+- Previous CAN testing snapshot commit hash: `d621df0a0093731d3c8162774a0a3fe046bf76ad`.
+- Going forward we are using a new `brain_board V1.6` that has two physical CAN transceivers.
+- Current `can_testing` code path is configured for `CAN2` on Teensy 4.0 (`CAN2_RX=pin 0`, `CAN2_TX=pin 1`).
+
+## Why We Selected 250 Hz Command Rate
+
+This project tested Teensy torque-command transmission at both `500 Hz` and `250 Hz` while ESC POSVEL telemetry was monitored continuously.
+
+- `500 Hz` command tests were runnable, but repeatedly showed persistent asymmetry between channels (typically worse on node 12/right), larger effective telemetry gaps, and steadily increasing estimated misses.
+- `250 Hz` command tests kept CAN TX reliability at `0% fail` while improving telemetry consistency, reducing stress on the communication path, and avoiding severe blackout behavior seen in worse high-load cases.
+- Raising CAN bitrate to `1 Mbps` did not produce a clear practical improvement by itself; wiring quality and path robustness remained dominant factors.
+- Because this is a balancing robot (not precision industrial motion control), `250 Hz` is an acceptable and practical outer-loop operating point with better end-to-end robustness in current hardware conditions.
+
+Current guidance:
+
+- Use `250 Hz` Teensy torque-command updates as the default operating mode.
+- Keep monitoring `CAN_POSVEL_RX` and `CAN_TXQ_SUM` metrics.
+- Revisit higher command rates only after physical-layer robustness is verified (termination, cabling, transceiver behavior, and per-path symmetry).
+
+### What We Learned (Latest Milestone)
+
+- The `250 Hz` command setting remains the best practical operating point for this rig right now.
+- With recent firmware updates, Teensy-side software FIFO drops were eliminated in tested runs (`rx_overflow=0`), and TX remained clean (`fail=0`).
+- Node-ID swap testing showed asymmetry followed the physical CAN path assignment, not a fixed node number. This points to channel/path-level margin differences rather than a deterministic node-ID decode bug.
+- Mounted-rig tests did not show a major EMI regression compared to bench-layout tests, which is a positive integration milestone for balance development.

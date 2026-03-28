@@ -5,8 +5,9 @@
 
 // ---------------- Global Flags ----------------
 // These are set by the control ISR to signal the main loop.
-volatile bool g_control_due = false;
+volatile uint32_t g_control_pending_ticks = 0;
 volatile uint32_t g_control_now_us = 0;
+static constexpr uint32_t ESC_ALIVE_TIMEOUT_US = 200000u;
 
 // Note there are multiple ISRs, some for the controlLoop(),
 // and some for RC transmitter input capture.
@@ -33,7 +34,9 @@ static void (*rc_isrs[RC_INPUT_MAX_PINS])() = {rc_isr0, rc_isr1, rc_isr2, rc_isr
 // to run the deterministic controlLoop().
 void controlLoop_isr(void) {
   g_control_now_us = micros();
-  g_control_due = true;
+  if (g_control_pending_ticks < UINT32_MAX) {
+    g_control_pending_ticks++;
+  }
 }
 
 // --- Helper: compute shortest angular difference (target - actual) in [-π, +π]
@@ -176,7 +179,8 @@ void resetTelemetryStats(Supervisor_typedef *sup) {
 static int telem_counter = 0;
 
 void controlLoop(Supervisor_typedef *sup,
-                 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> &can) {
+                 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> &can1,
+                 FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> &can2) {
 
   // ----- Update timing stats -----
   uint32_t start_us = micros();
@@ -205,42 +209,59 @@ void controlLoop(Supervisor_typedef *sup,
   // ---- Update RC PWM input ----
   updateRC(sup);
 
+  // ---- ESC alive timeout gate ----
+  for (uint16_t i = 0; i < sup->esc_count; ++i) {
+    ESC &esc = sup->esc[i];
+    if (esc.status.last_update_us == 0u) {
+      esc.status.alive = false;
+      esc.state.alive = false;
+      continue;
+    }
+    const uint32_t age_us = (uint32_t)(start_us - esc.status.last_update_us);
+    const bool alive = (age_us <= ESC_ALIVE_TIMEOUT_US);
+    esc.status.alive = alive;
+    esc.state.alive = alive;
+  }
+
   // ---- Core control loop body ----
   switch (sup->mode) {
-  case SUP_MODE_IDLE: {
-    // --- Send zero torque (motor free) ---
+	  case SUP_MODE_IDLE: {
+	    // --- Send zero torque (motor free) ---
 
-    if (++telem_counter >= TELEMETRY_DECIMATE) {
-      telem_counter = 0;
+	    if (++telem_counter >= TELEMETRY_DECIMATE) {
+	      telem_counter = 0;
 
-      CAN_message_t msg1;
-      msg1.id = canMakeExtId(CAN_ID_IQREQ, TEENSY_NODE_ID, sup->esc[0].config.node_id);
-      msg1.len = 8;
-      msg1.flags.extended = 1;
-      canPackFloat(0.0f, msg1.buf);
-      canPackFloat(0.0f, msg1.buf + 4);
+        const uint16_t esc_n = sup->esc_count;
+        for (uint16_t i = 0; i < esc_n; ++i) {
+          CAN_message_t msg;
+          msg.id = canMakeExtId(CAN_ID_IQREQ, TEENSY_NODE_ID, sup->esc[i].config.node_id);
+          msg.len = 8;
+          msg.flags.extended = 1;
+          canPackFloat(0.0f, msg.buf);
+          canPackFloat(0.0f, msg.buf + 4);
 
-      CAN_message_t msg2;
-      msg2.id = canMakeExtId(CAN_ID_IQREQ, TEENSY_NODE_ID, sup->esc[1].config.node_id);
-      msg2.len = 8;
-      msg2.flags.extended = 1;
-      canPackFloat(0.0f, msg2.buf);
-      canPackFloat(0.0f, msg2.buf + 4);
-
-      can.write(msg1);
-      can.write(msg2);
-    }
+          const uint8_t tx_bus = can_tx_bus_for_node(sup->esc[i].config.node_id);
+#if CAN1_ENABLE
+          if (tx_bus == CAN_TX_BUS_CAN1 || tx_bus == CAN_TX_BUS_BOTH) {
+            can1.write(msg);
+          }
+#endif
+          if (tx_bus == CAN_TX_BUS_CAN2 || tx_bus == CAN_TX_BUS_BOTH) {
+            can2.write(msg);
+          }
+        }
+	    }
 
     break;
   }
  
   case SUP_MODE_BALANCE_TWR: {
-    test_can_transmit_mode(sup, can);
+    test_can_transmit_mode(sup, can1, can2);
     break;
   }
 
   case SUP_MODE_TEST_CAN: {
-    test_can_transmit_mode(sup, can);
+    test_can_transmit_mode(sup, can1, can2);
     break;
   }
 

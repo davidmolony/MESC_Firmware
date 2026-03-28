@@ -1,6 +1,8 @@
 #include <FlexCAN_T4.h>
 #include "LED.h"
 #include <ArduinoJson.h>
+#include <ctype.h>
+#include <string.h>
 #include "main.h"
 #include "pushbutton.h"
 #include "tone_player.h"
@@ -20,19 +22,95 @@ const uint8_t rc_pins[]   = {RC_INPUT1, RC_INPUT2, RC_INPUT3, RC_INPUT4};
 
 // -------------------- CAN Communication --------------------
 FlexCAN_T4<CAN1, RX_SIZE_256, TX_SIZE_16> Can1;
+FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> Can2;
 CANBuffer canRxBuf;  // ✅ holds buffer + link_ok
 
 // -------------------- Tone / Pushbutton --------------------
 static TonePlayer g_tone;
 PushButton g_button(PUSHBUTTON_PIN, true, 50000u);
 static constexpr uint32_t CAN_POSVEL_RX_TIMEOUT_US = 400000u;
-static constexpr uint32_t BALANCE_BUTTON_RUN_US = 5000000u;  // 5 seconds
+static constexpr uint32_t BALANCE_BUTTON_RUN_US = 60000000u;  // 60 seconds
 
 // Uncomment to ignore pushbutton state transitions.
 #define PB_OVERRIDE
 
 void beeper_tweet() {
   tone_start(&g_tone, 2800, 60, 0);
+}
+
+static void trim_ascii(char *s) {
+  if (s == nullptr) return;
+  size_t len = strlen(s);
+  size_t start = 0;
+  while (start < len && isspace((unsigned char)s[start])) start++;
+  size_t end = len;
+  while (end > start && isspace((unsigned char)s[end - 1])) end--;
+  if (start > 0 && end > start) {
+    memmove(s, s + start, end - start);
+  }
+  s[end - start] = '\0';
+}
+
+static void process_serial_line(const char *line) {
+  if (line == nullptr) return;
+
+  if (strcmp(line, "run") == 0) {
+    tone_start(&g_tone, PB_BEEP_HZ, PB_BEEP_MS, PB_GAP_MS);
+    canResetPosvelStats();
+    canResetRuntimeStats();
+    canRxBuf.overflow_count = 0;
+    supervisor.user_total_us = BALANCE_BUTTON_RUN_US;
+    supervisor.mode = SUP_MODE_TEST_CAN;
+    return;
+  }
+
+  if (strcmp(line, "tx off") == 0) {
+    supervisor.user_tx_enable = false;
+    Serial.printf("{\"cmd\":\"CAN_TX_CFG\",\"tx_enable\":0,\"tx_period_us\":%lu,\"tx_hz\":%.2f}\r\n",
+                  (unsigned long)supervisor.user_tx_period_us,
+                  (supervisor.user_tx_period_us > 0u)
+                    ? (1000000.0f / (float)supervisor.user_tx_period_us)
+                    : 0.0f);
+    return;
+  }
+
+  if (strcmp(line, "tx on") == 0) {
+    supervisor.user_tx_enable = true;
+    Serial.printf("{\"cmd\":\"CAN_TX_CFG\",\"tx_enable\":1,\"tx_period_us\":%lu,\"tx_hz\":%.2f}\r\n",
+                  (unsigned long)supervisor.user_tx_period_us,
+                  (supervisor.user_tx_period_us > 0u)
+                    ? (1000000.0f / (float)supervisor.user_tx_period_us)
+                    : 0.0f);
+    return;
+  }
+
+  if (strcmp(line, "stats reset") == 0) {
+    canResetPosvelStats();
+    canResetRuntimeStats();
+    canRxBuf.overflow_count = 0;
+    Serial.printf("{\"cmd\":\"CAN_STATS_RESET\",\"ok\":1}\r\n");
+    return;
+  }
+
+  uint32_t hz = 0;
+  if (sscanf(line, "tx hz %lu", &hz) == 1) {
+    if (hz == 0u || hz > 2000u) {
+      Serial.printf("{\"cmd\":\"CAN_TX_CFG_ERR\",\"reason\":\"hz_out_of_range\",\"hz\":%lu,\"min\":1,\"max\":2000}\r\n",
+                    (unsigned long)hz);
+    } else {
+      supervisor.user_tx_period_us = 1000000u / hz;
+      if (supervisor.user_tx_period_us == 0u) supervisor.user_tx_period_us = 1u;
+      Serial.printf("{\"cmd\":\"CAN_TX_CFG\",\"tx_enable\":%d,\"tx_period_us\":%lu,\"tx_hz\":%.2f}\r\n",
+                    supervisor.user_tx_enable ? 1 : 0,
+                    (unsigned long)supervisor.user_tx_period_us,
+                    (supervisor.user_tx_period_us > 0u)
+                      ? (1000000.0f / (float)supervisor.user_tx_period_us)
+                      : 0.0f);
+    }
+    return;
+  }
+
+  Serial.printf("{\"cmd\":\"CAN_CMD_ERR\",\"line\":\"%s\"}\r\n", line);
 }
 
 // --------------------- LED instances -----------------------
@@ -43,7 +121,7 @@ void setup() {
 
   Serial.begin(921600);
   while (!Serial && millis() < 1500) {}
-  Serial1.begin(115200);  // Teensy TX1/RX1 -> ESP32 RX/TX, 8N1, no flow control.
+  // CAN2 uses pins 0/1 on Teensy 4.0, so avoid Serial1 on those same pins.
 
   // LEDs / Pushbutton / Tone
   led_init(&g_led_red,   LED1_PIN, LED_BLINK_SLOW);
@@ -51,9 +129,21 @@ void setup() {
   tone_init(&g_tone, SPEAKER_PIN);
 
   // ---- CAN Setup ----
+  // CAN1 default routing on Teensy 4.0: RX=pin 23, TX=pin 22.
+#if CAN1_ENABLE
+  Can1.setRX(CAN1_PINSEL);
+  Can1.setTX(CAN1_PINSEL);
   Can1.begin();
-  Can1.setBaudRate(500000);
+  Can1.setBaudRate(1000000);
   Can1.enableFIFO();
+#endif
+
+  // CAN2 default routing on Teensy 4.0: RX=pin 0, TX=pin 1.
+  Can2.setRX(CAN2_PINSEL);
+  Can2.setTX(CAN2_PINSEL);
+  Can2.begin();
+  Can2.setBaudRate(1000000);
+  Can2.enableFIFO();
   pinMode(CAN_STB, OUTPUT);
   digitalWrite(CAN_STB, LOW);
 
@@ -64,8 +154,14 @@ void setup() {
                   rc_pins,     // RC pins
                   4);          // RC count -- FIX: dont hard code this number
 
-  // Enter CAN monitoring state by default
-  supervisor.mode = SUP_MODE_TEST_CAN;
+  // Start in idle; require explicit serial command "run" to begin test mode.
+  supervisor.mode = SUP_MODE_IDLE;
+  supervisor.user_total_us = 0;
+  supervisor.user_tx_enable = true;
+  supervisor.user_tx_period_us = 1000;  // default 1 kHz command TX
+  canResetPosvelStats();
+  canResetRuntimeStats();
+  canRxBuf.overflow_count = 0;
 
   // ---- Control tick ISR ----
   g_ctrlTimer.priority(CONTROL_LOOP_PRIORITY);
@@ -81,20 +177,39 @@ void loop() {
   // asynchronous, so many control ticks will reuse the latest POSVEL sample.
   // The system uses an ISR-driven scheduler to tell the main loop to go into controlLoop. 
   // ---
-  if (g_control_due) {
-    controlLoop(&supervisor, Can1);
-    g_control_due = false;
+  while (true) {
+    noInterrupts();
+    const uint32_t pending = g_control_pending_ticks;
+    if (pending == 0u) {
+      interrupts();
+      break;
+    }
+    g_control_pending_ticks = pending - 1u;
+    interrupts();
+    controlLoop(&supervisor, Can1, Can2);
   }
 
   // -------- CAN POLLING --------
   // Non-blocking and not based on an ISR because FLEXCAN_T4 did seem to work. 
   // ---
   CAN_message_t msg;
+#if CAN1_ENABLE
   while (Can1.read(msg)) {
-    canBufferPush(canRxBuf, msg);
+    canNoteBusRead(1u);
+    if (!canBufferPush(canRxBuf, msg, 1u)) {
+      canNoteRxOverflow();
+    }
   }
-  while (canBufferPop(canRxBuf, msg)) {
-    handleCANMessage(msg);
+#endif
+  while (Can2.read(msg)) {
+    canNoteBusRead(2u);
+    if (!canBufferPush(canRxBuf, msg, 2u)) {
+      canNoteRxOverflow();
+    }
+  }
+  uint8_t rx_bus = 0u;
+  while (canBufferPop(canRxBuf, msg, &rx_bus)) {
+    handleCANMessage(msg, rx_bus);
   }
 
   uint32_t now_us = micros();
@@ -113,21 +228,22 @@ void loop() {
     if (pb_state == PB_PRESSED) {
       tone_start(&g_tone, PB_BEEP_HZ, PB_BEEP_MS, PB_GAP_MS);
     }
-    else if (pb_state == PB_RELEASED) {
-      SupervisorMode test_mode = SUP_MODE_TEST_CAN;
-      if (supervisor.mode == test_mode) {
-        Serial.println("button: test_can mode already active; ignoring");
-      } else {
-        Serial.println("button: entering test_can mode");
-        supervisor.user_total_us = BALANCE_BUTTON_RUN_US;
-        supervisor.mode = test_mode;
-      }
-    }
+	    else if (pb_state == PB_RELEASED) {
+	      SupervisorMode test_mode = SUP_MODE_TEST_CAN;
+	      if (supervisor.mode != test_mode) {
+          canResetPosvelStats();
+          canResetRuntimeStats();
+          canRxBuf.overflow_count = 0;
+	        supervisor.user_total_us = BALANCE_BUTTON_RUN_US;
+	        supervisor.mode = test_mode;
+	      }
+	    }
     g_button.clearChanged();
   }
 #endif
 
-  static String input = "";
+  static char input_buf[96] = {0};
+  static size_t input_len = 0;
 
   // -------- MEDIUM PRIORITY --------
   // Non-RT, faster than low-priority tasks so dump transmission can drain quickly.
@@ -143,10 +259,15 @@ void loop() {
 
       PosvelRxStats left{};
       PosvelRxStats right{};
+      PosvelRxStats can1_bus{};
+      PosvelRxStats can2_bus{};
+      const CanRuntimeStats rt = canGetRuntimeStats();
       const uint8_t left_id = supervisor.esc[0].config.node_id;
       const uint8_t right_id = supervisor.esc[1].config.node_id;
       const bool have_left = canGetPosvelRxStats(left_id, left);
       const bool have_right = canGetPosvelRxStats(right_id, right);
+      const bool have_can1_bus = canGetBusPosvelRxStats(1u, can1_bus);
+      const bool have_can2_bus = canGetBusPosvelRxStats(2u, can2_bus);
 
       const uint32_t left_age_us =
           (have_left && left.last_rx_us > 0u) ? (uint32_t)(now_us - left.last_rx_us) : UINT32_MAX;
@@ -160,13 +281,37 @@ void loop() {
           (have_left && left.gap_count > 0u) ? left.min_gap_us : 0u;
       const uint32_t right_min_gap_us =
           (have_right && right.gap_count > 0u) ? right.min_gap_us : 0u;
+      const uint32_t can1_age_us =
+          (have_can1_bus && can1_bus.last_rx_us > 0u) ? (uint32_t)(now_us - can1_bus.last_rx_us) : UINT32_MAX;
+      const uint32_t can2_age_us =
+          (have_can2_bus && can2_bus.last_rx_us > 0u) ? (uint32_t)(now_us - can2_bus.last_rx_us) : UINT32_MAX;
+      const uint32_t can1_avg_gap_us =
+          (have_can1_bus && can1_bus.gap_count > 0u) ? (uint32_t)(can1_bus.sum_gap_us / can1_bus.gap_count) : 0u;
+      const uint32_t can2_avg_gap_us =
+          (have_can2_bus && can2_bus.gap_count > 0u) ? (uint32_t)(can2_bus.sum_gap_us / can2_bus.gap_count) : 0u;
+      const int32_t lr_offset_us =
+          (have_left && have_right && left.last_rx_us > 0u && right.last_rx_us > 0u)
+              ? (int32_t)(right.last_rx_us - left.last_rx_us)
+              : INT32_MAX;
+      const uint32_t lr_offset_abs_us =
+          (lr_offset_us == INT32_MAX)
+              ? UINT32_MAX
+              : (uint32_t)((lr_offset_us < 0) ? -lr_offset_us : lr_offset_us);
+      const int32_t lr_count_delta =
+          (have_left && have_right)
+              ? (int32_t)right.count - (int32_t)left.count
+              : INT32_MAX;
 
-      Serial1.printf(
+      Serial.printf(
           "{\"cmd\":\"CAN_POSVEL_RX\",\"t\":%lu,"
           "\"left_id\":%u,\"left_count\":%lu,\"left_age_us\":%lu,"
           "\"left_avg_gap_us\":%lu,\"left_min_gap_us\":%lu,\"left_max_gap_us\":%lu,\"left_est_missed\":%lu,"
           "\"right_id\":%u,\"right_count\":%lu,\"right_age_us\":%lu,"
-          "\"right_avg_gap_us\":%lu,\"right_min_gap_us\":%lu,\"right_max_gap_us\":%lu,\"right_est_missed\":%lu}\n",
+          "\"right_avg_gap_us\":%lu,\"right_min_gap_us\":%lu,\"right_max_gap_us\":%lu,\"right_est_missed\":%lu,"
+          "\"can1_posvel_count\":%lu,\"can1_posvel_age_us\":%lu,\"can1_posvel_avg_gap_us\":%lu,"
+          "\"can2_posvel_count\":%lu,\"can2_posvel_age_us\":%lu,\"can2_posvel_avg_gap_us\":%lu,"
+          "\"can1_rx_reads\":%lu,\"can2_rx_reads\":%lu,\"rx_overflow\":%lu,"
+          "\"lr_offset_us\":%ld,\"lr_offset_abs_us\":%lu,\"lr_count_delta\":%ld}\r\n",
           (unsigned long)now_us,
           left_id,
           (unsigned long)(have_left ? left.count : 0u),
@@ -181,7 +326,19 @@ void loop() {
           (unsigned long)right_avg_gap_us,
           (unsigned long)right_min_gap_us,
           (unsigned long)(have_right ? right.max_gap_us : 0u),
-          (unsigned long)(have_right ? right.est_missed : 0u));
+          (unsigned long)(have_right ? right.est_missed : 0u),
+          (unsigned long)(have_can1_bus ? can1_bus.count : 0u),
+          (unsigned long)can1_age_us,
+          (unsigned long)can1_avg_gap_us,
+          (unsigned long)(have_can2_bus ? can2_bus.count : 0u),
+          (unsigned long)can2_age_us,
+          (unsigned long)can2_avg_gap_us,
+          (unsigned long)rt.can1_rx_reads,
+          (unsigned long)rt.can2_rx_reads,
+          (unsigned long)rt.rx_overflow,
+          (long)lr_offset_us,
+          (unsigned long)lr_offset_abs_us,
+          (long)lr_count_delta);
     }
   }
 
@@ -196,22 +353,29 @@ void loop() {
 
 	    while (Serial.available()) {
 	      char c = Serial.read();
-        Serial.write((uint8_t)c);
+        Serial.write((uint8_t)c);  // Echo input characters back to terminal.
 	      if (c == '\r' || c == '\n') {
-		String line = input;
-		line.trim();
-
-		if (line == "run") {
-		  Serial.println("serial: received run command; starting test_can_transmit mode");
-		  tone_start(&g_tone, PB_BEEP_HZ, PB_BEEP_MS, PB_GAP_MS);
-		  supervisor.user_total_us = BALANCE_BUTTON_RUN_US;
-		  supervisor.mode = SUP_MODE_TEST_CAN;
-		} 
-		input = "";  // reset buffer
-	      } else {
-		input += c;  // append char to buffer
-	      }
-    }
+          if (input_len > 0u) {
+            input_buf[input_len] = '\0';
+            trim_ascii(input_buf);
+            if (input_buf[0] != '\0') {
+              process_serial_line(input_buf);
+            }
+            input_len = 0u;
+            input_buf[0] = '\0';
+          }
+	      } else if (c == '\b' || c == 127) {
+          if (input_len > 0u) {
+            input_len--;
+            input_buf[input_len] = '\0';
+          }
+        } else if (isprint((unsigned char)c)) {
+          if (input_len < (sizeof(input_buf) - 1u)) {
+            input_buf[input_len++] = c;
+            input_buf[input_len] = '\0';
+          }
+        }
+	    }
 
     // LED CONTROL
     tone_update(&g_tone, now_us);

@@ -4,9 +4,41 @@
 
 static volatile uint32_t g_last_posvel_rx_us = 0;
 static PosvelRxStats g_posvel_stats[ESC_LOOKUP_SIZE];
+static PosvelRxStats g_bus_posvel_stats[3]; // index 1=CAN1, 2=CAN2
+static volatile uint32_t g_can1_rx_reads = 0;
+static volatile uint32_t g_can2_rx_reads = 0;
+static volatile uint32_t g_rx_overflow = 0;
 static constexpr uint32_t POSVEL_EXPECTED_PERIOD_US = 2000u;
 
-bool canBufferPush(CANBuffer &cb, const CAN_message_t &msg) {
+static inline void reset_posvel_stat(PosvelRxStats &st) {
+    st.count = 0;
+    st.last_rx_us = 0;
+    st.min_gap_us = UINT32_MAX;
+    st.max_gap_us = 0;
+    st.sum_gap_us = 0;
+    st.gap_count = 0;
+    st.est_missed = 0;
+}
+
+static inline void update_posvel_stat(PosvelRxStats &st, uint32_t now_us) {
+    if (st.last_rx_us != 0u) {
+      const uint32_t gap_us = (uint32_t)(now_us - st.last_rx_us);
+      if (gap_us < st.min_gap_us) st.min_gap_us = gap_us;
+      if (gap_us > st.max_gap_us) st.max_gap_us = gap_us;
+      st.sum_gap_us += gap_us;
+      st.gap_count++;
+
+      // Approximate missed frames based on expected 500 Hz cadence.
+      if (gap_us > (POSVEL_EXPECTED_PERIOD_US + POSVEL_EXPECTED_PERIOD_US / 2u)) {
+        const uint32_t periods = (gap_us + POSVEL_EXPECTED_PERIOD_US / 2u) / POSVEL_EXPECTED_PERIOD_US;
+        if (periods > 1u) st.est_missed += (periods - 1u);
+      }
+    }
+    st.last_rx_us = now_us;
+    st.count++;
+}
+
+bool canBufferPush(CANBuffer &cb, const CAN_message_t &msg, uint8_t rx_bus) {
     int next = (cb.head + 1) % CAN_BUF_SIZE;
     if (next == cb.tail) {
       cb.overflow_count++; // nothing reads this at this point
@@ -14,14 +46,18 @@ bool canBufferPush(CANBuffer &cb, const CAN_message_t &msg) {
     }
 
     cb.buf[cb.head] = msg;
+    cb.bus[cb.head] = rx_bus;
     cb.head = next;
     cb.link_ok = true;
     return true;
 }
 
-bool canBufferPop(CANBuffer &cb, CAN_message_t &msg) {
+bool canBufferPop(CANBuffer &cb, CAN_message_t &msg, uint8_t *rx_bus) {
     if (cb.head == cb.tail) return false;
     msg = cb.buf[cb.tail];
+    if (rx_bus != nullptr) {
+      *rx_bus = cb.bus[cb.tail];
+    }
     cb.tail = (cb.tail + 1) % CAN_BUF_SIZE;
     return true;
 }
@@ -69,8 +105,49 @@ bool canGetPosvelRxStats(uint8_t node_id, PosvelRxStats &out) {
     return true;
 }
 
+bool canGetBusPosvelRxStats(uint8_t bus, PosvelRxStats &out) {
+    if (bus > 2u || bus == 0u) return false;
+    out = g_bus_posvel_stats[bus];
+    return true;
+}
+
+void canResetPosvelStats() {
+    for (uint8_t i = 0; i < ESC_LOOKUP_SIZE; ++i) {
+      reset_posvel_stat(g_posvel_stats[i]);
+    }
+    reset_posvel_stat(g_bus_posvel_stats[1]);
+    reset_posvel_stat(g_bus_posvel_stats[2]);
+    g_last_posvel_rx_us = 0;
+}
+
+void canNoteBusRead(uint8_t bus) {
+    if (bus == 1u) {
+      g_can1_rx_reads++;
+    } else if (bus == 2u) {
+      g_can2_rx_reads++;
+    }
+}
+
+void canNoteRxOverflow() {
+    g_rx_overflow++;
+}
+
+CanRuntimeStats canGetRuntimeStats() {
+    CanRuntimeStats out{};
+    out.can1_rx_reads = g_can1_rx_reads;
+    out.can2_rx_reads = g_can2_rx_reads;
+    out.rx_overflow = g_rx_overflow;
+    return out;
+}
+
+void canResetRuntimeStats() {
+    g_can1_rx_reads = 0;
+    g_can2_rx_reads = 0;
+    g_rx_overflow = 0;
+}
+
 CAN_message_t g_last_can_msg = {};
-void handleCANMessage(const CAN_message_t &msg) {
+void handleCANMessage(const CAN_message_t &msg, uint8_t rx_bus) {
     g_last_can_msg = msg;
     uint16_t msg_type = extractMsgType(msg.id);
     uint8_t sender_id = extractSender(msg.id);   // ESC ID
@@ -93,21 +170,10 @@ void handleCANMessage(const CAN_message_t &msg) {
 	    memcpy(&vel, &msg.buf[4], sizeof(float));
             const uint32_t now_us = micros();
             PosvelRxStats &st = g_posvel_stats[sender_id];
-            if (st.last_rx_us != 0u) {
-              const uint32_t gap_us = (uint32_t)(now_us - st.last_rx_us);
-              if (gap_us < st.min_gap_us) st.min_gap_us = gap_us;
-              if (gap_us > st.max_gap_us) st.max_gap_us = gap_us;
-              st.sum_gap_us += gap_us;
-              st.gap_count++;
-
-              // Approximate missed frames based on expected 500 Hz cadence.
-              if (gap_us > (POSVEL_EXPECTED_PERIOD_US + POSVEL_EXPECTED_PERIOD_US / 2u)) {
-                const uint32_t periods = (gap_us + POSVEL_EXPECTED_PERIOD_US / 2u) / POSVEL_EXPECTED_PERIOD_US;
-                if (periods > 1u) st.est_missed += (periods - 1u);
-              }
+            update_posvel_stat(st, now_us);
+            if (rx_bus == 1u || rx_bus == 2u) {
+              update_posvel_stat(g_bus_posvel_stats[rx_bus], now_us);
             }
-            st.last_rx_us = now_us;
-            st.count++;
             g_last_posvel_rx_us = now_us;
 #if INVERT_ESC_ENCODER
 	    esc->state.pos_rad   = TWO_PI - pos;  // mirror around 2π
