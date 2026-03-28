@@ -206,3 +206,6 @@ Current practical stance:
 - Keep using percentile/tail metrics (`p95`, `p99`, `max`) as primary health indicators.
 - Keep `250 Hz` as default conservative operating point for robust balancing integration.
 - Treat `500 Hz` as feasible but still under characterization until long-duration soak and correlation evidence are consistently strong.
+
+
+Reference baseline commit for this can_testing snapshot: `37bc92f` (`37bc92fb2ed2a5541fa8c1162a954772b4dffe05`).
