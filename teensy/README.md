@@ -1,0 +1,211 @@
+# CAN TESTING
+
+This is probably the best work area for debugging CAN issues. The most important outcome of this work was to make changes to the electrical layer of the brain board. Namely, I've learned
+
+## CAN NODE DESIGN NOTES - TEENSY 4.0 + TCAN332G ##
+NOTES: 
+- for a teensy, use 3.3 V CAN transceiver w/ standby (TCAN332G)
+- VCC = 3.3 V with local 0.1 µF decoupling at device
+- TXD pull-up to 3.3 V (10k) → recessive during MCU reset
+- STB pull-up to 3.3 V (10k) → default standby; MCU drives LOW after FlexCAN init
+- Split termination 2, 60Ω termination only at physical bus ends (reduces noise)
+- CAN TVS (SM24CANB-02) at connector; helps with hot plug protection
+- controlLoop() is running at ~1 kHz (loop_dt_us ~ 1000), while ESC POSVEL is expected around ~500 Hz and asynchronous.
+
+## Runtime Log Field Definitions
+Use this reference for lines like:
+
+```json
+{"t":4061843742,"pos_L_raw":3.517418,"pos_R_raw":2.181321,"vel_L_raw":92.476555,"vel_R_raw":-92.770332,"new_pos":1,"new_pos_L":0,"new_pos_R":1,"dt_pos_us":1003,"dt_pos_L_us":1000,"dt_pos_R_us":1005,"loop_dt_us":997,"loop_hz":1003.01,"dt_err_1khz_us":-3,"dt_ok_1khz":1,"exec_us":2,"ovr":0}
+{"cmd":"CAN_TXQ_SUM","attempts":1958,"ok":1958,"fail":0,"fail_pct":0.000,"mode":5,"posvel_age_us":6066}
+```
+
+### Runtime sample fields
+
+| Field | Meaning |
+|---|---|
+| `t` | Timestamp in microseconds (`us`) from MCU boot (or test timer base). |
+| `pos_L_raw` | Left motor reported position, raw angle value (typically wrapped angle, in radians). |
+| `pos_R_raw` | Right motor reported position, raw angle value (typically wrapped angle, in radians). |
+| `vel_L_raw` | Left motor reported velocity (typically radians/second). |
+| `vel_R_raw` | Right motor reported velocity (typically radians/second). |
+| `new_pos` | At least one new position/velocity update arrived this cycle (`1=yes`, `0=no`). |
+| `new_pos_L` | New left update arrived this cycle (`1=yes`, `0=no`). |
+| `new_pos_R` | New right update arrived this cycle (`1=yes`, `0=no`). |
+| `dt_pos_us` | Time since last "any motor" position update, in `us`. |
+| `dt_pos_L_us` | Time since last left position update, in `us`. |
+| `dt_pos_R_us` | Time since last right position update, in `us`. |
+| `loop_dt_us` | Actual control-loop period for this iteration, in `us`. |
+| `loop_hz` | Control-loop rate computed from `loop_dt_us` (`Hz`). |
+| `dt_err_1khz_us` | Loop period error vs 1000 `us` target (negative=faster, positive=slower). |
+| `dt_ok_1khz` | Loop timing within acceptable tolerance (`1=yes`, `0=no`). |
+| `exec_us` | Time spent executing loop work itself (excluding wait), in `us`. |
+| `ovr` | Overrun flag (`1` if loop missed schedule/deadline, else `0`). |
+
+### CAN TX summary fields
+
+| Field | Meaning |
+|---|---|
+| `cmd` | Message type label; here `CAN_TXQ_SUM` means CAN transmit-queue summary. |
+| `attempts` | Total CAN transmit attempts during the run window. |
+| `ok` | Number of successful CAN transmits. |
+| `fail` | Number of failed CAN transmits. |
+| `fail_pct` | Failure percentage (`fail / attempts * 100`). |
+| `mode` | Firmware supervisor/test mode ID active during run (`5` here). |
+| `posvel_age_us` | Age (staleness) of most recent position/velocity data at summary time, in `us`. |
+
+### Quick interpretation example
+
+- Loop is healthy (`loop_hz ~1003`, `dt_ok_1khz=1`, `ovr=0`).
+- Both motors are updating (`new_pos=1`, one side flagged each cycle as frames arrive).
+- CAN TX is perfect (`1958/1958`, `fail_pct=0.000`).
+
+## Teensy Log Interpretation Workflow
+
+ChatGPT has blown my mind several times with developing a balancing robot. For example it has helped interpret math from control theory publications, write code to implement control theory, and it has even interpretted results I get on my ossciloscope. 
+
+Today I was having trouble with the CAN connections of my robot, and I dumped a bunch of debugging information from the serial. I was cutting and pasting into codex, asking it to interpret the results. Then it hit me: 
+
+```Why dont I just have a python program send all the results to a chatGPT API?``` 
+
+I have never used the API, so I gave it a shot. The steps are: 
+
+1. Create an OpenAI account at [platform.openai.com](https://platform.openai.com).
+2. Set up billing before using the API.
+3. Add a payment method and purchase credits (or enable paid usage) so API calls do not fail with `insufficient_quota`.
+4. Generate an API key from the **API Keys** page.
+5. Copy the key once and store it securely.
+6. Export the key in your terminal:
+   ```bash
+   export OPENAI_API_KEY="sk-..."
+   ```
+7. (Optional) Persist it in `~/.bashrc` or `~/.zshrc`, then restart terminal.
+8. Install dependencies:
+   ```bash
+   python3 -m pip install --upgrade openai pyserial
+   ```
+9. Verify API connectivity:
+   ```bash
+   python baby_pi_test.py
+   ```
+10. Connect Teensy and identify the serial port (example: `/dev/ttyACM0`).
+11. Run the interpreter:
+   ```bash
+   ./interpret_balance_log.py --port /dev/cu.usbmodem175859001 --baud 115200 --capture-timeout 12
+   ```
+12. Press Enter when prompted; script sends `run` to Teensy.
+13. Teensy runs and prints runtime JSON lines.
+14. Script captures output until `balance exit` (or timeout), then sends logs to the API.
+15. Interpretation is printed in the terminal (timing, motor health, CAN health, anomalies, verdict).
+16. If API fails:
+   - `insufficient_quota`: add credits/update billing.
+   - `401/403`: check API key/project permissions.
+   - `429`: retry later and check rate/quota limits.
+
+   This is an example of the output that I got, once all the CAN connectivity was working. (Turns out I was using a 5V transceiver at 3.3V -- dont do that):
+
+   ## debugging output ##
+It takes the API a solid 60 seconds to send results
+
+   ```
+   1) Loop timing health
+- loop_dt_us: 994–1002; loop_hz: 998.00–1006.04; dt_err_1khz_us: -6 to +2; dt_ok_1khz: always 1
+- exec_us: 2–3; ovr: 0 (no overruns)
+- Jitter is low (<0.6%); CPU headroom huge; run length: 1,000,996 us (timed stop)
+
+2) Per-motor data-path health
+- new_pos flags vary per loop (examples):
+  - t=410917043: new_pos_L=1, new_pos_R=0
+  - t=411217038: new_pos_L=0, new_pos_R=1
+  - t=411317037 and 411517037: new_pos_L=0, new_pos_R=0
+- dt_pos_L_us: 999–1988 µs; dt_pos_R_us: 1000–1711 µs; dt_pos_us combined: 1000–1494 µs
+  - Indicates mostly 1 ms encoder updates with occasional 1.7–2.0 ms intervals (alternating between sides)
+- vel_L_raw ~ +91.6 to +92.4; vel_R_raw ~ -92.8 to -92.4 (stable, symmetric magnitude)
+- No extended stalls (>2 ms) observed; position signals appear continuous (pos_* values advancing normally)
+
+3) CAN transport health
+- CAN_TXQ_SUM: attempts=1960, ok=1960, fail=0, fail_pct=0.000
+- posvel_age_us=11 (fresh TX data); mode=5
+- Throughput ~2 CAN frames per 1 kHz loop with zero errors/backlog
+
+4) Notable anomalies
+- Mode string mismatch: “starting test_can_transmit mode” while “Balance mode started” printed; likely benign labeling/print inconsistency
+- Occasional 1.7–2.0 ms encoder update intervals (dt_pos_L_us up to 1988 µs; dt_pos_R_us up to 1711 µs) and some loops with no new_pos from either side; no impact evident on loop timing or velocity stability
+
+5) Bottom-line verdict
+- Loop timing: solid 1 kHz with minimal jitter and ample CPU margin
+- Motor sensing path: healthy; minor asynchronous encoder cadence (1–2 ms) but no meaningful dropouts
+- CAN transport: perfect (0% fail), low latency, adequate bandwidth
+- Overall: System timing and comms are green; data path is serviceable for balance; run ended cleanly by time limit.
+```
+---------
+
+## brain_board V1.6 testing
+
+- All previous testing was with `brain_board V1.4`.
+- Previous CAN testing snapshot commit hash: `d621df0a0093731d3c8162774a0a3fe046bf76ad`.
+- Going forward we are using a new `brain_board V1.6` that has two physical CAN transceivers.
+- Current `can_testing` code path is configured for `CAN2` on Teensy 4.0 (`CAN2_RX=pin 0`, `CAN2_TX=pin 1`).
+
+## Why We Selected 250 Hz Command Rate
+
+This project tested Teensy torque-command transmission at both `500 Hz` and `250 Hz` while ESC POSVEL telemetry was monitored continuously.
+
+- `500 Hz` command tests were runnable, but repeatedly showed persistent asymmetry between channels (typically worse on node 12/right), larger effective telemetry gaps, and steadily increasing estimated misses.
+- `250 Hz` command tests kept CAN TX reliability at `0% fail` while improving telemetry consistency, reducing stress on the communication path, and avoiding severe blackout behavior seen in worse high-load cases.
+- Raising CAN bitrate to `1 Mbps` did not produce a clear practical improvement by itself; wiring quality and path robustness remained dominant factors.
+- Because this is a balancing robot (not precision industrial motion control), `250 Hz` is an acceptable and practical outer-loop operating point with better end-to-end robustness in current hardware conditions.
+
+Current guidance:
+
+- Use `250 Hz` Teensy torque-command updates as the default operating mode.
+- Keep monitoring `CAN_POSVEL_RX` and `CAN_TXQ_SUM` metrics.
+- Revisit higher command rates only after physical-layer robustness is verified (termination, cabling, transceiver behavior, and per-path symmetry).
+
+### What We Learned (Latest Milestone)
+
+- The `250 Hz` command setting remains the best practical operating point for this rig right now.
+- With recent firmware updates, Teensy-side software FIFO drops were eliminated in tested runs (`rx_overflow=0`), and TX remained clean (`fail=0`).
+- Node-ID swap testing showed asymmetry followed the physical CAN path assignment, not a fixed node number. This points to channel/path-level margin differences rather than a deterministic node-ID decode bug.
+- Mounted-rig tests did not show a major EMI regression compared to bench-layout tests, which is a positive integration milestone for balance development.
+
+## Continued review of dropped CAN telemetry
+
+This section summarizes additional findings from recent instrumentation work and 30 s test runs.
+
+What we learned:
+
+- End-to-end communication is currently stable in many runs at both `250 Hz` and `500 Hz` Teensy command settings, with:
+  - `CAN TX fail=0`
+  - `rx_overflow=0`
+  - both ESC paths reporting continuous updates
+- Tail-gap metrics are now visible and matter more than mean alone. Typical recent runs showed:
+  - POSVEL `p95` near `~2050 us`
+  - POSVEL `p99` near `~3550-3750 us`
+  - POSVEL `max` near `~4.0-4.8 ms`
+- Added `alive_false_count` stayed `0` for both ESCs in good runs, confirming nodes were not being dropped by Teensy alive-timeout logic.
+- IQREQ timing was measured directly and is not truly fixed at 2.000 ms spacing when `tx hz 500` is selected. Distribution is dominated by ~3 ms intervals (2/3 ms quantization behavior).
+- Control-loop entry timing itself was measured and is very stable (`~1 kHz`, tight min/p50/p95/p99, no large control-loop dt spikes).
+- Setting `can_posvel_phase_us=0` on both ESCs (same-phase publish) did not degrade telemetry and coincided with improved repeatability in recent runs; this suggests ESC-to-ESC phase staggering was not the dominant cause on the current dual-bus setup.
+
+What we have ruled out (for these runs):
+
+- Not a Teensy CAN TX enqueue/HAL-fail problem (`fail=0`).
+- Not a Teensy software RX buffer overflow problem (`rx_overflow=0`).
+- Not a Teensy alive-timeout gating problem (`alive_false_count=0`).
+- Not a gross control-loop scheduler collapse on Teensy (control dt stats stayed tight).
+
+What remains unresolved:
+
+- Even in good runs, telemetry is not perfectly ideal at target rates: nonzero estimated misses and nontrivial p99/max gaps remain.
+- IQREQ spacing irregularity exists, but current spike-correlation checks showed weak direct alignment with POSVEL gap spikes in sampled runs.
+- This suggests remaining gap behavior is more likely tied to ESC-side publish/service timing and/or path-level transport behavior than to a simple Teensy loop overrun.
+
+Current practical stance:
+
+- Keep using percentile/tail metrics (`p95`, `p99`, `max`) as primary health indicators.
+- Keep `250 Hz` as default conservative operating point for robust balancing integration.
+- Treat `500 Hz` as feasible but still under characterization until long-duration soak and correlation evidence are consistently strong.
+
+
+Reference baseline commit for this can_testing snapshot: `37bc92f` (`37bc92fb2ed2a5541fa8c1162a954772b4dffe05`).
