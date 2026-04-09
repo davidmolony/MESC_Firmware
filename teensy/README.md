@@ -166,6 +166,12 @@ Current guidance:
 
 - The `250 Hz` command setting remains the best practical operating point for this rig right now.
 - With recent firmware updates, Teensy-side software FIFO drops were eliminated in tested runs (`rx_overflow=0`), and TX remained clean (`fail=0`).
+- The Teensy RX path change (`FIFO interrupt callback + events()` dispatch) appears to be the primary improvement that removed observed dropouts in A/B testing.
+- This is not the only prerequisite for clean runs. The following baseline conditions are also required:
+  - Correct command-to-bus mapping and node routing (`11` on `CAN1`, `12` on `CAN2`).
+  - Matching CAN bitrate on both devices (`500 kbps`).
+  - Hardware CAN filtering configured correctly on Teensy and F405.
+  - Healthy physical layer (proper transceiver power, wiring quality, and bus termination).
 - Node-ID swap testing showed asymmetry followed the physical CAN path assignment, not a fixed node number. This points to channel/path-level margin differences rather than a deterministic node-ID decode bug.
 - Mounted-rig tests did not show a major EMI regression compared to bench-layout tests, which is a positive integration milestone for balance development.
 

@@ -112,23 +112,12 @@ static bool mesc_cli_parse_float(char const *value, float *out);
 #define DWT_CYCCNT ((volatile uint32_t *)0xE0001004U)
 #endif
 
-// Set to 1 only for CAN stress tests that intentionally replace position with a counter.
-#ifndef CAN_POSVEL_COUNTER_TEST
-#define CAN_POSVEL_COUNTER_TEST 0
-#endif
-// Bench CAN identity contract:
-// - F405 transmits as node 11
-// - F405 accepts control input only from Teensy sender node 3
-#define F405_CAN_NODE_ID 11U
-#define F405_CAN_ALLOWED_RX_SENDER_ID 3U
-
 static bool s_can_hw_ready = false;
 static uint32_t s_can_iqreq_rx_count = 0U;
 static uint32_t s_posvel_next_due_us = 0U;
 static uint32_t s_posvel_last_sync_us = 0U;
 static uint32_t s_posvel_sync_events = 0U;
 static uint32_t s_posvel_sync_nudges = 0U;
-static volatile float s_pos_payload_dbg = 0.0f;
 
 static uint32_t mesc_pack_can_id(uint16_t id, uint8_t sender, uint8_t receiver){
 	uint32_t ret = (uint32_t)id << 16;
@@ -155,58 +144,17 @@ static float mesc_unpack_float(uint8_t const *buffer){
 	return ret;
 }
 
-static uint32_t mesc_can_ext_to_filter_reg(uint32_t ext_id){
-	return ((ext_id & 0x1FFFFFFFU) << 3) | CAN_ID_EXT;
-}
-
-static bool mesc_can_config_exact_ext_filter(CAN_HandleTypeDef *hw, uint32_t bank, uint32_t ext_id){
-	CAN_FilterTypeDef sFilterConfig;
-	uint32_t filter_reg;
-
-	if(hw == NULL){
-		return false;
-	}
-
-	filter_reg = mesc_can_ext_to_filter_reg(ext_id);
-
-	memset(&sFilterConfig, 0, sizeof(sFilterConfig));
-	sFilterConfig.FilterBank = bank;
-	sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
-	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
-	sFilterConfig.FilterIdHigh = (filter_reg >> 16) & 0xFFFFU;
-	sFilterConfig.FilterIdLow = filter_reg & 0xFFFFU;
-	sFilterConfig.FilterMaskIdHigh = 0xFFFFU;
-	sFilterConfig.FilterMaskIdLow = 0xFFFFU;
-	sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
-	sFilterConfig.FilterActivation = ENABLE;
-	sFilterConfig.SlaveStartFilterBank = 14;
-
-	return (HAL_CAN_ConfigFilter(hw, &sFilterConfig) == HAL_OK);
-}
-
-static bool mesc_can_sender_allowed(uint16_t id, uint8_t sender){
-	switch(id){
-	case CAN_ID_IQREQ:
-	case CAN_ID_ADC1_2_REQ:
-		return (sender == F405_CAN_ALLOWED_RX_SENDER_ID);
-	default:
-		return true;
-	}
-}
-
 static void mesc_can_hw_init_if_needed(void){
-	uint32_t iqreq_to_node;
-	uint32_t iqreq_broadcast;
-	uint32_t adc_to_node;
-	uint32_t adc_broadcast;
+	CAN_FilterTypeDef sFilterConfig;
 
 	if(s_can_hw_ready){
 		return;
 	}
 
 	can1.hw = &hcan1;
-	can1.node_id = F405_CAN_NODE_ID;
-	mtr[0].input_vars.remote_ADC_can_id = F405_CAN_ALLOWED_RX_SENDER_ID;
+	if(can1.node_id == 0U || can1.node_id > 254U){
+		can1.node_id = 1U;
+	}
 	if(can1.posvel_period_us == 0U){
 		uint32_t default_period_us = 1000000U / POSVEL_HZ;
 		if(default_period_us == 0U){
@@ -218,21 +166,15 @@ static void mesc_can_hw_init_if_needed(void){
 		can1.posvel_phase_us %= can1.posvel_period_us;
 	}
 
-	iqreq_to_node = mesc_pack_can_id(CAN_ID_IQREQ, F405_CAN_ALLOWED_RX_SENDER_ID, (uint8_t)can1.node_id);
-	iqreq_broadcast = mesc_pack_can_id(CAN_ID_IQREQ, F405_CAN_ALLOWED_RX_SENDER_ID, CAN_BROADCAST);
-	adc_to_node = mesc_pack_can_id(CAN_ID_ADC1_2_REQ, F405_CAN_ALLOWED_RX_SENDER_ID, (uint8_t)can1.node_id);
-	adc_broadcast = mesc_pack_can_id(CAN_ID_ADC1_2_REQ, F405_CAN_ALLOWED_RX_SENDER_ID, CAN_BROADCAST);
+	memset(&sFilterConfig, 0, sizeof(sFilterConfig));
+	sFilterConfig.FilterBank = 1;
+	sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+	sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+	sFilterConfig.FilterActivation = ENABLE;
+	sFilterConfig.SlaveStartFilterBank = 14;
 
-	if(!mesc_can_config_exact_ext_filter(can1.hw, 1U, iqreq_to_node)){
-		return;
-	}
-	if(!mesc_can_config_exact_ext_filter(can1.hw, 2U, iqreq_broadcast)){
-		return;
-	}
-	if(!mesc_can_config_exact_ext_filter(can1.hw, 3U, adc_to_node)){
-		return;
-	}
-	if(!mesc_can_config_exact_ext_filter(can1.hw, 4U, adc_broadcast)){
+	if(HAL_CAN_ConfigFilter(can1.hw, &sFilterConfig) != HAL_OK){
 		return;
 	}
 
@@ -344,11 +286,6 @@ static void mesc_can_poll_rx_fifo(TASK_CAN_handle *handle){
 		id = mesc_unpack_can_id(rx_header.ExtId, &sender, &receiver);
 
 		if(receiver != CAN_BROADCAST && receiver != handle->node_id){
-			handle->rx_isr_filtered++;
-			frames_polled++;
-			continue;
-		}
-		if(!mesc_can_sender_allowed(id, sender)){
 			handle->rx_isr_filtered++;
 			frames_polled++;
 			continue;
@@ -775,8 +712,6 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 	unsigned long can_posvel_sync = 0UL;
 	unsigned long can_posvel_nudge = 0UL;
 	unsigned long can_posvel_sync_age_us = 0UL;
-	float can_posvel_last = 0.0f;
-	char const *pos_mode = CAN_POSVEL_COUNTER_TEST ? "ctr" : "rad";
 
 	if((state == MOTOR_STATE_INITIALISING) ||
 	   (state == MOTOR_STATE_TRACKING) ||
@@ -797,14 +732,13 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 	can_posvel_block = (unsigned long)can1.posvel_tx_blocked;
 	can_posvel_sync = (unsigned long)s_posvel_sync_events;
 	can_posvel_nudge = (unsigned long)s_posvel_sync_nudges;
-	can_posvel_last = s_pos_payload_dbg;
 	if(s_posvel_last_sync_us != 0U){
 		can_posvel_sync_age_us = (unsigned long)(((*DWT_CYCCNT) / 168U) - s_posvel_last_sync_us);
 	}
 #endif
 
 	snprintf(out, out_len,
-			 "OK STATUS state=%u state_name=%s write=%u load=%u rx_drop=%lu iqreq_rx=%lu tx_fail=%lu tx_qdrop=%lu pos_mode=%s pos_last=%.4f pos_sent=%lu pos_miss=%lu pos_block=%lu pos_period_us=%lu pos_phase_us=%lu pos_sync=%lu pos_nudge=%lu pos_sync_age_us=%lu\r\n",
+			 "OK STATUS state=%u state_name=%s write=%u load=%u rx_drop=%lu iqreq_rx=%lu tx_fail=%lu tx_qdrop=%lu pos_sent=%lu pos_miss=%lu pos_block=%lu pos_period_us=%lu pos_phase_us=%lu pos_sync=%lu pos_nudge=%lu pos_sync_age_us=%lu\r\n",
 			 (unsigned)state,
 			 state_name,
 			 (unsigned)write_allowed,
@@ -813,8 +747,6 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 			 can_iqreq_rx,
 			 can_tx_fail,
 			 can_tx_qdrop,
-			 pos_mode,
-			 can_posvel_last,
 			 can_posvel_sent,
 			 can_posvel_miss,
 			 can_posvel_block,
@@ -1919,7 +1851,7 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 	switch(id){
 		case CAN_ID_IQREQ:{
 			s_can_iqreq_rx_count++;
-			if(sender == F405_CAN_ALLOWED_RX_SENDER_ID){
+			if(sender == motor_curr->input_vars.remote_ADC_can_id && motor_curr->input_vars.remote_ADC_can_id > 0){
 				volatile float req = mesc_unpack_float(data);
 				if(req > 0.0f){
 					// Owen addition
@@ -1999,7 +1931,7 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 			motor_curr->logging.sample_no_auto_send = false;
 			break;
 		case CAN_ID_ADC1_2_REQ:{
-			if(sender == F405_CAN_ALLOWED_RX_SENDER_ID){
+			if(sender == motor_curr->input_vars.remote_ADC_can_id && motor_curr->input_vars.remote_ADC_can_id > 0){
 				motor_curr->input_vars.remote_ADC_timeout = REMOTE_ADC_TIMEOUT;
 				motor_curr->input_vars.remote_ADC1_req = mesc_unpack_float(data);
 				motor_curr->input_vars.remote_ADC2_req = mesc_unpack_float(data+4);
@@ -2100,7 +2032,6 @@ static volatile float vel_raw_dbg = 0.0f;
 static volatile float dt_s_dbg = 0.0f;
 static volatile int32_t delta_pos_dbg = 0;
 static volatile uint32_t posvel_counter_dbg = 0U;
-
 void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     MESC_motor_typedef *motor_curr = &mtr[0];
 	uint32_t now_tick;
@@ -2152,21 +2083,9 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     const float alpha = 0.1f;  // smoothing factor
     vel_est_filtered = alpha * vel_raw_dbg + (1.0f - alpha) * vel_est_filtered;
 
-	// === 9. Position payload (mechanical angle, radians) ===
-	float pos_payload = 0.0f;
-#if CAN_POSVEL_COUNTER_TEST
-	pos_payload = (float)posvel_counter_dbg;
+	// === 9. Counter payload for POSVEL slot 0 ===
+	float pos_counter = (float)posvel_counter_dbg;
 	posvel_counter_dbg++;
-#else
-	if (motor_curr->m.enc_counts > 0) {
-		const float two_pi = 2.0f * M_PI;
-		const float scale = two_pi / (float)motor_curr->m.enc_counts;
-		pos_payload = ((float)pos_now) * scale;
-		// Keep payload in [0, 2*pi) for receiver-side unwrap logic.
-		while (pos_payload >= two_pi) pos_payload -= two_pi;
-		while (pos_payload < 0.0f) pos_payload += two_pi;
-	}
-#endif
 
     // === 10. if close to zero, force to zero ===
     if (fabsf(vel_est_filtered) < 0.02f) {   // threshold in rad/s
@@ -2174,11 +2093,10 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     }
 
 	// === 11. Send telemetry over CAN ===
-	// Payload: position [rad], velocity [rad/s].
+	// Payload: counter [float-encoded], velocity [rad/s].
     // NOTE: vel_est_filtered is in radians per second.
     //       To get RPM, multiply by (60 / 2π).
-	s_pos_payload_dbg = pos_payload;
-	if(mesc_can_send_posvel_frame(handle, pos_payload, vel_est_filtered)){
+	if(mesc_can_send_posvel_frame(handle, pos_counter, vel_est_filtered)){
 		handle->posvel_sent++;
 
 		now_tick = HAL_GetTick();
