@@ -215,7 +215,7 @@ void MESCfoc_Init(MESC_motor_typedef *_motor) {
 
 	_motor->options.observer_type = MXLEMMING_LAMBDA;
 #ifdef USE_ORTEGA_ORIGINAL
-	_motor->options.field_weakening = ORTEGA_ORIGINAL;
+	_motor->options.observer_type = ORTEGA_ORIGINAL;
 #endif
 
 	_motor->options.sqrt_circle_lim = SQRT_CIRCLE_LIM_OFF;
