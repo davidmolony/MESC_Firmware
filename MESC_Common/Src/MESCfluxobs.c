@@ -201,7 +201,7 @@ case ORTEGA_ORIGINAL:
 //Calculate the angle
 	    if(_motor->HFI.inject==0){
 	    	//_motor->FOC.FOCAngle = (uint16_t)(32768.0f + 10430.0f * fast_atan2((_motor->FOC.flux_b - L_ib), _motor->FOC.flux_a - L_ia)) - 32768;
-	    	_motor->FOC.FOCAngle = (_motor->FOC.FOC_advance * _motor->FOC.PLL_int) + (uint16_t)(32768.0f + 10430.0f * fast_atan2((_motor->FOC.flux_b - L_ib), _motor->FOC.flux_a - L_ia)) - 32768;
+	    	_motor->FOC.FOCAngle = (int)(_motor->FOC.FOC_advance * _motor->FOC.PLL_int) + (uint16_t)(32768.0f + 10430.0f * fast_atan2((_motor->FOC.flux_b - L_ib), _motor->FOC.flux_a - L_ia)) - 32768;
 
 	    }
 
