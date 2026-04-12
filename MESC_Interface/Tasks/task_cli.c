@@ -49,6 +49,10 @@
 #include "usbd_def.h"
 #endif
 
+#ifndef MESC_CAN_USE_RTOS_TASK_PATH
+#define MESC_CAN_USE_RTOS_TASK_PATH 0
+#endif
+
 
 void putbuffer_uart(unsigned char *buf, unsigned int len, port_str * port){
 	UART_HandleTypeDef *uart_handle = port->hw;
@@ -212,7 +216,9 @@ void task_cli(void * argument)
 			port->rx_stream = xStreamBufferCreate(port->rx_buffer_size, 1);
 			port->tx_stream = xStreamBufferCreate(port->rx_buffer_size, 1);
 #ifdef HAL_CAN_MODULE_ENABLED
+#if MESC_CAN_USE_RTOS_TASK_PATH
 			TASK_CAN_init(port, CAN_NAME);
+#endif
 #endif
 			break;
 	}

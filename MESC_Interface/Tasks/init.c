@@ -43,6 +43,10 @@
 extern CAN_HandleTypeDef hcan1;
 #endif
 
+#ifndef MESC_CAN_USE_RTOS_TASK_PATH
+#define MESC_CAN_USE_RTOS_TASK_PATH 0
+#endif
+
 #ifdef HW_UART
 extern UART_HandleTypeDef HW_UART;
 port_str main_uart = {	.hw = &HW_UART,
@@ -68,6 +72,7 @@ port_str main_usb = {	.hw = &hUsbDeviceFS,
 #endif
 
 #ifdef HAL_CAN_MODULE_ENABLED
+#if MESC_CAN_USE_RTOS_TASK_PATH
 TASK_CAN_handle can1 = { 	.hw = &hcan1,
 							.stream_dropped  = 0
 
@@ -78,6 +83,7 @@ port_str main_can = {	.hw = &can1,
 						.half_duplex = false,
 						.task_handle = NULL
 };
+#endif
 #endif
 
 
@@ -116,6 +122,8 @@ void init_system(void){
 	task_led_init();
 #endif
 #ifdef HAL_CAN_MODULE_ENABLED
+#if MESC_CAN_USE_RTOS_TASK_PATH
 	task_cli_init(&main_can);
+#endif
 #endif
 }

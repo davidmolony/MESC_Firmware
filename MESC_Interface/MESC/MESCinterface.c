@@ -112,18 +112,36 @@ static bool mesc_cli_parse_float(char const *value, float *out);
 #define DWT_CYCCNT ((volatile uint32_t *)0xE0001004U)
 #endif
 
+#define CAN_POSVEL_PERIOD_US_MIN 100U
+#define CAN_POSVEL_PERIOD_US_MAX 2000U
+#define CAN_POSVEL_PHASE_US_MIN 100U
+#define CAN_POSVEL_PHASE_US_MAX 2001U
+
 static bool s_can_hw_ready = false;
 static uint32_t s_can_iqreq_rx_count = 0U;
 static uint32_t s_posvel_next_due_us = 0U;
 static uint32_t s_posvel_last_sync_us = 0U;
 static uint32_t s_posvel_sync_events = 0U;
 static uint32_t s_posvel_sync_nudges = 0U;
+static uint32_t s_can_fov0_count = 0U;
+static uint32_t s_can_fov1_count = 0U;
+static uint32_t s_can_last_esr = 0U;
 
 static uint32_t mesc_pack_can_id(uint16_t id, uint8_t sender, uint8_t receiver){
 	uint32_t ret = (uint32_t)id << 16;
 	ret |= sender;
 	ret |= (uint32_t)receiver << 8;
 	return ret;
+}
+
+static uint32_t mesc_can_clamp_posvel_period_us(uint32_t period_us){
+	if(period_us < CAN_POSVEL_PERIOD_US_MIN){
+		return CAN_POSVEL_PERIOD_US_MIN;
+	}
+	if(period_us > CAN_POSVEL_PERIOD_US_MAX){
+		return CAN_POSVEL_PERIOD_US_MAX;
+	}
+	return period_us;
 }
 
 static uint16_t mesc_unpack_can_id(uint32_t ext_id, uint8_t *sender, uint8_t *receiver){
@@ -144,8 +162,15 @@ static float mesc_unpack_float(uint8_t const *buffer){
 	return ret;
 }
 
+static uint32_t mesc_bxcan_filter_word_ext(uint32_t ext_id){
+	/* bxCAN 32-bit filter uses RI-style layout: EXID in bits [31:3], IDE at bit 2. */
+	return (ext_id << 3) | CAN_ID_EXT;
+}
+
 static void mesc_can_hw_init_if_needed(void){
 	CAN_FilterTypeDef sFilterConfig;
+	uint32_t filter_word;
+	uint32_t filter_mask;
 
 	if(s_can_hw_ready){
 		return;
@@ -157,11 +182,9 @@ static void mesc_can_hw_init_if_needed(void){
 	}
 	if(can1.posvel_period_us == 0U){
 		uint32_t default_period_us = 1000000U / POSVEL_HZ;
-		if(default_period_us == 0U){
-			default_period_us = 1U;
-		}
-		can1.posvel_period_us = default_period_us;
+		can1.posvel_period_us = mesc_can_clamp_posvel_period_us(default_period_us);
 	}
+	can1.posvel_period_us = mesc_can_clamp_posvel_period_us(can1.posvel_period_us);
 	if(can1.posvel_phase_us >= can1.posvel_period_us){
 		can1.posvel_phase_us %= can1.posvel_period_us;
 	}
@@ -170,9 +193,29 @@ static void mesc_can_hw_init_if_needed(void){
 	sFilterConfig.FilterBank = 1;
 	sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
 	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+	filter_word = mesc_bxcan_filter_word_ext(
+			mesc_pack_can_id(CAN_ID_IQREQ, 0U, (uint8_t)can1.node_id));
+	/* Match message ID and receiver; leave sender unmasked. */
+	filter_mask = mesc_bxcan_filter_word_ext(
+			mesc_pack_can_id(0xFFFFU, 0U, 0xFFU));
+	sFilterConfig.FilterIdHigh = (uint16_t)(filter_word >> 16);
+	sFilterConfig.FilterIdLow = (uint16_t)(filter_word & 0xFFFFU);
+	sFilterConfig.FilterMaskIdHigh = (uint16_t)(filter_mask >> 16);
+	sFilterConfig.FilterMaskIdLow = (uint16_t)(filter_mask & 0xFFFFU);
 	sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
 	sFilterConfig.FilterActivation = ENABLE;
 	sFilterConfig.SlaveStartFilterBank = 14;
+
+	if(HAL_CAN_ConfigFilter(can1.hw, &sFilterConfig) != HAL_OK){
+		return;
+	}
+
+	/* Also accept broadcast IQREQ (receiver=0), still only for IQREQ message ID. */
+	sFilterConfig.FilterBank = 2;
+	filter_word = mesc_bxcan_filter_word_ext(
+			mesc_pack_can_id(CAN_ID_IQREQ, 0U, CAN_BROADCAST));
+	sFilterConfig.FilterIdHigh = (uint16_t)(filter_word >> 16);
+	sFilterConfig.FilterIdLow = (uint16_t)(filter_word & 0xFFFFU);
 
 	if(HAL_CAN_ConfigFilter(can1.hw, &sFilterConfig) != HAL_OK){
 		return;
@@ -307,20 +350,70 @@ static void mesc_can_poll_rx_fifo(TASK_CAN_handle *handle){
 	}
 }
 
-// Send key motor status CAN frames at 100Hz
+static void mesc_can_update_diag_counters(TASK_CAN_handle *handle){
+	CAN_TypeDef *inst;
+
+	if(handle == NULL || handle->hw == NULL || handle->hw->Instance == NULL){
+		return;
+	}
+
+	inst = handle->hw->Instance;
+	s_can_last_esr = inst->ESR;
+
+	if((inst->RF0R & CAN_RF0R_FOVR0) != 0U){
+		s_can_fov0_count++;
+		inst->RF0R |= CAN_RF0R_FOVR0;
+	}
+	if((inst->RF1R & CAN_RF1R_FOVR1) != 0U){
+		s_can_fov1_count++;
+		inst->RF1R |= CAN_RF1R_FOVR1;
+	}
+}
+
+// Send one motor status CAN frame per call in a round-robin pattern.
+// This avoids 5-frame bursts that can transiently occupy all TX mailboxes
+// and block POSVEL telemetry.
 void TASK_CAN_telemetry_motor_status(TASK_CAN_handle *handle) {
 	MESC_motor_typedef *motor_curr;
+	static uint8_t status_slot = 0U;
 
 	if(handle == NULL){
 		return;
 	}
+	if(handle->hw == NULL){
+		return;
+	}
+	/*
+	 * Keep one mailbox free so high-rate POSVEL has headroom even when
+	 * lower-priority status telemetry is active.
+	 */
+	if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw) <= 1U){
+		return;
+	}
 
 	motor_curr = &mtr[0];
-	(void)mesc_can_send_two_float_frame(handle, CAN_ID_SPEED, motor_curr->FOC.eHz, 0.0f);
-	(void)mesc_can_send_two_float_frame(handle, CAN_ID_BUS_VOLT_CURR, motor_curr->Conv.Vbus, motor_curr->FOC.Ibus);
-	(void)mesc_can_send_two_float_frame(handle, CAN_ID_MOTOR_CURRENT, motor_curr->FOC.Idq.q, motor_curr->FOC.Idq.d);
-	(void)mesc_can_send_two_float_frame(handle, CAN_ID_MOTOR_VOLTAGE, motor_curr->FOC.Vdq.q, motor_curr->FOC.Vdq.d);
-	(void)mesc_can_send_two_float_frame(handle, CAN_ID_TEMP_MOT_MOS1, motor_curr->Conv.Motor_T, motor_curr->Conv.MOSu_T);
+	switch(status_slot){
+	case 0U:
+		(void)mesc_can_send_two_float_frame(handle, CAN_ID_SPEED, motor_curr->FOC.eHz, 0.0f);
+		break;
+	case 1U:
+		(void)mesc_can_send_two_float_frame(handle, CAN_ID_BUS_VOLT_CURR, motor_curr->Conv.Vbus, motor_curr->FOC.Ibus);
+		break;
+	case 2U:
+		(void)mesc_can_send_two_float_frame(handle, CAN_ID_MOTOR_CURRENT, motor_curr->FOC.Idq.q, motor_curr->FOC.Idq.d);
+		break;
+	case 3U:
+		(void)mesc_can_send_two_float_frame(handle, CAN_ID_MOTOR_VOLTAGE, motor_curr->FOC.Vdq.q, motor_curr->FOC.Vdq.d);
+		break;
+	default:
+		(void)mesc_can_send_two_float_frame(handle, CAN_ID_TEMP_MOT_MOS1, motor_curr->Conv.Motor_T, motor_curr->Conv.MOSu_T);
+		break;
+	}
+
+	status_slot++;
+	if(status_slot >= 5U){
+		status_slot = 0U;
+	}
 }
 #endif
 
@@ -712,6 +805,11 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 	unsigned long can_posvel_sync = 0UL;
 	unsigned long can_posvel_nudge = 0UL;
 	unsigned long can_posvel_sync_age_us = 0UL;
+	unsigned long can_esr = 0UL;
+	unsigned long can_tec = 0UL;
+	unsigned long can_rec = 0UL;
+	unsigned long can_fov0 = 0UL;
+	unsigned long can_fov1 = 0UL;
 
 	if((state == MOTOR_STATE_INITIALISING) ||
 	   (state == MOTOR_STATE_TRACKING) ||
@@ -732,13 +830,18 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 	can_posvel_block = (unsigned long)can1.posvel_tx_blocked;
 	can_posvel_sync = (unsigned long)s_posvel_sync_events;
 	can_posvel_nudge = (unsigned long)s_posvel_sync_nudges;
+	can_esr = (unsigned long)s_can_last_esr;
+	can_tec = (unsigned long)((s_can_last_esr & CAN_ESR_TEC_Msk) >> CAN_ESR_TEC_Pos);
+	can_rec = (unsigned long)((s_can_last_esr & CAN_ESR_REC_Msk) >> CAN_ESR_REC_Pos);
+	can_fov0 = (unsigned long)s_can_fov0_count;
+	can_fov1 = (unsigned long)s_can_fov1_count;
 	if(s_posvel_last_sync_us != 0U){
 		can_posvel_sync_age_us = (unsigned long)(((*DWT_CYCCNT) / 168U) - s_posvel_last_sync_us);
 	}
 #endif
 
 	snprintf(out, out_len,
-			 "OK STATUS state=%u state_name=%s write=%u load=%u rx_drop=%lu iqreq_rx=%lu tx_fail=%lu tx_qdrop=%lu pos_sent=%lu pos_miss=%lu pos_block=%lu pos_period_us=%lu pos_phase_us=%lu pos_sync=%lu pos_nudge=%lu pos_sync_age_us=%lu\r\n",
+			 "OK STATUS state=%u state_name=%s write=%u load=%u rx_drop=%lu iqreq_rx=%lu tx_fail=%lu tx_qdrop=%lu pos_sent=%lu pos_miss=%lu pos_block=%lu pos_period_us=%lu pos_phase_us=%lu pos_sync=%lu pos_nudge=%lu pos_sync_age_us=%lu can_esr=%lu can_tec=%lu can_rec=%lu can_fov0=%lu can_fov1=%lu\r\n",
 			 (unsigned)state,
 			 state_name,
 			 (unsigned)write_allowed,
@@ -754,7 +857,12 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 			 (unsigned long)can1.posvel_phase_us,
 			 can_posvel_sync,
 			 can_posvel_nudge,
-			 can_posvel_sync_age_us);
+			 can_posvel_sync_age_us,
+			 can_esr,
+			 can_tec,
+			 can_rec,
+			 can_fov0,
+			 can_fov1);
 	return true;
 }
 
@@ -1789,8 +1897,8 @@ void populate_vars(){
 	TERM_addVar(can1.posvel_slot_miss, 0, 4294967295U, "can_posvel_miss", "CAN POSVEL slot misses", VAR_ACCESS_R, NULL, &TERM_varList);
 	TERM_addVar(can1.posvel_tx_blocked, 0, 4294967295U, "can_posvel_block", "CAN POSVEL TX blocked/fail", VAR_ACCESS_R, NULL, &TERM_varList);
 	TERM_addVar(can1.posvel_max_gap_ticks, 0, 4294967295U, "can_posvel_gap", "CAN POSVEL max gap in OS ticks", VAR_ACCESS_R, NULL, &TERM_varList);
-	TERM_addVar(can1.posvel_period_us, 1, 1000000U, "can_posvel_period_us", "CAN POSVEL scheduler period in us", VAR_ACCESS_RW, NULL, &TERM_varList);
-	TERM_addVar(can1.posvel_phase_us, 0, 1000000U, "can_posvel_phase_us", "CAN POSVEL scheduler phase offset in us", VAR_ACCESS_RW, NULL, &TERM_varList);
+	TERM_addVar(can1.posvel_period_us, CAN_POSVEL_PERIOD_US_MIN, CAN_POSVEL_PERIOD_US_MAX, "can_posvel_period_us", "CAN POSVEL scheduler period in us", VAR_ACCESS_RW, NULL, &TERM_varList);
+	TERM_addVar(can1.posvel_phase_us, CAN_POSVEL_PHASE_US_MIN, CAN_POSVEL_PHASE_US_MAX, "can_posvel_phase_us", "CAN POSVEL scheduler phase offset in us", VAR_ACCESS_RW, NULL, &TERM_varList);
 #endif
 
 	TermVariableDescriptor * desc;
@@ -1832,9 +1940,11 @@ void populate_vars(){
 #ifdef HAL_CAN_MODULE_ENABLED
 
 #define REMOTE_ADC_TIMEOUT 1000
+#define IQREQ_DEFAULT_SENDER_ID 3U
 
 void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, uint8_t receiver, uint8_t* data, uint32_t len){
 	MESC_motor_typedef * motor_curr = &mtr[0];
+	uint8_t expected_sender;
 	uint32_t now_us;
 	uint32_t period_us;
 	uint32_t phase_us;
@@ -1844,14 +1954,23 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 	int32_t hard_relock_us;
 	uint32_t max_nudge_us;
 
-	UNUSED(handle);
-	UNUSED(receiver);
-	UNUSED(len);
-
 	switch(id){
 		case CAN_ID_IQREQ:{
-			s_can_iqreq_rx_count++;
-			if(sender == motor_curr->input_vars.remote_ADC_can_id && motor_curr->input_vars.remote_ADC_can_id > 0){
+			if(handle == NULL){
+				break;
+			}
+			if(len < sizeof(float)){
+				break;
+			}
+			if(receiver != CAN_BROADCAST && receiver != (uint8_t)handle->node_id){
+				break;
+			}
+
+			/* Force expected Teensy sender ID for flash-validation sanity checks. */
+			expected_sender = (uint8_t)IQREQ_DEFAULT_SENDER_ID;
+
+			if(sender == expected_sender){
+				s_can_iqreq_rx_count++;
 				volatile float req = mesc_unpack_float(data);
 				if(req > 0.0f){
 					// Owen addition
@@ -1870,12 +1989,8 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 				 * This lets the Teensy act as time master without introducing a new CAN command.
 				 */
 				now_us = (*DWT_CYCCNT) / 168U;
-				period_us = can1.posvel_period_us;
-				if(period_us == 0U){
-					period_us = (POSVEL_HZ > 0U) ? (1000000U / POSVEL_HZ) : 2000U;
-					if(period_us == 0U){
-						period_us = 1U;
-					}
+				period_us = mesc_can_clamp_posvel_period_us(can1.posvel_period_us);
+				if(period_us != can1.posvel_period_us){
 					can1.posvel_period_us = period_us;
 				}
 				phase_us = can1.posvel_phase_us;
@@ -2117,9 +2232,9 @@ void MESCinterface_can_periodic(void){
 	static uint32_t last_tick_status = 0U;
 	uint32_t now_tick = HAL_GetTick();
 	uint32_t now_us = (*DWT_CYCCNT) / 168U;
-	uint32_t period_us = can1.posvel_period_us;
+	uint32_t period_us = mesc_can_clamp_posvel_period_us(can1.posvel_period_us);
 	uint32_t phase_us = can1.posvel_phase_us;
-	const uint32_t period_tick_status = 10U; // 100Hz = 10ms
+	const uint32_t period_tick_status = 2U; // one status frame every 2ms (round-robin)
 	uint32_t slots_elapsed;
 	uint32_t wait_us;
 	uint32_t late_us;
@@ -2128,8 +2243,7 @@ void MESCinterface_can_periodic(void){
 	if(!s_can_hw_ready){
 		return;
 	}
-	if(period_us == 0U){
-		period_us = 1U;
+	if(period_us != can1.posvel_period_us){
 		can1.posvel_period_us = period_us;
 	}
 	if(phase_us >= period_us){
@@ -2139,6 +2253,7 @@ void MESCinterface_can_periodic(void){
 
 	// Poll and dispatch pending CAN frames in the known-active interface task.
 	mesc_can_poll_rx_fifo(&can1);
+	mesc_can_update_diag_counters(&can1);
 
 	// POSVEL scheduler (500Hz by default)
 	if(s_posvel_next_due_us == 0U){
@@ -2155,7 +2270,7 @@ void MESCinterface_can_periodic(void){
 		TASK_CAN_telemetry_posvel(&can1);
 	}
 
-	// Motor status scheduler (100Hz)
+	// Motor status scheduler (round-robin, de-bursted)
 	uint32_t elapsed_status = now_tick - last_tick_status;
 	if(elapsed_status >= period_tick_status){
 		last_tick_status = now_tick;

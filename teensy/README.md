@@ -175,6 +175,17 @@ Current guidance:
 - Node-ID swap testing showed asymmetry followed the physical CAN path assignment, not a fixed node number. This points to channel/path-level margin differences rather than a deterministic node-ID decode bug.
 - Mounted-rig tests did not show a major EMI regression compared to bench-layout tests, which is a positive integration milestone for balance development.
 
+### Key Findings (Teensy Changes Needed For MESC_Firmware Compatibility)
+
+- Use the same 29-bit extended CAN ID layout as ESC firmware (`msg_id`, `receiver`, `sender`) for both transmit and receive paths.
+- Keep Teensy sender ID fixed at `3` for IQREQ commands.
+- Send IQREQ only to ESC node IDs `11` and `12` (receiver field), matching ESC-side filtering/acceptance logic.
+- Parse ESC telemetry using the expected MESC message IDs (`CAN_ID_POSVEL=0x2D0`, `CAN_ID_TEMPS`) and ESC sender IDs (`11`, `12`).
+- Keep CAN bitrate matched at `500 kbps` on both Teensy CAN controllers and ESC firmware.
+- Use hardware filtering on Teensy CAN1/CAN2 so only required ESC telemetry IDs/nodes are admitted (avoid broad software-side filtering as primary gate).
+- Use FIFO interrupt callback plus `events()` dispatch in the receive path; this was the key runtime change associated with eliminating observed telemetry dropouts in A/B runs.
+- Keep deterministic node-to-bus routing in Teensy config (explicit mapping of node `11` and node `12` to physical CAN channels) so command traffic follows the intended wiring.
+
 ## Continued review of dropped CAN telemetry
 
 This section summarizes additional findings from recent instrumentation work and 30 s test runs.
