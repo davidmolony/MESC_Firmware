@@ -44,7 +44,7 @@
   p_max       | 12000.000000      | 0.00     | 50000.00 | Max power
   park_curr   | 0.000000          | 0.00     | 300.00   | max current for handbrake
   password    |                                         | Password for SU
-  pole_pairs  | 14                | 0        | 255      | Motor pole pairs
+  pole_pairs  | 7                 | 0        | 255      | Motor pole pairs
   pwm_freq    | 20000.000000      | 0.00     | 100000.00| PWM frequency
   r_phase     | 0.006000          | 0.00     | 10.00    | Phase resistance
   rpm_max     | 0                 | 0        | 300000   | Max RPM
