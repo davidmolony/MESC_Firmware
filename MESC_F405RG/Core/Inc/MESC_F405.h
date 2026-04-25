@@ -48,6 +48,13 @@
 #define DEFAULT_INPUT	0b1000 //0b...wxyz where w is UART, x is RCPWM, y is ADC2 z is ADC1
 #endif
 
+// owen thing, this essentially serves as "user define options"
+//   they can be input_opts some day but I think that variable is too overloaded as it is
+#ifndef DEFAULT_FAILSAFE
+#define DEFAULT_FAILSAFE (GROUNDFAULT_MASK | EXTADCFAILSAFE_MASK)
+//#define DEFAULT_FAILSAFE GROUNDFAULT_MASK
+#endif
+
 //Use the Ebike Profile tool
 #define USE_PROFILE
 

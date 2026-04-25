@@ -89,6 +89,12 @@ void getRawADC(MESC_motor_typedef *_motor) {
 #ifdef GET_THROTTLE_INPUT2
   GET_THROTTLE_INPUT2; //Define a similar macro in the header file for your board that maps the throttle
 #endif
+
+// macro from header file that maps to groundfault test
+#ifdef GET_GROUNDFAULT_ADC
+    GET_GROUNDFAULT_ADC;
+#endif
+
 #ifdef GET_FETU_T
   GET_FETU_T;
 #endif
