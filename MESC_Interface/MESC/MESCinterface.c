@@ -116,6 +116,16 @@ static bool mesc_cli_parse_float(char const *value, float *out);
 #define CAN_POSVEL_PERIOD_US_MAX 2000U
 #define CAN_POSVEL_PHASE_US_MIN 100U
 #define CAN_POSVEL_PHASE_US_MAX 2001U
+/*
+ * CAN diagnostic compatibility switch:
+ *  - 1: keep legacy can_testing payload on CAN_ID_POSVEL slot0 (sequence counter).
+ *  - 0: publish physical wrapped position in radians on CAN_ID_POSVEL slot0.
+ *
+ * This allows one firmware to support both:
+ *  - reproducible diagnostics in can_testing (compat mode), and
+ *  - robot control mode expecting position_rad + velocity_rad_s.
+ */
+// #define CAN_DIAG_COMPAT_V1 1
 
 static bool s_can_hw_ready = false;
 static uint32_t s_can_iqreq_rx_count = 0U;
@@ -126,6 +136,7 @@ static uint32_t s_posvel_sync_nudges = 0U;
 static uint32_t s_can_fov0_count = 0U;
 static uint32_t s_can_fov1_count = 0U;
 static uint32_t s_can_last_esr = 0U;
+void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle);
 
 static uint32_t mesc_pack_can_id(uint16_t id, uint8_t sender, uint8_t receiver){
 	uint32_t ret = (uint32_t)id << 16;
@@ -190,6 +201,9 @@ static void mesc_can_hw_init_if_needed(void){
 	}
 
 	memset(&sFilterConfig, 0, sizeof(sFilterConfig));
+	/* CAN reliability improvement:
+	 * Use hardware ID/mask filtering so only IQREQ for this node reaches software RX path.
+	 */
 	sFilterConfig.FilterBank = 1;
 	sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
 	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
@@ -360,6 +374,9 @@ static void mesc_can_update_diag_counters(TASK_CAN_handle *handle){
 	inst = handle->hw->Instance;
 	s_can_last_esr = inst->ESR;
 
+	/* CAN reliability improvement:
+	 * Latch/clear hardware FIFO overrun flags for long-run diagnostics.
+	 */
 	if((inst->RF0R & CAN_RF0R_FOVR0) != 0U){
 		s_can_fov0_count++;
 		inst->RF0R |= CAN_RF0R_FOVR0;
@@ -370,6 +387,7 @@ static void mesc_can_update_diag_counters(TASK_CAN_handle *handle){
 	}
 }
 
+// CAN reliability improvement:
 // Send one motor status CAN frame per call in a round-robin pattern.
 // This avoids 5-frame bursts that can transiently occupy all TX mailboxes
 // and block POSVEL telemetry.
@@ -1966,7 +1984,9 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 				break;
 			}
 
-			/* Force expected Teensy sender ID for flash-validation sanity checks. */
+			/* CAN reliability improvement:
+			 * Pin sender to Teensy node ID so unintended senders cannot drive torque commands.
+			 */
 			expected_sender = (uint8_t)IQREQ_DEFAULT_SENDER_ID;
 
 			if(sender == expected_sender){
@@ -1984,9 +2004,18 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 					motor_curr->input_vars.UART_req = req;
 				}
 
-				/*
+				/* CAN reliability improvement:
 				 * Use incoming Teensy torque requests as the scheduler anchor for POSVEL.
 				 * This lets the Teensy act as time master without introducing a new CAN command.
+				 *
+				 * TODO(posvel-timebase): Keep this IQREQ-triggered sync path because it is
+				 * important for low-dropout command/feedback timing on the CAN bus, but do
+				 * not let POSVEL telemetry depend on IQREQ as a keepalive. The autonomous
+				 * scheduler currently uses DWT_CYCCNT / 168 as a uint32_t microsecond
+				 * timebase, which wraps every about 25.56 s at 168 MHz. Before changing this
+				 * validated path, replace the scheduler timebase with a wrap-safe monotonic
+				 * time source and repeat CAN dropout testing for both autonomous POSVEL and
+				 * IQREQ-synchronized POSVEL.
 				 */
 				now_us = (*DWT_CYCCNT) / 168U;
 				period_us = mesc_can_clamp_posvel_period_us(can1.posvel_period_us);
@@ -2035,6 +2064,15 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 					}
 				}
 				s_posvel_last_sync_us = now_us;
+
+				/* CAN reliability improvement:
+				 * Immediate response path:
+				 * Publish POSVEL as soon as IQREQ is accepted so the Teensy can
+				 * correlate command and feedback with minimal scheduling latency.
+				 */
+				TASK_CAN_telemetry_posvel(handle);
+				/* Keep scheduler coherent after the immediate send. */
+				s_posvel_next_due_us = now_us + period_us;
 			}
 			break;
 		}
@@ -2144,6 +2182,7 @@ static volatile float eHz_dbg = 0.0f;
 static volatile float vel_PLL_dbg = 0.0f;
 static volatile float vel_enc_dbg = 0.0f;
 static volatile float vel_raw_dbg = 0.0f;
+static volatile float pos_rad_dbg = 0.0f;
 static volatile float dt_s_dbg = 0.0f;
 static volatile int32_t delta_pos_dbg = 0;
 static volatile uint32_t posvel_counter_dbg = 0U;
@@ -2198,20 +2237,32 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     const float alpha = 0.1f;  // smoothing factor
     vel_est_filtered = alpha * vel_raw_dbg + (1.0f - alpha) * vel_est_filtered;
 
-	// === 9. Counter payload for POSVEL slot 0 ===
-	float pos_counter = (float)posvel_counter_dbg;
-	posvel_counter_dbg++;
+		// === 9. Slot0 payload selection ===
+		float pos_payload = 0.0f;
+		if (motor_curr->m.enc_counts > 0) {
+			const float pos_scale = (2.0f * M_PI) / (float)motor_curr->m.enc_counts;
+			const uint32_t pos_mod = (uint32_t)(pos_now % (uint32_t)motor_curr->m.enc_counts);
+			pos_rad_dbg = (float)pos_mod * pos_scale;  // wrapped [0, 2*pi)
+		} else {
+			pos_rad_dbg = 0.0f;
+		}
+#if CAN_DIAG_COMPAT_V1
+		pos_payload = (float)posvel_counter_dbg;
+		posvel_counter_dbg++;
+#else
+		pos_payload = pos_rad_dbg;
+#endif
 
     // === 10. if close to zero, force to zero ===
     if (fabsf(vel_est_filtered) < 0.02f) {   // threshold in rad/s
         vel_est_filtered = 0.0f;
     }
 
-	// === 11. Send telemetry over CAN ===
-	// Payload: counter [float-encoded], velocity [rad/s].
-    // NOTE: vel_est_filtered is in radians per second.
-    //       To get RPM, multiply by (60 / 2π).
-	if(mesc_can_send_posvel_frame(handle, pos_counter, vel_est_filtered)){
+		// === 11. Send telemetry over CAN ===
+		// Payload: slot0 selected by CAN_DIAG_COMPAT_V1, slot1 = velocity [rad/s].
+		// NOTE: vel_est_filtered is in radians per second.
+		//       To get RPM, multiply by (60 / 2π).
+		if(mesc_can_send_posvel_frame(handle, pos_payload, vel_est_filtered)){
 		handle->posvel_sent++;
 
 		now_tick = HAL_GetTick();

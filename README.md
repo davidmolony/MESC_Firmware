@@ -50,6 +50,32 @@ For the active F405 runtime path, scheduler startup and RTOS task execution were
 
 Code in the `can_testing` directory was used to verify CAN bus communication and validate the firmware build during development. This includes Teensy-based test harnesses and monitoring tools for ESC telemetry and command compatibility.
 
+### POSVEL Timebase Follow-Up
+
+The current CAN POSVEL path intentionally syncs position/velocity feedback to incoming `CAN_ID_IQREQ` frames from the Teensy. That sync trigger is important for low-dropout command/feedback timing and should be retained.
+
+However, receiver-only tests showed that autonomous `CAN_ID_POSVEL` telemetry can stop after about 25.56 seconds unless periodic IQREQ traffic is present. The likely cause is the POSVEL scheduler's use of `DWT_CYCCNT / 168` as a `uint32_t` microsecond clock; at 168 MHz, the 32-bit cycle counter wraps at about 25.56 seconds. Incoming IQREQ frames re-anchor the scheduler, which masks the wrap in synchronized operation but creates an unintuitive implicit keepalive requirement.
+
+Potential fix:
+
+- Introduce a wrap-safe monotonic POSVEL scheduler timebase instead of using raw `DWT_CYCCNT / 168` directly.
+- Keep the IQREQ-triggered sync/nudge path and immediate POSVEL response for low-latency control correlation.
+- Ensure autonomous POSVEL publishing continues when no IQREQ frames are present.
+- Update related diagnostics such as POSVEL sync age and velocity `dt` calculations to use the wrap-safe timebase where appropriate.
+
+Before merging that behavior change, repeat CAN dropout validation. At minimum, test autonomous POSVEL for multi-minute runs, IQREQ-synchronized POSVEL at the control cadence, mailbox-full/slot-miss counters, and dual-bus Teensy routing.
+
 ## Acknowledgement
 
 Thanks to David Molony, the original author of MESC, for creating and sharing the foundational code.
+
+## CAN Comment Marker Legend
+
+The source now includes inline markers to highlight reliability-focused edits:
+
+- `CAN reliability improvement:` marks code paths that were changed to improve CAN robustness, timing, or observability.
+- `CAN reliability improvement baseline:` marks default configuration values used in validated stable runs.
+
+Primary file using these markers in this repo:
+
+- `MESC_Interface/MESC/MESCinterface.c`
