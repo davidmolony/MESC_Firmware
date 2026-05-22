@@ -82,6 +82,10 @@ void TERM_sendVT100Code(TERMINAL_HANDLE * handle, uint16_t cmd, uint8_t var){
 #define USB_CLI_LINE_MAX 96U
 #define USB_CLI_HISTORY_DEPTH 8U
 #define USB_CLI_RESP_MAX APP_TX_DATA_SIZE
+#define USB_CLI_SHOW_ROW 1U
+#define USB_CLI_SHOW_COL 40U
+#define USB_CLI_SHOW_WIDTH 34U
+#define USB_CLI_SHOW_PERIOD_MS 500U
 
 static char s_usb_cli_line[USB_CLI_LINE_MAX];
 static char s_usb_cli_resp[USB_CLI_RESP_MAX];
@@ -96,6 +100,14 @@ static uint32_t s_usb_cli_history_count = 0U;
 static uint32_t s_usb_cli_history_next = 0U;
 static uint32_t s_usb_cli_history_draft_len = 0U;
 static int32_t s_usb_cli_history_pos = -1;
+static bool s_usb_cli_show_enabled = false;
+static bool s_usb_cli_show_drawn = false;
+static uint32_t s_usb_cli_show_last_tick = 0U;
+static volatile float s_usb_cli_show_posvel_pos = 0.0f;
+static volatile float s_usb_cli_show_posvel_vel = 0.0f;
+static float s_usb_cli_show_vel_filtered = 0.0f;
+static uint32_t s_usb_cli_show_last_pos = 0U;
+static uint32_t s_usb_cli_show_last_time_us = 0U;
 static bool mesc_persist_loaded;
 
 #ifdef HAL_CAN_MODULE_ENABLED
@@ -117,15 +129,15 @@ static bool mesc_cli_parse_float(char const *value, float *out);
 #define CAN_POSVEL_PHASE_US_MIN 100U
 #define CAN_POSVEL_PHASE_US_MAX 2001U
 /*
- * CAN diagnostic compatibility switch:
- *  - 1: keep legacy can_testing payload on CAN_ID_POSVEL slot0 (sequence counter).
- *  - 0: publish physical wrapped position in radians on CAN_ID_POSVEL slot0.
- *
- * This allows one firmware to support both:
- *  - reproducible diagnostics in can_testing (compat mode), and
- *  - robot control mode expecting position_rad + velocity_rad_s.
+ * CAN diagnostics / POSVEL payload switches:
+ *  - CAN_ESC_DIAG_STATUS_FRAMES keeps can_testing diagnostics available via
+ *    existing status telemetry slots.
+ *  - CAN_POSVEL_DIAG_SEQUENCE replaces POSVEL slot0 with a sequence counter for
+ *    ingress diagnostics. Keep this off for robot control so POSVEL slot0 is
+ *    wrapped mechanical position in radians and slot1 is velocity in rad/s.
  */
-// #define CAN_DIAG_COMPAT_V1 1
+#define CAN_ESC_DIAG_STATUS_FRAMES 1
+#define CAN_POSVEL_DIAG_SEQUENCE 0
 
 static bool s_can_hw_ready = false;
 static uint32_t s_can_iqreq_rx_count = 0U;
@@ -137,6 +149,42 @@ static uint32_t s_can_fov0_count = 0U;
 static uint32_t s_can_fov1_count = 0U;
 static uint32_t s_can_last_esr = 0U;
 void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle);
+
+/*
+ * POSVEL scheduling must not use raw DWT_CYCCNT / CPU_MHz as an absolute
+ * timestamp. On the F405 the 32-bit cycle counter wraps in about 25.6s, which
+ * can stall autonomous POSVEL unless incoming IQREQ traffic keeps re-anchoring
+ * the scheduler. This helper extends the DWT counter into a monotonic us
+ * timebase for CAN telemetry timing; normal uint32_t subtraction still handles
+ * the much slower microsecond wrap.
+ */
+static uint32_t mesc_can_time_us(void){
+	static bool initialized = false;
+	static uint32_t last_cycles = 0U;
+	static uint32_t cycle_remainder = 0U;
+	static uint64_t elapsed_us = 0ULL;
+	const uint32_t cycles_per_us = (SystemCoreClock >= 1000000U)
+	                             ? (SystemCoreClock / 1000000U)
+	                             : 168U;
+	const uint32_t now_cycles = *DWT_CYCCNT;
+
+	if(!initialized){
+		last_cycles = now_cycles;
+		initialized = true;
+		return (uint32_t)elapsed_us;
+	}
+
+	const uint32_t delta_cycles = now_cycles - last_cycles;
+	last_cycles = now_cycles;
+
+	if(cycles_per_us > 0U){
+		const uint64_t total_cycles = (uint64_t)cycle_remainder + (uint64_t)delta_cycles;
+		elapsed_us += total_cycles / (uint64_t)cycles_per_us;
+		cycle_remainder = (uint32_t)(total_cycles % (uint64_t)cycles_per_us);
+	}
+
+	return (uint32_t)elapsed_us;
+}
 
 static uint32_t mesc_pack_can_id(uint16_t id, uint8_t sender, uint8_t receiver){
 	uint32_t ret = (uint32_t)id << 16;
@@ -306,6 +354,44 @@ static bool mesc_can_send_two_float_frame(TASK_CAN_handle *handle, uint16_t mess
 	return false;
 }
 
+static bool mesc_can_send_two_u32_frame(TASK_CAN_handle *handle, uint16_t message_id, uint32_t v0, uint32_t v1){
+	CAN_TxHeaderTypeDef tx_header;
+	uint8_t buffer[8];
+	uint32_t tx_mailbox;
+
+	if(handle == NULL || handle->hw == NULL){
+		return false;
+	}
+
+	if(HAL_CAN_GetTxMailboxesFreeLevel(handle->hw) == 0U){
+		handle->tx_mailbox_full++;
+		return false;
+	}
+
+	buffer[0] = (uint8_t)(v0 >> 24);
+	buffer[1] = (uint8_t)(v0 >> 16);
+	buffer[2] = (uint8_t)(v0 >> 8);
+	buffer[3] = (uint8_t)v0;
+	buffer[4] = (uint8_t)(v1 >> 24);
+	buffer[5] = (uint8_t)(v1 >> 16);
+	buffer[6] = (uint8_t)(v1 >> 8);
+	buffer[7] = (uint8_t)v1;
+
+	tx_header.ExtId = mesc_pack_can_id(message_id, (uint8_t)handle->node_id, CAN_BROADCAST);
+	tx_header.RTR = CAN_RTR_DATA;
+	tx_header.IDE = CAN_ID_EXT;
+	tx_header.DLC = 8;
+	tx_header.TransmitGlobalTime = DISABLE;
+
+	if(HAL_CAN_AddTxMessage(handle->hw, &tx_header, buffer, &tx_mailbox) == HAL_OK){
+		handle->tx_frames_sent++;
+		return true;
+	}
+
+	handle->tx_frames_failed++;
+	return false;
+}
+
 /*
  * Some builds do not run the legacy TASK_CAN_rx queue/task path, so IQREQ
  * frames can be present in FIFO0 without reaching TASK_CAN_packet_cb.
@@ -423,13 +509,25 @@ void TASK_CAN_telemetry_motor_status(TASK_CAN_handle *handle) {
 	case 3U:
 		(void)mesc_can_send_two_float_frame(handle, CAN_ID_MOTOR_VOLTAGE, motor_curr->FOC.Vdq.q, motor_curr->FOC.Vdq.d);
 		break;
+#if CAN_ESC_DIAG_STATUS_FRAMES
+	case 4U:
+		(void)mesc_can_send_two_u32_frame(handle, CAN_ID_STATUS, s_can_iqreq_rx_count, 0U);
+		break;
+	case 5U:
+		(void)mesc_can_send_two_u32_frame(handle, CAN_ID_FOC_HYPER, s_can_fov0_count, s_can_fov1_count);
+		break;
+#endif
 	default:
 		(void)mesc_can_send_two_float_frame(handle, CAN_ID_TEMP_MOT_MOS1, motor_curr->Conv.Motor_T, motor_curr->Conv.MOSu_T);
 		break;
 	}
 
 	status_slot++;
+#if CAN_ESC_DIAG_STATUS_FRAMES
+	if(status_slot >= 7U){
+#else
 	if(status_slot >= 5U){
+#endif
 		status_slot = 0U;
 	}
 }
@@ -763,10 +861,82 @@ static bool mesc_cli_write_load(char *out, uint32_t out_len){
 	return true;
 }
 
-static bool mesc_cli_write_list(char *out, uint32_t out_len){
+static void mesc_cli_var_value_to_str(TermVariableDescriptor *var, char *out, uint32_t out_len){
+	uint32_t used = 0U;
+	uint32_t count;
+	uint32_t i;
+
+	if(out == NULL || out_len == 0U){
+		return;
+	}
+
+	out[0] = '\0';
+	if(var == NULL){
+		return;
+	}
+
+	if(var->type == TERM_VARIABLE_FLOAT){
+		snprintf(out, out_len, "%.6f", (double)(*(float*)var->variable));
+		return;
+	}
+
+	if(var->type == TERM_VARIABLE_FLOAT_ARRAY){
+		float *values = (float*)var->variable;
+		count = (uint32_t)var->typeSize / (uint32_t)sizeof(float);
+
+		if(out_len < 2U){
+			return;
+		}
+		out[used++] = '[';
+		out[used] = '\0';
+
+		for(i = 0U; i < count; i++){
+			int n;
+
+			n = snprintf(&out[used], out_len - used, "%s%.6f", (i == 0U) ? "" : ",", (double)values[i]);
+			if(n < 0 || (uint32_t)n >= (out_len - used)){
+				snprintf(out, out_len, "ARRAY[%lu]", (unsigned long)count);
+				return;
+			}
+			used += (uint32_t)n;
+		}
+
+		if((used + 2U) > out_len){
+			snprintf(out, out_len, "ARRAY[%lu]", (unsigned long)count);
+			return;
+		}
+
+		out[used++] = ']';
+		out[used] = '\0';
+		return;
+	}
+
+	(void)TERM_var2str(&null_handle, var, out, (int32_t)out_len);
+}
+
+static bool mesc_cli_var_set_supported(TermVariableDescriptor const *var){
+	if(var == NULL){
+		return false;
+	}
+
+	switch(var->type){
+	case TERM_VARIABLE_UINT:
+	case TERM_VARIABLE_INT:
+	case TERM_VARIABLE_FLOAT:
+	case TERM_VARIABLE_CHAR:
+	case TERM_VARIABLE_STRING:
+	case TERM_VARIABLE_BOOL:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool mesc_cli_write_list_filtered(char *out, uint32_t out_len, bool writable_only){
 	TermVariableDescriptor *curr;
 	uint32_t used = 0U;
 	uint32_t count = 0U;
+	char val[192];
 
 	if(null_handle.varHandle == NULL || null_handle.varHandle->varListHead == NULL){
 		snprintf(out, out_len, "ERR UNINIT\r\n");
@@ -774,7 +944,7 @@ static bool mesc_cli_write_list(char *out, uint32_t out_len){
 	}
 
 	curr = null_handle.varHandle->varListHead;
-	used = (uint32_t)snprintf(out, out_len, "OK LIST");
+	used = (uint32_t)snprintf(out, out_len, "OK LIST\r\n");
 	if(used >= out_len){
 		snprintf(out, out_len, "ERR OVERFLOW\r\n");
 		return true;
@@ -783,8 +953,12 @@ static bool mesc_cli_write_list(char *out, uint32_t out_len){
 	while(curr != NULL){
 		int n;
 
-		if(curr->name != NULL && curr->nameLength > 0U){
-			n = snprintf(&out[used], out_len - used, " %s", curr->name);
+		if(curr->name != NULL &&
+		   curr->nameLength > 0U &&
+		   (!writable_only ||
+		    (((curr->rw & VAR_ACCESS_W) != 0U) && mesc_cli_var_set_supported(curr)))){
+			mesc_cli_var_value_to_str(curr, val, sizeof(val));
+			n = snprintf(&out[used], out_len - used, "%s=%s\r\n", curr->name, val);
 			if(n < 0 || (uint32_t)n >= (out_len - used)){
 				snprintf(out, out_len, "ERR OVERFLOW\r\n");
 				return true;
@@ -796,17 +970,14 @@ static bool mesc_cli_write_list(char *out, uint32_t out_len){
 		curr = curr->nextVar;
 	}
 
-	if((used + 4U) >= out_len){
-		snprintf(out, out_len, "ERR OVERFLOW\r\n");
-		return true;
-	}
-
 	/* Keep output compact and machine-friendly. */
 	(void)count;
-	out[used++] = '\r';
-	out[used++] = '\n';
 	out[used] = '\0';
 	return true;
+}
+
+static bool mesc_cli_write_list(char *out, uint32_t out_len){
+	return mesc_cli_write_list_filtered(out, out_len, false);
 }
 // OWEN XXXX
 static bool mesc_cli_write_status(char *out, uint32_t out_len){
@@ -854,12 +1025,33 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 	can_fov0 = (unsigned long)s_can_fov0_count;
 	can_fov1 = (unsigned long)s_can_fov1_count;
 	if(s_posvel_last_sync_us != 0U){
-		can_posvel_sync_age_us = (unsigned long)(((*DWT_CYCCNT) / 168U) - s_posvel_last_sync_us);
+		can_posvel_sync_age_us = (unsigned long)(mesc_can_time_us() - s_posvel_last_sync_us);
 	}
 #endif
 
 	snprintf(out, out_len,
-			 "OK STATUS state=%u state_name=%s write=%u load=%u rx_drop=%lu iqreq_rx=%lu tx_fail=%lu tx_qdrop=%lu pos_sent=%lu pos_miss=%lu pos_block=%lu pos_period_us=%lu pos_phase_us=%lu pos_sync=%lu pos_nudge=%lu pos_sync_age_us=%lu can_esr=%lu can_tec=%lu can_rec=%lu can_fov0=%lu can_fov1=%lu\r\n",
+			 "OK STATUS\r\n"
+			 "state=%u\r\n"
+			 "state_name=%s\r\n"
+			 "write=%u\r\n"
+			 "load=%u\r\n"
+			 "rx_drop=%lu\r\n"
+			 "iqreq_rx=%lu\r\n"
+			 "tx_fail=%lu\r\n"
+			 "tx_qdrop=%lu\r\n"
+			 "pos_sent=%lu\r\n"
+			 "pos_miss=%lu\r\n"
+			 "pos_block=%lu\r\n"
+			 "pos_period_us=%lu\r\n"
+			 "pos_phase_us=%lu\r\n"
+			 "pos_sync=%lu\r\n"
+			 "pos_nudge=%lu\r\n"
+			 "pos_sync_age_us=%lu\r\n"
+			 "can_esr=%lu\r\n"
+			 "can_tec=%lu\r\n"
+			 "can_rec=%lu\r\n"
+			 "can_fov0=%lu\r\n"
+			 "can_fov1=%lu\r\n",
 			 (unsigned)state,
 			 state_name,
 			 (unsigned)write_allowed,
@@ -887,10 +1079,14 @@ static bool mesc_cli_write_status(char *out, uint32_t out_len){
 static bool mesc_cli_write_get(char *name, char *out, uint32_t out_len){
 	TermVariableDescriptor *head;
 	TermVariableDescriptor *var;
-	char val[80];
+	char val[192];
 
 	if(name == NULL || name[0] == '\0'){
 		return mesc_cli_write_list(out, out_len);
+	}
+
+	if(strcasecmp(name, "rw") == 0){
+		return mesc_cli_write_list_filtered(out, out_len, true);
 	}
 
 	if(null_handle.varHandle == NULL || null_handle.varHandle->varListHead == NULL){
@@ -905,13 +1101,151 @@ static bool mesc_cli_write_get(char *name, char *out, uint32_t out_len){
 		return true;
 	}
 
-	memset(val, 0, sizeof(val));
-	if(var->type == TERM_VARIABLE_FLOAT){
-		snprintf(out, out_len, "OK %s=%.6f\r\n", name, (double)(*(float*)var->variable));
+	mesc_cli_var_value_to_str(var, val, sizeof(val));
+	snprintf(out, out_len, "OK %s=%s\r\n", name, val);
+	return true;
+}
+
+static int mesc_cli_show_clear_text(char *out, uint32_t out_len){
+	return snprintf(out,
+					out_len,
+					"\x1b[s"
+					"\x1b[%lu;%luH                                  "
+					"\x1b[%lu;%luH                                  "
+					"\x1b[%lu;%luH                                  "
+					"\x1b[%lu;%luH                                  "
+					"\x1b[%lu;%luH                                  "
+					"\x1b[u",
+					(unsigned long)USB_CLI_SHOW_ROW,
+					(unsigned long)USB_CLI_SHOW_COL,
+					(unsigned long)(USB_CLI_SHOW_ROW + 1U),
+					(unsigned long)USB_CLI_SHOW_COL,
+					(unsigned long)(USB_CLI_SHOW_ROW + 2U),
+					(unsigned long)USB_CLI_SHOW_COL,
+					(unsigned long)(USB_CLI_SHOW_ROW + 3U),
+					(unsigned long)USB_CLI_SHOW_COL,
+					(unsigned long)(USB_CLI_SHOW_ROW + 4U),
+					(unsigned long)USB_CLI_SHOW_COL);
+}
+
+static void mesc_cli_show_update_posvel(void){
+	MESC_motor_typedef *motor_curr = &mtr[0];
+	uint32_t pos_now = motor_curr->FOC.abs_position;
+	uint32_t now_us = mesc_can_time_us();
+	float pos_rad = 0.0f;
+	float vel_pll = 0.0f;
+	float vel_enc = 0.0f;
+	float vel_raw;
+	float dt_s;
+	int32_t delta_pos;
+
+	if(motor_curr->m.enc_counts > 0){
+		const float pos_scale = (2.0f * M_PI) / (float)motor_curr->m.enc_counts;
+		const uint32_t pos_mod = (uint32_t)(pos_now % (uint32_t)motor_curr->m.enc_counts);
+		pos_rad = (float)pos_mod * pos_scale;
+	}
+
+	if(motor_curr->m.pole_pairs > 0){
+		vel_pll = motor_curr->FOC.eHz * (2.0f * M_PI / (float)motor_curr->m.pole_pairs);
+	}
+
+	if(s_usb_cli_show_last_time_us != 0U && motor_curr->m.enc_counts > 0){
+		delta_pos = (int32_t)pos_now - (int32_t)s_usb_cli_show_last_pos;
+		int32_t half_cpr = (int32_t)motor_curr->m.enc_counts / 2;
+		if(delta_pos > half_cpr){
+			delta_pos -= (int32_t)motor_curr->m.enc_counts;
+		}
+		if(delta_pos < -half_cpr){
+			delta_pos += (int32_t)motor_curr->m.enc_counts;
+		}
+
+		dt_s = (now_us - s_usb_cli_show_last_time_us) * 1e-6f;
+		if(dt_s > 1e-6f){
+			float delta_rad = delta_pos * (2.0f * M_PI / (float)motor_curr->m.enc_counts);
+			vel_enc = delta_rad / dt_s;
+		}
+	}
+
+	s_usb_cli_show_last_pos = pos_now;
+	s_usb_cli_show_last_time_us = now_us;
+
+	if(fabsf(vel_enc) < 5.0f){
+		vel_raw = 0.7f * vel_enc + 0.3f * vel_pll;
+	}else{
+		vel_raw = 0.3f * vel_enc + 0.7f * vel_pll;
+	}
+	s_usb_cli_show_vel_filtered = (0.1f * vel_raw) + (0.9f * s_usb_cli_show_vel_filtered);
+	if(fabsf(s_usb_cli_show_vel_filtered) < 0.02f){
+		s_usb_cli_show_vel_filtered = 0.0f;
+	}
+
+	s_usb_cli_show_posvel_pos = pos_rad;
+	s_usb_cli_show_posvel_vel = s_usb_cli_show_vel_filtered;
+}
+
+static int mesc_cli_show_draw_text(char *out, uint32_t out_len){
+	mesc_cli_show_update_posvel();
+
+	return snprintf(out,
+					out_len,
+					"\x1b[s"
+					"\x1b[%lu;%luH+--------------------------------+"
+					"\x1b[%lu;%luH| vbus=%-24.6f |"
+					"\x1b[%lu;%luH| pos =%-24.6f |"
+					"\x1b[%lu;%luH| vel =%-24.6f |"
+					"\x1b[%lu;%luH+--------------------------------+"
+					"\x1b[u",
+					(unsigned long)USB_CLI_SHOW_ROW,
+					(unsigned long)USB_CLI_SHOW_COL,
+					(unsigned long)(USB_CLI_SHOW_ROW + 1U),
+					(unsigned long)USB_CLI_SHOW_COL,
+					(double)mtr[0].Conv.Vbus,
+					(unsigned long)(USB_CLI_SHOW_ROW + 2U),
+					(unsigned long)USB_CLI_SHOW_COL,
+					(double)s_usb_cli_show_posvel_pos,
+					(unsigned long)(USB_CLI_SHOW_ROW + 3U),
+					(unsigned long)USB_CLI_SHOW_COL,
+					(double)s_usb_cli_show_posvel_vel,
+					(unsigned long)(USB_CLI_SHOW_ROW + 4U),
+					(unsigned long)USB_CLI_SHOW_COL);
+}
+
+static bool mesc_cli_write_show(char *arg, char *out, uint32_t out_len){
+	if(arg != NULL && strcasecmp(arg, "off") == 0){
+		s_usb_cli_show_enabled = false;
+		s_usb_cli_show_drawn = false;
+		int n = mesc_cli_show_clear_text(out, out_len);
+		if(n < 0 || n >= (int)out_len){
+			snprintf(out, out_len, "OK SHOW OFF\r\n");
+		}else{
+			snprintf(&out[n], out_len - (uint32_t)n, "OK SHOW OFF\r\n");
+		}
 		return true;
 	}
-	(void)TERM_var2str(&null_handle, var, val, (int32_t)sizeof(val));
-	snprintf(out, out_len, "OK %s=%s\r\n", name, val);
+
+	s_usb_cli_show_enabled = true;
+	s_usb_cli_show_drawn = false;
+	s_usb_cli_show_last_tick = 0U;
+	snprintf(out, out_len, "OK SHOW 2Hz\r\n");
+	return true;
+}
+
+static bool mesc_cli_write_clear(char *out, uint32_t out_len){
+	int n = snprintf(out, out_len, "\x1b[2J\x1b[H");
+
+	s_usb_cli_show_drawn = false;
+	if(n < 0 || n >= (int)out_len){
+		return true;
+	}
+
+	if(s_usb_cli_show_enabled){
+		int m = mesc_cli_show_draw_text(&out[n], out_len - (uint32_t)n);
+		if(m > 0 && m < (int)(out_len - (uint32_t)n)){
+			s_usb_cli_show_drawn = true;
+			s_usb_cli_show_last_tick = HAL_GetTick();
+		}
+	}
+
 	return true;
 }
 
@@ -961,12 +1295,8 @@ static bool mesc_cli_minimal_dispatch(char *line, char *out, uint32_t out_len){
 	}
 
 	if(strcasecmp(start, "help") == 0){
-		snprintf(out, out_len, "OK HELP HELP LIST GET [name] SET SAVE LOAD STATUS\r\n");
+		snprintf(out, out_len, "OK HELP HELP GET [name|rw] SET SAVE LOAD STATUS SHOW [off] CLEAR\r\n");
 		return true;
-	}
-
-	if(strcasecmp(start, "list") == 0){
-		return mesc_cli_write_list(out, out_len);
 	}
 
 	if(strcasecmp(start, "status") == 0){
@@ -975,6 +1305,14 @@ static bool mesc_cli_minimal_dispatch(char *line, char *out, uint32_t out_len){
 
 	if(strcasecmp(start, "get") == 0){
 		return mesc_cli_write_get(arg, out, out_len);
+	}
+
+	if(strcasecmp(start, "show") == 0){
+		return mesc_cli_write_show(arg, out, out_len);
+	}
+
+	if(strcasecmp(start, "clear") == 0){
+		return mesc_cli_write_clear(out, out_len);
 	}
 
 	if(strcasecmp(start, "set") == 0){
@@ -1955,6 +2293,44 @@ void populate_vars(){
 
 }
 
+static void mesc_usb_cli_show_periodic(void){
+	char out[256];
+	uint32_t now_tick = HAL_GetTick();
+	int n;
+
+	if(!s_usb_cli_show_enabled){
+		if(s_usb_cli_show_drawn){
+			n = mesc_cli_show_clear_text(out, sizeof(out));
+			if(n > 0){
+				if(n > (int)sizeof(out)){
+					n = (int)sizeof(out);
+				}
+				if(CDC_Transmit_FS((uint8_t*)out, (uint16_t)n) == USBD_OK){
+					s_usb_cli_show_drawn = false;
+				}
+			}
+		}
+		return;
+	}
+
+	if((now_tick - s_usb_cli_show_last_tick) < USB_CLI_SHOW_PERIOD_MS){
+		return;
+	}
+
+	n = mesc_cli_show_draw_text(out, sizeof(out));
+	if(n <= 0){
+		return;
+	}
+	if(n > (int)sizeof(out)){
+		n = (int)sizeof(out);
+	}
+
+	if(CDC_Transmit_FS((uint8_t*)out, (uint16_t)n) == USBD_OK){
+		s_usb_cli_show_drawn = true;
+		s_usb_cli_show_last_tick = now_tick;
+	}
+}
+
 #ifdef HAL_CAN_MODULE_ENABLED
 
 #define REMOTE_ADC_TIMEOUT 1000
@@ -2008,16 +2384,12 @@ void TASK_CAN_packet_cb(TASK_CAN_handle * handle, uint32_t id, uint8_t sender, u
 				 * Use incoming Teensy torque requests as the scheduler anchor for POSVEL.
 				 * This lets the Teensy act as time master without introducing a new CAN command.
 				 *
-				 * TODO(posvel-timebase): Keep this IQREQ-triggered sync path because it is
-				 * important for low-dropout command/feedback timing on the CAN bus, but do
-				 * not let POSVEL telemetry depend on IQREQ as a keepalive. The autonomous
-				 * scheduler currently uses DWT_CYCCNT / 168 as a uint32_t microsecond
-				 * timebase, which wraps every about 25.56 s at 168 MHz. Before changing this
-				 * validated path, replace the scheduler timebase with a wrap-safe monotonic
-				 * time source and repeat CAN dropout testing for both autonomous POSVEL and
-				 * IQREQ-synchronized POSVEL.
+				 * Keep this IQREQ-triggered sync path because it is important for
+				 * low-dropout command/feedback timing on the CAN bus. The scheduler uses
+				 * mesc_can_time_us(), which extends the DWT cycle counter across wraps so
+				 * autonomous POSVEL does not depend on IQREQ as a keepalive.
 				 */
-				now_us = (*DWT_CYCCNT) / 168U;
+				now_us = mesc_can_time_us();
 				period_us = mesc_can_clamp_posvel_period_us(can1.posvel_period_us);
 				if(period_us != can1.posvel_period_us){
 					can1.posvel_period_us = period_us;
@@ -2103,7 +2475,11 @@ void TASK_CAN_telemetry_fast(TASK_CAN_handle * handle){
 	TASK_CAN_add_float(handle	, CAN_ID_ADC1_2_REQ	  	, CAN_BROADCAST, motor_curr->input_vars.ADC1_req		, motor_curr->input_vars.ADC2_req	, 0);
 	TASK_CAN_add_float(handle	, CAN_ID_SPEED		  	, CAN_BROADCAST, motor_curr->FOC.eHz		, 0.0f					, 0);
 	TASK_CAN_add_float(handle	, CAN_ID_BUS_VOLT_CURR 	, CAN_BROADCAST, motor_curr->Conv.Vbus		, motor_curr->FOC.Ibus	, 0);
+#if CAN_ESC_DIAG_STATUS_FRAMES
+	TASK_CAN_add_uint32(handle	, CAN_ID_STATUS	  		, CAN_BROADCAST, s_can_iqreq_rx_count		, 0						, 0);
+#else
 	TASK_CAN_add_uint32(handle	, CAN_ID_STATUS	  		, CAN_BROADCAST, motor_curr->MotorState		, 0						, 0);
+#endif
 	TASK_CAN_add_float(handle	, CAN_ID_MOTOR_CURRENT 	, CAN_BROADCAST, motor_curr->FOC.Idq.q		, motor_curr->FOC.Idq.d	, 0);
 	TASK_CAN_add_float(handle	, CAN_ID_MOTOR_VOLTAGE 	, CAN_BROADCAST, motor_curr->FOC.Vdq.q		, motor_curr->FOC.Vdq.d	, 0);
 
@@ -2131,7 +2507,11 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 
 	TASK_CAN_add_float(handle	, CAN_ID_TEMP_MOT_MOS1	, CAN_BROADCAST, motor_curr->Conv.Motor_T			, motor_curr->Conv.MOSu_T			, 0);
 	TASK_CAN_add_float(handle	, CAN_ID_TEMP_MOS2_MOS3	, CAN_BROADCAST, motor_curr->Conv.MOSv_T			, motor_curr->Conv.MOSw_T			, 0);
+#if CAN_ESC_DIAG_STATUS_FRAMES
+	TASK_CAN_add_uint32(handle	, CAN_ID_FOC_HYPER		, CAN_BROADCAST, s_can_fov0_count	, s_can_fov1_count	, 0);
+#else
 	TASK_CAN_add_uint32(handle	, CAN_ID_FOC_HYPER		, CAN_BROADCAST, motor_curr->FOC.cycles_fastloop	, motor_curr->FOC.cycles_pwmloop	, 0);
+#endif
 
 }
 
@@ -2165,13 +2545,6 @@ void TASK_CAN_telemetry_slow(TASK_CAN_handle * handle){
 // For a 12-bit ABI encoder (0–4095 counts per rev):
 #define ENCODER_CPR 4096
 
-// --- DWT cycle counter (hardware timer running at CPU frequency) ---
-// Used to get precise microsecond timestamps.
-// On STM32F405, core clock is 168 MHz → 168 cycles = 1 µs.
-#ifndef DWT_CYCCNT
-#define DWT_CYCCNT ((volatile uint32_t *)0xE0001004U)
-#endif
-
 // Persistent + debugger-visible state
 static volatile float vel_est_filtered = 0.0f;
 static volatile uint32_t last_pos = 0;
@@ -2185,7 +2558,9 @@ static volatile float vel_raw_dbg = 0.0f;
 static volatile float pos_rad_dbg = 0.0f;
 static volatile float dt_s_dbg = 0.0f;
 static volatile int32_t delta_pos_dbg = 0;
+#if CAN_POSVEL_DIAG_SEQUENCE
 static volatile uint32_t posvel_counter_dbg = 0U;
+#endif
 void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     MESC_motor_typedef *motor_curr = &mtr[0];
 	uint32_t now_tick;
@@ -2203,9 +2578,8 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
     // === 3. Encoder-based velocity (Δθ/Δt) ===
     uint32_t pos_now = motor_curr->FOC.abs_position;  // absolute mechanical position in ticks
 
-    // === 4. Read precise timestamp from DWT cycle counter ---
-    uint32_t now_cycles = *DWT_CYCCNT;
-    uint32_t time_now_us = now_cycles / 168;     // convert cycles → µs (for 168 MHz CPU)
+    // === 4. Read wrap-safe monotonic microsecond timestamp ---
+    uint32_t time_now_us = mesc_can_time_us();
 
     // === 5. Delta counts with rollover correction ---
     delta_pos_dbg = (int32_t)pos_now - (int32_t)last_pos;
@@ -2246,7 +2620,7 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
 		} else {
 			pos_rad_dbg = 0.0f;
 		}
-#if CAN_DIAG_COMPAT_V1
+#if CAN_POSVEL_DIAG_SEQUENCE
 		pos_payload = (float)posvel_counter_dbg;
 		posvel_counter_dbg++;
 #else
@@ -2258,8 +2632,11 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
         vel_est_filtered = 0.0f;
     }
 
+	s_usb_cli_show_posvel_pos = pos_payload;
+	s_usb_cli_show_posvel_vel = vel_est_filtered;
+
 		// === 11. Send telemetry over CAN ===
-		// Payload: slot0 selected by CAN_DIAG_COMPAT_V1, slot1 = velocity [rad/s].
+		// Payload: slot0 = wrapped mechanical position [rad], slot1 = velocity [rad/s].
 		// NOTE: vel_est_filtered is in radians per second.
 		//       To get RPM, multiply by (60 / 2π).
 		if(mesc_can_send_posvel_frame(handle, pos_payload, vel_est_filtered)){
@@ -2279,10 +2656,12 @@ void TASK_CAN_telemetry_posvel(TASK_CAN_handle *handle) {
 }
 
 void MESCinterface_can_periodic(void){
+	mesc_usb_cli_show_periodic();
+
 	#ifdef HAL_CAN_MODULE_ENABLED
 	static uint32_t last_tick_status = 0U;
 	uint32_t now_tick = HAL_GetTick();
-	uint32_t now_us = (*DWT_CYCCNT) / 168U;
+	uint32_t now_us = mesc_can_time_us();
 	uint32_t period_us = mesc_can_clamp_posvel_period_us(can1.posvel_period_us);
 	uint32_t phase_us = can1.posvel_phase_us;
 	const uint32_t period_tick_status = 2U; // one status frame every 2ms (round-robin)
