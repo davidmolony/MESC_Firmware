@@ -1,26 +1,43 @@
 # davidmolony.github.io/MESC_Firmware/
 
-Documentation will be gradually created/migrated to github pages.
+- This branch will hopefully run on my 300A bike. 
+- https://github.com/owhite/MP2-DFN version 0.3 PCB
+- Motor: QS165v2
 
-View the book [here](https://davidmolony.github.io/MESC_Firmware/)
+## Settings
 
-# MESC_Firmware
-MESC is a project for embedded BLDC FOC, serving a number of purposes
-1) Easy to follow and learn FOC
-2) Easy to port to other platforms
-3) High performance motor control offering all the FOC goodies: Sensorless, HFI, Encoder, Hall, (and combinations of), Field weakening, MTPA, Torque, Speed and Duty control.
-4) Permissive licensing making commercial use easy (Additional conditions attached to integration into other open source projects).
+**Motors settings**
+- set par_ld 0.000042
+- set par_lq 0.000065
+- set par_r 0.006
+- set par_pp 7
 
-# Targets/Hardware
-MESC runs primarily on any STM32 target with an FPU. Tested with the targets in the repo, but easily portable to any other STM. Compatibility with other MCU brands TBC.
+**Other values**
+- set input_opt 1
+- set node_id 11
+- set can_adc 3
+- set ol_step 20
 
-The reference hardware is now the [MP2 ESC](https://github.com/badgineer/MP2-ESC), since it allows testing with many targets by simply swapping the MCU pill. It also offers adequate performance for most light EV applications (high power scooters and ~10kW E-motorbikes.
+remember that adc1_min must be below initial adc1
+- set adc1_min 1200
 
-The original hardware based on F303 target [MESC_FOC_ESC](https://github.com/davidmolony/MESC_FOC_ESC) will be supported for some time, but not encouraged.
+MESC_F405.h:
+uncomment ```#include "MP2_V0_1.h"```
 
-All STM32F405RG hardware (AKA VESC compatible hardware e.g. Trampa, SHUL, Triforce, FSESC and many others) compatible with MESC_firmware.
+MP2_V0_1.h
+```
+#define ABS_MAX_PHASE_CURRENT 400.0f 
+#define ABS_MAX_BUS_VOLTAGE 105.0f
+#define ABS_MIN_BUS_VOLTAGE 24.0f
+```
 
-With thanks to all that have helped in the creation of MESC.
+## CAN
+- SPEEDO_TEST is a platformio project used to test CAN
+- CAN appeared to work out of the box
 
-Happy spinning!
-(testpush)
+## Label on the pill 
+
+`MESC_Firmware/patch_V2_JUNE7_2026.bin
+
+[Download patch_V2_JUNE7_2026.bin](./patch_V2_JUNE7_2026.bin)
+

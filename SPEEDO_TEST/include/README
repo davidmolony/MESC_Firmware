@@ -1,0 +1,6 @@
+This directory is intended for project header files.
+
+A header file is a file containing C declarations and macro definitions
+to be shared between several project source files.
+
+Example: include/project_config.h
